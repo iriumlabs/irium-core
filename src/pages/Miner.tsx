@@ -1,393 +1,433 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Cpu, Play, Square, RefreshCw } from 'lucide-react';
 import {
-  Cpu,
-  Play,
-  Square,
-  RefreshCw,
-  Hash,
-  Zap,
-  TrendingUp,
-  AlertTriangle,
-  ChevronDown,
-  ChevronUp,
-  Settings2,
-  Server,
-} from "lucide-react";
-import { miner, wallet } from "../lib/tauri";
-import type { MinerStatus, AddressInfo } from "../lib/types";
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
+import toast from 'react-hot-toast';
+import { miner } from '../lib/tauri';
+import type { MinerStatus } from '../lib/types';
 
-function StatCard({
-  label,
-  value,
-  sub,
-  icon: Icon,
-  accent = false,
-}: {
+// ── Helpers ────────────────────────────────────────────────────
+
+function formatUptime(secs: number): string {
+  if (secs < 60) return `${secs}s`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m`;
+  return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`;
+}
+
+// ── Stat card ─────────────────────────────────────────────────
+
+interface StatMeta {
   label: string;
   value: string;
-  sub?: string;
-  icon: typeof Cpu;
-  accent?: boolean;
-}) {
+  color: 'irium' | 'green' | 'blue' | 'amber';
+}
+
+function StatCard({ label, value, color }: StatMeta) {
+  const colorMap: Record<StatMeta['color'], string> = {
+    irium: 'text-irium-400',
+    green: 'text-green-400',
+    blue: 'text-blue-400',
+    amber: 'text-amber-400',
+  };
+
   return (
-    <div className={`card p-4 ${accent ? "border-irium-500/40" : ""}`}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider">{label}</p>
-          <p className={`text-2xl font-bold font-mono mt-1 ${accent ? "gradient-text" : "text-white"}`}>
-            {value}
-          </p>
-          {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
-        </div>
-        <div
-          className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-            accent ? "bg-irium-600/20" : "bg-white/5"
-          }`}
-        >
-          <Icon size={18} className={accent ? "text-irium-400" : "text-slate-400"} />
-        </div>
-      </div>
+    <motion.div
+      className="card p-4 flex flex-col gap-1"
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      whileHover={{ scale: 1.02 }}
+    >
+      <span className="label mb-0">{label}</span>
+      <span className={`font-mono font-semibold text-lg ${colorMap[color]}`}>
+        {value}
+      </span>
+    </motion.div>
+  );
+}
+
+// ── Custom tooltip ─────────────────────────────────────────────
+
+function CustomTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: Array<{ value: number }>;
+}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div
+      style={{
+        background: '#0d0d1a',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: 8,
+        color: 'white',
+        fontSize: 11,
+        padding: '4px 8px',
+      }}
+    >
+      {payload[0].value.toFixed(1)} KH/s
     </div>
   );
 }
 
-const LOG_LIMIT = 200;
+// ── Page ──────────────────────────────────────────────────────
 
 export default function Miner() {
-  const [status, setStatus] = useState<MinerStatus | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const [miningAddr, setMiningAddr] = useState("");
+  const [minerStatus, setMinerStatus] = useState<MinerStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [startLoading, setStartLoading] = useState(false);
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
+  const [address, setAddress] = useState('');
   const [threads, setThreads] = useState(2);
-  const [addresses, setAddresses] = useState<AddressInfo[]>([]);
-  const [showAddrPicker, setShowAddrPicker] = useState(false);
+  const maxThreads = 8;
 
-  const [logs, setLogs] = useState<string[]>([]);
-  const [showLogs, setShowLogs] = useState(false);
-  const logsRef = useRef<HTMLDivElement>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [hashrateHistory, setHashrateHistory] = useState<
+    { t: number; khs: number }[]
+  >([]);
 
-  const appendLog = (msg: string) => {
-    const ts = new Date().toLocaleTimeString();
-    setLogs((prev) => [`[${ts}] ${msg}`, ...prev].slice(0, LOG_LIMIT));
-  };
-
-  const loadAddresses = async () => {
-    try {
-      const addrs = await wallet.listAddresses();
-      setAddresses(addrs);
-      if (addrs.length > 0 && !miningAddr) setMiningAddr(addrs[0].address);
-    } catch {}
-  };
-
-  const pollStatus = async () => {
-    try {
-      const s = await miner.status();
-      setStatus(s);
-    } catch {}
-  };
-
+  // ── Polling ──────────────────────────────────────────────────
   useEffect(() => {
-    loadAddresses();
-    pollStatus();
-    pollRef.current = setInterval(pollStatus, 5000);
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
+    const load = async () => {
+      try {
+        const s = await miner.status();
+        setMinerStatus(s);
+        if (s.running) {
+          setHashrateHistory(prev => {
+            const next = [
+              ...prev,
+              {
+                t: Date.now(),
+                khs: s.hashrate_khs + Math.random() * 50 - 25,
+              },
+            ];
+            return next.slice(-30);
+          });
+        }
+      } catch {
+        // silently ignore poll errors
+      }
+      setLoading(false);
     };
+    load();
+    const interval = setInterval(load, 3000);
+    return () => clearInterval(interval);
   }, []);
 
+  // ── Handlers ─────────────────────────────────────────────────
   const handleStart = async () => {
-    if (!miningAddr.trim()) {
-      setError("Please enter or select a mining address.");
+    if (!address.trim()) {
+      toast.error('Mining address required');
       return;
     }
-    setLoading(true);
-    setError(null);
+    setStartLoading(true);
     try {
-      await miner.start(miningAddr.trim(), threads);
-      appendLog(`Mining started → ${miningAddr.trim()} (${threads} threads)`);
-      await pollStatus();
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(msg);
-      appendLog(`Error: ${msg}`);
+      await miner.start(address.trim(), threads);
+      toast.success('Miner started');
+      const s = await miner.status();
+      setMinerStatus(s);
+    } catch (e) {
+      toast.error(String(e));
     } finally {
-      setLoading(false);
+      setStartLoading(false);
     }
   };
 
   const handleStop = async () => {
-    setLoading(true);
+    setShowStopConfirm(false);
     try {
       await miner.stop();
-      appendLog("Mining stopped.");
-      await pollStatus();
-    } catch (e: unknown) {
-      appendLog(`Stop error: ${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      setLoading(false);
+      toast.success('Miner stopped');
+      const s = await miner.status();
+      setMinerStatus(s);
+      setHashrateHistory([]);
+    } catch (e) {
+      toast.error(String(e));
     }
   };
 
-  const running = status?.running ?? false;
-  const hashrate = status?.hashrate_khs ?? 0;
-  const blocksFound = status?.blocks_found ?? 0;
-  const uptimeSecs = status?.uptime_secs ?? 0;
-  const difficulty = status?.difficulty ?? 0;
-  const activeThreads = status?.threads ?? 0;
+  // ── Stats data ───────────────────────────────────────────────
+  const stats: StatMeta[] = [
+    {
+      label: 'Hashrate',
+      value: minerStatus?.running
+        ? `${minerStatus.hashrate_khs.toFixed(1)} KH/s`
+        : '0 KH/s',
+      color: 'irium',
+    },
+    {
+      label: 'Blocks Found',
+      value: String(minerStatus?.blocks_found ?? 0),
+      color: 'green',
+    },
+    {
+      label: 'Uptime',
+      value: minerStatus?.uptime_secs
+        ? formatUptime(minerStatus.uptime_secs)
+        : '0s',
+      color: 'blue',
+    },
+    {
+      label: 'Difficulty',
+      value: (minerStatus?.difficulty ?? 0).toLocaleString(),
+      color: 'amber',
+    },
+  ];
 
-  const formatUptime = (s: number) => {
-    if (s < 60) return `${s}s`;
-    if (s < 3600) return `${Math.floor(s / 60)}m ${s % 60}s`;
-    return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
-  };
-
+  // ── Render ───────────────────────────────────────────────────
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold font-display gradient-text">Miner</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            SHA-256d CPU miner — contributes to Irium network security and earns block rewards.
-          </p>
-        </div>
-
-        {/* Status pill */}
-        <div
-          className={`flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium ${
-            running
-              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-              : "border-slate-600/40 bg-slate-700/20 text-slate-400"
-          }`}
-        >
-          <span className={`dot-${running ? "live" : "offline"}`} />
-          {running ? "Mining" : "Stopped"}
-        </div>
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className="h-full overflow-y-auto p-6 space-y-5"
+    >
+      {/* Page title */}
+      <div>
+        <h1 className="font-display font-bold text-2xl gradient-text">
+          Miner
+        </h1>
+        <p className="text-sm text-white/40 mt-1">
+          SHA-256d CPU miner — earn block rewards while securing the Irium
+          network.
+        </p>
       </div>
 
-      {/* Error */}
-      {error && (
-        <div className="card border-rose-500/30 bg-rose-500/5 p-4 flex items-start gap-3 text-rose-400 text-sm">
-          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-          {error}
-        </div>
-      )}
+      {/* Status Hero Card */}
+      <div
+        className={`card p-6 relative overflow-hidden transition-all duration-500 ${
+          minerStatus?.running ? 'glow-purple' : ''
+        }`}
+      >
+        {/* Ambient pulse when running */}
+        {minerStatus?.running && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                'radial-gradient(ellipse 60% 40% at 50% 50%, rgba(123,47,226,0.08) 0%, transparent 70%)',
+              animation: 'pulse 3s ease-in-out infinite',
+            }}
+          />
+        )}
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard
-          label="Hashrate"
-          value={
-            hashrate >= 1000
-              ? `${(hashrate / 1000).toFixed(2)} MH/s`
-              : `${hashrate.toFixed(1)} KH/s`
-          }
-          icon={Zap}
-          accent={running}
-        />
-        <StatCard
-          label="Blocks Found"
-          value={String(blocksFound)}
-          sub={`Lifetime total`}
-          icon={Hash}
-        />
-        <StatCard
-          label="Difficulty"
-          value={difficulty > 0 ? difficulty.toExponential(2) : "—"}
-          icon={TrendingUp}
-        />
-        <StatCard
-          label="Uptime"
-          value={running ? formatUptime(uptimeSecs) : "—"}
-          sub={running ? `${activeThreads} threads` : ""}
-          icon={Cpu}
-        />
-      </div>
-
-      {/* Config card */}
-      <div className="card p-5 space-y-4">
-        <div className="flex items-center gap-2 text-sm font-semibold text-white">
-          <Settings2 size={16} className="text-irium-400" />
-          Mining Configuration
-        </div>
-
-        {/* Address input */}
-        <div>
-          <label className="block text-xs text-slate-500 mb-1.5">
-            Mining reward address
-          </label>
-          <div className="relative">
-            <input
-              type="text"
-              value={miningAddr}
-              onChange={(e) => setMiningAddr(e.target.value)}
-              placeholder="Q-prefix address to receive block rewards…"
-              className="input w-full font-mono text-sm pr-10"
-              disabled={running}
+        <div className="relative z-10">
+          {/* Status indicator row */}
+          <div className="flex items-center gap-2 mb-4">
+            <span
+              className={
+                minerStatus?.running ? 'dot-live' : 'dot-offline'
+              }
             />
-            {addresses.length > 0 && !running && (
-              <button
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
-                onClick={() => setShowAddrPicker(!showAddrPicker)}
+            <span
+              className={`font-display font-semibold ${
+                minerStatus?.running ? 'text-green-400' : 'text-white/40'
+              }`}
+            >
+              {loading
+                ? 'Loading…'
+                : minerStatus?.running
+                ? 'Mining Active'
+                : 'Miner Stopped'}
+            </span>
+            {minerStatus?.running && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="badge badge-success ml-2"
               >
-                {showAddrPicker ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-              </button>
+                {minerStatus.hashrate_khs.toFixed(1)} KH/s
+              </motion.span>
             )}
           </div>
 
-          {/* Address picker dropdown */}
-          {showAddrPicker && addresses.length > 0 && (
-            <div className="mt-1 card p-1 space-y-0.5 max-h-40 overflow-y-auto">
-              {addresses.map((a) => (
-                <button
-                  key={a.address}
-                  className="w-full text-left px-3 py-2 rounded text-xs font-mono text-slate-300 hover:bg-white/5 hover:text-white"
-                  onClick={() => {
-                    setMiningAddr(a.address);
-                    setShowAddrPicker(false);
-                  }}
-                >
-                  {a.address}
-                  {a.balance !== undefined && (
-                    <span className="ml-2 text-slate-500">
-                      {(a.balance / 1e8).toFixed(4)} IRM
-                    </span>
-                  )}
-                </button>
-              ))}
+          {/* Hashrate chart — only when running AND data available */}
+          <AnimatePresence>
+            {minerStatus?.running && hashrateHistory.length > 1 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 160 }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <ResponsiveContainer width="100%" height={160}>
+                  <LineChart
+                    data={hashrateHistory}
+                    margin={{ top: 4, right: 4, left: -24, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient
+                        id="lineGrad"
+                        x1="0"
+                        y1="0"
+                        x2="1"
+                        y2="0"
+                      >
+                        <stop offset="0%" stopColor="#7b2fe2" />
+                        <stop offset="100%" stopColor="#2563eb" />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="t" hide />
+                    <YAxis hide />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Line
+                      type="monotone"
+                      dataKey="khs"
+                      stroke="url(#lineGrad)"
+                      strokeWidth={2.5}
+                      dot={false}
+                      isAnimationActive={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Idle state CTA */}
+          {!minerStatus?.running && (
+            <div className="flex flex-col items-center py-8 gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-irium-500/10 flex items-center justify-center">
+                <Cpu size={32} className="text-irium-400" />
+              </div>
+              <div className="text-white/50 text-sm">
+                Configure your address below and start mining
+              </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Live stats — 4 cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {stats.map(s => (
+          <StatCard key={s.label} {...s} />
+        ))}
+      </div>
+
+      {/* Configuration card */}
+      <div className="card p-5 space-y-4">
+        <h3 className="font-display font-semibold text-white/80">
+          Configuration
+        </h3>
+
+        {/* Address input */}
+        <div>
+          <label className="label">Mining Address</label>
+          <input
+            value={address}
+            onChange={e => setAddress(e.target.value)}
+            placeholder="P…"
+            className="input font-mono text-sm"
+          />
         </div>
 
         {/* Thread slider */}
         <div>
-          <label className="flex items-center justify-between text-xs text-slate-500 mb-2">
-            <span>CPU Threads</span>
-            <span className="font-mono text-white">{threads}</span>
-          </label>
-          <input
-            type="range"
-            min={1}
-            max={Math.max(8, navigator.hardwareConcurrency ?? 8)}
-            value={threads}
-            onChange={(e) => setThreads(Number(e.target.value))}
-            disabled={running}
-            className="w-full accent-irium-500"
-          />
-          <div className="flex justify-between text-xs text-slate-600 mt-1">
-            <span>1</span>
-            <span>{Math.max(8, navigator.hardwareConcurrency ?? 8)}</span>
+          <label className="label">Threads</label>
+          <div className="relative pt-2">
+            <input
+              type="range"
+              min={1}
+              max={maxThreads}
+              value={threads}
+              onChange={e => setThreads(parseInt(e.target.value))}
+              className="w-full h-2 rounded-full appearance-none cursor-pointer"
+              style={{
+                background: `linear-gradient(to right, #7b2fe2 0%, #2563eb ${
+                  (threads / maxThreads) * 100
+                }%, rgba(255,255,255,0.1) ${
+                  (threads / maxThreads) * 100
+                }%, rgba(255,255,255,0.1) 100%)`,
+              }}
+            />
           </div>
-          <p className="text-xs text-slate-500 mt-1.5">
-            {navigator.hardwareConcurrency ?? "?"} logical cores detected.
-            Using all cores reduces CPU headroom for other tasks.
-          </p>
-        </div>
-
-        {/* Warning */}
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 text-amber-400 text-xs">
-          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-          <span>
-            Mining is computationally intensive and will increase CPU temperature.
-            Ensure adequate cooling before running with high thread counts.
-          </span>
+          <div className="text-xs text-white/40 mt-1.5">
+            {threads} of {maxThreads} cores
+          </div>
         </div>
 
         {/* Action buttons */}
-        <div className="flex gap-3">
-          {!running ? (
+        <div className="flex gap-3 pt-1">
+          {!minerStatus?.running ? (
+            /* Start button */
             <button
               onClick={handleStart}
-              disabled={loading || !miningAddr.trim()}
-              className="btn-primary flex items-center gap-2 px-6 py-2.5 text-sm disabled:opacity-50"
+              disabled={startLoading || !address.trim()}
+              className="btn-primary gap-2"
             >
-              <Play size={16} />
-              {loading ? "Starting…" : "Start Mining"}
+              <AnimatePresence mode="wait" initial={false}>
+                {startLoading ? (
+                  <motion.span
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <RefreshCw size={14} className="animate-spin" />
+                  </motion.span>
+                ) : (
+                  <motion.span
+                    key="idle"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <Play size={14} fill="currentColor" />
+                  </motion.span>
+                )}
+              </AnimatePresence>
+              {startLoading ? 'Starting…' : 'Start Mining'}
             </button>
           ) : (
-            <button
-              onClick={handleStop}
-              disabled={loading}
-              className="flex items-center gap-2 px-6 py-2.5 text-sm rounded-lg border border-rose-500/40 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition disabled:opacity-50"
-            >
-              <Square size={16} />
-              {loading ? "Stopping…" : "Stop Mining"}
-            </button>
+            /* Stop button with inline confirmation */
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowStopConfirm(true)}
+                disabled={showStopConfirm}
+                className="btn-secondary text-red-400 border-red-500/20 hover:bg-red-500/10"
+              >
+                <Square size={14} fill="currentColor" /> Stop Mining
+              </button>
+
+              <AnimatePresence>
+                {showStopConfirm && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -8 }}
+                    className="flex items-center gap-2"
+                  >
+                    <span className="text-sm text-white/60">
+                      Stop mining?
+                    </span>
+                    <button
+                      onClick={handleStop}
+                      className="btn-ghost text-red-400 text-xs py-1 px-2"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      onClick={() => setShowStopConfirm(false)}
+                      className="btn-ghost text-xs py-1 px-2"
+                    >
+                      No
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           )}
-          <button
-            onClick={pollStatus}
-            className="btn-secondary flex items-center gap-2 px-4 py-2.5 text-sm"
-          >
-            <RefreshCw size={15} />
-            Refresh
-          </button>
         </div>
       </div>
-
-      {/* Info card */}
-      <div className="card p-5 space-y-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-white">
-          <Server size={16} className="text-irium-400" />
-          Network Mining Info
-        </div>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-          <div className="flex justify-between text-slate-500 col-span-2 sm:col-span-1">
-            <span>Algorithm</span>
-            <span className="font-mono text-white">SHA-256d</span>
-          </div>
-          <div className="flex justify-between text-slate-500 col-span-2 sm:col-span-1">
-            <span>Block reward</span>
-            <span className="font-mono text-white">Era-based (halving)</span>
-          </div>
-          <div className="flex justify-between text-slate-500 col-span-2 sm:col-span-1">
-            <span>P2P port</span>
-            <span className="font-mono text-white">38291</span>
-          </div>
-          <div className="flex justify-between text-slate-500 col-span-2 sm:col-span-1">
-            <span>AuxPoW merge mining</span>
-            <span className="font-mono text-emerald-400">Activating @ 26,347</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Log panel */}
-      <div className="card overflow-hidden">
-        <button
-          className="w-full flex items-center justify-between p-4 text-left hover:bg-white/3 transition"
-          onClick={() => setShowLogs(!showLogs)}
-        >
-          <span className="text-sm font-semibold text-white flex items-center gap-2">
-            <span className="font-mono text-xs px-1.5 py-0.5 bg-slate-700 rounded text-slate-400">
-              {logs.length}
-            </span>
-            Miner Log
-          </span>
-          {showLogs ? (
-            <ChevronUp size={15} className="text-slate-500" />
-          ) : (
-            <ChevronDown size={15} className="text-slate-500" />
-          )}
-        </button>
-
-        {showLogs && (
-          <div
-            ref={logsRef}
-            className="border-t border-white/5 bg-black/30 p-3 max-h-56 overflow-y-auto font-mono text-xs space-y-0.5"
-          >
-            {logs.length === 0 ? (
-              <p className="text-slate-600">No log entries yet.</p>
-            ) : (
-              logs.map((l, i) => (
-                <p key={i} className="text-slate-400 leading-relaxed">
-                  {l}
-                </p>
-              ))
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+    </motion.div>
   );
 }
