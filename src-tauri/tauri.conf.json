@@ -1,0 +1,112 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/schema.json",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devPath": "http://localhost:1420",
+    "distDir": "../dist",
+    "withGlobalTauri": false
+  },
+  "package": {
+    "productName": "Irium Core",
+    "version": "1.0.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "shell": {
+        "all": false,
+        "execute": true,
+        "sidecar": true,
+        "open": true,
+        "scope": [
+          {
+            "name": "iriumd",
+            "sidecar": true
+          },
+          {
+            "name": "irium-wallet",
+            "sidecar": true
+          },
+          {
+            "name": "irium-miner",
+            "sidecar": true
+          }
+        ]
+      },
+      "http": {
+        "all": false,
+        "request": true,
+        "scope": ["http://127.0.0.1:38300/**", "http://localhost:38300/**"]
+      },
+      "window": {
+        "all": true
+      },
+      "path": {
+        "all": true
+      },
+      "fs": {
+        "all": false,
+        "readFile": true,
+        "writeFile": true,
+        "readDir": true,
+        "createDir": true,
+        "exists": true,
+        "scope": ["$APPDATA/**", "$HOME/.irium/**"]
+      },
+      "process": {
+        "all": true
+      },
+      "notification": {
+        "all": true
+      }
+    },
+    "bundle": {
+      "active": true,
+      "targets": "all",
+      "identifier": "com.iriumlabs.core",
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ],
+      "resources": [],
+      "externalBin": [
+        "binaries/iriumd",
+        "binaries/irium-wallet",
+        "binaries/irium-miner"
+      ],
+      "copyright": "2024 Irium Labs",
+      "longDescription": "Irium Core is a full node desktop wallet for the Irium blockchain network. It enables decentralized commerce, settlement, and trust.",
+      "shortDescription": "Irium Full Node Desktop Wallet"
+    },
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: asset: https://asset.localhost"
+    },
+    "systemTray": {
+      "iconPath": "icons/32x32.png",
+      "iconAsTemplate": true,
+      "menuOnLeftClick": false
+    },
+    "updater": {
+      "active": false
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "resizable": true,
+        "title": "Irium Core",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 1024,
+        "minHeight": 680,
+        "center": true,
+        "decorations": true,
+        "transparent": false,
+        "fileDropEnabled": false
+      }
+    ]
+  }
+}
