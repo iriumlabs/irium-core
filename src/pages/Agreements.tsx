@@ -1,457 +1,628 @@
-import React, { useEffect, useState } from "react";
-import {
-  FileText,
-  RefreshCw,
-  Upload,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Download,
-  Send,
-  Info,
-} from "lucide-react";
-import { agreements, proofs } from "../lib/tauri";
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronDown, ChevronUp, Upload, RefreshCw, X } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { agreements, proofs } from '../lib/tauri';
 import {
   formatIRM,
-  truncateHash,
-  truncateAddr,
   timeAgo,
+  truncateAddr,
+  truncateHash,
   statusColor,
-} from "../lib/types";
-import type { Agreement, Proof, AgreementStatus } from "../lib/types";
-import { useStore } from "../lib/store";
+} from '../lib/types';
+import type { Agreement, Proof } from '../lib/types';
+
+// ── Animation variants ────────────────────────────────────────
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+};
+
+// ── Types & constants ─────────────────────────────────────────
+
+type StatusFilter = 'all' | 'active' | 'released' | 'expired' | 'refunded';
+
+const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'active', label: 'Active' },
+  { key: 'released', label: 'Completed' },
+  { key: 'expired', label: 'Expired' },
+  { key: 'refunded', label: 'Refunded' },
+];
+
+// ── Helper component ──────────────────────────────────────────
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <span className="text-white/30">{label}: </span>
+      <span className="font-mono text-white/70">{value}</span>
+    </div>
+  );
+}
+
+function borderColorForStatus(status: Agreement['status']): string {
+  if (status === 'active') return '#7b2fe2'; // irium-500
+  if (status === 'released') return '#4ade80'; // green-400
+  if (status === 'expired' || status === 'timeout') return '#f87171'; // red-400
+  if (status === 'refunded') return '#fbbf24'; // amber-400
+  return 'rgba(255,255,255,0.2)';
+}
+
+// ── Main page ─────────────────────────────────────────────────
 
 export default function AgreementsPage() {
-  const [list, setList] = useState<Agreement[]>([]);
-  const [selected, setSelected] = useState<Agreement | null>(null);
+  const [filter, setFilter] = useState<StatusFilter>('all');
+  const [agreementList, setAgreementList] = useState<Agreement[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<AgreementStatus | "all">("all");
+  const [proofsByAgreement, setProofsByAgreement] = useState<Record<string, Proof[]>>({});
+  const [showProofModal, setShowProofModal] = useState<string | null>(null);
+  const [showReleaseModal, setShowReleaseModal] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [proofFilePath, setProofFilePath] = useState('');
 
   useEffect(() => {
-    loadAgreements();
+    loadData();
   }, []);
 
-  const loadAgreements = async () => {
+  // Load proofs when expanding a card
+  useEffect(() => {
+    if (!expandedId || proofsByAgreement[expandedId] !== undefined) return;
+    proofs
+      .list(expandedId)
+      .then((ps) => setProofsByAgreement((prev) => ({ ...prev, [expandedId]: ps })))
+      .catch(() => {});
+  }, [expandedId]);
+
+  const loadData = async () => {
     setLoading(true);
     try {
       const data = await agreements.list();
-      setList(data);
-    } catch {}
-    setLoading(false);
+      setAgreementList(data);
+    } catch (e) {
+      toast.error('Failed to load agreements');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const filtered = filter === "all" ? list : list.filter((a) => a.status === filter);
+  const handleRefund = async (id: string) => {
+    setActionLoading(true);
+    try {
+      const res = await agreements.refund(id);
+      if (res.success) toast.success('Refund initiated');
+      else toast.error(res.message ?? 'Refund failed');
+      loadData();
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
-  if (selected) {
-    return (
-      <AgreementDetail
-        agreement={selected}
-        onBack={() => { setSelected(null); loadAgreements(); }}
-        onRefresh={loadAgreements}
-      />
-    );
-  }
+  const filteredAgreements = agreementList.filter((a) => {
+    if (filter === 'all') return true;
+    if (filter === 'active') return ['active', 'pending', 'satisfied'].includes(a.status);
+    return a.status === filter;
+  });
 
   return (
-    <div className="p-6 space-y-4 page-enter overflow-y-auto h-full">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className="h-full overflow-y-auto p-6 space-y-5"
+    >
+      {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display font-bold text-2xl text-white">Agreements</h1>
           <p className="text-white/40 text-sm mt-0.5">On-chain settlement agreements</p>
         </div>
-        <button onClick={loadAgreements} className="btn-ghost" disabled={loading}>
-          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+        <button onClick={loadData} className="btn-ghost" disabled={loading}>
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
 
-      {/* Filter bar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {(["all", "active", "satisfied", "released", "timeout", "refunded"] as const).map((f) => (
+      {/* Status filter tabs */}
+      <div className="flex border-b border-white/[0.06] mb-5">
+        {STATUS_FILTERS.map((f) => (
           <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-display font-semibold transition-all ${
-              filter === f
-                ? "bg-irium-500/20 text-irium-300 border border-irium-500/30"
-                : "text-white/40 hover:text-white/70 hover:bg-white/5"
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={`relative px-4 py-2.5 text-sm font-display font-medium transition-colors ${
+              filter === f.key ? 'text-white' : 'text-white/40 hover:text-white/70'
             }`}
           >
-            {f === "all" ? `All (${list.length})` : f}
+            {f.label}
+            {filter === f.key && (
+              <motion.div
+                layoutId="agr-tab"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-irium-500"
+              />
+            )}
           </button>
         ))}
       </div>
 
-      {/* Agreement list */}
+      {/* Loading shimmer */}
       {loading ? (
-        <div className="text-center py-16 text-white/30">Loading agreements...</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-white/30 text-sm">
-          No agreements found. Create a settlement to get started.
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {filtered.map((a) => (
-            <AgreementRow
-              key={a.id}
-              agreement={a}
-              onSelect={() => setSelected(a)}
-            />
+        <div className="space-y-3">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="card p-4 h-20 shimmer rounded-xl" />
           ))}
         </div>
+      ) : filteredAgreements.length === 0 ? (
+        <div className="text-center py-20 text-white/30 text-sm">
+          No agreements found
+          {filter !== 'all' && (
+            <span>
+              {' '}
+              with status <strong>{filter}</strong>
+            </span>
+          )}
+          .
+        </div>
+      ) : (
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="space-y-3"
+        >
+          {filteredAgreements.map((a) => (
+            <motion.div key={a.id} variants={itemVariants}>
+              <AgreementCard
+                agreement={a}
+                expanded={expandedId === a.id}
+                onToggle={() => setExpandedId(expandedId === a.id ? null : a.id)}
+                proofs={proofsByAgreement[a.id]}
+                onSubmitProof={() => setShowProofModal(a.id)}
+                onRelease={() => {
+                  if (a.release_eligible) setShowReleaseModal(a.id);
+                }}
+                onRefund={() => handleRefund(a.id)}
+                actionLoading={actionLoading}
+              />
+            </motion.div>
+          ))}
+        </motion.div>
       )}
-    </div>
+
+      {/* Submit Proof Modal */}
+      <AnimatePresence>
+        {showProofModal !== null && (
+          <ProofModal
+            agreementId={showProofModal}
+            proofFilePath={proofFilePath}
+            onPathChange={setProofFilePath}
+            onClose={() => {
+              setShowProofModal(null);
+              setProofFilePath('');
+            }}
+            onSuccess={() => {
+              setShowProofModal(null);
+              setProofFilePath('');
+              // Reload proofs for the agreement
+              if (expandedId) {
+                proofs
+                  .list(expandedId)
+                  .then((ps) =>
+                    setProofsByAgreement((prev) => ({ ...prev, [expandedId]: ps }))
+                  )
+                  .catch(() => {});
+              }
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Release Funds Modal */}
+      <AnimatePresence>
+        {showReleaseModal !== null && (
+          <ReleaseModal
+            agreement={agreementList.find((a) => a.id === showReleaseModal)!}
+            onClose={() => setShowReleaseModal(null)}
+            onSuccess={() => {
+              setShowReleaseModal(null);
+              loadData();
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
-function AgreementRow({ agreement: a, onSelect }: { agreement: Agreement; onSelect: () => void }) {
+// ── Agreement card ────────────────────────────────────────────
+
+interface AgreementCardProps {
+  agreement: Agreement;
+  expanded: boolean;
+  onToggle: () => void;
+  proofs: Proof[] | undefined;
+  onSubmitProof: () => void;
+  onRelease: () => void;
+  onRefund: () => void;
+  actionLoading: boolean;
+}
+
+function AgreementCard({
+  agreement: a,
+  expanded,
+  onToggle,
+  proofs: agreementProofs,
+  onSubmitProof,
+  onRelease,
+  onRefund,
+  actionLoading,
+}: AgreementCardProps) {
+  const borderColor = borderColorForStatus(a.status);
+
+  // Deadline progress
+  let deadlinePct = 0;
+  if (a.deadline && a.status === 'active') {
+    const total = a.deadline - (a.created_at ?? a.deadline);
+    const elapsed = Date.now() / 1000 - (a.created_at ?? a.deadline);
+    deadlinePct = Math.min(100, Math.max(0, total > 0 ? (elapsed / total) * 100 : 0));
+  }
+
   return (
     <div
-      className="card-interactive p-4 flex items-center gap-4"
-      onClick={onSelect}
+      className="card overflow-hidden"
+      style={{ borderLeft: `3px solid ${borderColor}` }}
     >
-      <div className="w-10 h-10 rounded-lg bg-irium-500/10 flex items-center justify-center flex-shrink-0">
-        <FileText size={18} className="text-irium-400" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-mono text-xs text-white/60 truncate">{a.id}</span>
-          <span className={`badge ${statusColor(a.status)}`}>{a.status}</span>
-          {a.template && <span className="badge badge-irium">{a.template}</span>}
-        </div>
-        <div className="flex items-center gap-4 mt-1 text-xs text-white/30">
-          <span className="font-display font-semibold text-white/70">{formatIRM(a.amount)}</span>
-          {a.buyer && <span>Buyer: {truncateAddr(a.buyer, 4, 4)}</span>}
-          {a.seller && <span>Seller: {truncateAddr(a.seller, 4, 4)}</span>}
-          {a.created_at && <span>{timeAgo(a.created_at)}</span>}
-        </div>
-      </div>
-      <div className="flex flex-col items-end gap-1 flex-shrink-0">
-        <ProofStatusBadge status={a.proof_status} />
-        {a.release_eligible && (
-          <span className="badge badge-success text-xs">Release Ready</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ProofStatusBadge({ status }: { status?: string | null }) {
-  if (!status || status === "none") return <span className="text-white/20 text-xs font-mono">No proof</span>;
-  if (status === "active") return <span className="badge badge-info">Proof active</span>;
-  if (status === "satisfied") return <span className="badge badge-success">Proof satisfied</span>;
-  if (status === "expired") return <span className="badge badge-warning">Proof expired</span>;
-  if (status === "unsatisfied") return <span className="badge badge-error">Unsatisfied</span>;
-  return <span className="badge badge-irium">{status}</span>;
-}
-
-// ============================================================
-// DETAIL VIEW
-// ============================================================
-
-function AgreementDetail({
-  agreement,
-  onBack,
-  onRefresh,
-}: {
-  agreement: Agreement;
-  onBack: () => void;
-  onRefresh: () => void;
-}) {
-  const [agreementData, setAgreementData] = useState<Agreement>(agreement);
-  const [proofList, setProofList] = useState<Proof[]>([]);
-  const [showProofModal, setShowProofModal] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const addNotification = useStore((s) => s.addNotification);
-
-  useEffect(() => {
-    loadDetail();
-  }, []);
-
-  const loadDetail = async () => {
-    try {
-      const [detail, pfs] = await Promise.allSettled([
-        agreements.show(agreement.id),
-        proofs.list(agreement.id),
-      ]);
-      if (detail.status === "fulfilled") setAgreementData(detail.value);
-      if (pfs.status === "fulfilled") setProofList(pfs.value);
-    } catch {}
-  };
-
-  const handleRelease = async () => {
-    setLoading(true);
-    try {
-      const result = await agreements.release(agreementData.id);
-      if (result.success) {
-        addNotification({ type: "success", title: "Funds released!", message: result.txid });
-        onRefresh();
-        await loadDetail();
-      } else {
-        addNotification({ type: "error", title: "Release failed", message: result.message });
-      }
-    } catch (e) {
-      addNotification({ type: "error", title: "Error", message: String(e) });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRefund = async () => {
-    setLoading(true);
-    try {
-      const result = await agreements.refund(agreementData.id);
-      if (result.success) {
-        addNotification({ type: "success", title: "Refund initiated", message: result.txid });
-        onRefresh();
-        await loadDetail();
-      } else {
-        addNotification({ type: "error", title: "Refund failed", message: result.message });
-      }
-    } catch (e) {
-      addNotification({ type: "error", title: "Error", message: String(e) });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const a = agreementData;
-
-  return (
-    <div className="p-6 space-y-5 page-enter overflow-y-auto h-full">
-      <button onClick={onBack} className="btn-ghost text-white/40">← Back to Agreements</button>
-
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="font-display font-bold text-xl text-white">Agreement</h1>
+      {/* Card header — clickable to expand */}
+      <div
+        className="p-4 flex items-center gap-3 cursor-pointer hover:bg-white/[0.02] transition-colors"
+        onClick={onToggle}
+      >
+        {/* Left: ID + status badge */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className="font-mono text-xs text-white/60">
+              {a.id.slice(0, 14)}
+            </span>
             <span className={`badge ${statusColor(a.status)}`}>{a.status}</span>
-            {a.template && <span className="badge badge-irium">{a.template}</span>}
+            {a.template && (
+              <span className="badge badge-irium">{a.template}</span>
+            )}
           </div>
-          <div className="font-mono text-sm text-white/40 mt-1">{a.id}</div>
+
+          {/* Buyer → Seller flow */}
+          <div className="flex items-center gap-2 text-xs text-white/40">
+            <span className="font-mono">
+              {a.buyer ? truncateAddr(a.buyer, 6, 4) : '—'}
+            </span>
+            <span className="text-white/20">→</span>
+            <span className="font-mono">
+              {a.seller ? truncateAddr(a.seller, 6, 4) : '—'}
+            </span>
+            <span className="mx-1 text-white/20">·</span>
+            <span className="font-display font-semibold text-white/70">
+              {formatIRM(a.amount)}
+            </span>
+          </div>
         </div>
-        <div className="font-display font-bold text-2xl gradient-text flex-shrink-0">
-          {formatIRM(a.amount)}
+
+        {/* Right: chevron */}
+        <div className="flex-shrink-0 text-white/30">
+          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Details card */}
-        <div className="card p-4 space-y-3">
-          <h2 className="font-display font-semibold text-white/80 text-sm mb-3">Details</h2>
-          <InfoRow label="Agreement Hash" value={a.hash ? truncateHash(a.hash, 12) : "—"} mono />
-          <InfoRow label="Amount" value={formatIRM(a.amount)} />
-          <InfoRow label="Buyer" value={a.buyer ? truncateAddr(a.buyer) : "—"} mono />
-          <InfoRow label="Seller" value={a.seller ? truncateAddr(a.seller) : "—"} mono />
-          <InfoRow label="Created" value={a.created_at ? timeAgo(a.created_at) : "—"} />
-          <InfoRow label="Deadline" value={a.deadline ? timeAgo(a.deadline) : "No deadline"} />
-          <InfoRow label="Proof Status" value={a.proof_status ?? "none"} />
-          {a.release_eligible !== undefined && (
-            <InfoRow
-              label="Release Eligible"
-              value={a.release_eligible ? "Yes ✓" : "No"}
-              highlight={a.release_eligible}
-            />
-          )}
+      {/* Deadline progress bar */}
+      {a.deadline && a.status === 'active' && (
+        <div className="h-1 bg-white/[0.04]">
+          <div
+            className="h-full bg-irium-500/60 transition-all duration-500"
+            style={{ width: `${deadlinePct}%` }}
+          />
         </div>
+      )}
 
-        {/* Policy card */}
-        {a.policy && (
-          <div className="card p-4 space-y-3">
-            <h2 className="font-display font-semibold text-white/80 text-sm mb-3">Policy</h2>
-            <InfoRow label="Policy ID" value={truncateHash(a.policy.id, 8)} mono />
-            <InfoRow label="Kind" value={a.policy.kind} />
-            {a.policy.threshold && (
-              <InfoRow label="Threshold" value={String(a.policy.threshold)} />
-            )}
-            {a.policy.attestors && a.policy.attestors.length > 0 && (
-              <div>
-                <div className="text-xs text-white/40 mb-1">Attestors</div>
-                <div className="space-y-1">
-                  {a.policy.attestors.map((att) => (
-                    <div key={att} className="font-mono text-xs text-white/60 bg-surface-700 rounded px-2 py-1 truncate">
-                      {att}
+      {/* Expanded detail panel */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            key="detail"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <div className="p-4 border-t border-white/[0.05] space-y-4">
+              {/* Detail grid */}
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <Detail label="Hash" value={a.hash ? truncateHash(a.hash) : '—'} />
+                <Detail label="Template" value={a.template ?? '—'} />
+                <Detail
+                  label="Created"
+                  value={a.created_at ? timeAgo(a.created_at) : '—'}
+                />
+                <Detail
+                  label="Deadline"
+                  value={a.deadline ? timeAgo(a.deadline) : '—'}
+                />
+                <Detail label="Proof Status" value={a.proof_status ?? 'none'} />
+                <Detail
+                  label="Release Eligible"
+                  value={a.release_eligible ? 'Yes' : 'No'}
+                />
+              </div>
+
+              {/* Policy */}
+              {a.policy && (
+                <div className="glass rounded-lg p-3 text-xs space-y-1">
+                  <div className="font-display font-semibold text-white/70 mb-2">
+                    Policy
+                  </div>
+                  <Detail label="Kind" value={a.policy.kind} />
+                  <Detail
+                    label="Threshold"
+                    value={String(a.policy.threshold ?? 1)}
+                  />
+                  <Detail
+                    label="Attestors"
+                    value={(a.policy.attestors ?? []).join(', ') || '—'}
+                  />
+                </div>
+              )}
+
+              {/* Proofs */}
+              {(agreementProofs ?? []).length > 0 && (
+                <div>
+                  <div className="font-display font-semibold text-white/70 text-xs mb-2">
+                    Proofs
+                  </div>
+                  {(agreementProofs ?? []).map((p) => (
+                    <div
+                      key={p.id}
+                      className="glass rounded-lg p-2.5 text-xs mb-1.5 flex items-center justify-between"
+                    >
+                      <div className="font-mono text-white/50">{p.id}</div>
+                      <span
+                        className={`badge ${
+                          p.status === 'satisfied'
+                            ? 'badge-success'
+                            : p.status === 'active'
+                            ? 'badge-info'
+                            : 'badge-warning'
+                        }`}
+                      >
+                        {p.status}
+                      </span>
                     </div>
                   ))}
                 </div>
+              )}
+
+              {/* Action buttons */}
+              <div className="flex gap-2 pt-2 flex-wrap">
+                <button
+                  onClick={onSubmitProof}
+                  className="btn-secondary text-xs py-1.5 px-3"
+                >
+                  Submit Proof
+                </button>
+                <button
+                  onClick={onRelease}
+                  disabled={!a.release_eligible || actionLoading}
+                  title={
+                    !a.release_eligible
+                      ? 'Release not eligible — proof conditions not yet satisfied'
+                      : undefined
+                  }
+                  className={`btn-primary text-xs py-1.5 px-3 ${
+                    !a.release_eligible ? 'opacity-40 cursor-not-allowed' : ''
+                  }`}
+                >
+                  Release Funds
+                </button>
+                <button
+                  onClick={onRefund}
+                  disabled={actionLoading}
+                  className="btn-ghost text-xs py-1.5 px-3 text-red-400 hover:text-red-300"
+                >
+                  Refund
+                </button>
               </div>
-            )}
-          </div>
+            </div>
+          </motion.div>
         )}
-      </div>
-
-      {/* Actions */}
-      <div className="card p-4">
-        <h2 className="font-display font-semibold text-white/80 text-sm mb-3">Actions</h2>
-        <div className="flex items-center gap-3 flex-wrap">
-          <button
-            onClick={() => setShowProofModal(true)}
-            className="btn-primary"
-          >
-            <Upload size={14} />
-            Submit Proof
-          </button>
-          <button
-            onClick={handleRelease}
-            disabled={!a.release_eligible || loading}
-            className={`btn-secondary ${a.release_eligible ? "" : "opacity-40 cursor-not-allowed"}`}
-          >
-            {loading ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-            Release Funds
-          </button>
-          <button
-            onClick={handleRefund}
-            disabled={loading}
-            className="btn-secondary"
-          >
-            {loading ? <RefreshCw size={14} className="animate-spin" /> : <XCircle size={14} />}
-            Request Refund
-          </button>
-        </div>
-        {!a.release_eligible && a.status === "active" && (
-          <div className="flex items-center gap-2 mt-3 text-xs text-amber-400/70">
-            <Info size={12} />
-            <span>Release requires a satisfied proof. Submit proof of completion above.</span>
-          </div>
-        )}
-      </div>
-
-      {/* Proofs */}
-      <div className="card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-display font-semibold text-white/80 text-sm">Proofs</h2>
-          <button onClick={loadDetail} className="btn-ghost text-xs">
-            <RefreshCw size={12} /> Refresh
-          </button>
-        </div>
-        {proofList.length === 0 ? (
-          <div className="text-center py-6 text-white/30 text-sm">No proofs submitted yet.</div>
-        ) : (
-          <div className="space-y-2">
-            {proofList.map((p) => (
-              <ProofRow key={p.id} proof={p} />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {showProofModal && (
-        <ProofSubmitModal
-          agreementId={a.id}
-          onClose={() => setShowProofModal(false)}
-          onSuccess={() => { setShowProofModal(false); loadDetail(); }}
-        />
-      )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function InfoRow({ label, value, mono, highlight }: { label: string; value: string; mono?: boolean; highlight?: boolean }) {
-  return (
-    <div className="flex items-center justify-between text-sm gap-2">
-      <span className="text-white/40 flex-shrink-0">{label}</span>
-      <span className={`${mono ? "font-mono text-xs" : ""} ${highlight ? "text-green-400 font-semibold" : "text-white/70"} truncate max-w-48`}>
-        {value}
-      </span>
-    </div>
-  );
-}
+// ── Submit Proof Modal ────────────────────────────────────────
 
-function ProofRow({ proof }: { proof: Proof }) {
-  return (
-    <div className="flex items-center gap-3 p-2 rounded-lg bg-surface-700/50">
-      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-        proof.status === "satisfied" ? "bg-green-400" :
-        proof.status === "active" ? "bg-blue-400" :
-        proof.status === "expired" ? "bg-amber-400" : "bg-white/20"
-      }`} />
-      <div className="flex-1 min-w-0">
-        <div className="font-mono text-xs text-white/60 truncate">{proof.id}</div>
-        <div className="text-xs text-white/30 mt-0.5 flex items-center gap-2">
-          <span>{proof.status}</span>
-          {proof.submitted_at && <span>· {timeAgo(proof.submitted_at)}</span>}
-          {proof.policy_result && <span>· {proof.policy_result}</span>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProofSubmitModal({
-  agreementId,
-  onClose,
-  onSuccess,
-}: {
+interface ProofModalProps {
   agreementId: string;
+  proofFilePath: string;
+  onPathChange: (v: string) => void;
   onClose: () => void;
   onSuccess: () => void;
-}) {
-  const [proofData, setProofData] = useState("");
-  const [proofFile, setProofFile] = useState("");
-  const [loading, setLoading] = useState(false);
-  const addNotification = useStore((s) => s.addNotification);
+}
 
-  const submit = async () => {
-    if (!proofFile && !proofData) return;
-    setLoading(true);
+function ProofModal({
+  agreementId,
+  proofFilePath,
+  onPathChange,
+  onClose,
+  onSuccess,
+}: ProofModalProps) {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!proofFilePath.trim()) return;
+    setSubmitting(true);
     try {
-      const result = await proofs.submit(agreementId, proofFile || proofData);
-      addNotification({
-        type: result.success ? "success" : "error",
-        title: result.success ? "Proof submitted" : "Submission failed",
-        message: result.message ?? result.status,
-      });
-      if (result.success) onSuccess();
+      const result = await proofs.submit(agreementId, proofFilePath.trim());
+      if (result.success) {
+        toast.success('Proof submitted: ' + result.proof_id);
+        onSuccess();
+      } else {
+        toast.error(result.message ?? result.status ?? 'Submission failed');
+      }
     } catch (e) {
-      addNotification({ type: "error", title: "Error", message: String(e) });
+      toast.error(String(e));
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="card w-full max-w-md p-6">
+    <motion.div
+      key="proof-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ y: 80, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 80, opacity: 0 }}
+        transition={{ duration: 0.25 }}
+        className="glass-heavy w-full max-w-lg rounded-2xl p-6 mb-4"
+      >
+        {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-display font-bold text-lg text-white">Submit Proof</h2>
-          <button onClick={onClose} className="btn-ghost text-white/40">✕</button>
+          <button onClick={onClose} className="btn-ghost text-white/40">
+            <X size={16} />
+          </button>
         </div>
-        <div className="space-y-4">
-          <div>
-            <label className="label">Proof File Path</label>
-            <input
-              className="input font-mono"
-              placeholder="/path/to/proof.json"
-              value={proofFile}
-              onChange={(e) => setProofFile(e.target.value)}
-            />
-            <div className="text-xs text-white/30 mt-1">
-              Path to a signed proof file (from proof-sign command)
-            </div>
-          </div>
-          <div className="text-center text-white/30 text-xs">— or —</div>
-          <div>
-            <label className="label">Proof Data (JSON)</label>
-            <textarea
-              className="input h-24 resize-none font-mono text-xs"
-              placeholder='{"type":"delivery","data":"...","sig":"..."}'
-              value={proofData}
-              onChange={(e) => setProofData(e.target.value)}
-            />
-          </div>
-          <div className="flex gap-3 pt-1">
-            <button onClick={onClose} className="btn-secondary flex-1 justify-center">Cancel</button>
-            <button
-              onClick={submit}
-              disabled={(!proofFile && !proofData) || loading}
-              className="btn-primary flex-1 justify-center"
-            >
-              {loading ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
-              Submit
-            </button>
-          </div>
+
+        {/* Drop zone */}
+        <div
+          className="border-2 border-dashed border-irium-500/30 rounded-xl p-8 text-center"
+          style={{
+            backgroundImage:
+              'linear-gradient(135deg, rgba(123,47,226,0.03) 0%, transparent 100%)',
+          }}
+        >
+          <Upload size={24} className="mx-auto mb-2 text-irium-400" />
+          <div className="text-white/50 text-sm mb-3">Drop proof file here</div>
+          <div className="text-white/30 text-xs mb-4">— or enter path manually —</div>
+          <input
+            value={proofFilePath}
+            onChange={(e) => onPathChange(e.target.value)}
+            placeholder="/path/to/proof.json"
+            className="input text-xs"
+          />
         </div>
-      </div>
-    </div>
+
+        {/* Actions */}
+        <div className="flex gap-3 mt-4">
+          <button onClick={onClose} className="btn-secondary flex-1 justify-center">
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!proofFilePath.trim() || submitting}
+            className="btn-primary flex-1 justify-center"
+          >
+            {submitting ? (
+              <RefreshCw size={14} className="animate-spin" />
+            ) : (
+              'Submit'
+            )}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Release Funds Modal ───────────────────────────────────────
+
+interface ReleaseModalProps {
+  agreement: Agreement;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function ReleaseModal({ agreement, onClose, onSuccess }: ReleaseModalProps) {
+  const [releasing, setReleasing] = useState(false);
+
+  const handleConfirm = async () => {
+    setReleasing(true);
+    try {
+      const result = await agreements.release(agreement.id);
+      if (result.success) {
+        toast.success('Funds released · txid: ' + (result.txid?.slice(0, 12) ?? ''));
+        onSuccess();
+      } else {
+        toast.error(result.message ?? 'Release failed');
+      }
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setReleasing(false);
+    }
+  };
+
+  return (
+    <motion.div
+      key="release-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="glass-heavy w-full max-w-sm rounded-2xl p-6 text-center"
+      >
+        <h2 className="font-display font-bold text-xl text-white mb-3">
+          Release Funds?
+        </h2>
+
+        {/* Large gradient amount */}
+        <div className="font-display font-bold text-3xl gradient-text mb-3">
+          {formatIRM(agreement.amount)}
+        </div>
+
+        <p className="text-white/50 text-sm mb-6">
+          This will release{' '}
+          <span className="text-white/70 font-semibold">
+            {formatIRM(agreement.amount)}
+          </span>{' '}
+          to the seller.
+        </p>
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="btn-secondary flex-1 justify-center">
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={releasing}
+            className="btn-primary flex-1 justify-center"
+          >
+            {releasing ? (
+              <RefreshCw size={14} className="animate-spin" />
+            ) : (
+              'Confirm Release'
+            )}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
