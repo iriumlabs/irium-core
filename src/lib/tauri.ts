@@ -1,206 +1,184 @@
-// Tauri command wrapper — typed interface to Rust backend
-import { invoke } from "@tauri-apps/api/tauri";
+import { safeInvoke } from './invoke';
+import * as mock from './mock';
 import type {
-  NodeStatus,
-  NodeStartResult,
-  WalletBalance,
-  AddressInfo,
-  SendResult,
-  Transaction,
-  Offer,
-  CreateOfferParams,
-  CreateOfferResult,
-  OfferTakeResult,
-  FeedEntry,
-  FeedSyncResult,
-  Agreement,
-  CreateAgreementParams,
-  AgreementResult,
-  ReleaseResult,
-  Proof,
-  ProofSubmitResult,
-  Reputation,
-  MinerStatus,
-  OtcParams,
-  FreelanceParams,
-  MilestoneParams,
-  DepositParams,
-  PeerInfo,
-  MempoolInfo,
-} from "./types";
+  NodeStatus, NodeStartResult, WalletBalance, AddressInfo,
+  SendResult, Transaction, Offer, CreateOfferParams, CreateOfferResult,
+  OfferTakeResult, FeedEntry, FeedSyncResult, Agreement,
+  CreateAgreementParams, AgreementResult, ReleaseResult,
+  Proof, ProofSubmitResult, Reputation, MinerStatus,
+  OtcParams, FreelanceParams, MilestoneParams, DepositParams,
+  PeerInfo, MempoolInfo,
+} from './types';
 
-// ============================================================
-// NODE
-// ============================================================
-
+// ── NODE ──────────────────────────────────────────────────────
 export const node = {
   start: (dataDir?: string) =>
-    invoke<NodeStartResult>("start_node", { dataDir }),
+    safeInvoke<NodeStartResult>('start_node', { dataDir }, () => mock.mockNodeStartResult),
 
-  stop: () => invoke<boolean>("stop_node"),
+  stop: () =>
+    safeInvoke<boolean>('stop_node', {}, () => true),
 
-  status: () => invoke<NodeStatus>("get_node_status"),
+  status: () =>
+    safeInvoke<NodeStatus>('get_node_status', {}, () => mock.mockNodeStatus),
 };
 
-// ============================================================
-// WALLET
-// ============================================================
-
+// ── WALLET ────────────────────────────────────────────────────
 export const wallet = {
-  balance: () => invoke<WalletBalance>("wallet_get_balance"),
+  balance: () =>
+    safeInvoke<WalletBalance>('wallet_get_balance', {}, () => mock.mockBalance),
 
-  newAddress: () => invoke<string>("wallet_new_address"),
+  newAddress: () =>
+    safeInvoke<string>('wallet_new_address', {}, mock.freshAddress),
 
-  listAddresses: () => invoke<AddressInfo[]>("wallet_list_addresses"),
+  listAddresses: () =>
+    safeInvoke<AddressInfo[]>('wallet_list_addresses', {}, () => mock.mockAddresses),
 
   send: (to: string, amountSats: number, feeSats?: number) =>
-    invoke<SendResult>("wallet_send", { to, amountSats, feeSats }),
+    safeInvoke<SendResult>('wallet_send', { to, amountSats, feeSats }, () => mock.mockSendResult),
 
   transactions: (limit?: number) =>
-    invoke<Transaction[]>("wallet_transactions", { limit }),
+    safeInvoke<Transaction[]>('wallet_transactions', { limit }, () => mock.mockTransactions),
 
-  setPath: (path: string) => invoke<boolean>("wallet_set_path", { path }),
+  setPath: (path: string) =>
+    safeInvoke<boolean>('wallet_set_path', { path }, () => true),
 };
 
-// ============================================================
-// OFFERS
-// ============================================================
-
+// ── OFFERS ────────────────────────────────────────────────────
 export const offers = {
   list: (params?: {
-    source?: "local" | "remote" | "all";
-    sort?: "newest" | "amount" | "score";
+    source?: 'local' | 'remote' | 'all';
+    sort?: 'newest' | 'amount' | 'score';
     limit?: number;
     minAmount?: number;
     maxAmount?: number;
     payment?: string;
   }) =>
-    invoke<Offer[]>("offer_list", {
-      source: params?.source,
-      sort: params?.sort,
-      limit: params?.limit,
-      minAmount: params?.minAmount,
-      maxAmount: params?.maxAmount,
-      payment: params?.payment,
-    }),
+    safeInvoke<Offer[]>(
+      'offer_list',
+      { source: params?.source, sort: params?.sort, limit: params?.limit, minAmount: params?.minAmount, maxAmount: params?.maxAmount, payment: params?.payment },
+      () => mock.mockOffers,
+    ),
 
-  show: (offerId: string) => invoke<Offer>("offer_show", { offerId }),
+  show: (offerId: string) =>
+    safeInvoke<Offer>('offer_show', { offerId }, () => mock.mockOffers[0]),
 
   create: (params: CreateOfferParams) =>
-    invoke<CreateOfferResult>("offer_create", { params }),
+    safeInvoke<CreateOfferResult>('offer_create', { params }, mock.freshCreateOfferResult),
 
   take: (offerId: string) =>
-    invoke<OfferTakeResult>("offer_take", { offerId }),
+    safeInvoke<OfferTakeResult>('offer_take', { offerId }, () => mock.freshOfferTakeResult(offerId)),
 
   export: (offerId: string, outPath: string) =>
-    invoke<boolean>("offer_export", { offerId, outPath }),
+    safeInvoke<boolean>('offer_export', { offerId, outPath }, () => true),
 
-  import: (filePath: string) => invoke<boolean>("offer_import", { filePath }),
+  import: (filePath: string) =>
+    safeInvoke<boolean>('offer_import', { filePath }, () => true),
 };
 
-// ============================================================
-// FEEDS
-// ============================================================
-
+// ── FEEDS ─────────────────────────────────────────────────────
 export const feeds = {
-  add: (url: string) => invoke<boolean>("feed_add", { url }),
-  remove: (url: string) => invoke<boolean>("feed_remove", { url }),
-  list: () => invoke<FeedEntry[]>("feed_list"),
-  sync: () => invoke<FeedSyncResult>("feed_sync"),
-  fetch: (url: string) => invoke<Offer[]>("feed_fetch", { url }),
-  prune: () => invoke<boolean>("feed_prune"),
+  add: (url: string) =>
+    safeInvoke<boolean>('feed_add', { url }, () => true),
+
+  remove: (url: string) =>
+    safeInvoke<boolean>('feed_remove', { url }, () => true),
+
+  list: () =>
+    safeInvoke<FeedEntry[]>('feed_list', {}, () => mock.mockFeeds),
+
+  sync: () =>
+    safeInvoke<FeedSyncResult>('feed_sync', {}, () => mock.mockFeedSync),
+
+  fetch: (url: string) =>
+    safeInvoke<Offer[]>('feed_fetch', { url }, () => mock.mockOffers),
+
+  prune: () =>
+    safeInvoke<boolean>('feed_prune', {}, () => true),
 };
 
-// ============================================================
-// AGREEMENTS
-// ============================================================
-
+// ── AGREEMENTS ────────────────────────────────────────────────
 export const agreements = {
-  list: () => invoke<Agreement[]>("agreement_list"),
+  list: () =>
+    safeInvoke<Agreement[]>('agreement_list', {}, () => mock.mockAgreements),
 
   show: (agreementId: string) =>
-    invoke<Agreement>("agreement_show", { agreementId }),
+    safeInvoke<Agreement>('agreement_show', { agreementId }, () => mock.mockAgreements[0]),
 
   create: (params: CreateAgreementParams) =>
-    invoke<AgreementResult>("agreement_create", { params }),
+    safeInvoke<AgreementResult>('agreement_create', { params }, mock.freshAgreementResult),
 
   pack: (agreementId: string, outPath: string) =>
-    invoke<boolean>("agreement_pack", { agreementId, outPath }),
+    safeInvoke<boolean>('agreement_pack', { agreementId, outPath }, () => true),
 
   unpack: (filePath: string) =>
-    invoke<Agreement>("agreement_unpack", { filePath }),
+    safeInvoke<Agreement>('agreement_unpack', { filePath }, () => mock.mockAgreements[0]),
 
   release: (agreementId: string) =>
-    invoke<ReleaseResult>("agreement_release", { agreementId }),
+    safeInvoke<ReleaseResult>('agreement_release', { agreementId }, mock.freshReleaseResult),
 
   refund: (agreementId: string) =>
-    invoke<ReleaseResult>("agreement_refund", { agreementId }),
+    safeInvoke<ReleaseResult>('agreement_refund', { agreementId }, mock.freshReleaseResult),
 };
 
-// ============================================================
-// PROOFS
-// ============================================================
-
+// ── PROOFS ────────────────────────────────────────────────────
 export const proofs = {
   list: (agreementId?: string) =>
-    invoke<Proof[]>("proof_list", { agreementId }),
+    safeInvoke<Proof[]>('proof_list', { agreementId }, () => mock.mockProofs),
 
   sign: (agreementId: string, proofData: string, outPath: string) =>
-    invoke<boolean>("proof_sign", { agreementId, proofData, outPath }),
+    safeInvoke<boolean>('proof_sign', { agreementId, proofData, outPath }, () => true),
 
   submit: (agreementId: string, proofFile: string) =>
-    invoke<ProofSubmitResult>("proof_submit", { agreementId, proofFile }),
+    safeInvoke<ProofSubmitResult>('proof_submit', { agreementId, proofFile }, mock.freshProofSubmitResult),
 };
 
-// ============================================================
-// REPUTATION
-// ============================================================
-
+// ── REPUTATION ────────────────────────────────────────────────
 export const reputation = {
   show: (pubkeyOrAddr: string) =>
-    invoke<Reputation>("reputation_show", { pubkeyOrAddr }),
+    safeInvoke<Reputation>('reputation_show', { pubkeyOrAddr }, () => mock.mockReputation),
 };
 
-// ============================================================
-// SETTLEMENT TEMPLATES
-// ============================================================
-
+// ── SETTLEMENT TEMPLATES ──────────────────────────────────────
 export const settlement = {
   otc: (params: OtcParams) =>
-    invoke<AgreementResult>("settlement_create_otc", { params }),
+    safeInvoke<AgreementResult>('settlement_create_otc', { params }, mock.freshAgreementResult),
 
   freelance: (params: FreelanceParams) =>
-    invoke<AgreementResult>("settlement_create_freelance", { params }),
+    safeInvoke<AgreementResult>('settlement_create_freelance', { params }, mock.freshAgreementResult),
 
   milestone: (params: MilestoneParams) =>
-    invoke<AgreementResult>("settlement_create_milestone", { params }),
+    safeInvoke<AgreementResult>('settlement_create_milestone', { params }, mock.freshAgreementResult),
 
   deposit: (params: DepositParams) =>
-    invoke<AgreementResult>("settlement_create_deposit", { params }),
+    safeInvoke<AgreementResult>('settlement_create_deposit', { params }, mock.freshAgreementResult),
 };
 
-// ============================================================
-// MINER
-// ============================================================
-
+// ── MINER ─────────────────────────────────────────────────────
 export const miner = {
   start: (address: string, threads?: number) =>
-    invoke<boolean>("start_miner", { address, threads }),
+    safeInvoke<boolean>('start_miner', { address, threads }, () => true),
 
-  stop: () => invoke<boolean>("stop_miner"),
+  stop: () =>
+    safeInvoke<boolean>('stop_miner', {}, () => true),
 
-  status: () => invoke<MinerStatus>("get_miner_status"),
+  status: () =>
+    safeInvoke<MinerStatus>('get_miner_status', {}, () => mock.mockMinerStatus),
 };
 
-// ============================================================
-// RPC DIRECT
-// ============================================================
-
+// ── RPC DIRECT ────────────────────────────────────────────────
 export const rpc = {
-  peers: () => invoke<PeerInfo[]>("rpc_get_peers"),
-  mempool: () => invoke<MempoolInfo>("rpc_get_mempool"),
+  peers: () =>
+    safeInvoke<PeerInfo[]>('rpc_get_peers', {}, () => mock.mockPeers),
+
+  mempool: () =>
+    safeInvoke<MempoolInfo>('rpc_get_mempool', {}, () => mock.mockMempool),
+
   block: (heightOrHash: string) =>
-    invoke<Record<string, unknown>>("rpc_get_block", { heightOrHash }),
-  offersFeed: () => invoke<unknown>("rpc_get_offers_feed"),
-  setUrl: (url: string) => invoke<boolean>("rpc_set_url", { url }),
+    safeInvoke<Record<string, unknown>>('rpc_get_block', { heightOrHash }, () => ({ height: 148_234, hash: mock.mockNodeStatus.tip })),
+
+  offersFeed: () =>
+    safeInvoke<unknown>('rpc_get_offers_feed', {}, () => mock.mockOffers),
+
+  setUrl: (url: string) =>
+    safeInvoke<boolean>('rpc_set_url', { url }, () => true),
 };
