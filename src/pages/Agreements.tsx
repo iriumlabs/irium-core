@@ -88,7 +88,7 @@ export default function AgreementsPage() {
       .list(expandedId)
       .then((ps) => setProofsByAgreement((prev) => ({ ...prev, [expandedId]: ps })))
       .catch(() => {});
-  }, [expandedId]);
+  }, [expandedId, proofsByAgreement]);
 
   const loadData = async () => {
     setLoading(true);

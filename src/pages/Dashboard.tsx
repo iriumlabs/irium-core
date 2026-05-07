@@ -86,7 +86,7 @@ export default function Dashboard() {
       return () => clearTimeout(t);
     }
     if (tip) setLastTip(tip);
-  }, [nodeStatus?.tip]);
+  }, [nodeStatus?.tip, lastTip]);
 
   const loadData = async () => {
     setLoading(true);
@@ -260,9 +260,7 @@ export default function Dashboard() {
           <div className="card p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display font-semibold text-white/90">Active Agreements</h2>
-              <a href="/agreements" className="text-xs text-irium-400 hover:text-irium-300">
-                View all →
-              </a>
+              <button onClick={() => navigate('/agreements')} className="text-xs text-irium-400 hover:text-irium-300 transition-colors">View all →</button>
             </div>
             {activeAgreements.length === 0 ? (
               <EmptyState icon={<FileText />} text="No active agreements" />
