@@ -1,54 +1,87 @@
-import React, { useState } from "react";
-import { Bell, X, Play, Square, RefreshCw } from "lucide-react";
-import { useStore } from "../../lib/store";
-import { node } from "../../lib/tauri";
-import { formatIRM } from "../../lib/types";
-import clsx from "clsx";
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Bell, X, Play, Square, RefreshCw } from 'lucide-react';
+import { useStore } from '../../lib/store';
+import { node } from '../../lib/tauri';
+import { formatIRM } from '../../lib/types';
+import type { NodeStatus } from '../../lib/types';
+import clsx from 'clsx';
+import toast from 'react-hot-toast';
 
 export default function TopBar() {
-  const nodeStatus = useStore((s) => s.nodeStatus);
-  const balance = useStore((s) => s.balance);
-  const notifications = useStore((s) => s.notifications);
-  const dismiss = useStore((s) => s.dismissNotification);
+  const nodeStatus     = useStore((s) => s.nodeStatus);
+  const balance        = useStore((s) => s.balance);
+  const notifications  = useStore((s) => s.notifications);
+  const dismiss        = useStore((s) => s.dismissNotification);
   const addNotification = useStore((s) => s.addNotification);
-  const [showNotifs, setShowNotifs] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const isRunning = nodeStatus?.running;
-  const unread = notifications.length;
+  const [showNotifs, setShowNotifs]       = useState(false);
+  const [loading, setLoading]             = useState(false);
+  const [balanceGlowing, setBalanceGlowing] = useState(false);
+  const prevBalance = useRef<number | null>(null);
+
+  // Glow balance when it increases
+  useEffect(() => {
+    const confirmed = balance?.confirmed ?? null;
+    if (confirmed !== null && prevBalance.current !== null && confirmed > prevBalance.current) {
+      setBalanceGlowing(true);
+      const t = setTimeout(() => setBalanceGlowing(false), 2000);
+      return () => clearTimeout(t);
+    }
+    prevBalance.current = confirmed;
+  }, [balance?.confirmed]);
+
+  const isRunning = nodeStatus?.running ?? false;
+  const unread    = notifications.length;
 
   const handleToggleNode = async () => {
     setLoading(true);
     try {
       if (isRunning) {
         await node.stop();
-        addNotification({ type: "info", title: "Node stopping..." });
+        toast('Node stopping…', { icon: '🔴' });
+        addNotification({ type: 'info', title: 'Node stopping…' });
       } else {
         const result = await node.start();
         if (result.success) {
-          addNotification({ type: "success", title: "Node started", message: result.message });
+          toast.success('Node started');
+          addNotification({ type: 'success', title: 'Node started', message: result.message });
         } else {
-          addNotification({ type: "error", title: "Failed to start node", message: result.message });
+          toast.error(result.message);
+          addNotification({ type: 'error', title: 'Failed to start node', message: result.message });
         }
       }
     } catch (e: unknown) {
-      addNotification({ type: "error", title: "Error", message: String(e) });
+      const msg = String(e);
+      toast.error(msg);
+      addNotification({ type: 'error', title: 'Error', message: msg });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <header
-      className="flex items-center justify-between h-14 px-4 border-b border-white/5 flex-shrink-0"
-      style={{ background: "var(--color-surface)" }}
-    >
+    <header className="flex items-center justify-between h-14 px-4 border-b border-white/[0.06] flex-shrink-0 glass">
       {/* Left: Node status */}
       <div className="flex items-center gap-3">
         <NodeStatusBadge status={nodeStatus} />
         {nodeStatus?.running && (
           <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-white/40">
-            <span>Block #{nodeStatus.height.toLocaleString()}</span>
+            {/* Block height flip */}
+            <div className="overflow-hidden h-4">
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.span
+                  key={nodeStatus.height}
+                  initial={{ y: 14, opacity: 0 }}
+                  animate={{ y: 0,  opacity: 1 }}
+                  exit={{    y: -14, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                  className="block"
+                >
+                  Block #{nodeStatus.height.toLocaleString()}
+                </motion.span>
+              </AnimatePresence>
+            </div>
             <span className="text-white/20">·</span>
             <span>{nodeStatus.peers} peers</span>
             {nodeStatus.synced && (
@@ -63,13 +96,21 @@ export default function TopBar() {
 
       {/* Center: Balance */}
       {balance && (
-        <div className="flex items-center gap-1 font-display">
-          <span className="text-white/50 text-xs">Balance</span>
-          <span className="gradient-text font-bold text-sm">
+        <div className="flex items-center gap-1.5 font-display">
+          <span className="text-white/40 text-xs">Balance</span>
+          <motion.span
+            className={clsx('font-bold text-sm transition-all duration-300', balanceGlowing ? 'glow-green' : '')}
+            style={{
+              background: 'linear-gradient(90deg, #a855f7 0%, #60a5fa 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}
+          >
             {formatIRM(balance.confirmed)}
-          </span>
+          </motion.span>
           {balance.unconfirmed > 0 && (
-            <span className="text-amber-400 text-xs">
+            <span className="text-amber-400/80 text-xs">
               +{formatIRM(balance.unconfirmed)} pending
             </span>
           )}
@@ -83,21 +124,20 @@ export default function TopBar() {
           onClick={handleToggleNode}
           disabled={loading}
           className={clsx(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-display font-semibold",
-            "transition-all duration-200",
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-display font-semibold',
+            'transition-all duration-200 active:scale-95',
             isRunning
-              ? "bg-red-500/15 text-red-400 border border-red-500/20 hover:bg-red-500/25"
-              : "bg-green-500/15 text-green-400 border border-green-500/20 hover:bg-green-500/25"
+              ? 'bg-red-500/15 text-red-400 border border-red-500/20 hover:bg-red-500/25'
+              : 'bg-green-500/15 text-green-400 border border-green-500/20 hover:bg-green-500/25',
           )}
         >
-          {loading ? (
-            <RefreshCw size={12} className="animate-spin" />
-          ) : isRunning ? (
-            <Square size={12} fill="currentColor" />
-          ) : (
-            <Play size={12} fill="currentColor" />
-          )}
-          {isRunning ? "Stop Node" : "Start Node"}
+          {loading
+            ? <RefreshCw size={12} className="animate-spin" />
+            : isRunning
+              ? <Square size={12} fill="currentColor" />
+              : <Play   size={12} fill="currentColor" />
+          }
+          {isRunning ? 'Stop Node' : 'Start Node'}
         </button>
 
         {/* Notifications */}
@@ -107,85 +147,94 @@ export default function TopBar() {
             className="relative flex items-center justify-center w-8 h-8 rounded-lg text-white/50 hover:text-white hover:bg-white/5 transition-all"
           >
             <Bell size={16} />
-            {unread > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-irium-500 text-white text-xs flex items-center justify-center font-bold">
-                {unread > 9 ? "9+" : unread}
-              </span>
-            )}
+            <AnimatePresence>
+              {unread > 0 && (
+                <motion.span
+                  key="badge"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0 }}
+                  className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-irium-500 text-white text-[10px] flex items-center justify-center font-bold"
+                >
+                  {unread > 9 ? '9+' : unread}
+                </motion.span>
+              )}
+            </AnimatePresence>
           </button>
 
-          {showNotifs && (
-            <div className="absolute right-0 top-full mt-2 w-80 z-50 card shadow-2xl overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-                <span className="font-display font-semibold text-sm">Notifications</span>
-                <button
-                  onClick={() => setShowNotifs(false)}
-                  className="text-white/40 hover:text-white"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-              <div className="max-h-72 overflow-y-auto">
-                {notifications.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-white/30 text-sm">
-                    No notifications
-                  </div>
-                ) : (
-                  notifications
-                    .slice()
-                    .reverse()
-                    .map((n) => (
-                      <div
-                        key={n.id}
-                        className="flex items-start gap-3 px-4 py-3 border-b border-white/5 hover:bg-white/3 group"
-                      >
-                        <NotifDot type={n.type} />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-white/90">{n.title}</div>
-                          {n.message && (
-                            <div className="text-xs text-white/50 mt-0.5 truncate">{n.message}</div>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => dismiss(n.id)}
-                          className="text-white/20 hover:text-white/60 opacity-0 group-hover:opacity-100 flex-shrink-0"
+          {/* Dropdown */}
+          <AnimatePresence>
+            {showNotifs && (
+              <motion.div
+                key="notif-panel"
+                initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0,  scale: 1    }}
+                exit={{    opacity: 0, y: -8, scale: 0.97 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                className="absolute right-0 top-full mt-2 w-80 z-50 card glass-heavy shadow-2xl overflow-hidden"
+              >
+                <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+                  <span className="font-display font-semibold text-sm">Notifications</span>
+                  <button onClick={() => setShowNotifs(false)} className="text-white/40 hover:text-white transition-colors">
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="max-h-72 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-6 text-center text-white/30 text-sm">No notifications</div>
+                  ) : (
+                    notifications
+                      .slice()
+                      .reverse()
+                      .map((n) => (
+                        <div
+                          key={n.id}
+                          className="flex items-start gap-3 px-4 py-3 border-b border-white/[0.04] hover:bg-white/[0.03] group"
                         >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ))
-                )}
-              </div>
-            </div>
-          )}
+                          <NotifDot type={n.type} />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold text-white/90">{n.title}</div>
+                            {n.message && (
+                              <div className="text-xs text-white/50 mt-0.5 truncate">{n.message}</div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => dismiss(n.id)}
+                            className="text-white/20 hover:text-white/60 opacity-0 group-hover:opacity-100 flex-shrink-0 transition-all"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </header>
   );
 }
 
-function NodeStatusBadge({ status }: { status: import("../../lib/types").NodeStatus | null }) {
-  if (!status) {
+function NodeStatusBadge({ status }: { status: NodeStatus | null }) {
+  if (!status || !status.running) {
     return (
       <div className="flex items-center gap-1.5">
         <span className="dot-offline" />
-        <span className="text-xs font-display font-semibold text-white/30">Offline</span>
-      </div>
-    );
-  }
-  if (!status.running) {
-    return (
-      <div className="flex items-center gap-1.5">
-        <span className="dot-offline" />
-        <span className="text-xs font-display font-semibold text-white/30">Node stopped</span>
+        <span className="text-xs font-display font-semibold text-white/30">
+          {status ? 'Node stopped' : 'Offline'}
+        </span>
       </div>
     );
   }
   if (!status.synced) {
     return (
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 relative">
         <span className="dot-syncing" />
-        <span className="text-xs font-display font-semibold text-amber-400">Syncing...</span>
+        {/* Pulsing ring when syncing */}
+        <span className="absolute left-0 w-2 h-2 rounded-full animate-ping bg-amber-400 opacity-30" />
+        <span className="text-xs font-display font-semibold text-amber-400">Syncing…</span>
       </div>
     );
   }
@@ -198,11 +247,11 @@ function NodeStatusBadge({ status }: { status: import("../../lib/types").NodeSta
 }
 
 function NotifDot({ type }: { type: string }) {
-  const cls = {
-    success: "bg-green-400",
-    error: "bg-red-400",
-    warning: "bg-amber-400",
-    info: "bg-blue-400",
-  }[type] ?? "bg-white/40";
-  return <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${cls}`} />;
+  const cls: Record<string, string> = {
+    success: 'bg-green-400',
+    error:   'bg-red-400',
+    warning: 'bg-amber-400',
+    info:    'bg-blue-400',
+  };
+  return <span className={clsx('w-2 h-2 rounded-full flex-shrink-0 mt-1.5', cls[type] ?? 'bg-white/40')} />;
 }
