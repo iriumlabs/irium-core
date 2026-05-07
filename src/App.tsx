@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 import Sidebar    from './components/layout/Sidebar';
@@ -12,7 +13,9 @@ import Agreements from './pages/Agreements';
 import Reputation from './pages/Reputation';
 import Miner      from './pages/Miner';
 import Settings   from './pages/Settings';
+import Onboarding, { ONBOARDING_KEY } from './pages/Onboarding';
 import { useNodePoller } from './hooks/useNodePoller';
+import { node, wallet } from './lib/tauri';
 
 function AppLayout() {
   useNodePoller();
@@ -80,11 +83,55 @@ function AppLayout() {
   );
 }
 
+// ─── Onboarding gate ─────────────────────────────────────────────────────────
+// Must be rendered inside BrowserRouter so useNavigate works.
+function OnboardingGate() {
+  const [checked, setChecked] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const done = localStorage.getItem(ONBOARDING_KEY);
+    if (done) {
+      setChecked(true);
+      return;
+    }
+
+    // Check whether this looks like a first-run (no running node + no wallet balance)
+    Promise.all([
+      node.status().catch(() => null),
+      wallet.balance().catch(() => null),
+    ]).then(([nodeStatus, bal]) => {
+      const offline  = !nodeStatus || !nodeStatus.running;
+      const noWallet = !bal || bal.total === 0;
+      if (offline && noWallet) {
+        setShowOnboarding(true);
+        navigate('/onboarding', { replace: true });
+      }
+      setChecked(true);
+    });
+  }, [navigate]);
+
+  // Brief invisible hold while we decide — avoids flash of wrong content
+  if (!checked) return null;
+
+  if (showOnboarding) {
+    return (
+      <Routes>
+        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="*" element={<Navigate to="/onboarding" replace />} />
+      </Routes>
+    );
+  }
+
+  return <AppLayout />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/*" element={<AppLayout />} />
+        <Route path="/*" element={<OnboardingGate />} />
       </Routes>
     </BrowserRouter>
   );

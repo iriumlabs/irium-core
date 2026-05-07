@@ -451,6 +451,26 @@ export default function Settings() {
             </div>
           </Section>
         </motion.div>
+
+        {/* Developer */}
+        <motion.div variants={sectionVariants}>
+          <Section title="Developer" icon={Cpu}>
+            <FieldRow
+              label="Reset onboarding"
+              description="Show the first-run setup wizard again on next launch"
+            >
+              <button
+                onClick={() => {
+                  localStorage.removeItem('irium_onboarding_complete');
+                  toast.success('Onboarding reset — restart the app to see the wizard');
+                }}
+                className="btn-secondary px-4 py-2 text-sm"
+              >
+                Reset onboarding
+              </button>
+            </FieldRow>
+          </Section>
+        </motion.div>
       </motion.div>
 
       {/* Action bar */}
