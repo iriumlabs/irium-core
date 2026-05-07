@@ -19,6 +19,7 @@ import {
 import { useStore } from "../lib/store";
 import { rpc } from "../lib/tauri";
 import { DEFAULT_SETTINGS } from "../lib/types";
+import { ONBOARDING_KEY } from "./Onboarding";
 
 // ─── Stagger variants ────────────────────────────────────────────────────────
 const sectionsVariants: Variants = {
@@ -461,7 +462,7 @@ export default function Settings() {
             >
               <button
                 onClick={() => {
-                  localStorage.removeItem('irium_onboarding_complete');
+                  localStorage.removeItem(ONBOARDING_KEY);
                   toast.success('Onboarding reset — restart the app to see the wizard');
                 }}
                 className="btn-secondary px-4 py-2 text-sm"
