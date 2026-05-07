@@ -21,6 +21,9 @@ struct AppState {
     miner_process: Arc<Mutex<Option<CommandChild>>>,
     rpc_url: Arc<Mutex<String>>,
     wallet_path: Arc<Mutex<Option<String>>>,
+    miner_start_time: Arc<Mutex<Option<std::time::Instant>>>,
+    miner_address: Arc<Mutex<Option<String>>>,
+    miner_threads: Arc<Mutex<u32>>,
 }
 
 impl AppState {
@@ -30,6 +33,9 @@ impl AppState {
             miner_process: Arc::new(Mutex::new(None)),
             rpc_url: Arc::new(Mutex::new("http://127.0.0.1:38300".to_string())),
             wallet_path: Arc::new(Mutex::new(None)),
+            miner_start_time: Arc::new(Mutex::new(None)),
+            miner_address: Arc::new(Mutex::new(None)),
+            miner_threads: Arc::new(Mutex::new(0)),
         }
     }
 }
@@ -96,7 +102,7 @@ async fn start_node(
 #[tauri::command]
 async fn stop_node(state: State<'_, AppState>) -> Result<bool, String> {
     let mut proc_lock = state.node_process.lock().map_err(|e| e.to_string())?;
-    if let Some(mut child) = proc_lock.take() {
+    if let Some(child) = proc_lock.take() {
         child.kill().map_err(|e| e.to_string())?;
         return Ok(true);
     }
@@ -173,20 +179,23 @@ async fn run_wallet_cmd(args: Vec<String>, wallet_path: Option<String>) -> Resul
         .map_err(|e| format!("irium-wallet sidecar not found: {}. Place binary in src-tauri/binaries/", e))?
         .args(&full_args);
 
-    let output = cmd.output().map_err(|e| e.to_string())?;
+    let output = cmd.output().map_err(|e| format!("Failed to run wallet command: {}", e))?;
 
     if output.status.success() {
         Ok(output.stdout)
     } else {
-        Err(output.stderr)
+        Err(format!("Wallet command failed: {}", output.stderr.trim()))
     }
 }
 
 #[tauri::command]
 async fn wallet_get_balance(state: State<'_, AppState>) -> Result<WalletBalance, String> {
-    let wallet_path = state.wallet_path.lock().map_err(|e| e.to_string())?.clone();
-    let output = run_wallet_cmd(vec!["balance".to_string(), "--json".to_string()], wallet_path).await?;
-    serde_json::from_str::<WalletBalance>(&output).map_err(|e| format!("Parse error: {} | raw: {}", e, output))
+    let wallet_path = state.wallet_path.lock().map_err(|e| format!("Lock error: {}", e))?.clone();
+    match run_wallet_cmd(vec!["balance".to_string(), "--json".to_string()], wallet_path).await {
+        Ok(output) => serde_json::from_str::<WalletBalance>(&output)
+            .map_err(|e| format!("Failed to parse wallet balance: {}", e)),
+        Err(_) => Ok(WalletBalance { confirmed: 0, unconfirmed: 0, total: 0 }),
+    }
 }
 
 #[tauri::command]
@@ -621,34 +630,56 @@ async fn start_miner(
         .map_err(|e| format!("irium-miner not found: {}", e))?
         .args(&args);
 
-    let (_, child) = cmd.spawn().map_err(|e| e.to_string())?;
+    let (mut rx, child) = cmd.spawn().map_err(|e| format!("Failed to start miner: {}", e))?;
+    tauri::async_runtime::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            match event {
+                CommandEvent::Stdout(line) => tracing::info!("[irium-miner] {}", line),
+                CommandEvent::Stderr(line) => tracing::warn!("[irium-miner stderr] {}", line),
+                _ => break,
+            }
+        }
+    });
     *miner_lock = Some(child);
+    *state.miner_start_time.lock().map_err(|e| format!("Lock error: {}", e))? = Some(std::time::Instant::now());
+    *state.miner_address.lock().map_err(|e| format!("Lock error: {}", e))? = Some(address.clone());
+    *state.miner_threads.lock().map_err(|e| format!("Lock error: {}", e))? = threads.unwrap_or(1);
     Ok(true)
 }
 
 #[tauri::command]
 async fn stop_miner(state: State<'_, AppState>) -> Result<bool, String> {
     let mut miner_lock = state.miner_process.lock().map_err(|e| e.to_string())?;
-    if let Some(mut child) = miner_lock.take() {
+    if let Some(child) = miner_lock.take() {
         child.kill().map_err(|e| e.to_string())?;
+        drop(miner_lock);
+        *state.miner_start_time.lock().map_err(|e| format!("Lock error: {}", e))? = None;
+        *state.miner_address.lock().map_err(|e| format!("Lock error: {}", e))? = None;
+        *state.miner_threads.lock().map_err(|e| format!("Lock error: {}", e))? = 0;
         return Ok(true);
     }
     Ok(false)
 }
 
 #[tauri::command]
-async fn get_miner_status(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
-    let miner_lock = state.miner_process.lock().map_err(|e| e.to_string())?;
-    let running = miner_lock.is_some();
-    Ok(serde_json::json!({
-        "running": running,
-        "hashrate_khs": 0,
-        "blocks_found": 0,
-        "uptime_secs": 0,
-        "difficulty": 0,
-        "threads": 0,
-        "address": null
-    }))
+async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, String> {
+    let running = state.miner_process.lock().map_err(|e| format!("Lock error: {}", e))?.is_some();
+    let uptime_secs = {
+        let t = state.miner_start_time.lock().map_err(|e| format!("Lock error: {}", e))?;
+        t.as_ref().map(|i| i.elapsed().as_secs()).unwrap_or(0)
+    };
+    let address = state.miner_address.lock().map_err(|e| format!("Lock error: {}", e))?.clone();
+    let threads = *state.miner_threads.lock().map_err(|e| format!("Lock error: {}", e))?;
+
+    Ok(MinerStatus {
+        running,
+        hashrate_khs: 0.0,
+        blocks_found: 0,
+        uptime_secs,
+        difficulty: 0,
+        threads,
+        address,
+    })
 }
 
 // ============================================================

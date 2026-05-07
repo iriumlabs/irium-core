@@ -243,6 +243,21 @@ pub struct Reputation {
 }
 
 // ============================================================
+// MINER TYPES
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MinerStatus {
+    pub running: bool,
+    pub hashrate_khs: f64,
+    pub blocks_found: u64,
+    pub uptime_secs: u64,
+    pub difficulty: u64,
+    pub threads: u32,
+    pub address: Option<String>,
+}
+
+// ============================================================
 // SETTLEMENT TEMPLATE PARAMS
 // ============================================================
 
