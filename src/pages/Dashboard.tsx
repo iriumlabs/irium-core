@@ -10,7 +10,10 @@ import {
   RefreshCw,
   FileText,
   Package,
+  Copy,
+  ExternalLink,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
   AreaChart,
   Area,
@@ -59,6 +62,7 @@ function agreementBorderColor(status: AgreementStatus): string {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const nodeStatus = useStore((s) => s.nodeStatus);
   const balance = useStore((s) => s.balance);
   const [recentTx, setRecentTx] = useState<Transaction[]>([]);
@@ -273,6 +277,7 @@ export default function Dashboard() {
                   <motion.div
                     key={a.id}
                     variants={itemVariants}
+                    onClick={() => navigate('/agreements', { state: { expandId: a.id } })}
                     className={`flex items-center justify-between p-2 rounded-lg hover:bg-white/5 cursor-pointer border-l-2 pl-3 ${agreementBorderColor(a.status)}`}
                   >
                     <div className="flex-1 min-w-0">
@@ -391,6 +396,28 @@ function TxRow({ tx }: { tx: Transaction }) {
       >
         {isSend ? '-' : '+'}
         {formatIRM(Math.abs(tx.amount))}
+      </div>
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            navigator.clipboard.writeText(tx.txid).then(() => toast.success('TX ID copied'));
+          }}
+          className="p-1.5 rounded hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
+          title="Copy TX ID"
+        >
+          <Copy size={12} />
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toast('Block explorer coming soon', { icon: '🔗' });
+          }}
+          className="p-1.5 rounded hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
+          title="View on block explorer"
+        >
+          <ExternalLink size={12} />
+        </button>
       </div>
     </motion.div>
   );

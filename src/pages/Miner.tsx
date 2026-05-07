@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Cpu, Play, Square, RefreshCw } from 'lucide-react';
+import { Cpu, Play, Square, RefreshCw, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
   LineChart,
   Line,
@@ -82,6 +83,7 @@ function CustomTooltip({
 // ── Page ──────────────────────────────────────────────────────
 
 export default function Miner() {
+  const navigate = useNavigate();
   const [minerStatus, setMinerStatus] = useState<MinerStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [startLoading, setStartLoading] = useState(false);
@@ -328,6 +330,12 @@ export default function Miner() {
             placeholder="P…"
             className="input font-mono text-sm"
           />
+          <button
+            onClick={() => navigate('/wallet')}
+            className="text-xs text-irium-400 hover:text-irium-300 mt-1 flex items-center gap-1 transition-colors"
+          >
+            View wallet <ArrowRight size={11} />
+          </button>
         </div>
 
         {/* Thread slider */}

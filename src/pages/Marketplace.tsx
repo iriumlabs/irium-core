@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, RefreshCw, Search, Globe, X, Rss } from 'lucide-react';
+import { Plus, RefreshCw, Search, Globe, X, Rss, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { offers, feeds } from '../lib/tauri';
 import { formatIRM, timeAgo, truncateAddr, SATS_PER_IRM } from '../lib/types';
 import type { Offer, FeedEntry } from '../lib/types';
@@ -23,6 +24,7 @@ type Tab = 'browse' | 'my-offers' | 'feeds';
 // ─── Offer Card ────────────────────────────────────────────────
 function OfferCard({ offer, onTake }: { offer: Offer; onTake: () => void }) {
   const [hovered, setHovered] = useState(false);
+  const navigate = useNavigate();
   const score = offer.reputation?.score ?? 0;
   const riskBadge =
     offer.risk_signal === 'low'
@@ -53,8 +55,19 @@ function OfferCard({ offer, onTake }: { offer: Offer; onTake: () => void }) {
 
       {/* Seller */}
       {offer.seller && (
-        <div className="font-mono text-[11px] text-white/30 mb-2">
-          {truncateAddr(offer.seller, 8, 6)}
+        <div className="mb-2">
+          <div className="font-mono text-[11px] text-white/30">
+            {truncateAddr(offer.seller, 8, 6)}
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/reputation', { state: { prefillAddress: offer.seller } });
+            }}
+            className="text-[10px] text-irium-400 hover:text-irium-300 mt-1 flex items-center gap-1 transition-colors"
+          >
+            <Star size={10} /> View Seller Reputation
+          </button>
         </div>
       )}
 

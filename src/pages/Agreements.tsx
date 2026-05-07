@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, Upload, RefreshCw, X } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { agreements, proofs } from '../lib/tauri';
 import {
@@ -58,6 +59,7 @@ function borderColorForStatus(status: Agreement['status']): string {
 // ── Main page ─────────────────────────────────────────────────
 
 export default function AgreementsPage() {
+  const location = useLocation();
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [agreementList, setAgreementList] = useState<Agreement[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -70,6 +72,13 @@ export default function AgreementsPage() {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  useEffect(() => {
+    const incoming = (location.state as { expandId?: string } | null)?.expandId;
+    if (incoming) {
+      setExpandedId(incoming);
+    }
   }, []);
 
   // Load proofs when expanding a card

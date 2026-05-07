@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -284,6 +285,7 @@ function ScoreHistoryBars({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function Reputation() {
+  const location = useLocation();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [shimmer, setShimmer] = useState(false);
@@ -293,8 +295,16 @@ export default function Reputation() {
   const [resultVisible, setResultVisible] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const lookup = async () => {
-    const q = query.trim();
+  useEffect(() => {
+    const incoming = (location.state as { prefillAddress?: string } | null)?.prefillAddress;
+    if (incoming) {
+      setQuery(incoming);
+      setTimeout(() => lookup(incoming), 50);
+    }
+  }, []); // only on mount
+
+  const lookup = async (overrideQuery?: string) => {
+    const q = (overrideQuery ?? query).trim();
     if (!q) return;
 
     // Reset previous results
@@ -374,7 +384,7 @@ export default function Reputation() {
           />
         </div>
         <button
-          onClick={lookup}
+          onClick={() => lookup()}
           disabled={!query.trim() || loading}
           className="btn-primary px-5 py-2 text-sm disabled:opacity-50 shrink-0"
         >

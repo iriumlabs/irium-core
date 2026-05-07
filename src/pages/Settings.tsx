@@ -142,13 +142,23 @@ export default function Settings() {
     setRpcError(null);
     try {
       await rpc.setUrl(local.rpc_url);
-      const status = await fetch(`${local.rpc_url}/status`, {
+      const resp = await fetch(`${local.rpc_url}/status`, {
         signal: AbortSignal.timeout(4000),
       });
-      if (status.ok) {
+      if (resp.ok) {
         setRpcOk(true);
+        try {
+          const data = await resp.json() as { height?: number };
+          if (data.height !== undefined) {
+            toast.success(`Connected to node at height ${data.height.toLocaleString()}`);
+          } else {
+            toast.success('Connected to node successfully');
+          }
+        } catch {
+          toast.success('Connected to node successfully');
+        }
       } else {
-        setRpcError(`HTTP ${status.status}`);
+        setRpcError(`HTTP ${resp.status}`);
       }
     } catch (e: unknown) {
       setRpcError(e instanceof Error ? e.message : "Connection failed");
