@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import toast from "react-hot-toast";
 import {
@@ -118,8 +118,15 @@ export default function Settings() {
   const [rpcOk, setRpcOk] = useState<boolean | null>(null);
   const [rpcError, setRpcError] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const confirmResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const patch = (key: keyof typeof local, value: unknown) => {
+  useEffect(() => {
+    return () => {
+      if (confirmResetTimerRef.current) clearTimeout(confirmResetTimerRef.current);
+    };
+  }, []);
+
+  const patch = <K extends keyof typeof local>(key: K, value: (typeof local)[K]) => {
     setLocal((prev) => ({ ...prev, [key]: value }));
     setDirty(true);
     if (saveState === "saved") setSaveState("idle");
@@ -162,6 +169,7 @@ export default function Settings() {
     } catch (e: unknown) {
       console.error(e);
       setSaveState("idle");
+      toast.error('Failed to save settings');
     }
   };
 
@@ -177,7 +185,7 @@ export default function Settings() {
       setConfirmReset(false);
     } else {
       setConfirmReset(true);
-      setTimeout(() => setConfirmReset(false), 3000);
+      confirmResetTimerRef.current = setTimeout(() => setConfirmReset(false), 3000);
     }
   };
 

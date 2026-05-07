@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 import Sidebar    from './components/layout/Sidebar';
@@ -84,16 +84,14 @@ function AppLayout() {
 }
 
 // ─── Onboarding gate ─────────────────────────────────────────────────────────
-// Must be rendered inside BrowserRouter so useNavigate works.
+// Must be rendered inside BrowserRouter.
 function OnboardingGate() {
-  const [checked, setChecked] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const navigate = useNavigate();
+  const [gateState, setGateState] = useState<'checking' | 'onboarding' | 'app'>('checking');
 
   useEffect(() => {
     const done = localStorage.getItem(ONBOARDING_KEY);
     if (done) {
-      setChecked(true);
+      setGateState('app');
       return;
     }
 
@@ -103,19 +101,19 @@ function OnboardingGate() {
       wallet.balance().catch(() => null),
     ]).then(([nodeStatus, bal]) => {
       const offline  = !nodeStatus || !nodeStatus.running;
-      const noWallet = !bal || bal.total === 0;
+      const noWallet = !bal; // only treat as no-wallet if the call returned null (threw)
       if (offline && noWallet) {
-        setShowOnboarding(true);
-        navigate('/onboarding', { replace: true });
+        setGateState('onboarding');
+      } else {
+        setGateState('app');
       }
-      setChecked(true);
     });
-  }, [navigate]);
+  }, []);
 
   // Brief invisible hold while we decide — avoids flash of wrong content
-  if (!checked) return null;
+  if (gateState === 'checking') return null;
 
-  if (showOnboarding) {
+  if (gateState === 'onboarding') {
     return (
       <Routes>
         <Route path="/onboarding" element={<Onboarding />} />

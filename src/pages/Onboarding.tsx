@@ -56,12 +56,14 @@ function StepNodeSetup({ onNext, onBack }: { onNext: () => void; onBack: () => v
   const [nodeState, setNodeState] = useState<NodeState>('idle');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const advanceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (advanceRef.current) clearTimeout(advanceRef.current);
     };
   }, []);
 
@@ -82,7 +84,7 @@ function StepNodeSetup({ onNext, onBack }: { onNext: () => void; onBack: () => v
           if (pollRef.current) clearInterval(pollRef.current);
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
           setNodeState('success');
-          setTimeout(() => onNext(), 1500);
+          advanceRef.current = setTimeout(() => onNext(), 1500);
         }
       } catch {
         // still waiting — keep polling
@@ -197,9 +199,9 @@ function StepNodeSetup({ onNext, onBack }: { onNext: () => void; onBack: () => v
           <ArrowLeft size={15} /> Back
         </button>
 
-        {(nodeState === 'idle' || nodeState === 'timeout') && (
+        {nodeState === 'idle' && (
           <button className="btn-primary px-6 py-2.5" onClick={handleStart}>
-            {nodeState === 'timeout' ? 'Try Again' : 'Start Node'}
+            Start Node
           </button>
         )}
 
