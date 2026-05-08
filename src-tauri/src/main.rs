@@ -110,18 +110,6 @@ fn parse_hashrate_khs(line: &str) -> Option<f64> {
     None
 }
 
-fn get_binary_name(name: &str) -> String {
-    let os = std::env::consts::OS;
-    let arch = std::env::consts::ARCH;
-    match (os, arch) {
-        ("windows", "x86_64") => format!("{}-x86_64-pc-windows-msvc.exe", name),
-        ("linux",   "x86_64") => format!("{}-x86_64-unknown-linux-gnu", name),
-        ("linux",   "aarch64") => format!("{}-aarch64-unknown-linux-gnu", name),
-        ("macos",   "x86_64") => format!("{}-x86_64-apple-darwin", name),
-        ("macos",   "aarch64") => format!("{}-aarch64-apple-darwin", name),
-        _ => format!("{}-x86_64-unknown-linux-gnu", name),
-    }
-}
 
 fn lock_err(e: impl std::fmt::Display) -> String {
     format!("Lock error: {}", e)
@@ -236,6 +224,9 @@ async fn start_node(
     // Pass configuration via env vars (verified against real iriumd source code).
     let mut node_env = HashMap::new();
     node_env.insert("IRIUM_DATA_DIR".to_string(), irium_dir.to_string_lossy().to_string());
+    // REQUIRED: P2P networking is disabled entirely unless IRIUM_P2P_BIND is set.
+    // Without this env var the node starts RPC-only with no peer connections.
+    node_env.insert("IRIUM_P2P_BIND".to_string(), "0.0.0.0:38291".to_string());
     // Allow unsigned seedlist in case our extra seeds break the original signature.
     node_env.insert("IRIUM_SEEDLIST_ALLOW_UNSIGNED".to_string(), "1".to_string());
     // Promote peers to the runtime seedlist after 1 day seen (default is 2 days, too slow for new nodes).

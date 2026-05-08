@@ -116,6 +116,7 @@ pub struct RpcHistoryResponse {
 // ============================================================
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct NewAddressResult {
     pub address: String,
 }

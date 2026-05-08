@@ -129,6 +129,12 @@ function build() {
 function copyBinaries() {
   fs.mkdirSync(BINARIES_DIR, { recursive: true });
 
+  // In Tauri dev mode the sidecar is resolved next to the compiled app binary
+  // (src-tauri/target/debug/ on Windows). Copy there too so `tauri dev` works
+  // without requiring a full `tauri build` first.
+  const debugDir = path.join(ROOT, 'src-tauri', 'target', 'debug');
+  const hasDebugDir = fs.existsSync(debugDir);
+
   const missing = [];
   for (const name of BINARIES) {
     const src  = srcPath(name);
@@ -141,9 +147,19 @@ function copyBinaries() {
 
     fs.copyFileSync(src, dest);
 
+    // Also copy to target/debug/ for Tauri dev mode sidecar resolution.
+    if (hasDebugDir) {
+      try {
+        fs.copyFileSync(src, path.join(debugDir, `${name}-${TARGET}${EXE}`));
+      } catch {}
+    }
+
     // Mark executable on Unix
     if (EXE === '') {
       try { fs.chmodSync(dest, 0o755); } catch {}
+      if (hasDebugDir) {
+        try { fs.chmodSync(path.join(debugDir, `${name}-${TARGET}`), 0o755); } catch {}
+      }
     }
 
     console.log(`  ✓  ${path.basename(dest)}`);
