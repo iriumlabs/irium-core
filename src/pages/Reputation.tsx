@@ -69,9 +69,9 @@ const RISK_CONFIG: Record<
   },
   unknown: {
     label: "Unknown",
-    color: "text-slate-400",
+    color: "text-white/40",
     icon: User,
-    bg: "bg-slate-500/10 border-slate-500/30",
+    bg: "bg-white/5 border-white/10",
   },
 };
 
@@ -140,7 +140,7 @@ function ScoreRing({ score, active }: { score: number; active: boolean }) {
         <span className="text-3xl font-bold font-display" style={{ color }}>
           {displayScore}
         </span>
-        <span className="text-xs text-slate-500 font-mono">/ 100</span>
+        <span className="text-xs text-white/40 font-mono">/ 100</span>
       </div>
     </div>
   );
@@ -171,9 +171,9 @@ function StatCard({
         <Icon size={18} className="text-irium-400" />
       </div>
       <div className="min-w-0">
-        <p className="text-xs text-slate-500 uppercase tracking-wider">{label}</p>
+        <p className="text-xs text-white/40 uppercase tracking-wider">{label}</p>
         <p className="text-lg font-semibold font-mono text-white truncate">{display}</p>
-        {sub && <p className="text-xs text-slate-500 mt-0.5">{sub}</p>}
+        {sub && <p className="text-xs text-white/40 mt-0.5">{sub}</p>}
       </div>
     </div>
   );
@@ -200,7 +200,7 @@ function AgreementRow({
       ) : (
         <Clock size={15} className="text-amber-400 shrink-0" />
       )}
-      <span className="font-mono text-xs text-slate-400 truncate flex-1">{ag.id}</span>
+      <span className="font-mono text-xs text-white/40 truncate flex-1">{ag.id}</span>
       <span
         className={`text-xs capitalize px-2 py-0.5 rounded-full border ${
           success
@@ -231,7 +231,7 @@ function ScoreHistoryBars({
 
   return (
     <div className="card p-4">
-      <p className="text-xs text-slate-500 uppercase tracking-wider mb-3">
+      <p className="text-xs text-white/40 uppercase tracking-wider mb-3">
         Score History
       </p>
       <div className="flex items-end gap-1 h-16 relative">
@@ -354,11 +354,11 @@ export default function Reputation() {
     : "0.00";
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6 p-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold font-display gradient-text">Reputation Lookup</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <p className="text-sm text-white/40 mt-1">
           Query the on-chain reputation score for any Irium address or public key.
         </p>
       </div>
@@ -368,7 +368,7 @@ export default function Reputation() {
         <div className="flex-1 relative">
           <Search
             size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"
           />
           <input
             ref={inputRef}
@@ -422,7 +422,7 @@ export default function Reputation() {
             </div>
             <div>
               <p className="text-white font-semibold">No address queried yet</p>
-              <p className="text-sm text-slate-500 mt-1">
+              <p className="text-sm text-white/40 mt-1">
                 Enter a Q-prefix address or public key above to look up their on-chain
                 reputation score and agreement history.
               </p>
@@ -471,12 +471,12 @@ export default function Reputation() {
                 {/* Address + stats */}
                 <div className="flex-1 min-w-0 space-y-3">
                   <div>
-                    <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">
+                    <p className="text-xs text-white/40 uppercase tracking-wider mb-1">
                       Address
                     </p>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-sm text-white break-all">{data.address}</span>
-                      <button onClick={copyAddr} className="text-slate-500 hover:text-white shrink-0">
+                      <button onClick={copyAddr} className="text-white/40 hover:text-white shrink-0">
                         <Copy size={14} />
                       </button>
                     </div>
@@ -484,7 +484,7 @@ export default function Reputation() {
 
                   {/* Trend */}
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500">Score trend:</span>
+                    <span className="text-xs text-white/40">Score trend:</span>
                     {trend > 0 ? (
                       <span className="flex items-center gap-1 text-emerald-400 text-xs">
                         <TrendingUp size={13} /> +{trend.toFixed(1)} pts
@@ -494,7 +494,7 @@ export default function Reputation() {
                         <TrendingDown size={13} /> {trend.toFixed(1)} pts
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 text-slate-400 text-xs">
+                      <span className="flex items-center gap-1 text-white/40 text-xs">
                         <Minus size={13} /> Stable
                       </span>
                     )}
@@ -573,13 +573,13 @@ export default function Reputation() {
                   className="flex items-center justify-between w-full text-left"
                   onClick={() => setShowHistory(!showHistory)}
                 >
-                  <p className="text-xs text-slate-500 uppercase tracking-wider">
+                  <p className="text-xs text-white/40 uppercase tracking-wider">
                     Agreement History ({data.agreements.length})
                   </p>
                   {showHistory ? (
-                    <ChevronUp size={15} className="text-slate-500" />
+                    <ChevronUp size={15} className="text-white/40" />
                   ) : (
-                    <ChevronDown size={15} className="text-slate-500" />
+                    <ChevronDown size={15} className="text-white/40" />
                   )}
                 </button>
 

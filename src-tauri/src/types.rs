@@ -12,10 +12,18 @@ pub struct NodeStartResult {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct BinaryCheckResult {
+    pub iriumd: bool,
+    pub irium_wallet: bool,
+    pub irium_miner: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeStatus {
     pub running: bool,
     pub synced: bool,
     pub height: u64,
+    pub network_tip: u64,
     pub tip: String,
     pub peers: u32,
     pub network: String,
@@ -23,22 +31,52 @@ pub struct NodeStatus {
     pub rpc_url: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WalletCreateResult {
+    pub mnemonic: String,
+    pub address: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BestHeaderTip {
+    pub height: u64,
+    pub hash: String,
+}
+
+// Matches real GET /status response:
+// {"height":20725,"peer_count":0,"anchor_loaded":true,"network_era":"Early Miner Era",
+//  "best_header_tip":{"height":20725,"hash":"000000..."},...}
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct RpcInfo {
     pub height: Option<u64>,
-    pub tip: Option<String>,
-    pub peers: Option<u32>,
-    pub network: Option<String>,
-    pub version: Option<String>,
-    pub synced: Option<bool>,
+    pub peer_count: Option<u32>,
+    pub best_header_tip: Option<BestHeaderTip>,
+    pub anchor_loaded: Option<bool>,
+    pub network_era: Option<String>,
+}
+
+// Matches real GET /peers response:
+// {"peers":[{"multiaddr":"/ip4/...","agent":null,"source":"live","height":20296,...}]}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PeersResponse {
+    pub peers: Vec<PeerInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PeerInfo {
-    pub addr: String,
+    pub multiaddr: String,
+    pub agent: Option<String>,
+    pub source: Option<String>,
     pub height: Option<u64>,
-    pub user_agent: Option<String>,
-    pub inbound: Option<bool>,
+    pub last_seen: Option<f64>,
+    pub dialable: Option<bool>,
+}
+
+// Matches GET /rpc/fee_estimate: {"min_fee_per_byte":1.0,"mempool_size":0}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FeeEstimateResponse {
+    pub min_fee_per_byte: Option<f64>,
+    pub mempool_size: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -47,9 +85,40 @@ pub struct MempoolInfo {
     pub bytes: u64,
 }
 
+// Matches GET /rpc/balance: {"address":"Q...","balance":0,"mined_balance":0,...}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RpcBalance {
+    pub address: String,
+    pub balance: u64,
+    pub mined_balance: Option<u64>,
+    pub utxo_count: Option<u64>,
+}
+
+// Matches GET /rpc/history: {"address":"Q...","height":20725,"txs":[...]}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RpcHistoryEntry {
+    pub txid: String,
+    pub height: Option<i64>,
+    pub output_value: Option<u64>,
+    pub is_coinbase: Option<bool>,
+    pub index: Option<u32>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RpcHistoryResponse {
+    pub address: String,
+    pub height: u64,
+    pub txs: Vec<RpcHistoryEntry>,
+}
+
 // ============================================================
-// WALLET TYPES
+// WALLET TYPES (frontend-facing)
 // ============================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct NewAddressResult {
+    pub address: String,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WalletBalance {
@@ -80,13 +149,51 @@ pub struct Transaction {
     pub fee: Option<u64>,
     pub confirmations: u64,
     pub timestamp: Option<i64>,
-    pub direction: String, // "send" | "receive"
+    pub direction: String,
     pub address: Option<String>,
 }
 
 // ============================================================
-// OFFER TYPES
+// OFFER TYPES — raw wallet output
+//
+// Real offer-list/offer-show --json output:
+// {"offer_id":"d1-gossip-t4","seller_address":"Q9Kx...","seller_pubkey":"03e9...",
+//  "amount_irm":100000000,"payment_method":"bank-transfer","status":"open",
+//  "created_at":1777624133,"timeout_height":25000,"source":"remote:..."}
 // ============================================================
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RawOffer {
+    pub offer_id: String,
+    pub seller_address: Option<String>,
+    pub seller_pubkey: Option<String>,
+    pub amount_irm: u64,
+    pub payment_method: Option<String>,
+    pub status: Option<String>,
+    pub created_at: Option<i64>,
+    pub timeout_height: Option<u64>,
+    pub price_note: Option<String>,
+    pub payment_instructions: Option<String>,
+    pub source: Option<String>,
+}
+
+// offer-list wraps offers: {"count":13,"offers":[...]}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RawOfferListResponse {
+    pub count: u64,
+    pub offers: Vec<RawOffer>,
+}
+
+// ============================================================
+// OFFER TYPES — frontend-facing
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OfferReputation {
+    pub score: Option<f64>,
+    pub completed: Option<u64>,
+    pub default_count: Option<u64>,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Offer {
@@ -102,11 +209,21 @@ pub struct Offer {
     pub risk_signal: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct OfferReputation {
-    pub score: Option<f64>,
-    pub completed: Option<u64>,
-    pub default_count: Option<u64>,
+impl From<RawOffer> for Offer {
+    fn from(r: RawOffer) -> Self {
+        Offer {
+            id: r.offer_id,
+            seller: r.seller_address,
+            amount: r.amount_irm,
+            description: r.price_note.or(r.payment_instructions),
+            payment_method: r.payment_method,
+            status: r.status,
+            created_at: r.created_at,
+            ranking_score: None,
+            reputation: None,
+            risk_signal: None,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -115,6 +232,13 @@ pub struct CreateOfferParams {
     pub description: Option<String>,
     pub payment_method: Option<String>,
     pub offer_id: Option<String>,
+}
+
+// offer-create --json output (same fields as offer show, plus saved_path)
+#[derive(Debug, Serialize, Deserialize)]
+pub struct OfferCreateRaw {
+    pub offer_id: String,
+    pub saved_path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -134,7 +258,23 @@ pub struct OfferTakeResult {
 
 // ============================================================
 // FEED TYPES
+//
+// feed-list --json: {"feeds":["url1","url2"],"total":2}
+// offer-feed-sync --json: {"feeds":[...],"feeds_processed":3,"total_errors":2,"total_imported":0,...}
 // ============================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RawFeedListResponse {
+    pub feeds: Vec<String>,
+    pub total: Option<u64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct FeedSyncRawResponse {
+    pub feeds_processed: Option<u64>,
+    pub total_errors: Option<u64>,
+    pub total_imported: Option<u64>,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FeedEntry {
@@ -153,7 +293,37 @@ pub struct FeedSyncResult {
 
 // ============================================================
 // AGREEMENT TYPES
+//
+// agreement-local-store-list --json after creating an agreement:
+// {"raw_agreement_count":1,"stored_raw_agreements":[
+//   {"agreement_id":"test-otc-001","agreement_hash":"80e0c2...","path":"/.irium/..."}
+// ],...}
+//
+// otc-create --json output:
+// {"agreement_hash":"80e0c2...","agreement_id":"test-otc-001","saved_path":"/.irium/..."}
 // ============================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RawAgreementEntry {
+    pub agreement_id: String,
+    pub agreement_hash: String,
+    pub path: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct AgreementStoreListResponse {
+    pub raw_agreement_count: Option<u64>,
+    pub bundle_count: Option<u64>,
+    pub stored_raw_agreements: Option<Vec<RawAgreementEntry>>,
+    pub stored_bundles: Option<Vec<serde_json::Value>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct OtcCreateResult {
+    pub agreement_id: String,
+    pub agreement_hash: String,
+    pub saved_path: Option<String>,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Agreement {
@@ -257,6 +427,34 @@ pub struct MinerStatus {
     pub address: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GpuDevice {
+    pub index: u32,
+    pub name: String,
+    pub vendor: String,
+    pub vram_mb: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GpuMinerStatus {
+    pub running: bool,
+    pub hashrate_khs: f64,
+    pub blocks_found: u64,
+    pub device_name: Option<String>,
+    pub temperature_c: Option<f64>,
+    pub power_w: Option<f64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StratumStatus {
+    pub connected: bool,
+    pub pool_url: Option<String>,
+    pub worker: Option<String>,
+    pub shares_accepted: u64,
+    pub shares_rejected: u64,
+    pub uptime_secs: u64,
+}
+
 // ============================================================
 // SETTLEMENT TEMPLATE PARAMS
 // ============================================================
@@ -266,6 +464,8 @@ pub struct OtcParams {
     pub buyer: String,
     pub seller: String,
     pub amount_sats: u64,
+    pub asset_reference: Option<String>,
+    pub payment_method: Option<String>,
     pub deadline_hours: Option<u64>,
     pub memo: Option<String>,
 }
@@ -293,4 +493,35 @@ pub struct DepositParams {
     pub recipient: String,
     pub amount_sats: u64,
     pub deadline_hours: Option<u64>,
+}
+
+// ============================================================
+// UPDATE CHECK
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateCheckResult {
+    pub available: bool,
+    pub current_version: String,
+    pub latest_version: String,
+    pub release_notes: Option<String>,
+    pub release_url: Option<String>,
+}
+
+// ============================================================
+// DIAGNOSTICS
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DiagnosticCheck {
+    pub label: String,
+    pub passed: bool,
+    pub detail: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DiagnosticsResult {
+    pub checks: Vec<DiagnosticCheck>,
+    pub passed: u32,
+    pub total: u32,
 }

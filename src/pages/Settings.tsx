@@ -15,10 +15,13 @@ import {
   Globe,
   Cpu,
   Info,
+  Activity,
+  Copy,
+  XCircle,
 } from "lucide-react";
 import { useStore } from "../lib/store";
-import { rpc } from "../lib/tauri";
-import { DEFAULT_SETTINGS } from "../lib/types";
+import { rpc, diagnostics, update } from "../lib/tauri";
+import { DEFAULT_SETTINGS, type DiagnosticsResult, timeAgo } from "../lib/types";
 import { ONBOARDING_KEY } from "./Onboarding";
 
 // ─── Stagger variants ────────────────────────────────────────────────────────
@@ -68,7 +71,7 @@ function FieldRow({
       <div className="sm:w-52 shrink-0">
         <p className="text-sm text-white">{label}</p>
         {description && (
-          <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+          <p className="text-xs text-white/40 mt-0.5">{description}</p>
         )}
       </div>
       <div className="flex-1">{children}</div>
@@ -93,9 +96,10 @@ function Toggle({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors duration-200 focus:outline-none
-        ${checked ? "bg-irium-600 border-2 border-irium-600" : "bg-slate-700 border-2 border-slate-600"}
+        ${checked ? "bg-irium-600 border-2 border-irium-600" : "border-2 border-white/15"}
         ${disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}
       `}
+      style={!checked ? { background: 'var(--bg-3)' } : undefined}
     >
       <motion.span
         layout
@@ -110,7 +114,7 @@ function Toggle({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Settings() {
-  const { settings, updateSettings } = useStore();
+  const { settings, updateSettings, setUpdateInfo, errorLog, clearErrorLog } = useStore();
   const [local, setLocal] = useState({ ...settings });
   const [dirty, setDirty] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
@@ -119,6 +123,9 @@ export default function Settings() {
   const [rpcError, setRpcError] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const confirmResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [runningDiag, setRunningDiag] = useState(false);
+  const [diagResult, setDiagResult] = useState<DiagnosticsResult | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -167,6 +174,33 @@ export default function Settings() {
     }
   };
 
+  const runDiagnostics = async () => {
+    setRunningDiag(true);
+    setDiagResult(null);
+    try {
+      const result = await diagnostics.run();
+      setDiagResult(result);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Diagnostics failed');
+    } finally {
+      setRunningDiag(false);
+    }
+  };
+
+  const copyDiagReport = () => {
+    if (!diagResult) return;
+    const lines = [
+      `Irium Core Diagnostics — ${new Date().toISOString()}`,
+      `Passed: ${diagResult.passed}/${diagResult.total}`,
+      '',
+      ...diagResult.checks.map(
+        (c) => `[${c.passed ? 'PASS' : 'FAIL'}] ${c.label}${c.detail ? ` — ${c.detail}` : ''}`
+      ),
+    ];
+    navigator.clipboard.writeText(lines.join('\n'));
+    toast.success('Report copied to clipboard');
+  };
+
   const save = async () => {
     setSaveState("saving");
     try {
@@ -189,6 +223,23 @@ export default function Settings() {
     if (saveState === "saved") setSaveState("idle");
   };
 
+  const checkForUpdates = async () => {
+    setCheckingUpdate(true);
+    try {
+      const info = await update.check();
+      if (info?.available) {
+        setUpdateInfo(info);
+        toast.success(`Update available: v${info.latest_version}`);
+      } else {
+        toast.success('You are on the latest version');
+      }
+    } catch {
+      toast.error('Update check failed');
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
   const handleResetClick = () => {
     if (confirmReset) {
       reset();
@@ -200,11 +251,11 @@ export default function Settings() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
+    <div className="max-w-2xl mx-auto space-y-5 p-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold font-display gradient-text">Settings</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <p className="text-sm text-white/40 mt-1">
           Configure your Irium Core node connection, wallet paths, and display preferences.
         </p>
       </div>
@@ -372,7 +423,7 @@ export default function Settings() {
                     className={`px-4 py-2 rounded-lg text-sm font-mono transition border ${
                       local.currency_display === opt
                         ? "bg-irium-600 border-irium-500 text-white"
-                        : "bg-white/5 border-white/10 text-slate-400 hover:text-white hover:border-white/20"
+                        : "bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/20"
                     }`}
                   >
                     {opt}
@@ -398,27 +449,27 @@ export default function Settings() {
           <Section title="Network" icon={Globe}>
             <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-slate-500">Network</span>
+                <span className="text-white/40">Network</span>
                 <span className="font-mono text-emerald-400">Mainnet</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">P2P port</span>
+                <span className="text-white/40">P2P port</span>
                 <span className="font-mono text-white">38291</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">RPC port</span>
+                <span className="text-white/40">RPC port</span>
                 <span className="font-mono text-white">38300</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Address prefix</span>
+                <span className="text-white/40">Address prefix</span>
                 <span className="font-mono text-white">P / Q</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Consensus</span>
+                <span className="text-white/40">Consensus</span>
                 <span className="font-mono text-white">SHA-256d PoW</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Total supply</span>
+                <span className="text-white/40">Total supply</span>
                 <span className="font-mono text-white">100,000,000 IRM</span>
               </div>
             </div>
@@ -447,26 +498,164 @@ export default function Settings() {
           </Section>
         </motion.div>
 
+        {/* Connection Diagnostics */}
+        <motion.div variants={sectionVariants}>
+          <Section title="Connection Diagnostics" icon={Activity}>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-white/40">
+                Runs 7 checks against your node, wallet, and binary setup.
+              </p>
+              <button
+                onClick={runDiagnostics}
+                disabled={runningDiag}
+                className="btn-secondary px-4 py-2 text-xs flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+              >
+                {runningDiag ? (
+                  <RefreshCw size={13} className="animate-spin" />
+                ) : (
+                  <Activity size={13} />
+                )}
+                {runningDiag ? 'Running…' : 'Run Diagnostics'}
+              </button>
+            </div>
+
+            <AnimatePresence>
+              {diagResult && (
+                <motion.div
+                  key="diag-results"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  className="space-y-2"
+                >
+                  {/* Summary bar */}
+                  <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+                    <span className="text-xs text-white/50">
+                      <span className={diagResult.passed === diagResult.total ? 'text-emerald-400' : 'text-amber-400'}>
+                        {diagResult.passed}/{diagResult.total}
+                      </span>
+                      {' '}checks passed
+                    </span>
+                    <button
+                      onClick={copyDiagReport}
+                      className="flex items-center gap-1 text-xs text-white/50 hover:text-white transition-colors"
+                    >
+                      <Copy size={11} />
+                      Copy Report
+                    </button>
+                  </div>
+
+                  {/* Individual checks */}
+                  <div className="space-y-1">
+                    {diagResult.checks.map((check, i) => (
+                      <div
+                        key={i}
+                        className={`flex items-start gap-2.5 px-3 py-2 rounded-lg text-xs border ${
+                          check.passed
+                            ? 'bg-emerald-500/5 border-emerald-500/20'
+                            : 'bg-rose-500/5 border-rose-500/20'
+                        }`}
+                      >
+                        {check.passed ? (
+                          <CheckCircle size={13} className="mt-0.5 shrink-0 text-emerald-400" />
+                        ) : (
+                          <XCircle size={13} className="mt-0.5 shrink-0 text-rose-400" />
+                        )}
+                        <div className="min-w-0">
+                          <span className={check.passed ? 'text-emerald-300' : 'text-rose-300'}>
+                            {check.label}
+                          </span>
+                          {check.detail && (
+                            <p className="text-white/40 mt-0.5 font-mono truncate">{check.detail}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Section>
+        </motion.div>
+
+        {/* Recent Errors */}
+        <motion.div variants={sectionVariants}>
+          <Section title="Recent Errors" icon={AlertTriangle}>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-white/40">
+                {errorLog.length === 0 ? 'No errors recorded.' : `${errorLog.length} error${errorLog.length !== 1 ? 's' : ''} recorded.`}
+              </p>
+              {errorLog.length > 0 && (
+                <button
+                  onClick={clearErrorLog}
+                  className="btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5"
+                >
+                  <XCircle size={12} />
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {errorLog.length > 0 && (
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {[...errorLog].reverse().map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="flex items-start gap-2.5 px-3 py-2 rounded-lg text-xs bg-rose-500/5 border border-rose-500/15"
+                  >
+                    <AlertTriangle size={12} className="mt-0.5 shrink-0 text-rose-400" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-rose-300 truncate">{entry.message}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {entry.context && (
+                          <span className="text-white/40 font-mono">{entry.context}</span>
+                        )}
+                        <span className="text-white/25">{timeAgo(entry.ts)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+        </motion.div>
+
         {/* About */}
         <motion.div variants={sectionVariants}>
           <Section title="About" icon={Cpu}>
             <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-slate-500">Application</span>
+                <span className="text-white/40">Application</span>
                 <span className="font-mono text-white">Irium Core GUI</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Version</span>
+                <span className="text-white/40">Version</span>
                 <span className="font-mono text-white">1.0.0</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Framework</span>
+                <span className="text-white/40">Framework</span>
                 <span className="font-mono text-white">Tauri + React</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">License</span>
+                <span className="text-white/40">License</span>
                 <span className="font-mono text-white">MIT</span>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <p className="text-xs text-white/40">Check GitHub releases for a newer version.</p>
+              <button
+                onClick={checkForUpdates}
+                disabled={checkingUpdate}
+                className="btn-secondary px-4 py-2 text-xs flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+              >
+                {checkingUpdate ? (
+                  <RefreshCw size={13} className="animate-spin" />
+                ) : (
+                  <RefreshCw size={13} />
+                )}
+                {checkingUpdate ? 'Checking…' : 'Check for Updates'}
+              </button>
             </div>
           </Section>
         </motion.div>
@@ -497,7 +686,7 @@ export default function Settings() {
         {/* Reset to defaults — inline confirm */}
         <button
           onClick={handleResetClick}
-          className="btn-secondary flex items-center gap-2 px-4 py-2.5 text-sm text-slate-400"
+          className="btn-secondary flex items-center gap-2 px-4 py-2.5 text-sm text-white/50"
         >
           <AnimatePresence mode="wait" initial={false}>
             {confirmReset ? (

@@ -1,11 +1,15 @@
 import { create } from "zustand";
-import type { NodeStatus, WalletBalance, AppSettings } from "./types";
+import type { NodeStatus, WalletBalance, AppSettings, UpdateCheckResult } from "./types";
 import { DEFAULT_SETTINGS } from "./types";
 
 interface AppStore {
   // Node
   nodeStatus: NodeStatus | null;
   setNodeStatus: (s: NodeStatus | null) => void;
+
+  // Tracks the window between clicking "Start" and the RPC becoming reachable
+  nodeStarting: boolean;
+  setNodeStarting: (v: boolean) => void;
 
   // Wallet
   balance: WalletBalance | null;
@@ -22,10 +26,37 @@ interface AppStore {
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
 
+  // Update
+  updateInfo: UpdateCheckResult | null;
+  updateBannerDismissed: boolean;
+  setUpdateInfo: (info: UpdateCheckResult | null) => void;
+  dismissUpdateBanner: () => void;
+
   // Notifications
   notifications: Notification[];
   addNotification: (n: Omit<Notification, "id" | "ts">) => void;
   dismissNotification: (id: string) => void;
+  clearAllNotifications: () => void;
+
+  // Error log
+  errorLog: ErrorEntry[];
+  logError: (message: string, context?: string) => void;
+  clearErrorLog: () => void;
+
+  // Peer list
+  peerList: import('./types').PeerInfo[];
+  setPeerList: (peers: import('./types').PeerInfo[]) => void;
+
+  // Height change tracking
+  heightLastChanged: number | null;
+  setHeightLastChanged: (t: number) => void;
+}
+
+interface ErrorEntry {
+  id: string;
+  ts: number;
+  message: string;
+  context?: string;
 }
 
 interface Notification {
@@ -39,6 +70,9 @@ interface Notification {
 export const useStore = create<AppStore>((set) => ({
   nodeStatus: null,
   setNodeStatus: (nodeStatus) => set({ nodeStatus }),
+
+  nodeStarting: false,
+  setNodeStarting: (nodeStarting) => set({ nodeStarting }),
 
   balance: null,
   setBalance: (balance) => set({ balance }),
@@ -58,6 +92,11 @@ export const useStore = create<AppStore>((set) => ({
   toggleSidebar: () =>
     set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
+  updateInfo: null,
+  updateBannerDismissed: false,
+  setUpdateInfo: (updateInfo) => set({ updateInfo }),
+  dismissUpdateBanner: () => set({ updateBannerDismissed: true }),
+
   notifications: [],
   addNotification: (n) =>
     set((state) => ({
@@ -70,6 +109,23 @@ export const useStore = create<AppStore>((set) => ({
     set((state) => ({
       notifications: state.notifications.filter((n) => n.id !== id),
     })),
+  clearAllNotifications: () => set({ notifications: [] }),
+
+  errorLog: [],
+  logError: (message, context) =>
+    set((state) => ({
+      errorLog: [
+        ...state.errorLog.slice(-49),
+        { id: Math.random().toString(36).slice(2), ts: Date.now(), message, context },
+      ],
+    })),
+  clearErrorLog: () => set({ errorLog: [] }),
+
+  peerList: [],
+  setPeerList: (peerList) => set({ peerList }),
+
+  heightLastChanged: null,
+  setHeightLastChanged: (heightLastChanged) => set({ heightLastChanged }),
 }));
 
 const SETTINGS_KEY = "irium_core_settings";

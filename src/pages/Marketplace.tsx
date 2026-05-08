@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, RefreshCw, Search, Globe, X, Rss, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { useStore } from '../lib/store';
 import { offers, feeds } from '../lib/tauri';
 import { formatIRM, timeAgo, truncateAddr, SATS_PER_IRM } from '../lib/types';
 import type { Offer, FeedEntry } from '../lib/types';
@@ -22,7 +23,7 @@ const itemVariants = {
 type Tab = 'browse' | 'my-offers' | 'feeds';
 
 // ─── Offer Card ────────────────────────────────────────────────
-function OfferCard({ offer, onTake }: { offer: Offer; onTake: () => void }) {
+function OfferCard({ offer, onTake, isOnline }: { offer: Offer; onTake: () => void; isOnline: boolean }) {
   const [hovered, setHovered] = useState(false);
   const navigate = useNavigate();
   const score = offer.reputation?.score ?? 0;
@@ -126,7 +127,9 @@ function OfferCard({ offer, onTake }: { offer: Offer; onTake: () => void }) {
                 e.stopPropagation();
                 onTake();
               }}
-              className="btn-primary w-full justify-center py-2 text-xs"
+              disabled={!isOnline}
+              title={!isOnline ? 'Node must be online to take offers' : undefined}
+              className="btn-primary w-full justify-center py-2 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Take Offer
             </button>
@@ -142,10 +145,12 @@ function TakeOfferModal({
   offer,
   onClose,
   onSuccess,
+  isOnline,
 }: {
   offer: Offer;
   onClose: () => void;
   onSuccess: () => void;
+  isOnline: boolean;
 }) {
   const [takingOffer, setTakingOffer] = useState(false);
 
@@ -233,8 +238,9 @@ function TakeOfferModal({
             </button>
             <button
               onClick={handleTake}
-              disabled={takingOffer}
-              className="btn-primary flex-1 justify-center"
+              disabled={takingOffer || !isOnline}
+              title={!isOnline ? 'Node must be online to take offers' : undefined}
+              className="btn-primary flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {takingOffer && <RefreshCw size={14} className="animate-spin mr-1" />}
               Confirm Take
@@ -288,28 +294,43 @@ function CreateOfferModal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
         onClick={onClose}
       >
         <motion.div
           key="create-modal"
-          initial={{ y: '100%', opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: '100%', opacity: 0 }}
-          transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-          className="card w-full max-w-lg p-6 rounded-b-none"
+          initial={{ opacity: 0, scale: 0.95, y: 16 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 8 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="card w-full max-w-lg p-6 rounded-2xl"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="font-display font-bold text-lg text-white">Create Offer</h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="font-display font-bold text-lg text-white">Create Sell Offer</h2>
             <button onClick={onClose} className="btn-ghost text-white/40 p-1">
               <X size={16} />
             </button>
           </div>
 
+          {/* Escrow notice */}
+          <div
+            className="flex items-start gap-2 px-3 py-2.5 rounded-xl mb-5 text-xs"
+            style={{
+              background: 'rgba(139,92,246,0.08)',
+              border: '1px solid rgba(139,92,246,0.20)',
+              color: 'rgba(238,240,255,0.55)',
+            }}
+          >
+            <span style={{ color: '#A78BFA', flexShrink: 0, fontSize: 14 }}>🔒</span>
+            <span>
+              The IRM amount is <strong style={{ color: 'rgba(238,240,255,0.8)' }}>locked in on-chain escrow</strong> the moment your offer is created. When a buyer takes the offer and their payment proof is accepted, the funds are automatically released to them.
+            </span>
+          </div>
+
           <div className="space-y-4">
             <div>
-              <label className="label">Amount (IRM)</label>
+              <label className="label">IRM to Sell</label>
               <input
                 className="input"
                 type="number"
@@ -319,12 +340,13 @@ function CreateOfferModal({
                 value={form.amount}
                 onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
               />
+              <p className="text-[11px] text-white/30 mt-1">This amount will be deducted from your wallet and locked in escrow.</p>
             </div>
             <div>
-              <label className="label">Description (optional)</label>
+              <label className="label">Price / Notes (optional)</label>
               <input
                 className="input"
-                placeholder="What are you selling?"
+                placeholder="e.g. 1 IRM = $0.50 USD via PayPal"
                 value={form.desc}
                 onChange={(e) => setForm((f) => ({ ...f, desc: e.target.value }))}
               />
@@ -361,7 +383,7 @@ function CreateOfferModal({
                 ) : (
                   <Plus size={14} className="mr-1" />
                 )}
-                Create
+                Lock &amp; List
               </button>
             </div>
           </div>
@@ -373,6 +395,7 @@ function CreateOfferModal({
 
 // ─── Main Page ─────────────────────────────────────────────────
 export default function MarketplacePage() {
+  const nodeStatus = useStore((s) => s.nodeStatus);
   const [activeTab, setActiveTab] = useState<Tab>('browse');
   const [offerList, setOfferList] = useState<Offer[]>([]);
   const [myOffers, setMyOffers] = useState<Offer[]>([]);
@@ -502,8 +525,9 @@ export default function MarketplacePage() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="h-full overflow-y-auto p-6 space-y-5"
+      className="h-full overflow-y-auto p-6"
     >
+      <div className="max-w-7xl mx-auto space-y-5">
       {/* Tab bar */}
       <div className="flex border-b border-white/[0.06] mb-5">
         {(['browse', 'my-offers', 'feeds'] as Tab[]).map((tab) => (
@@ -604,6 +628,7 @@ export default function MarketplacePage() {
                   key={offer.id}
                   offer={offer}
                   onTake={() => setShowTakeModal(offer)}
+                  isOnline={!!nodeStatus?.running}
                 />
               ))}
             </motion.div>
@@ -649,6 +674,7 @@ export default function MarketplacePage() {
                   key={offer.id}
                   offer={offer}
                   onTake={() => setShowTakeModal(offer)}
+                  isOnline={!!nodeStatus?.running}
                 />
               ))}
             </motion.div>
@@ -798,6 +824,7 @@ export default function MarketplacePage() {
             if (activeTab === 'browse') loadOffers();
             else if (activeTab === 'my-offers') loadMyOffers();
           }}
+          isOnline={!!nodeStatus?.running}
         />
       )}
 
@@ -810,6 +837,7 @@ export default function MarketplacePage() {
           }}
         />
       )}
+      </div>
     </motion.div>
   );
 }

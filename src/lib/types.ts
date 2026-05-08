@@ -9,11 +9,19 @@ export interface NodeStatus {
   running: boolean;
   synced: boolean;
   height: number;
+  network_tip: number;
   tip: string;
   peers: number;
   network: string;
   version: string;
   rpc_url: string;
+}
+
+export interface WalletCreateResult {
+  mnemonic: string;
+  address: string;
+  pubkey?: string;
+  private_key?: string;
 }
 
 export interface NodeStartResult {
@@ -22,11 +30,19 @@ export interface NodeStartResult {
   pid?: number;
 }
 
+export interface BinaryCheckResult {
+  iriumd: boolean;
+  irium_wallet: boolean;
+  irium_miner: boolean;
+}
+
 export interface PeerInfo {
-  addr: string;
+  multiaddr: string;
+  agent?: string;
+  source?: string;
   height?: number;
-  user_agent?: string;
-  inbound?: boolean;
+  last_seen?: number;
+  dialable?: boolean;
 }
 
 export interface MempoolInfo {
@@ -131,14 +147,11 @@ export interface FeedSyncResult {
 // AGREEMENTS
 // ============================================================
 
-export type AgreementStatus = 
-  | "pending"
-  | "active"
-  | "satisfied"
-  | "timeout"
-  | "refunded"
+export type AgreementStatus =
+  | "open"
+  | "funded"
   | "released"
-  | "expired";
+  | "refunded";
 
 export type ProofStatus =
   | "none"
@@ -257,6 +270,39 @@ export interface MinerStatus {
   address?: string;
 }
 
+export interface GpuDevice {
+  index: number;
+  name: string;
+  vram_mb: number;
+  vendor: string;
+}
+
+export interface GpuMinerStatus {
+  running: boolean;
+  hashrate_khs: number;
+  blocks_found: number;
+  uptime_secs: number;
+  difficulty: number;
+  device_index: number;
+  device_name?: string;
+  temperature_c?: number;
+  fan_pct?: number;
+  power_w?: number;
+  address?: string;
+}
+
+export interface StratumStatus {
+  connected: boolean;
+  pool_url?: string;
+  worker?: string;
+  shares_accepted: number;
+  shares_rejected: number;
+  pool_hashrate_khs?: number;
+  pool_diff?: number;
+  last_share_time?: number;
+  uptime_secs?: number;
+}
+
 // ============================================================
 // SETTLEMENT TEMPLATES
 // ============================================================
@@ -267,6 +313,8 @@ export interface OtcParams {
   buyer: string;
   seller: string;
   amount_sats: number;
+  asset_reference?: string;
+  payment_method?: string;
   deadline_hours?: number;
   memo?: string;
 }
@@ -291,6 +339,34 @@ export interface DepositParams {
   recipient: string;
   amount_sats: number;
   deadline_hours?: number;
+}
+
+// ============================================================
+// DIAGNOSTICS
+// ============================================================
+
+export interface DiagnosticCheck {
+  label: string;
+  passed: boolean;
+  detail?: string;
+}
+
+export interface DiagnosticsResult {
+  checks: DiagnosticCheck[];
+  passed: number;
+  total: number;
+}
+
+// ============================================================
+// UPDATE
+// ============================================================
+
+export interface UpdateCheckResult {
+  available: boolean;
+  current_version: string;
+  latest_version: string;
+  release_notes?: string;
+  release_url?: string;
 }
 
 // ============================================================
@@ -332,9 +408,10 @@ export function IRMToSats(irm: number): number {
 
 export function formatIRM(sats: number, decimals = 4): string {
   const irm = satsToIRM(sats);
-  if (irm >= 1_000_000) return `${(irm / 1_000_000).toFixed(2)}M IRM`;
-  if (irm >= 1_000) return `${(irm / 1_000).toFixed(2)}K IRM`;
-  return `${irm.toFixed(decimals)} IRM`;
+  return `${irm.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })} IRM`;
 }
 
 export function formatSats(sats: number): string {
@@ -358,7 +435,9 @@ export function timeAgo(timestamp: number): string {
   if (diff < 60) return `${diff}s ago`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+  const days = Math.floor(diff / 86400);
+  if (days < 7) return `${days}d ago`;
+  return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export function riskColor(signal: RiskSignal): string {
@@ -372,12 +451,10 @@ export function riskColor(signal: RiskSignal): string {
 
 export function statusColor(status: AgreementStatus | string): string {
   switch (status) {
-    case "active": return "badge-info";
-    case "satisfied": return "badge-success";
+    case "funded": return "badge-info";
     case "released": return "badge-success";
-    case "timeout": return "badge-warning";
-    case "expired": return "badge-warning";
     case "refunded": return "badge-warning";
+    case "open": return "badge-irium";
     default: return "badge-irium";
   }
 }

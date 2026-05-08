@@ -16,7 +16,7 @@
       "all": false,
       "shell": {
         "all": false,
-        "execute": true,
+        "execute": false,
         "sidecar": true,
         "open": true,
         "scope": [
@@ -37,7 +37,12 @@
       "http": {
         "all": false,
         "request": true,
-        "scope": ["http://127.0.0.1:38300/**", "http://localhost:38300/**"]
+        "scope": [
+          "http://127.0.0.1:38300/**",
+          "https://127.0.0.1:38300/**",
+          "http://localhost:38300/**",
+          "http://localhost:5173/**"
+        ]
       },
       "window": {
         "all": true
@@ -52,12 +57,19 @@
         "readDir": true,
         "createDir": true,
         "exists": true,
-        "scope": ["$APPDATA/**", "$HOME/.irium/**"]
+        "scope": ["$APPDATA/**", "$HOME/.irium/**", "$RESOURCE/*"]
       },
       "process": {
         "all": true
       },
+      "dialog": {
+        "open": true,
+        "save": true
+      },
       "notification": {
+        "all": false
+      },
+      "clipboard": {
         "all": true
       }
     },
@@ -65,12 +77,13 @@
       "active": true,
       "targets": "all",
       "identifier": "com.iriumlabs.core",
+      "publisher": "Irium Labs",
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",
         "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
+        "icons/icon.ico",
+        "icons/icon.png"
       ],
       "resources": [],
       "externalBin": [
@@ -80,7 +93,22 @@
       ],
       "copyright": "2024 Irium Labs",
       "longDescription": "Irium Core is a full node desktop wallet for the Irium blockchain network. It enables decentralized commerce, settlement, and trust.",
-      "shortDescription": "Irium Full Node Desktop Wallet"
+      "shortDescription": "Irium Full Node Desktop Wallet",
+      "windows": {
+        "wix": {
+          "language": "en-US"
+        }
+      },
+      "macOS": {
+        "minimumSystemVersion": "10.15",
+        "exceptionDomain": "localhost"
+      },
+      "deb": {
+        "depends": ["libwebkit2gtk-4.0-37", "libgtk-3-0", "libssl1.1 | libssl3"]
+      },
+      "appimage": {
+        "bundleMediaFramework": true
+      }
     },
     "security": {
       "csp": "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: asset: https://asset.localhost"
@@ -103,7 +131,7 @@
         "minWidth": 1024,
         "minHeight": 680,
         "center": true,
-        "decorations": true,
+        "decorations": false,
         "transparent": false,
         "fileDropEnabled": false
       }

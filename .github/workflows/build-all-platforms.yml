@@ -1,0 +1,100 @@
+name: Build All Platforms
+
+# Triggered by version tags (git tag v1.2.3 && git push --tags)
+# or manually from the Actions tab.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-tauri:
+    name: Build Desktop (${{ matrix.label }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            label: windows
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            label: linux
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            label: macos-arm
+          - os: macos-13
+            target: x86_64-apple-darwin
+            label: macos-intel
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      # Fetch irium-source submodule so node binaries can be built from source.
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux system dependencies
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.0-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev
+
+      # Cache both the GUI crate and the irium node crate independently so
+      # incremental compilation works across runs.
+      - name: Cache Rust artifacts
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            irium-source -> target
+            src-tauri -> target
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      # Compile iriumd, irium-wallet, irium-miner from source.
+      # First build: 30–90 min; subsequent runs use the Rust cache above.
+      - name: Build irium node binaries
+        run: node scripts/build-irium-node.js
+
+      - name: Type-check frontend
+        run: npx tsc --noEmit
+
+      - name: Build and publish Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Irium Core ${{ github.ref_name }}'
+          releaseBody: |
+            ## Building from source
+
+            ```sh
+            git clone --recurse-submodules https://github.com/iriumlabs/irium-core-gui.git
+            cd irium-core-gui
+            npm install
+            npm run tauri:build
+            ```
+          releaseDraft: true
+          prerelease: false
+          args: --target ${{ matrix.target }}

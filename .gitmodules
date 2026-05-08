@@ -1,0 +1,3 @@
+[submodule "irium-source"]
+	path = irium-source
+	url = https://github.com/iriumlabs/irium

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Upload, RefreshCw, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useStore } from '../lib/store';
 import { agreements, proofs } from '../lib/tauri';
 import {
   formatIRM,
@@ -27,13 +28,14 @@ const itemVariants = {
 
 // ── Types & constants ─────────────────────────────────────────
 
-type StatusFilter = 'all' | 'active' | 'released' | 'expired' | 'refunded';
+// StatusFilter uses real binary status values: open / funded / released / refunded
+type StatusFilter = 'all' | 'open' | 'funded' | 'released' | 'refunded';
 
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'active', label: 'Active' },
-  { key: 'released', label: 'Completed' },
-  { key: 'expired', label: 'Expired' },
+  { key: 'all',      label: 'All'      },
+  { key: 'open',     label: 'Open'     },
+  { key: 'funded',   label: 'Funded'   },
+  { key: 'released', label: 'Released' },
   { key: 'refunded', label: 'Refunded' },
 ];
 
@@ -49,9 +51,8 @@ function Detail({ label, value }: { label: string; value: string }) {
 }
 
 function borderColorForStatus(status: Agreement['status']): string {
-  if (status === 'active') return '#7b2fe2'; // irium-500
+  if (status === 'funded') return '#7b2fe2'; // irium-500
   if (status === 'released') return '#4ade80'; // green-400
-  if (status === 'expired' || status === 'timeout') return '#f87171'; // red-400
   if (status === 'refunded') return '#fbbf24'; // amber-400
   return 'rgba(255,255,255,0.2)';
 }
@@ -60,6 +61,7 @@ function borderColorForStatus(status: Agreement['status']): string {
 
 export default function AgreementsPage() {
   const location = useLocation();
+  const nodeStatus = useStore((s) => s.nodeStatus);
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [agreementList, setAgreementList] = useState<Agreement[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -67,6 +69,7 @@ export default function AgreementsPage() {
   const [proofsByAgreement, setProofsByAgreement] = useState<Record<string, Proof[]>>({});
   const [showProofModal, setShowProofModal] = useState<string | null>(null);
   const [showReleaseModal, setShowReleaseModal] = useState<string | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [proofFilePath, setProofFilePath] = useState('');
 
@@ -79,7 +82,7 @@ export default function AgreementsPage() {
     if (incoming) {
       setExpandedId(incoming);
     }
-  }, []);
+  }, [location.state]);
 
   // Load proofs when expanding a card
   useEffect(() => {
@@ -118,7 +121,6 @@ export default function AgreementsPage() {
 
   const filteredAgreements = agreementList.filter((a) => {
     if (filter === 'all') return true;
-    if (filter === 'active') return ['active', 'pending', 'satisfied'].includes(a.status);
     return a.status === filter;
   });
 
@@ -127,17 +129,27 @@ export default function AgreementsPage() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="h-full overflow-y-auto p-6 space-y-5"
+      className="h-full overflow-y-auto p-6"
     >
+      <div className="max-w-6xl mx-auto space-y-5">
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display font-bold text-2xl text-white">Agreements</h1>
           <p className="text-white/40 text-sm mt-0.5">On-chain settlement agreements</p>
         </div>
-        <button onClick={loadData} className="btn-ghost" disabled={loading}>
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
+          >
+            <PackageOpen size={13} />
+            Import Pack
+          </button>
+          <button onClick={loadData} className="btn-ghost" disabled={loading}>
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          </button>
+        </div>
       </div>
 
       {/* Status filter tabs */}
@@ -199,6 +211,7 @@ export default function AgreementsPage() {
                 }}
                 onRefund={() => handleRefund(a.id)}
                 actionLoading={actionLoading}
+                isOnline={!!nodeStatus?.running}
               />
             </motion.div>
           ))}
@@ -243,9 +256,24 @@ export default function AgreementsPage() {
               setShowReleaseModal(null);
               loadData();
             }}
+            isOnline={!!nodeStatus?.running}
           />
         )}
       </AnimatePresence>
+
+      {/* Import Pack Modal */}
+      <AnimatePresence>
+        {showImportModal && (
+          <ImportPackModal
+            onClose={() => setShowImportModal(false)}
+            onSuccess={() => {
+              setShowImportModal(false);
+              loadData();
+            }}
+          />
+        )}
+      </AnimatePresence>
+      </div>
     </motion.div>
   );
 }
@@ -261,6 +289,86 @@ interface AgreementCardProps {
   onRelease: () => void;
   onRefund: () => void;
   actionLoading: boolean;
+  isOnline: boolean;
+}
+
+function ExportPackRow({ agreementId }: { agreementId: string }) {
+  const [showInput, setShowInput] = useState(false);
+  const [outPath, setOutPath] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [browsing, setBrowsing]   = useState(false);
+
+  const handleBrowse = async () => {
+    setBrowsing(true);
+    const path = await openSavePicker({
+      defaultName: `agreement-${agreementId.slice(0, 8)}.pack.json`,
+      extensions: ['json'],
+      title: 'Save Agreement Pack',
+    });
+    if (path) setOutPath(path);
+    setBrowsing(false);
+  };
+
+  const handleExport = async () => {
+    if (!outPath.trim()) return;
+    setExporting(true);
+    try {
+      await agreements.pack(agreementId, outPath.trim());
+      toast.success('Agreement pack exported to ' + outPath.trim());
+      setShowInput(false);
+      setOutPath('');
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  if (!showInput) {
+    return (
+      <button
+        onClick={() => setShowInput(true)}
+        className="btn-ghost text-xs py-1.5 px-3 text-irium-400 hover:text-irium-300"
+      >
+        <Download size={12} />
+        Export Pack
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 w-full mt-1">
+      <div className="flex items-center gap-2">
+        <input
+          autoFocus
+          value={outPath}
+          onChange={(e) => setOutPath(e.target.value)}
+          placeholder="/path/to/output.pack.json"
+          className="input text-xs flex-1"
+          style={{ fontFamily: '"JetBrains Mono", monospace' }}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleExport(); if (e.key === 'Escape') setShowInput(false); }}
+        />
+        <button
+          onClick={handleBrowse}
+          disabled={browsing}
+          className="btn-secondary text-xs py-1.5 px-3 flex-shrink-0"
+          title="Choose save location"
+        >
+          {browsing ? <RefreshCw size={12} className="animate-spin" /> : <><Download size={12} /> Browse</>}
+        </button>
+        <button
+          onClick={handleExport}
+          disabled={!outPath.trim() || exporting}
+          className="btn-primary text-xs py-1.5 px-3 flex-shrink-0"
+        >
+          {exporting ? <RefreshCw size={12} className="animate-spin" /> : 'Save'}
+        </button>
+        <button onClick={() => setShowInput(false)} className="btn-ghost py-1.5 px-2">
+          <X size={12} />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function AgreementCard({
@@ -272,12 +380,13 @@ function AgreementCard({
   onRelease,
   onRefund,
   actionLoading,
+  isOnline,
 }: AgreementCardProps) {
   const borderColor = borderColorForStatus(a.status);
 
   // Deadline progress
   let deadlinePct = 0;
-  if (a.deadline && a.status === 'active') {
+  if (a.deadline && a.status === 'funded') {
     const total = a.deadline - (a.created_at ?? a.deadline);
     const elapsed = Date.now() / 1000 - (a.created_at ?? a.deadline);
     deadlinePct = Math.min(100, Math.max(0, total > 0 ? (elapsed / total) * 100 : 0));
@@ -328,7 +437,7 @@ function AgreementCard({
       </div>
 
       {/* Deadline progress bar */}
-      {a.deadline && a.status === 'active' && (
+      {a.deadline && a.status === 'funded' && (
         <div className="h-1 bg-white/[0.04]">
           <div
             className="h-full bg-irium-500/60 transition-all duration-500"
@@ -419,30 +528,35 @@ function AgreementCard({
                 <button
                   onClick={onSubmitProof}
                   className="btn-secondary text-xs py-1.5 px-3"
+                  title="Submit your proof of delivery"
                 >
                   Submit Proof
                 </button>
                 <button
                   onClick={onRelease}
-                  disabled={!a.release_eligible || actionLoading}
+                  disabled={!a.release_eligible || actionLoading || !isOnline}
                   title={
-                    !a.release_eligible
+                    !isOnline
+                      ? 'Node must be online to release funds'
+                      : !a.release_eligible
                       ? 'Release not eligible — proof conditions not yet satisfied'
-                      : undefined
+                      : 'Release funds to counterparty'
                   }
                   className={`btn-primary text-xs py-1.5 px-3 ${
-                    !a.release_eligible ? 'opacity-40 cursor-not-allowed' : ''
+                    !a.release_eligible || !isOnline ? 'opacity-40 cursor-not-allowed' : ''
                   }`}
                 >
-                  Release Funds
+                  Release to Counterparty
                 </button>
                 <button
                   onClick={onRefund}
-                  disabled={actionLoading}
-                  className="btn-ghost text-xs py-1.5 px-3 text-red-400 hover:text-red-300"
+                  disabled={actionLoading || !isOnline}
+                  title={!isOnline ? 'Node must be online to refund' : undefined}
+                  className="btn-ghost text-xs py-1.5 px-3 text-red-400 hover:text-red-300 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Refund
                 </button>
+                <ExportPackRow agreementId={a.id} />
               </div>
             </div>
           </motion.div>
@@ -462,6 +576,49 @@ interface ProofModalProps {
   onSuccess: () => void;
 }
 
+const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+
+async function openFilePicker(opts: { extensions: string[]; title: string }): Promise<string | null> {
+  if (isTauri) {
+    try {
+      const { open } = await import('@tauri-apps/api/dialog');
+      const result = await open({
+        multiple: false,
+        title: opts.title,
+        filters: [{ name: opts.extensions.map(e => `.${e}`).join(' / '), extensions: opts.extensions }],
+      });
+      return typeof result === 'string' ? result : null;
+    } catch {
+      return null;
+    }
+  }
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = opts.extensions.map(e => `.${e}`).join(',');
+    input.onchange = () => resolve(input.files?.[0]?.name ?? null);
+    input.oncancel = () => resolve(null);
+    input.click();
+  });
+}
+
+async function openSavePicker(opts: { defaultName: string; extensions: string[]; title: string }): Promise<string | null> {
+  if (isTauri) {
+    try {
+      const { save } = await import('@tauri-apps/api/dialog');
+      const result = await save({
+        title: opts.title,
+        defaultPath: opts.defaultName,
+        filters: [{ name: opts.extensions.map(e => `.${e}`).join(' / '), extensions: opts.extensions }],
+      });
+      return result ?? null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 function ProofModal({
   agreementId,
   proofFilePath,
@@ -470,6 +627,17 @@ function ProofModal({
   onSuccess,
 }: ProofModalProps) {
   const [submitting, setSubmitting] = useState(false);
+  const [browsing, setBrowsing]     = useState(false);
+
+  const handleBrowse = async () => {
+    setBrowsing(true);
+    const path = await openFilePicker({
+      extensions: ['json'],
+      title: 'Select Proof File (.json)',
+    });
+    if (path) onPathChange(path);
+    setBrowsing(false);
+  };
 
   const handleSubmit = async () => {
     if (!proofFilePath.trim()) return;
@@ -495,45 +663,85 @@ function ProofModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <motion.div
-        initial={{ y: 80, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 80, opacity: 0 }}
-        transition={{ duration: 0.25 }}
-        className="glass-heavy w-full max-w-lg rounded-2xl p-6 mb-4"
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="glass-heavy w-full max-w-lg rounded-2xl p-6"
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-1">
           <h2 className="font-display font-bold text-lg text-white">Submit Proof</h2>
           <button onClick={onClose} className="btn-ghost text-white/40">
             <X size={16} />
           </button>
         </div>
+        <p className="text-xs mb-5" style={{ color: 'rgba(238,240,255,0.35)' }}>
+          Accepted format: <span className="font-mono text-irium-300">.json</span> — proof file generated by{' '}
+          <span className="font-mono">irium-wallet agreement-proof-sign</span>
+        </p>
 
-        {/* Drop zone */}
+        {/* File selector */}
         <div
-          className="border-2 border-dashed border-irium-500/30 rounded-xl p-8 text-center"
+          className="rounded-xl p-5 mb-4"
           style={{
-            backgroundImage:
-              'linear-gradient(135deg, rgba(123,47,226,0.03) 0%, transparent 100%)',
+            background: 'rgba(139,92,246,0.04)',
+            border: '1px dashed rgba(139,92,246,0.25)',
           }}
         >
-          <Upload size={24} className="mx-auto mb-2 text-irium-400" />
-          <div className="text-white/50 text-sm mb-3">Drop proof file here</div>
-          <div className="text-white/30 text-xs mb-4">— or enter path manually —</div>
-          <input
-            value={proofFilePath}
-            onChange={(e) => onPathChange(e.target.value)}
-            placeholder="/path/to/proof.json"
-            className="input text-xs"
-          />
+          <div className="flex items-center gap-3 mb-3">
+            <Upload size={18} style={{ color: '#a78bfa' }} className="flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-display font-semibold text-white mb-0.5">Proof File</div>
+              <div className="text-xs" style={{ color: 'rgba(238,240,255,0.35)' }}>
+                {proofFilePath
+                  ? proofFilePath.split(/[\\/]/).pop()
+                  : 'No file selected'}
+              </div>
+            </div>
+            <button
+              onClick={handleBrowse}
+              disabled={browsing}
+              className="btn-secondary text-xs py-1.5 px-3 flex-shrink-0"
+            >
+              {browsing
+                ? <RefreshCw size={12} className="animate-spin" />
+                : <><Upload size={12} /> Browse</>
+              }
+            </button>
+          </div>
+
+          {/* Manual path input */}
+          <div className="flex items-center gap-2">
+            <input
+              value={proofFilePath}
+              onChange={(e) => onPathChange(e.target.value)}
+              placeholder="/path/to/proof.json"
+              className="input text-xs flex-1"
+              style={{ fontFamily: '"JetBrains Mono", monospace' }}
+            />
+          </div>
+        </div>
+
+        {/* Format note */}
+        <div
+          className="flex items-start gap-2 rounded-lg p-3 mb-4 text-xs"
+          style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)' }}
+        >
+          <span style={{ color: '#60a5fa', flexShrink: 0 }}>ℹ</span>
+          <span style={{ color: 'rgba(238,240,255,0.50)' }}>
+            The proof file must be a signed JSON document produced by{' '}
+            <span className="font-mono text-white/70">irium-wallet agreement-proof-sign</span>.
+            Only <span className="font-mono text-white/70">.json</span> files are accepted.
+          </span>
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3 mt-4">
+        <div className="flex gap-3">
           <button onClick={onClose} className="btn-secondary flex-1 justify-center">
             Cancel
           </button>
@@ -542,11 +750,10 @@ function ProofModal({
             disabled={!proofFilePath.trim() || submitting}
             className="btn-primary flex-1 justify-center"
           >
-            {submitting ? (
-              <RefreshCw size={14} className="animate-spin" />
-            ) : (
-              'Submit'
-            )}
+            {submitting
+              ? <><RefreshCw size={14} className="animate-spin" /> Submitting…</>
+              : 'Submit Proof'
+            }
           </button>
         </div>
       </motion.div>
@@ -560,9 +767,10 @@ interface ReleaseModalProps {
   agreement: Agreement;
   onClose: () => void;
   onSuccess: () => void;
+  isOnline: boolean;
 }
 
-function ReleaseModal({ agreement, onClose, onSuccess }: ReleaseModalProps) {
+function ReleaseModal({ agreement, onClose, onSuccess, isOnline }: ReleaseModalProps) {
   const [releasing, setReleasing] = useState(false);
 
   const handleConfirm = async () => {
@@ -621,14 +829,136 @@ function ReleaseModal({ agreement, onClose, onSuccess }: ReleaseModalProps) {
           </button>
           <button
             onClick={handleConfirm}
-            disabled={releasing}
-            className="btn-primary flex-1 justify-center"
+            disabled={releasing || !isOnline}
+            title={!isOnline ? 'Node must be online to release funds' : undefined}
+            className="btn-primary flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {releasing ? (
               <RefreshCw size={14} className="animate-spin" />
             ) : (
               'Confirm Release'
             )}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Import Pack Modal ─────────────────────────────────────────
+// Party B uses this to import an agreement pack sent by Party A
+
+interface ImportPackModalProps {
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function ImportPackModal({ onClose, onSuccess }: ImportPackModalProps) {
+  const [filePath, setFilePath] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [browsing, setBrowsing]   = useState(false);
+
+  const handleBrowse = async () => {
+    setBrowsing(true);
+    const path = await openFilePicker({
+      extensions: ['json'],
+      title: 'Select Agreement Pack (.pack.json)',
+    });
+    if (path) setFilePath(path);
+    setBrowsing(false);
+  };
+
+  const handleImport = async () => {
+    if (!filePath.trim()) return;
+    setImporting(true);
+    try {
+      const result = await agreements.unpack(filePath.trim());
+      toast.success('Agreement imported: ' + (result.id || 'OK'));
+      onSuccess();
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  return (
+    <motion.div
+      key="import-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="glass-heavy w-full max-w-lg rounded-2xl p-6"
+      >
+        <div className="flex items-center justify-between mb-1">
+          <div>
+            <h2 className="font-display font-bold text-lg text-white">Import Agreement Pack</h2>
+            <p className="text-white/40 text-xs mt-0.5">
+              Accepted format: <span className="font-mono text-irium-300">.pack.json</span> — exported by Party A
+            </p>
+          </div>
+          <button onClick={onClose} className="btn-ghost text-white/40">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* File selector area */}
+        <div
+          className="rounded-xl p-5 mb-4 mt-4"
+          style={{
+            background: 'rgba(139,92,246,0.04)',
+            border: '1px dashed rgba(139,92,246,0.25)',
+          }}
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <PackageOpen size={18} style={{ color: '#a78bfa' }} className="flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-display font-semibold text-white mb-0.5">Pack File</div>
+              <div className="text-xs" style={{ color: 'rgba(238,240,255,0.35)' }}>
+                {filePath ? filePath.split(/[\\/]/).pop() : 'No file selected'}
+              </div>
+            </div>
+            <button
+              onClick={handleBrowse}
+              disabled={browsing}
+              className="btn-secondary text-xs py-1.5 px-3 flex-shrink-0"
+            >
+              {browsing
+                ? <RefreshCw size={12} className="animate-spin" />
+                : <><PackageOpen size={12} /> Browse</>
+              }
+            </button>
+          </div>
+
+          <input
+            autoFocus
+            value={filePath}
+            onChange={(e) => setFilePath(e.target.value)}
+            placeholder="/path/to/agreement.pack.json"
+            className="input text-xs w-full"
+            style={{ fontFamily: '"JetBrains Mono", monospace' }}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleImport(); }}
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="btn-secondary flex-1 justify-center">
+            Cancel
+          </button>
+          <button
+            onClick={handleImport}
+            disabled={!filePath.trim() || importing}
+            className="btn-primary flex-1 justify-center"
+          >
+            {importing ? <RefreshCw size={14} className="animate-spin" /> : 'Import Pack'}
           </button>
         </div>
       </motion.div>
