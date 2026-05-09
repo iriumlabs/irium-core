@@ -8,13 +8,25 @@ import type {
   GpuDevice, GpuMinerStatus, StratumStatus,
   OtcParams, FreelanceParams, MilestoneParams, DepositParams,
   PeerInfo, MempoolInfo, DiagnosticsResult, UpdateCheckResult,
+  NodeUpdateCheckResult, NodeUpdatePullResult,
   WalletCreateResult,
+  MultisigCreateResult, MultisigSpendResult,
+  Invoice, InvoiceImportResult,
+  SpendEligibilityResult, ProofPolicy, AgreementStatusResult,
+  ReputationOutcomeResult, ReputationOutcome, SelfTradeCheckResult,
+  SellerStatus, BuyerStatus,
+  DisputeEntry, DisputeOpenResult,
+  NetworkMetrics, ExplorerAgreement, ExplorerStats,
+  ExplorerNetworkStats, ExplorerPeer, ExplorerBlock,
+  FeedDiscoverResult,
+  AgreementSignResult, AgreementVerifySignatureResult,
+  AgreementDecryptResult, AgreementStoreListResult,
 } from './types';
 
 // ── NODE ──────────────────────────────────────────────────────
 export const node = {
-  start: (dataDir?: string) =>
-    safeInvoke<NodeStartResult>('start_node', { dataDir }),
+  start: (dataDir?: string, externalIp?: string) =>
+    safeInvoke<NodeStartResult>('start_node', { dataDir, externalIp }),
 
   stop: () =>
     safeInvoke<boolean>('stop_node'),
@@ -31,8 +43,17 @@ export const node = {
   clearState: () =>
     safeInvoke<boolean>('clear_node_state'),
 
+  detectPublicIp: (serviceUrl: string) =>
+    safeInvoke<string>('detect_public_ip', { serviceUrl }),
+
+  tryUpnpPortMap: () =>
+    safeInvoke<string | null>('try_upnp_port_map'),
+
   saveDiscoveredPeers: (multiaddrs: string[]) =>
     safeInvoke<number>('save_discovered_peers', { multiaddrs }),
+
+  logs: (lines?: number) =>
+    safeInvoke<string[]>('get_node_logs', { lines }),
 };
 
 // ── WALLET ────────────────────────────────────────────────────
@@ -59,13 +80,22 @@ export const wallet = {
     safeInvoke<WalletCreateResult>('wallet_create'),
 
   importMnemonic: (words: string) =>
-    safeInvoke<boolean>('wallet_import_mnemonic', { words }),
+    safeInvoke<string>('wallet_import_mnemonic', { words }),
 
   importWif: (wif: string) =>
-    safeInvoke<boolean>('wallet_import_wif', { wif }),
+    safeInvoke<string>('wallet_import_wif', { wif }),
 
   importPrivateKey: (hexKey: string) =>
-    safeInvoke<boolean>('wallet_import_private_key', { hexKey }),
+    safeInvoke<string>('wallet_import_private_key', { hexKey }),
+
+  exportSeed: () =>
+    safeInvoke<string>('wallet_export_seed'),
+
+  backup: (outPath: string) =>
+    safeInvoke<string>('wallet_backup', { outPath }),
+
+  restoreBackup: (filePath: string) =>
+    safeInvoke<string>('wallet_restore_backup', { filePath }),
 };
 
 // ── OFFERS ────────────────────────────────────────────────────
@@ -226,10 +256,21 @@ export const diagnostics = {
     safeInvoke<DiagnosticsResult>('run_diagnostics'),
 };
 
-// ── UPDATE ────────────────────────────────────────────────────
+// ── UPDATE (GUI app) ──────────────────────────────────────────
 export const update = {
   check: () =>
     safeInvoke<UpdateCheckResult>('check_for_updates'),
+};
+
+// ── NODE SOURCE UPDATE ────────────────────────────────────────
+// Checks the iriumlabs/irium GitHub repo for commits newer than what
+// the current binaries were compiled from, and pulls the latest source.
+export const nodeUpdate = {
+  check: () =>
+    safeInvoke<NodeUpdateCheckResult>('check_node_update'),
+
+  pull: () =>
+    safeInvoke<NodeUpdatePullResult>('update_node_source'),
 };
 
 // ── CONFIG ────────────────────────────────────────────────────
@@ -244,6 +285,139 @@ export const config = {
     safeInvoke<string | null>('load_settings'),
 };
 
+// ── MULTISIG ──────────────────────────────────────────────────
+export const multisig = {
+  create: (threshold: number, pubkeys: string[]) =>
+    safeInvoke<MultisigCreateResult>('multisig_create', { threshold, pubkeys }),
+
+  broadcast: (rawTx: string) =>
+    safeInvoke<MultisigSpendResult>('multisig_broadcast', { rawTx }),
+};
+
+// ── INVOICES ──────────────────────────────────────────────────
+export const invoices = {
+  generate: (recipient: string, amountIrm: number, reference: string, expiresBlocks?: number, outPath?: string) =>
+    safeInvoke<Invoice>('invoice_generate', { recipient, amountIrm, reference, expiresBlocks, outPath }),
+
+  import: (filePath: string) =>
+    safeInvoke<InvoiceImportResult>('invoice_import', { filePath }),
+};
+
+// ── AGREEMENT ELIGIBILITY & STATUS ────────────────────────────
+export const agreementSpend = {
+  releaseEligibility: (agreementId: string, fundingTxid?: string) =>
+    safeInvoke<SpendEligibilityResult>('agreement_release_eligibility', { agreementId, fundingTxid }),
+
+  refundEligibility: (agreementId: string, fundingTxid?: string) =>
+    safeInvoke<SpendEligibilityResult>('agreement_refund_eligibility', { agreementId, fundingTxid }),
+
+  status: (agreementId: string) =>
+    safeInvoke<AgreementStatusResult>('agreement_status', { agreementId }),
+
+  fund: (agreementId: string, broadcast?: boolean) =>
+    safeInvoke<ReleaseResult>('agreement_fund', { agreementId, broadcast }),
+};
+
+// ── POLICIES ──────────────────────────────────────────────────
+export const policies = {
+  buildOtc: (policyId: string, agreementHash: string, attestor: string, releaseProofType: string, outPath?: string) =>
+    safeInvoke<ProofPolicy>('policy_build_otc', { policyId, agreementHash, attestor, releaseProofType, outPath }),
+
+  buildContractor: (policyId: string, agreementHash: string, attestor: string, milestone: string, outPath?: string) =>
+    safeInvoke<ProofPolicy>('policy_build_contractor', { policyId, agreementHash, attestor, milestone, outPath }),
+
+  buildPreorder: (policyId: string, agreementHash: string, attestor: string, deliveryProofType: string, outPath?: string) =>
+    safeInvoke<ProofPolicy>('policy_build_preorder', { policyId, agreementHash, attestor, deliveryProofType, outPath }),
+
+  list: (activeOnly?: boolean) =>
+    safeInvoke<ProofPolicy[]>('agreement_policy_list', { activeOnly }),
+
+  evaluate: (agreementId: string) =>
+    safeInvoke<Record<string, unknown>>('agreement_policy_evaluate', { agreementId }),
+};
+
+// ── REPUTATION ACTIONS ────────────────────────────────────────
+export const reputationActions = {
+  recordOutcome: (seller: string, outcome: ReputationOutcome, proofResponseSecs?: number, selfTrade?: boolean) =>
+    safeInvoke<ReputationOutcomeResult>('reputation_record_outcome', { seller, outcome, proofResponseSecs, selfTrade }),
+
+  export: (seller: string, outPath?: string) =>
+    safeInvoke<Record<string, unknown>>('reputation_export', { seller, outPath }),
+
+  import: (filePath: string) =>
+    safeInvoke<boolean>('reputation_import', { filePath }),
+
+  selfTradeCheck: (seller: string, buyer: string) =>
+    safeInvoke<SelfTradeCheckResult>('reputation_self_trade_check', { seller, buyer }),
+};
+
+// ── TRADE STATUS ──────────────────────────────────────────────
+export const tradeStatus = {
+  seller: (address?: string) =>
+    safeInvoke<SellerStatus>('seller_status', { address }),
+
+  buyer: (address?: string) =>
+    safeInvoke<BuyerStatus>('buyer_status', { address }),
+};
+
+// ── DISPUTES ──────────────────────────────────────────────────
+export const disputes = {
+  open: (agreementId: string, reason?: string) =>
+    safeInvoke<DisputeOpenResult>('agreement_dispute', { agreementId, reason }),
+
+  list: () =>
+    safeInvoke<DisputeEntry[]>('agreement_dispute_list'),
+};
+
+// ── NETWORK METRICS ───────────────────────────────────────────
+export const metrics = {
+  network: () =>
+    safeInvoke<NetworkMetrics>('get_network_metrics'),
+};
+
+// ── EXPLORER ──────────────────────────────────────────────────
+export const explorer = {
+  agreements: (limit?: number) =>
+    safeInvoke<ExplorerAgreement[]>('explorer_agreements', { limit }),
+
+  stats: () =>
+    safeInvoke<ExplorerStats>('explorer_stats'),
+
+  // irium-explorer sidecar commands (port 38310)
+  startSidecar: () =>
+    safeInvoke<boolean>('start_explorer_sidecar'),
+  networkStats: () =>
+    safeInvoke<ExplorerNetworkStats>('get_explorer_stats'),
+  networkPeers: () =>
+    safeInvoke<ExplorerPeer[]>('get_explorer_peers'),
+  networkBlocks: () =>
+    safeInvoke<ExplorerBlock[]>('get_explorer_blocks'),
+};
+
+// ── FEED OPS ──────────────────────────────────────────────────
+export const feedOps = {
+  discover: () =>
+    safeInvoke<FeedDiscoverResult>('offer_feed_discover'),
+
+  bootstrap: () =>
+    safeInvoke<boolean>('feed_bootstrap'),
+};
+
+// ── AGREEMENT STORE ───────────────────────────────────────────
+export const agreementStore = {
+  list: () =>
+    safeInvoke<AgreementStoreListResult>('agreement_local_store_list'),
+
+  sign: (agreementId: string, signerAddr: string, role?: string, outPath?: string) =>
+    safeInvoke<AgreementSignResult>('agreement_sign_cmd', { agreementId, signerAddr, role, outPath }),
+
+  verifySignature: (signaturePath: string, agreementId?: string) =>
+    safeInvoke<AgreementVerifySignatureResult>('agreement_verify_signature', { signaturePath, agreementId }),
+
+  decrypt: (blobPath: string) =>
+    safeInvoke<AgreementDecryptResult>('agreement_decrypt', { blobPath }),
+};
+
 // ── RPC DIRECT ────────────────────────────────────────────────
 export const rpc = {
   peers: () =>
@@ -254,6 +428,15 @@ export const rpc = {
 
   block: (heightOrHash: string) =>
     safeInvoke<Record<string, unknown>>('rpc_get_block', { heightOrHash }),
+
+  tx: (txid: string) =>
+    safeInvoke<Record<string, unknown>>('rpc_get_tx', { txid }),
+
+  address: (address: string) =>
+    safeInvoke<Record<string, unknown>>('rpc_get_address', { address }),
+
+  recentBlocks: (limit = 20, endHeight?: number) =>
+    safeInvoke<ExplorerBlock[]>('get_recent_blocks', { limit, endHeight }),
 
   offersFeed: () =>
     safeInvoke<unknown>('rpc_get_offers_feed'),

@@ -14,6 +14,7 @@ const StatusBar = memo(function StatusBar() {
   const synced  = nodeStatus?.synced       ?? false;
   const running = nodeStatus?.running      ?? false;
   const peers   = nodeStatus?.peers        ?? 0;
+  const upnp    = nodeStatus?.upnp_active  ?? false;
 
   const syncPct = running && tipH > 0 ? Math.min(100, (height / tipH) * 100) : 0;
 
@@ -92,10 +93,11 @@ const StatusBar = memo(function StatusBar() {
 
       {/* ── Left section ──────────────────────────────────────── */}
       <div className="flex items-center gap-3">
-        {/* Brand */}
+        {/* Brand + version */}
         <span style={{ color: 'rgba(138,92,246,0.75)', fontWeight: 600, letterSpacing: '0.02em' }}>
           Irium Core
         </span>
+        <span style={{ color: 'rgba(138,92,246,0.40)', fontSize: 10 }}>v1.0.0</span>
         <Dot />
         <span style={{ color: 'rgba(238,240,255,0.30)' }}>Mainnet</span>
 
@@ -210,6 +212,19 @@ const StatusBar = memo(function StatusBar() {
               />
               <span style={{ color: 'rgba(238,240,255,0.38)' }}>{peers}p</span>
             </div>
+          </>
+        )}
+
+        {/* UPnP indicator — only show when active to avoid startup flash */}
+        {running && upnp && (
+          <>
+            <Dot />
+            <span
+              title="UPnP active — port 38291 mapped on router, inbound peers enabled"
+              style={{ color: 'rgba(52,211,153,0.75)', fontSize: 10, letterSpacing: '0.04em' }}
+            >
+              UPnP
+            </span>
           </>
         )}
 

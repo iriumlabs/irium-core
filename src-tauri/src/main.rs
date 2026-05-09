@@ -22,6 +22,7 @@ use std::collections::HashMap;
 struct AppState {
     node_process: Arc<Mutex<Option<CommandChild>>>,
     miner_process: Arc<Mutex<Option<CommandChild>>>,
+    explorer_process: Arc<Mutex<Option<CommandChild>>>,
     rpc_url: Arc<Mutex<String>>,
     wallet_path: Arc<Mutex<Option<String>>>,
     data_dir: Arc<Mutex<Option<String>>>,
@@ -31,6 +32,8 @@ struct AppState {
     miner_hashrate: Arc<Mutex<f64>>,
     last_node_status: Arc<Mutex<Option<NodeStatus>>>,
     pool_url: Arc<Mutex<Option<String>>>,
+    upnp_external_ip: Arc<Mutex<Option<String>>>,
+    node_logs: Arc<Mutex<Vec<String>>>,
 }
 
 impl AppState {
@@ -38,6 +41,7 @@ impl AppState {
         AppState {
             node_process: Arc::new(Mutex::new(None)),
             miner_process: Arc::new(Mutex::new(None)),
+            explorer_process: Arc::new(Mutex::new(None)),
             rpc_url: Arc::new(Mutex::new("http://127.0.0.1:38300".to_string())),
             wallet_path: Arc::new(Mutex::new(None)),
             data_dir: Arc::new(Mutex::new(None)),
@@ -47,6 +51,8 @@ impl AppState {
             miner_hashrate: Arc::new(Mutex::new(0.0)),
             last_node_status: Arc::new(Mutex::new(None)),
             pool_url: Arc::new(Mutex::new(None)),
+            upnp_external_ip: Arc::new(Mutex::new(None)),
+            node_logs: Arc::new(Mutex::new(Vec::new())),
         }
     }
 }
@@ -115,6 +121,15 @@ fn lock_err(e: impl std::fmt::Display) -> String {
     format!("Lock error: {}", e)
 }
 
+fn resolve_wallet_path() -> String {
+    dirs::home_dir()
+        .unwrap_or_default()
+        .join(".irium")
+        .join("wallet.json")
+        .to_string_lossy()
+        .to_string()
+}
+
 async fn get_rpc_info(rpc_url: &str) -> Result<RpcInfo, String> {
     let client = reqwest::Client::new();
     let resp = client
@@ -135,14 +150,21 @@ async fn get_current_height(rpc_url: &str) -> u64 {
 
 async fn run_wallet_cmd(
     args: Vec<String>,
-    _wallet_path: Option<String>,
-    _data_dir: Option<String>,
+    wallet_path: Option<String>,
+    data_dir: Option<String>,
 ) -> Result<String, String> {
-    let full_args = args;
+    let mut env_vars: HashMap<String, String> = HashMap::new();
+    if let Some(wp) = wallet_path {
+        env_vars.insert("IRIUM_WALLET_FILE".to_string(), wp);
+    }
+    if let Some(dd) = data_dir {
+        env_vars.insert("IRIUM_DATA_DIR".to_string(), dd);
+    }
 
     let cmd = Command::new_sidecar("irium-wallet")
         .map_err(|e| format!("irium-wallet sidecar not found: {}. Place binary in src-tauri/binaries/", e))?
-        .args(&full_args);
+        .envs(env_vars)
+        .args(&args);
 
     let output = cmd.output().map_err(|e| format!("Failed to run wallet command: {}", e))?;
 
@@ -181,10 +203,209 @@ async fn get_first_wallet_address(
 // NODE MANAGEMENT
 // ============================================================
 
+/// Read previously discovered peers from iriumd's own organic seedlist.extra file.
+/// iriumd writes this file via P2P gossip — no external servers involved.
+/// We pass these peers through IRIUM_ADDNODE (highest-priority, always-retried)
+/// so iriumd reconnects to every peer it has ever seen, not just the 11 hardcoded ones.
+fn read_extra_seeds() -> Vec<String> {
+    let home_dir = match dirs::home_dir() {
+        Some(d) => d,
+        None => return vec![],
+    };
+    let extra_path = home_dir.join(".irium").join("bootstrap").join("seedlist.extra");
+    let contents = match std::fs::read_to_string(&extra_path) {
+        Ok(s) => s,
+        Err(_) => return vec![],
+    };
+    contents
+        .lines()
+        .filter_map(|line| {
+            let l = line.trim();
+            if l.is_empty() || l.starts_with('#') { return None; }
+            // seedlist.extra stores IP:PORT — we only want the IP for IRIUM_ADDNODE
+            let ip = l.split(':').next().unwrap_or("").trim().to_string();
+            if ip.is_empty() { None } else { Some(ip) }
+        })
+        .collect()
+}
+
+// ============================================================
+// UPnP — decentralized NAT traversal using tokio + reqwest.
+// Opens TCP port 38291 on the router so other NAT-behind nodes
+// can dial us inbound. No relay, no central server — each node
+// does this independently using its own router's UPnP service.
+// ============================================================
+
+fn upnp_local_ipv4() -> Option<std::net::Ipv4Addr> {
+    use std::net::{IpAddr, UdpSocket};
+    let sock = UdpSocket::bind("0.0.0.0:0").ok()?;
+    sock.connect("8.8.8.8:80").ok()?;
+    match sock.local_addr().ok()?.ip() {
+        IpAddr::V4(ip) => Some(ip),
+        _ => None,
+    }
+}
+
+async fn upnp_discover_location() -> Option<String> {
+    use tokio::net::UdpSocket;
+
+    let sock = UdpSocket::bind("0.0.0.0:0").await.ok()?;
+
+    // Send SSDP M-SEARCH for the WAN IP service directly
+    let msearch = concat!(
+        "M-SEARCH * HTTP/1.1\r\n",
+        "HOST: 239.255.255.250:1900\r\n",
+        "MAN: \"ssdp:discover\"\r\n",
+        "MX: 2\r\n",
+        "ST: urn:schemas-upnp-org:service:WANIPConnection:1\r\n",
+        "\r\n"
+    );
+    sock.send_to(msearch.as_bytes(), "239.255.255.250:1900").await.ok()?;
+
+    let mut buf = vec![0u8; 4096];
+    let (n, _) = tokio::time::timeout(
+        Duration::from_secs(3),
+        sock.recv_from(&mut buf),
+    ).await.ok()?.ok()?;
+
+    // Parse LOCATION header from SSDP response
+    let text = String::from_utf8_lossy(&buf[..n]);
+    for line in text.lines() {
+        if line.to_ascii_lowercase().starts_with("location:") {
+            let loc = line.splitn(2, ':')
+                .nth(1).unwrap_or("").trim().to_string();
+            // Normalise — some routers omit the scheme
+            return Some(if loc.starts_with("http") {
+                loc
+            } else if loc.starts_with("//") {
+                format!("http:{}", loc)
+            } else if !loc.is_empty() {
+                format!("http://{}", loc)
+            } else {
+                return None;
+            });
+        }
+    }
+    None
+}
+
+fn upnp_resolve_control_url(xml: &str, base: &str) -> Option<(String, String)> {
+    // Find the WANIPConnection (or WANPPPConnection) service block.
+    let svc_pos = xml.find("WANIPConnection")
+        .or_else(|| xml.find("WANPPPConnection"))?;
+    let svc_type = if xml[svc_pos..].starts_with("WANIPConnection") {
+        "urn:schemas-upnp-org:service:WANIPConnection:1"
+    } else {
+        "urn:schemas-upnp-org:service:WANPPPConnection:1"
+    };
+
+    let after = &xml[svc_pos..];
+    let ctrl_open = "<controlURL>";
+    let ctrl_close = "</controlURL>";
+    let cs = after.find(ctrl_open)? + ctrl_open.len();
+    let ce = after[cs..].find(ctrl_close)? + cs;
+    let path = after[cs..ce].trim();
+    if path.is_empty() { return None; }
+
+    // Resolve path against gateway origin
+    let ctrl_url = if path.starts_with("http") {
+        path.to_string()
+    } else {
+        let origin: &str = {
+            let p = base.find("://").map(|i| i + 3).unwrap_or(0);
+            let rest = &base[p..];
+            let end = rest.find('/').map(|i| p + i).unwrap_or(base.len());
+            &base[..end]
+        };
+        if path.starts_with('/') {
+            format!("{}{}", origin, path)
+        } else {
+            format!("{}/{}", origin, path)
+        }
+    };
+
+    Some((ctrl_url, svc_type.to_string()))
+}
+
+async fn upnp_soap<B: Into<reqwest::Body>>(
+    url: &str,
+    action: &str,
+    body: B,
+) -> Option<String> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build().ok()?;
+    let resp = client.post(url)
+        .header("SOAPAction", action)
+        .header("Content-Type", "text/xml; charset=\"utf-8\"")
+        .body(body)
+        .send().await.ok()?;
+    resp.text().await.ok()
+}
+
+async fn try_upnp(port: u16) -> Option<String> {
+    let local_ip = upnp_local_ipv4()?.to_string();
+    let location = upnp_discover_location().await?;
+
+    // Fetch device description
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build().ok()?;
+    let xml = client.get(&location).send().await.ok()?.text().await.ok()?;
+
+    let (ctrl_url, svc_type) = upnp_resolve_control_url(&xml, &location)?;
+
+    // GetExternalIPAddress
+    let ext_ip_soap = format!(
+        r#"<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:GetExternalIPAddress xmlns:u="{svc}"/></s:Body></s:Envelope>"#,
+        svc = svc_type
+    );
+    let action = format!("\"{}#GetExternalIPAddress\"", svc_type);
+    let resp_xml = upnp_soap(&ctrl_url, &action, ext_ip_soap).await?;
+    let ext_ip = {
+        const TAG: &str = "NewExternalIPAddress>";
+        let s = resp_xml.find(TAG)? + TAG.len();
+        let e = resp_xml[s..].find('<')? + s;
+        resp_xml[s..e].trim().to_string()
+    };
+    if ext_ip.is_empty() { return None; }
+
+    // DeletePortMapping first (clear stale lease)
+    let del_soap = format!(
+        r#"<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:DeletePortMapping xmlns:u="{svc}"><NewRemoteHost/><NewExternalPort>{p}</NewExternalPort><NewProtocol>TCP</NewProtocol></u:DeletePortMapping></s:Body></s:Envelope>"#,
+        svc = svc_type, p = port
+    );
+    let _ = upnp_soap(&ctrl_url, &format!("\"{}#DeletePortMapping\"", svc_type), del_soap).await;
+
+    // AddPortMapping
+    let add_soap = format!(
+        r#"<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:AddPortMapping xmlns:u="{svc}"><NewRemoteHost/><NewExternalPort>{p}</NewExternalPort><NewProtocol>TCP</NewProtocol><NewInternalPort>{p}</NewInternalPort><NewInternalClient>{ip}</NewInternalClient><NewEnabled>1</NewEnabled><NewPortMappingDescription>Irium Core P2P</NewPortMappingDescription><NewLeaseDuration>3600</NewLeaseDuration></u:AddPortMapping></s:Body></s:Envelope>"#,
+        svc = svc_type, p = port, ip = local_ip
+    );
+    let add_resp = upnp_soap(&ctrl_url, &format!("\"{}#AddPortMapping\"", svc_type), add_soap).await?;
+
+    // Success if response contains the success envelope (no fault element)
+    if add_resp.contains("Fault") || add_resp.contains("fault") {
+        tracing::warn!("[upnp] AddPortMapping rejected: {}", &add_resp[..add_resp.len().min(200)]);
+        return None;
+    }
+
+    tracing::info!("[upnp] TCP {} mapped → {}:{}", port, ext_ip, port);
+    Some(ext_ip)
+}
+
+#[tauri::command]
+async fn try_upnp_port_map(state: State<'_, AppState>) -> Result<Option<String>, String> {
+    let ip = try_upnp(38291).await;
+    *state.upnp_external_ip.lock().map_err(lock_err)? = ip.clone();
+    Ok(ip)
+}
+
 #[tauri::command]
 async fn start_node(
     state: State<'_, AppState>,
     data_dir: Option<String>,
+    external_ip: Option<String>,
 ) -> Result<NodeStartResult, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
@@ -221,20 +442,121 @@ async fn start_node(
     let home_dir = dirs::home_dir().unwrap_or_default();
     let irium_dir = home_dir.join(".irium");
 
-    // Pass configuration via env vars (verified against real iriumd source code).
+    // Pass configuration via env vars — all verified against irium-source/src/bin/iriumd.rs
+    // and irium-source/src/p2p.rs. Only variables actually read by those files are set here.
     let mut node_env = HashMap::new();
+
+    // Data directory hint. storage.rs configured_dir() silently rejects Windows absolute
+    // paths (drive-letter prefix causes normalize_under to return None), so we also set
+    // HOME and USERPROFILE so os_home_dir() resolves to the right place on Windows.
     node_env.insert("IRIUM_DATA_DIR".to_string(), irium_dir.to_string_lossy().to_string());
-    // REQUIRED: P2P networking is disabled entirely unless IRIUM_P2P_BIND is set.
-    // Without this env var the node starts RPC-only with no peer connections.
+    if let Some(home) = dirs::home_dir() {
+        let home_str = home.to_string_lossy().to_string();
+        node_env.insert("HOME".to_string(), home_str.clone());
+        node_env.insert("USERPROFILE".to_string(), home_str);
+    }
+
+    // REQUIRED: iriumd starts RPC-only with no peer connections unless this is set.
     node_env.insert("IRIUM_P2P_BIND".to_string(), "0.0.0.0:38291".to_string());
-    // Allow unsigned seedlist in case our extra seeds break the original signature.
-    node_env.insert("IRIUM_SEEDLIST_ALLOW_UNSIGNED".to_string(), "1".to_string());
-    // Promote peers to the runtime seedlist after 1 day seen (default is 2 days, too slow for new nodes).
-    node_env.insert("IRIUM_RUNTIME_SEED_DAYS".to_string(), "1".to_string());
-    // Keep at least 8 peers in the runtime seedlist.
-    node_env.insert("IRIUM_RUNTIME_SEED_MIN_COUNT".to_string(), "8".to_string());
-    // Treat peers as stale only after 30 days without contact (keeps known nodes around longer).
-    node_env.insert("IRIUM_PEER_STALE_DIALABLE_HOURS".to_string(), "720".to_string());
+
+    // Official bootstrap seeds (matches irium-source/bootstrap/seedlist.txt exactly).
+    // IRIUM_ADDNODE feeds the seed dial loop directly (highest priority, always retried).
+    // NOTE: We deliberately do NOT set IRIUM_TRUSTED_PEERS to these seeds.
+    // Trusted seeds trigger a tie-break in connect_and_handshake (p2p.rs:3828):
+    // if local_ip > remote_ip (u32), iriumd refuses the outbound dial with "prefer inbound".
+    // Our private IP (192.168.x.x ≈ 3.2B) > 157.173.116.134 (≈ 2.6B), so marking that
+    // seed as trusted permanently blocks our outbound connection to it. The ADDNODE seed
+    // dial loop has no such restriction and handles seeds independently of trusted status.
+    // Only the two official seed nodes from irium-source/bootstrap/seedlist.txt.
+    // Community IPs are deliberately excluded here — they go stale as participants
+    // change their nodes. The gossip system discovers new peers organically from these seeds.
+    let hardcoded_seeds: &[&str] = &[
+        "207.244.247.86", "157.173.116.134",
+    ];
+
+    // Peers organically discovered by iriumd in previous sessions via P2P gossip.
+    // No external server dependency — purely local data iriumd wrote itself.
+    // Promoting them to IRIUM_ADDNODE gives them highest-priority retry behaviour.
+    let extra_seeds = read_extra_seeds();
+    if !extra_seeds.is_empty() {
+        tracing::info!("[start_node] {} extra seeds from seedlist.extra", extra_seeds.len());
+    }
+
+    // UPnP: ask the router to open TCP 38291 so other NAT-behind nodes can
+    // dial us inbound. Seeds learn our dialable address and share it via PEX.
+    // On success the router's external IP is returned (same as public IP).
+    let upnp_ip = try_upnp(38291).await;
+    if let Some(ref ip) = upnp_ip {
+        tracing::info!("[start_node] UPnP active — TCP 38291 mapped via router, external IP: {}", ip);
+        *state.upnp_external_ip.lock().map_err(lock_err)? = Some(ip.clone());
+    } else {
+        tracing::info!("[start_node] UPnP not available — relying on manual port forwarding or inbound-only mode");
+        *state.upnp_external_ip.lock().map_err(lock_err)? = None;
+    }
+
+    // Resolve the public IP: user override > UPnP > HTTP probe.
+    let resolved_public_ip: Option<String> = if let Some(ref ip) = external_ip {
+        let t = ip.trim();
+        if !t.is_empty() { Some(t.to_string()) } else { None }
+    } else if let Some(ref ip) = upnp_ip {
+        Some(ip.clone())
+    } else {
+        detect_public_ip("https://api4.ipify.org".to_string())
+            .await
+            .ok()
+            .map(|ip| ip.trim().to_string())
+    };
+
+    // Combined deduplicated seed list, own public IP filtered out.
+    let own_ip = resolved_public_ip.as_deref().unwrap_or("").trim().to_string();
+    let mut seen = std::collections::HashSet::new();
+    let bootstrap_seeds: String = hardcoded_seeds
+        .iter()
+        .map(|s| s.to_string())
+        .chain(extra_seeds.into_iter())
+        .filter(|ip| !ip.is_empty() && ip != &own_ip && seen.insert(ip.clone()))
+        .collect::<Vec<_>>()
+        .join(",");
+    node_env.insert("IRIUM_ADDNODE".to_string(), bootstrap_seeds);
+
+    // Seed dial backoff tuning (iriumd.rs uses these for the bootstrap reconnect loop).
+    // Retry disconnected seeds quickly (base 1 s, cap at 60 s) on a small network.
+    node_env.insert("IRIUM_SEED_DIAL_BASE_SECS".to_string(), "1".to_string());
+    node_env.insert("IRIUM_SEED_DIAL_MAX_SECS".to_string(), "60".to_string());
+    node_env.insert("IRIUM_SEED_DIAL_BANNED_SECS".to_string(), "30".to_string());
+
+    // Temp-ban window: 30 s instead of the default 120 s so transient failures
+    // don't lock out the only available peers for long on a small network.
+    node_env.insert("IRIUM_P2P_TEMP_BAN_SECS".to_string(), "30".to_string());
+
+    // Parallel blocking threads for header/block processing (default 2).
+    node_env.insert("IRIUM_P2P_BLOCKING_CONCURRENCY".to_string(), "4".to_string());
+
+    // Raise the total peer ceiling so iriumd keeps seeking peers via gossip.
+    // Real var is IRIUM_P2P_MAX_PEERS (clamp 10-500, default 100). 24 gives
+    // room to grow well beyond the 11 seed nodes without going overboard.
+    node_env.insert("IRIUM_P2P_MAX_PEERS".to_string(), "24".to_string());
+
+    // Gap healer: fill missing persisted blocks more aggressively than defaults
+    // (default 30 s / 100 blocks → 15 s / 200 blocks).
+    node_env.insert("IRIUM_GAP_HEALER_SECS".to_string(), "15".to_string());
+    node_env.insert("IRIUM_GAP_HEALER_BATCH".to_string(), "200".to_string());
+
+    // Sync cooldown between block-range requests per peer (default 2 s → 1 s).
+    node_env.insert("IRIUM_P2P_SYNC_COOLDOWN_SECS".to_string(), "1".to_string());
+
+    // Announce the node's public IP so seeds correctly register this node as
+    // dialable and share the address via PEX to other nodes. Without this,
+    // iriumd's local_ips set won't include the public IP — preventing
+    // is_self_ip from working and causing unnecessary self-dial attempts when
+    // our own address is returned by seeds via PEX.
+    if let Some(ref ip) = resolved_public_ip {
+        if !ip.is_empty() {
+            node_env.insert("IRIUM_NODE_PUBLIC_IP".to_string(), ip.clone());
+            node_env.insert("IRIUM_PUBLIC_IP".to_string(), ip.clone());
+            tracing::info!("[start_node] announcing public IP: {}", ip);
+        }
+    }
 
     // Try Tauri sidecar first; fall back to launching iriumd from system PATH.
     match Command::new_sidecar("iriumd") {
@@ -247,14 +569,35 @@ async fn start_node(
             {
                 Ok((mut rx, child)) => {
                     let pid = child.pid();
-                    let mut proc_lock = state.node_process.lock().map_err(lock_err)?;
-                    *proc_lock = Some(child);
+                    let node_ref = Arc::clone(&state.node_process);
+                    {
+                        let mut proc_lock = state.node_process.lock().map_err(lock_err)?;
+                        *proc_lock = Some(child);
+                    }
+                    let logs_ref = Arc::clone(&state.node_logs);
                     tauri::async_runtime::spawn(async move {
                         while let Some(event) = rx.recv().await {
                             match event {
-                                CommandEvent::Stdout(line) => tracing::info!("[iriumd] {}", line),
-                                CommandEvent::Stderr(line) => tracing::warn!("[iriumd stderr] {}", line),
-                                _ => break,
+                                CommandEvent::Stdout(line) => {
+                                    tracing::info!("[iriumd] {}", line);
+                                    if let Ok(mut logs) = logs_ref.lock() {
+                                        logs.push(line);
+                                        if logs.len() > 2000 { logs.drain(0..500); }
+                                    }
+                                },
+                                CommandEvent::Stderr(line) => {
+                                    tracing::warn!("[iriumd stderr] {}", line);
+                                    if let Ok(mut logs) = logs_ref.lock() {
+                                        logs.push(format!("[stderr] {}", line));
+                                        if logs.len() > 2000 { logs.drain(0..500); }
+                                    }
+                                },
+                                CommandEvent::Terminated(_) => {
+                                    // iriumd exited — clear the slot so start_node can relaunch.
+                                    if let Ok(mut lock) = node_ref.lock() { *lock = None; }
+                                    break;
+                                }
+                                _ => {}
                             }
                         }
                     });
@@ -322,6 +665,13 @@ async fn stop_node(state: State<'_, AppState>) -> Result<bool, String> {
             let _ = child.kill();
         }
     }
+    // Kill the explorer sidecar
+    {
+        let mut proc_lock = state.explorer_process.lock().map_err(lock_err)?;
+        if let Some(child) = proc_lock.take() {
+            let _ = child.kill();
+        }
+    }
     // Also kill any externally-started iriumd process (handles nodes started outside the GUI)
     #[cfg(target_os = "windows")]
     {
@@ -331,11 +681,20 @@ async fn stop_node(state: State<'_, AppState>) -> Result<bool, String> {
         let _ = std::process::Command::new("taskkill")
             .args(["/F", "/IM", "iriumd.exe"])
             .output();
+        let _ = std::process::Command::new("taskkill")
+            .args(["/F", "/IM", "irium-explorer-x86_64-pc-windows-msvc.exe"])
+            .output();
+        let _ = std::process::Command::new("taskkill")
+            .args(["/F", "/IM", "irium-explorer.exe"])
+            .output();
     }
     #[cfg(not(target_os = "windows"))]
     {
         let _ = std::process::Command::new("pkill")
             .args(["-f", "iriumd"])
+            .output();
+        let _ = std::process::Command::new("pkill")
+            .args(["-f", "irium-explorer"])
             .output();
     }
     Ok(true)
@@ -419,11 +778,15 @@ async fn setup_data_dir_inner() -> Result<bool, String> {
             .map_err(|e| format!("Cannot create {}: {}", dir.display(), e))?;
     }
 
-    // Repair: remove seedlist.txt written with old broken multiaddr/IP:PORT format.
+    // Repair: remove seedlist.txt if broken format or too few seeds (forces refresh from embedded list).
     let seedlist_path = bootstrap_dir.join("seedlist.txt");
     if seedlist_path.exists() {
         if let Ok(content) = std::fs::read_to_string(&seedlist_path) {
-            if content.contains("\\ip4\\") || content.contains("\\tcp\\")
+            let seed_count = content.lines()
+                .filter(|l| !l.starts_with('#') && !l.trim().is_empty())
+                .count();
+            if seed_count < 5
+                || content.contains("\\ip4\\") || content.contains("\\tcp\\")
                 || content.contains("/ip4/") || content.contains(":38291")
             {
                 let _ = std::fs::remove_file(&seedlist_path);
@@ -458,6 +821,112 @@ async fn setup_data_dir_inner() -> Result<bool, String> {
         let full_path = irium_dir.join(rel_path);
         std::fs::write(&full_path, content)
             .map_err(|e| format!("Cannot write {}: {}", full_path.display(), e))?;
+    }
+
+    // Promote all peers from peers.json → seedlist.extra so iriumd's seed dial loop
+    // can reach them directly at startup (bypassing the last_height filter in
+    // connect_known_peers that blocks newly-discovered peers with no known height).
+    // Without this, 1000+ discovered peers sit in the peer directory forever undialed.
+    let peers_json_path = irium_dir.join("state").join("peers.json");
+    if let Ok(raw) = std::fs::read_to_string(&peers_json_path) {
+        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&raw) {
+            if let Some(obj) = val.as_object() {
+                let extra_path = bootstrap_dir.join("seedlist.extra");
+                let existing = std::fs::read_to_string(&extra_path).unwrap_or_default();
+                let mut entries: std::collections::HashSet<String> = existing
+                    .lines()
+                    .filter(|l| !l.trim().is_empty() && !l.trim().starts_with('#'))
+                    .map(|l| l.trim().to_string())
+                    .collect();
+                let before = entries.len();
+                for multiaddr in obj.keys() {
+                    // Convert /ip4/X.X.X.X/tcp/PORT → X.X.X.X:PORT
+                    // Only include stable listening ports (< 32768 threshold).
+                    // Ephemeral ports (> 32768) are outbound client ports from inbound
+                    // connections to us — they're useless for outbound dialing.
+                    let parts: Vec<&str> = multiaddr.split('/').collect();
+                    if parts.len() >= 5 && parts[1] == "ip4" && parts[3] == "tcp" {
+                        // Only include the standard Irium P2P port (38291).
+                        // Ephemeral client ports recorded from inbound connections
+                        // are useless for outbound dialing.
+                        if parts[4] == "38291" {
+                            entries.insert(format!("{}:38291", parts[2]));
+                        }
+                    }
+                }
+                if entries.len() > before {
+                    let content: String = entries.iter()
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .join("\n") + "\n";
+                    let _ = std::fs::write(&extra_path, content);
+                    tracing::info!(
+                        "[setup_data_dir] promoted {} peers from peers.json to seedlist.extra (was {}, now {})",
+                        entries.len() - before, before, entries.len()
+                    );
+                }
+            }
+        }
+    }
+
+    // One-time block migration: previous versions of this app stored blocks in
+    // AppData\Roaming\Irium\IriumCore\data\.irium\blocks\ (the Tauri app_data_dir).
+    // The current version uses ~/.irium/blocks/ (iriumd's native home-dir layout).
+    // Hard-link any blocks from the legacy location so iriumd resumes from the
+    // highest already-synced height instead of re-downloading from genesis.
+    // Hard links are instant on the same drive and use no extra disk space.
+    let local_blocks = irium_dir.join("blocks");
+    let _ = std::fs::create_dir_all(&local_blocks);
+    if let Some(data_dir) = dirs::data_dir() {
+        let legacy_blocks = data_dir
+            .join("Irium").join("IriumCore").join("data").join(".irium").join("blocks");
+        if legacy_blocks.exists() && legacy_blocks != local_blocks {
+            let legacy_count = std::fs::read_dir(&legacy_blocks)
+                .map(|d| d.count()).unwrap_or(0);
+            let local_count = std::fs::read_dir(&local_blocks)
+                .map(|d| d.count()).unwrap_or(0);
+            if legacy_count > local_count + 10 {
+                let mut migrated = 0usize;
+                if let Ok(entries) = std::fs::read_dir(&legacy_blocks) {
+                    for entry in entries.flatten() {
+                        let src = entry.path();
+                        if src.is_file() {
+                            if let Some(name) = src.file_name() {
+                                let dst = local_blocks.join(name);
+                                if !dst.exists() {
+                                    if std::fs::hard_link(&src, &dst).is_err() {
+                                        let _ = std::fs::copy(&src, &dst);
+                                    }
+                                    migrated += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+                if migrated > 0 {
+                    tracing::info!(
+                        "[setup_data_dir] migrated {} block files from legacy AppData path to ~/.irium/blocks/",
+                        migrated
+                    );
+                }
+            }
+        }
+    }
+
+    // Also migrate state files (node_id, peers.json) so the node keeps its identity
+    // and peer history across the data-dir change.
+    let local_state = irium_dir.join("state");
+    let _ = std::fs::create_dir_all(&local_state);
+    if let Some(data_dir) = dirs::data_dir() {
+        let legacy_state = data_dir
+            .join("Irium").join("IriumCore").join("data").join(".irium").join("state");
+        for file in &["node_id", "peers.json", "peer_reputation.json"] {
+            let src = legacy_state.join(file);
+            let dst = local_state.join(file);
+            if src.exists() && !dst.exists() {
+                let _ = std::fs::copy(&src, &dst);
+            }
+        }
     }
 
     Ok(true)
@@ -539,8 +1008,8 @@ async fn check_binaries() -> Result<BinaryCheckResult, String> {
 }
 
 // get_node_status: fully decentralized — reads only from the local node's RPC.
-// The network tip comes from best_header_tip, which iriumd learns from its peers
-// via P2P gossip. No external HTTP calls to hardcoded IPs.
+// network_tip is derived from the maximum height reported by connected peers.
+// best_header_tip from /status mirrors the local chain height, not the true peer tip.
 #[tauri::command]
 async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
@@ -550,21 +1019,39 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
             let tip = info.best_header_tip.as_ref()
                 .map(|t| t.hash.clone())
                 .unwrap_or_default();
-            // network_tip is what the node's peers told it via P2P — no external calls.
-            let network_tip = info.best_header_tip.as_ref()
-                .map(|t| t.height)
-                .unwrap_or(0);
             let local_height = info.height.unwrap_or(0);
             let peers = info.peer_count.unwrap_or(0);
 
-            // Synced only when: anchor loaded, at least one peer, peers have told us
-            // the network tip (network_tip > 0), and we're within 10 blocks of it.
-            // This prevents false "At chain tip" when the node has no peers yet.
+            // Query /peers to get heights reported by each connected peer.
+            // This gives the true network tip, not just what iriumd has locally committed.
+            let peer_max_height: u64 = {
+                let client = reqwest::Client::new();
+                match client
+                    .get(format!("{}/peers", rpc_url))
+                    .timeout(Duration::from_secs(3))
+                    .send()
+                    .await
+                {
+                    Ok(resp) => match resp.json::<PeersResponse>().await {
+                        Ok(pr) => pr.peers.iter().filter_map(|p| p.height).max().unwrap_or(0),
+                        Err(_) => 0,
+                    },
+                    Err(_) => 0,
+                }
+            };
+
+            // Use the maximum of: peer-reported tip, best_header_tip, local height.
+            // peer_max_height is the authoritative network tip when peers are connected.
+            let best_header_height = info.best_header_tip.as_ref().map(|t| t.height).unwrap_or(0);
+            let network_tip = peer_max_height.max(best_header_height).max(local_height);
+
+            // Synced when: anchor loaded, at least one peer, and within 10 blocks of tip.
             let synced = info.anchor_loaded.unwrap_or(false)
                 && peers > 0
                 && network_tip > 0
                 && local_height >= network_tip.saturating_sub(10);
 
+            let upnp_ip = state.upnp_external_ip.lock().map_err(lock_err)?.clone();
             let status = NodeStatus {
                 running: true,
                 synced,
@@ -575,6 +1062,8 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
                 network: info.network_era.unwrap_or_else(|| "irium".to_string()),
                 version: String::new(),
                 rpc_url: rpc_url.clone(),
+                upnp_active: upnp_ip.is_some(),
+                upnp_external_ip: upnp_ip,
             };
             *state.last_node_status.lock().map_err(lock_err)? = Some(status.clone());
             Ok(status)
@@ -582,6 +1071,7 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
         Err(_) => {
             // RPC not reachable — node is offline
             *state.last_node_status.lock().map_err(lock_err)? = None;
+            let upnp_ip = state.upnp_external_ip.lock().map_err(lock_err)?.clone();
             Ok(NodeStatus {
                 running: false,
                 synced: false,
@@ -592,6 +1082,8 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
                 network: "irium".to_string(),
                 version: String::new(),
                 rpc_url,
+                upnp_active: upnp_ip.is_some(),
+                upnp_external_ip: upnp_ip,
             })
         }
     }
@@ -605,6 +1097,10 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
 #[tauri::command]
 async fn wallet_get_balance(state: State<'_, AppState>) -> Result<WalletBalance, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    // No wallet configured — return zero rather than exposing the default wallet's addresses
+    if wallet_path.is_none() {
+        return Ok(WalletBalance { confirmed: 0, unconfirmed: 0, total: 0 });
+    }
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
@@ -766,7 +1262,11 @@ async fn wallet_set_path(state: State<'_, AppState>, path: String) -> Result<boo
     Ok(true)
 }
 
-// wallet_create: runs `irium-wallet create-wallet --bip32` and parses output
+// wallet_create: creates a new BIP32 wallet, replacing any existing wallet file.
+//
+// The binary refuses to overwrite an existing wallet, so we remove the old file
+// first. IRIUM_WALLET_FILE is set explicitly so the path is deterministic on all
+// platforms regardless of how HOME is resolved inside the wallet binary.
 //
 // Verified stdout format:
 //   BIP32 wallet created
@@ -777,12 +1277,19 @@ async fn wallet_set_path(state: State<'_, AppState>, path: String) -> Result<boo
 //   wallet /home/user/.irium/wallet.json
 #[tauri::command]
 async fn wallet_create(state: State<'_, AppState>) -> Result<WalletCreateResult, String> {
-    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+
+    let wallet_file = resolve_wallet_path();
+
+    // Binary exits with code 1 if the wallet file already exists — remove it first
+    if std::path::Path::new(&wallet_file).exists() {
+        std::fs::remove_file(&wallet_file)
+            .map_err(|e| format!("Failed to remove existing wallet: {}", e))?;
+    }
 
     let output = run_wallet_cmd(
         vec!["create-wallet".to_string(), "--bip32".to_string()],
-        wallet_path,
+        Some(wallet_file.clone()),
         data_dir,
     ).await?;
 
@@ -804,61 +1311,117 @@ async fn wallet_create(state: State<'_, AppState>) -> Result<WalletCreateResult,
         ));
     }
 
-    Ok(WalletCreateResult { mnemonic, address })
+    // Register the new wallet so all subsequent commands use it
+    *state.wallet_path.lock().map_err(lock_err)? = Some(wallet_file.clone());
+
+    Ok(WalletCreateResult { mnemonic, address, wallet_path: wallet_file })
 }
 
-// wallet_import_mnemonic: runs `irium-wallet import-mnemonic "<24 words>"`
+// wallet_import_mnemonic: restores a BIP32 wallet from a 12/24-word seed phrase.
+// The binary refuses to overwrite an existing wallet file, so we remove it first.
+// Returns the resolved wallet file path so the frontend can persist it.
 #[tauri::command]
 async fn wallet_import_mnemonic(
     state: State<'_, AppState>,
     words: String,
-) -> Result<bool, String> {
-    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+) -> Result<String, String> {
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+
+    let wallet_file = resolve_wallet_path();
+
+    if std::path::Path::new(&wallet_file).exists() {
+        std::fs::remove_file(&wallet_file)
+            .map_err(|e| format!("Failed to remove existing wallet: {}", e))?;
+    }
 
     run_wallet_cmd(
         vec!["import-mnemonic".to_string(), words],
-        wallet_path,
+        Some(wallet_file.clone()),
         data_dir,
     ).await?;
 
-    Ok(true)
+    *state.wallet_path.lock().map_err(lock_err)? = Some(wallet_file.clone());
+    Ok(wallet_file)
 }
 
-// wallet_import_wif: runs `irium-wallet import-wif "<WIF key>"`
+// wallet_import_wif: adds a WIF private key to the wallet (creates wallet if none exists).
+// Unlike import-mnemonic, this ADDS to an existing wallet — does not replace it.
+// Returns the resolved wallet file path so the frontend can persist it.
 #[tauri::command]
 async fn wallet_import_wif(
     state: State<'_, AppState>,
     wif: String,
-) -> Result<bool, String> {
-    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+) -> Result<String, String> {
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let wallet_file = resolve_wallet_path();
 
     run_wallet_cmd(
         vec!["import-wif".to_string(), wif],
-        wallet_path,
+        Some(wallet_file.clone()),
         data_dir,
     ).await?;
 
-    Ok(true)
+    *state.wallet_path.lock().map_err(lock_err)? = Some(wallet_file.clone());
+    Ok(wallet_file)
 }
 
-// wallet_import_private_key: runs `irium-wallet import-private-key "<hex key>"`
+// wallet_import_private_key: the irium-wallet binary does not have an import-private-key
+// command; use import-wif for key import. This stub returns an error immediately.
 #[tauri::command]
 async fn wallet_import_private_key(
-    state: State<'_, AppState>,
-    hex_key: String,
-) -> Result<bool, String> {
+    _state: State<'_, AppState>,
+    _hex_key: String,
+) -> Result<String, String> {
+    Err("Raw hex private key import is not supported by this wallet version. Convert to WIF format and use Import WIF instead.".to_string())
+}
+
+#[tauri::command]
+async fn wallet_export_seed(state: State<'_, AppState>) -> Result<String, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
 
+    let tmp = std::env::temp_dir().join(format!(
+        "irium_seed_{}.txt",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis()
+    ));
+
     run_wallet_cmd(
-        vec!["import-private-key".to_string(), hex_key],
+        vec!["export-seed".to_string(), "--out".to_string(), tmp.to_string_lossy().to_string()],
         wallet_path,
         data_dir,
     ).await?;
 
-    Ok(true)
+    let content = std::fs::read_to_string(&tmp)
+        .map_err(|e| format!("Failed to read seed file: {}", e))?;
+    let _ = std::fs::remove_file(&tmp);
+    Ok(content.trim().to_string())
+}
+
+#[tauri::command]
+async fn wallet_backup(state: State<'_, AppState>, out_path: String) -> Result<String, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    run_wallet_cmd(
+        vec!["backup".to_string(), "--out".to_string(), out_path.clone()],
+        wallet_path,
+        data_dir,
+    ).await?;
+    Ok(out_path)
+}
+
+#[tauri::command]
+async fn wallet_restore_backup(state: State<'_, AppState>, file_path: String) -> Result<String, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    run_wallet_cmd(
+        vec!["restore-backup".to_string(), file_path.clone(), "--force".to_string()],
+        wallet_path,
+        data_dir,
+    ).await?;
+    Ok("Wallet restored successfully".to_string())
 }
 
 // ============================================================
@@ -923,7 +1486,7 @@ async fn offer_create(
     // Need seller address and timeout height
     let seller = get_first_wallet_address(wallet_path.clone(), data_dir.clone()).await?;
     let height = get_current_height(&rpc_url).await;
-    let timeout = height + 1000;
+    let timeout = height + params.timeout_blocks.unwrap_or(1000);
 
     // offer-create --seller <addr> --amount <irm> --payment-method <text> --timeout <height>
     let mut args = vec![
@@ -937,6 +1500,10 @@ async fn offer_create(
     if let Some(note) = params.description {
         args.push("--price-note".to_string());
         args.push(note);
+    }
+    if let Some(instr) = params.payment_instructions {
+        args.push("--payment-instructions".to_string());
+        args.push(instr);
     }
     if let Some(id) = params.offer_id {
         args.push("--offer-id".to_string());
@@ -1904,6 +2471,110 @@ async fn rpc_get_block(
 }
 
 #[tauri::command]
+async fn rpc_get_tx(
+    state: State<'_, AppState>,
+    txid: String,
+) -> Result<serde_json::Value, String> {
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let client = reqwest::Client::new();
+    let url = format!("{}/rpc/tx?txid={}", rpc_url, txid);
+    let resp = client
+        .get(&url)
+        .timeout(Duration::from_secs(10))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if resp.status().is_success() {
+        resp.json::<serde_json::Value>().await.map_err(|e| e.to_string())
+    } else {
+        Err(format!("Transaction not found"))
+    }
+}
+
+#[tauri::command]
+async fn rpc_get_address(
+    state: State<'_, AppState>,
+    address: String,
+) -> Result<serde_json::Value, String> {
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let client = reqwest::Client::new();
+    let url = format!("{}/rpc/address?addr={}", rpc_url, address);
+    let resp = client
+        .get(&url)
+        .timeout(Duration::from_secs(10))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if resp.status().is_success() {
+        resp.json::<serde_json::Value>().await.map_err(|e| e.to_string())
+    } else {
+        Err(format!("Address not found"))
+    }
+}
+
+/// Fetches the last `limit` blocks directly from iriumd — no sidecar required.
+/// Used by the Explorer page to display the recent block grid.
+#[tauri::command]
+async fn get_recent_blocks(
+    state: State<'_, AppState>,
+    limit: Option<u32>,
+    end_height: Option<u64>,
+) -> Result<Vec<ExplorerBlock>, String> {
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let n = limit.unwrap_or(20).min(100) as u64;
+
+    let info = get_rpc_info(&rpc_url).await
+        .map_err(|_| "node offline".to_string())?;
+    let tip = info.height.unwrap_or(0);
+    if tip == 0 { return Ok(vec![]); }
+    let height = end_height.map(|h| h.min(tip)).unwrap_or(tip);
+
+    // Build a single shared client with a tight per-request timeout.
+    // Requests are fired concurrently so total latency ≈ one round-trip,
+    // not N × round-trip, which previously starved the node-status poller.
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(3))
+        .build()
+        .map_err(|e| format!("client: {}", e))?;
+
+    let start = height.saturating_sub(n - 1);
+
+    // Spawn one task per block height — all requests run in parallel.
+    let handles: Vec<tokio::task::JoinHandle<Option<ExplorerBlock>>> =
+        (start..=height).rev().map(|h| {
+            let url    = format!("{}/rpc/block?height={}", rpc_url, h);
+            let client = client.clone();
+            tokio::spawn(async move {
+                let resp = client.get(&url).send().await.ok()?;
+                let b    = resp.json::<serde_json::Value>().await.ok()?;
+                let blk  = ExplorerBlock {
+                    height:        b["height"].as_u64().unwrap_or(h),
+                    hash:          b["hash"].as_str().unwrap_or("").to_string(),
+                    miner_address: b["miner_address"].as_str()
+                        .or_else(|| b["miner"].as_str())
+                        .map(String::from),
+                    time:          b["time"].as_u64()
+                        .or_else(|| b["timestamp"].as_u64())
+                        .unwrap_or(0),
+                    tx_count:      b["tx_count"].as_u64().unwrap_or(0) as u32,
+                };
+                if blk.hash.is_empty() { None } else { Some(blk) }
+            })
+        }).collect();
+
+    // Await all handles; JoinHandle errors (task panics) are silently dropped.
+    let mut blocks = Vec::with_capacity(n as usize);
+    for handle in handles {
+        if let Ok(Some(blk)) = handle.await {
+            blocks.push(blk);
+        }
+    }
+    blocks.sort_by(|a, b| b.height.cmp(&a.height));
+
+    Ok(blocks)
+}
+
+#[tauri::command]
 async fn rpc_get_offers_feed(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
     let client = reqwest::Client::new();
@@ -1923,6 +2594,160 @@ async fn rpc_set_url(state: State<'_, AppState>, url: String) -> Result<bool, St
 }
 
 // ============================================================
+// EXPLORER SIDECAR COMMANDS (queries irium-explorer on :38310)
+// ============================================================
+
+const EXPLORER_BASE_URL: &str = "http://127.0.0.1:38310";
+
+/// Starts the irium-explorer sidecar if it isn't already running.
+/// Called lazily by the Explorer page on mount — keeps it isolated from iriumd's lifecycle.
+#[tauri::command]
+async fn start_explorer_sidecar(state: State<'_, AppState>) -> Result<bool, String> {
+    // If already running, do nothing.
+    {
+        let lock = state.explorer_process.lock().map_err(lock_err)?;
+        if lock.is_some() {
+            return Ok(true);
+        }
+    }
+
+    let mut explorer_env = HashMap::new();
+    explorer_env.insert("IRIUM_NODE_RPC".to_string(), "http://127.0.0.1:38300".to_string());
+    explorer_env.insert("IRIUM_EXPLORER_HOST".to_string(), "127.0.0.1".to_string());
+    explorer_env.insert("IRIUM_EXPLORER_PORT".to_string(), "38310".to_string());
+
+    match Command::new_sidecar("irium-explorer") {
+        Ok(cmd) => {
+            match cmd.envs(explorer_env).spawn() {
+                Ok((mut erx, echild)) => {
+                    {
+                        let mut lock = state.explorer_process.lock().map_err(lock_err)?;
+                        *lock = Some(echild);
+                    }
+                    let explorer_ref = Arc::clone(&state.explorer_process);
+                    tauri::async_runtime::spawn(async move {
+                        while let Some(event) = erx.recv().await {
+                            match event {
+                                CommandEvent::Stdout(line) => tracing::info!("[irium-explorer] {}", line),
+                                CommandEvent::Stderr(line) => tracing::warn!("[irium-explorer stderr] {}", line),
+                                CommandEvent::Terminated(_) => {
+                                    // Explorer exited — clear the slot so next call restarts it.
+                                    if let Ok(mut lock) = explorer_ref.lock() {
+                                        *lock = None;
+                                    }
+                                    break;
+                                }
+                                _ => {}
+                            }
+                        }
+                    });
+                    Ok(true)
+                }
+                Err(e) => Err(format!("Failed to start irium-explorer: {}", e)),
+            }
+        }
+        Err(_) => Err("irium-explorer binary not found in binaries/".to_string()),
+    }
+}
+
+#[tauri::command]
+async fn get_explorer_stats() -> Result<ExplorerNetworkStats, String> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(4))
+        .build()
+        .map_err(|e| format!("client build failed: {}", e))?;
+
+    let (stats_res, metrics_res) = tokio::join!(
+        client.get(format!("{}/api/stats", EXPLORER_BASE_URL)).send(),
+        client.get(format!("{}/api/metrics", EXPLORER_BASE_URL)).send(),
+    );
+
+    let stats_val: serde_json::Value = stats_res
+        .map_err(|_| "explorer offline".to_string())?
+        .json().await
+        .map_err(|e| format!("stats parse: {}", e))?;
+
+    let metrics_val: serde_json::Value = metrics_res
+        .map_err(|_| "explorer offline".to_string())?
+        .json().await
+        .map_err(|e| format!("metrics parse: {}", e))?;
+
+    Ok(ExplorerNetworkStats {
+        height:              stats_val["height"].as_u64().unwrap_or(0),
+        total_blocks:        stats_val["total_blocks"].as_u64().unwrap_or(0),
+        supply_irm:          stats_val["supply_irm"].as_f64().unwrap_or(0.0),
+        peer_count:          stats_val["peer_count"].as_u64().unwrap_or(0) as u32,
+        active_miners:       stats_val["active_miners"].as_u64().unwrap_or(0) as u32,
+        hashrate:            metrics_val["hashrate"].as_f64().unwrap_or(0.0),
+        difficulty:          metrics_val["difficulty"].as_f64().unwrap_or(0.0),
+        diff_change_1h_pct:  metrics_val["diff_change_1h_pct"].as_f64().unwrap_or(0.0),
+        diff_change_24h_pct: metrics_val["diff_change_24h_pct"].as_f64().unwrap_or(0.0),
+        avg_block_time:      metrics_val["avg_block_time"].as_f64().unwrap_or(0.0),
+    })
+}
+
+#[tauri::command]
+async fn get_explorer_peers() -> Result<Vec<ExplorerPeer>, String> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(4))
+        .build()
+        .map_err(|e| format!("client build failed: {}", e))?;
+
+    let val: serde_json::Value = client
+        .get(format!("{}/api/peers", EXPLORER_BASE_URL))
+        .send()
+        .await
+        .map_err(|_| "explorer offline".to_string())?
+        .json()
+        .await
+        .map_err(|e| format!("peers parse: {}", e))?;
+
+    let peers = val["peers"].as_array()
+        .or_else(|| val.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    Ok(peers.into_iter().map(|p| ExplorerPeer {
+        multiaddr: p["multiaddr"].as_str().unwrap_or("").to_string(),
+        dialable:  p["dialable"].as_bool().unwrap_or(false),
+        height:    p["height"].as_u64(),
+        last_seen: p["last_seen"].as_f64(),
+        agent:     p["agent"].as_str().map(String::from),
+        source:    p["source"].as_str().map(String::from),
+    }).collect())
+}
+
+#[tauri::command]
+async fn get_explorer_blocks() -> Result<Vec<ExplorerBlock>, String> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(4))
+        .build()
+        .map_err(|e| format!("client build failed: {}", e))?;
+
+    let val: serde_json::Value = client
+        .get(format!("{}/api/blocks?limit=10", EXPLORER_BASE_URL))
+        .send()
+        .await
+        .map_err(|_| "explorer offline".to_string())?
+        .json()
+        .await
+        .map_err(|e| format!("blocks parse: {}", e))?;
+
+    let blocks = val["blocks"].as_array()
+        .or_else(|| val.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    Ok(blocks.into_iter().map(|b| ExplorerBlock {
+        height:        b["height"].as_u64().unwrap_or(0),
+        hash:          b["hash"].as_str().unwrap_or("").to_string(),
+        miner_address: b["miner_address"].as_str().or_else(|| b["miner"].as_str()).map(String::from),
+        time:          b["time"].as_u64().or_else(|| b["timestamp"].as_u64()).unwrap_or(0),
+        tx_count:      b["tx_count"].as_u64().unwrap_or(0) as u32,
+    }).collect())
+}
+
+// ============================================================
 // CONFIG / SETTINGS
 // ============================================================
 
@@ -1935,6 +2760,35 @@ async fn set_wallet_config(
     *state.wallet_path.lock().map_err(lock_err)? = wallet_path;
     *state.data_dir.lock().map_err(lock_err)? = data_dir;
     Ok(true)
+}
+
+/// Fetches the machine's public IP from a user-chosen service.
+/// Only called when the user explicitly clicks "Detect" in Settings —
+/// nothing goes out automatically.
+#[tauri::command]
+async fn detect_public_ip(service_url: String) -> Result<String, String> {
+    let url = service_url.trim().to_string();
+    if url.is_empty() {
+        return Err("No service URL provided".to_string());
+    }
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(8))
+        .build()
+        .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
+    let resp = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+    if !resp.status().is_success() {
+        return Err(format!("Service returned HTTP {}", resp.status()));
+    }
+    let body = resp.text().await.map_err(|e| format!("Failed to read response: {}", e))?;
+    let ip = body.trim().to_string();
+    if ip.is_empty() {
+        return Err("Service returned an empty response".to_string());
+    }
+    Ok(ip)
 }
 
 #[tauri::command]
@@ -2012,6 +2866,960 @@ async fn check_for_updates() -> Result<UpdateCheckResult, String> {
             release_url: None,
         })
     }
+}
+
+// ============================================================
+// NODE SOURCE UPDATE CHECK
+// ============================================================
+
+// Commit hash of the irium-source submodule at the time this binary was built.
+// Set by build.rs via cargo:rustc-env; falls back to "unknown" when git was
+// unavailable during the build.
+const IRIUM_NODE_COMMIT: &str = env!("IRIUM_NODE_COMMIT");
+
+fn short_sha(s: &str) -> String {
+    if s.len() >= 7 { s[..7].to_string() } else { s.to_string() }
+}
+
+/// Check the iriumlabs/irium GitHub repo for commits newer than what this
+/// build was compiled from. Returns comparison info including how many commits
+/// behind the running node binaries are.
+#[tauri::command]
+async fn check_node_update() -> Result<NodeUpdateCheckResult, String> {
+    let current = IRIUM_NODE_COMMIT.to_string();
+    let current_short = short_sha(&current);
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .user_agent(format!("irium-core/{}", CURRENT_VERSION))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    // Fetch the latest commit on the main branch.
+    let resp = client
+        .get("https://api.github.com/repos/iriumlabs/irium/commits/main")
+        .send()
+        .await
+        .map_err(|e| format!("Node update check failed: {}", e))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("GitHub API returned {}", resp.status()));
+    }
+
+    let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    let latest_commit = json["sha"].as_str().unwrap_or("").to_string();
+    let latest_short  = short_sha(&latest_commit);
+    let latest_message = json["commit"]["message"]
+        .as_str().unwrap_or("").lines().next().unwrap_or("").to_string();
+    let latest_author = json["commit"]["author"]["name"]
+        .as_str().unwrap_or("").to_string();
+    let latest_date   = json["commit"]["author"]["date"]
+        .as_str().unwrap_or("").to_string();
+
+    // When compiled without git (e.g. CI without submodule), we can still show
+    // the latest commit info but cannot determine if an update is available.
+    if current == "unknown" || current.is_empty() {
+        return Ok(NodeUpdateCheckResult {
+            has_update: false,
+            current_commit: current,
+            current_commit_short: "unknown".to_string(),
+            latest_commit,
+            latest_commit_short: latest_short,
+            latest_message,
+            latest_author,
+            latest_date,
+            commits_behind: 0,
+            compare_url: "https://github.com/iriumlabs/irium/commits/main".to_string(),
+        });
+    }
+
+    let has_update = !latest_commit.is_empty() && latest_commit != current;
+
+    // Ask GitHub how many commits ahead main is relative to our pinned commit.
+    let commits_behind: u32 = if has_update {
+        let url = format!(
+            "https://api.github.com/repos/iriumlabs/irium/compare/{}...main",
+            current
+        );
+        let behind = async {
+            let r = client.get(&url).send().await.ok()?;
+            if !r.status().is_success() { return None; }
+            let j: serde_json::Value = r.json().await.ok()?;
+            j["ahead_by"].as_u64()
+        }.await;
+        behind.unwrap_or(1) as u32
+    } else {
+        0
+    };
+
+    let compare_url = if current.len() >= 7 {
+        format!("https://github.com/iriumlabs/irium/compare/{}...main", &current[..7])
+    } else {
+        "https://github.com/iriumlabs/irium/commits/main".to_string()
+    };
+
+    Ok(NodeUpdateCheckResult {
+        has_update,
+        current_commit: current,
+        current_commit_short: current_short,
+        latest_commit,
+        latest_commit_short: latest_short,
+        latest_message,
+        latest_author,
+        latest_date,
+        commits_behind,
+        compare_url,
+    })
+}
+
+/// Pull the irium-source submodule to the latest commit on its remote main
+/// branch. This updates the source code; the caller must rebuild binaries
+/// (via `npm run build:node -- --force`) and restart the node to apply.
+#[tauri::command]
+async fn update_node_source() -> Result<NodeUpdatePullResult, String> {
+    // CARGO_MANIFEST_DIR is the `src-tauri/` directory baked in at compile time.
+    // The project root (where .gitmodules lives) is one level up.
+    let src_tauri_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    let project_root  = src_tauri_dir
+        .parent()
+        .ok_or_else(|| "Cannot determine project root from CARGO_MANIFEST_DIR".to_string())?;
+
+    // Verify the submodule directory exists (won't be present in packaged builds).
+    let submodule_dir = project_root.join("irium-source");
+    if !submodule_dir.exists() {
+        return Err(
+            "irium-source directory not found — source-based updates are only \
+             available in development builds".to_string()
+        );
+    }
+
+    // Pull the submodule to the latest remote commit.
+    let out = std::process::Command::new("git")
+        .args(["submodule", "update", "--remote", "--merge", "irium-source"])
+        .current_dir(project_root)
+        .output()
+        .map_err(|e| format!("git not available: {}", e))?;
+
+    if !out.status.success() {
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        return Err(format!("git submodule update failed: {}", stderr.trim()));
+    }
+
+    // Read the new HEAD commit.
+    let head_out = std::process::Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(&submodule_dir)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    let new_commit = String::from_utf8_lossy(&head_out.stdout)
+        .trim().to_string();
+    let new_short = short_sha(&new_commit);
+
+    Ok(NodeUpdatePullResult {
+        success: true,
+        new_commit: new_commit.clone(),
+        new_commit_short: new_short.clone(),
+        message: format!(
+            "Source updated to {}. Run `npm run build:node -- --force` then restart to apply the new binaries.",
+            new_short
+        ),
+    })
+}
+
+// ============================================================
+// MULTISIG
+// ============================================================
+
+#[tauri::command]
+async fn multisig_create(
+    state: State<'_, AppState>,
+    threshold: u32,
+    pubkeys: Vec<String>,
+) -> Result<MultisigCreateResult, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let mut args = vec!["multisig-create".to_string(), "--threshold".to_string(), threshold.to_string(), "--json".to_string()];
+    for pk in &pubkeys {
+        args.push("--pubkeys".to_string());
+        args.push(pk.clone());
+    }
+    let output = run_wallet_cmd(args, wallet_path, data_dir).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(MultisigCreateResult {
+        script_pubkey: raw["script_pubkey"].as_str().unwrap_or("").to_string(),
+        address: raw["address"].as_str().unwrap_or("").to_string(),
+        threshold,
+        pubkeys,
+    })
+}
+
+#[tauri::command]
+async fn multisig_broadcast(
+    state: State<'_, AppState>,
+    raw_tx: String,
+) -> Result<MultisigSpendResult, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let output = run_wallet_cmd_with_rpc(
+        vec!["multisig-broadcast".to_string(), "--raw-tx".to_string(), raw_tx.clone(), "--json".to_string()],
+        wallet_path, data_dir, rpc_url,
+    ).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(MultisigSpendResult {
+        raw_tx: Some(raw_tx),
+        txid: raw["txid"].as_str().map(String::from),
+        success: true,
+        message: None,
+    })
+}
+
+// ============================================================
+// INVOICES
+// ============================================================
+
+#[tauri::command]
+async fn invoice_generate(
+    state: State<'_, AppState>,
+    recipient: String,
+    amount_irm: f64,
+    reference: String,
+    expires_blocks: Option<u64>,
+    out_path: Option<String>,
+) -> Result<Invoice, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let mut args = vec![
+        "invoice-generate".to_string(),
+        "--recipient".to_string(), recipient.clone(),
+        "--amount".to_string(), amount_irm.to_string(),
+        "--reference".to_string(), reference.clone(),
+        "--json".to_string(),
+    ];
+    if let Some(eb) = expires_blocks {
+        args.push("--expires-blocks".to_string());
+        args.push(eb.to_string());
+    }
+    if let Some(op) = out_path {
+        args.push("--out".to_string());
+        args.push(op);
+    }
+    let output = run_wallet_cmd(args, wallet_path, data_dir).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(Invoice {
+        id: raw["invoice_id"].as_str().or_else(|| raw["id"].as_str()).unwrap_or("").to_string(),
+        recipient: raw["recipient"].as_str().unwrap_or(&recipient).to_string(),
+        amount: raw["amount"].as_u64().unwrap_or((amount_irm * 100_000_000.0) as u64),
+        reference: raw["reference"].as_str().unwrap_or(&reference).to_string(),
+        expires_height: raw["expires_height"].as_u64().or_else(|| raw["expires_at_height"].as_u64()),
+        created_at: raw["created_at"].as_i64(),
+        status: raw["status"].as_str().map(String::from),
+    })
+}
+
+#[tauri::command]
+async fn invoice_import(
+    state: State<'_, AppState>,
+    file_path: String,
+) -> Result<InvoiceImportResult, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let output = run_wallet_cmd(
+        vec!["invoice-import".to_string(), "--file".to_string(), file_path, "--json".to_string()],
+        wallet_path, data_dir,
+    ).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(InvoiceImportResult {
+        success: true,
+        invoice_id: raw["invoice_id"].as_str().map(String::from),
+        message: None,
+    })
+}
+
+// ============================================================
+// AGREEMENT ELIGIBILITY & STATUS
+// ============================================================
+
+#[tauri::command]
+async fn agreement_release_eligibility(
+    state: State<'_, AppState>,
+    agreement_id: String,
+    funding_txid: Option<String>,
+) -> Result<SpendEligibilityResult, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let mut args = vec!["agreement-release-eligibility".to_string(), agreement_id, "--json".to_string()];
+    if let Some(txid) = funding_txid {
+        args.push(txid);
+    }
+    let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(SpendEligibilityResult {
+        eligible: raw["eligible"].as_bool().unwrap_or(false),
+        reason: raw["reason"].as_str().map(String::from),
+        funding_txid: raw["funding_txid"].as_str().map(String::from),
+        amount: raw["amount"].as_u64(),
+        timelock_remaining: raw["timelock_remaining"].as_u64(),
+    })
+}
+
+#[tauri::command]
+async fn agreement_refund_eligibility(
+    state: State<'_, AppState>,
+    agreement_id: String,
+    funding_txid: Option<String>,
+) -> Result<SpendEligibilityResult, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let mut args = vec!["agreement-refund-eligibility".to_string(), agreement_id, "--json".to_string()];
+    if let Some(txid) = funding_txid {
+        args.push(txid);
+    }
+    let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(SpendEligibilityResult {
+        eligible: raw["eligible"].as_bool().unwrap_or(false),
+        reason: raw["reason"].as_str().map(String::from),
+        funding_txid: raw["funding_txid"].as_str().map(String::from),
+        amount: raw["amount"].as_u64(),
+        timelock_remaining: raw["timelock_remaining"].as_u64(),
+    })
+}
+
+#[tauri::command]
+async fn agreement_status(
+    state: State<'_, AppState>,
+    agreement_id: String,
+) -> Result<AgreementStatusResult, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let output = run_wallet_cmd_with_rpc(
+        vec!["agreement-status".to_string(), agreement_id.clone(), "--json".to_string()],
+        wallet_path, data_dir, rpc_url,
+    ).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(AgreementStatusResult {
+        agreement_id: raw["agreement_id"].as_str().unwrap_or(&agreement_id).to_string(),
+        agreement_hash: raw["agreement_hash"].as_str().map(String::from),
+        status: raw["status"].as_str().unwrap_or("unknown").to_string(),
+        funded: raw["funded"].as_bool(),
+        funding_txid: raw["funding_txid"].as_str().map(String::from),
+        release_eligible: raw["release_eligible"].as_bool(),
+        refund_eligible: raw["refund_eligible"].as_bool(),
+        current_height: raw["current_height"].as_u64(),
+        proof_status: raw["proof_status"].as_str().map(String::from),
+    })
+}
+
+#[tauri::command]
+async fn agreement_fund(
+    state: State<'_, AppState>,
+    agreement_id: String,
+    broadcast: Option<bool>,
+) -> Result<ReleaseResult, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let mut args = vec!["agreement-fund".to_string(), agreement_id, "--json".to_string()];
+    if broadcast.unwrap_or(true) {
+        args.push("--broadcast".to_string());
+    }
+    let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(ReleaseResult {
+        txid: raw["txid"].as_str().map(String::from),
+        success: true,
+        message: None,
+    })
+}
+
+// ============================================================
+// POLICIES
+// ============================================================
+
+#[tauri::command]
+async fn policy_build_otc(
+    state: State<'_, AppState>,
+    policy_id: String,
+    agreement_hash: String,
+    attestor: String,
+    release_proof_type: String,
+    out_path: Option<String>,
+) -> Result<ProofPolicy, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let mut args = vec![
+        "policy-build-otc".to_string(),
+        "--policy-id".to_string(), policy_id.clone(),
+        "--agreement-hash".to_string(), agreement_hash.clone(),
+        "--attestor".to_string(), attestor.clone(),
+        "--release-proof-type".to_string(), release_proof_type.clone(),
+        "--json".to_string(),
+    ];
+    if let Some(op) = out_path {
+        args.push("--out".to_string());
+        args.push(op);
+    }
+    let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(ProofPolicy {
+        policy_id: raw["policy_id"].as_str().unwrap_or(&policy_id).to_string(),
+        agreement_hash: raw["agreement_hash"].as_str().unwrap_or(&agreement_hash).to_string(),
+        kind: "otc".to_string(),
+        attestor: Some(attestor),
+        proof_type: Some(release_proof_type),
+        created_at: raw["created_at"].as_i64(),
+        raw: Some(raw),
+    })
+}
+
+#[tauri::command]
+async fn policy_build_contractor(
+    state: State<'_, AppState>,
+    policy_id: String,
+    agreement_hash: String,
+    attestor: String,
+    milestone: String,
+    out_path: Option<String>,
+) -> Result<ProofPolicy, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let mut args = vec![
+        "policy-build-contractor".to_string(),
+        "--policy-id".to_string(), policy_id.clone(),
+        "--agreement-hash".to_string(), agreement_hash.clone(),
+        "--attestor".to_string(), attestor.clone(),
+        "--milestone".to_string(), milestone,
+        "--json".to_string(),
+    ];
+    if let Some(op) = out_path {
+        args.push("--out".to_string());
+        args.push(op);
+    }
+    let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(ProofPolicy {
+        policy_id: raw["policy_id"].as_str().unwrap_or(&policy_id).to_string(),
+        agreement_hash: raw["agreement_hash"].as_str().unwrap_or(&agreement_hash).to_string(),
+        kind: "contractor".to_string(),
+        attestor: Some(attestor),
+        proof_type: None,
+        created_at: raw["created_at"].as_i64(),
+        raw: Some(raw),
+    })
+}
+
+#[tauri::command]
+async fn policy_build_preorder(
+    state: State<'_, AppState>,
+    policy_id: String,
+    agreement_hash: String,
+    attestor: String,
+    delivery_proof_type: String,
+    out_path: Option<String>,
+) -> Result<ProofPolicy, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let mut args = vec![
+        "policy-build-preorder".to_string(),
+        "--policy-id".to_string(), policy_id.clone(),
+        "--agreement-hash".to_string(), agreement_hash.clone(),
+        "--attestor".to_string(), attestor.clone(),
+        "--delivery-proof-type".to_string(), delivery_proof_type.clone(),
+        "--json".to_string(),
+    ];
+    if let Some(op) = out_path {
+        args.push("--out".to_string());
+        args.push(op);
+    }
+    let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(ProofPolicy {
+        policy_id: raw["policy_id"].as_str().unwrap_or(&policy_id).to_string(),
+        agreement_hash: raw["agreement_hash"].as_str().unwrap_or(&agreement_hash).to_string(),
+        kind: "preorder".to_string(),
+        attestor: Some(attestor),
+        proof_type: Some(delivery_proof_type),
+        created_at: raw["created_at"].as_i64(),
+        raw: Some(raw),
+    })
+}
+
+#[tauri::command]
+async fn agreement_policy_list(
+    state: State<'_, AppState>,
+    active_only: Option<bool>,
+) -> Result<Vec<ProofPolicy>, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let mut args = vec!["agreement-policy-list".to_string(), "--json".to_string()];
+    if active_only.unwrap_or(false) {
+        args.push("--active-only".to_string());
+    }
+    let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url)
+        .await.unwrap_or_else(|_| "[]".to_string());
+    serde_json::from_str::<Vec<ProofPolicy>>(&output).or_else(|_| {
+        let val: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+        let arr = val.get("policies").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+        Ok(arr.iter().map(|v| ProofPolicy {
+            policy_id: v["policy_id"].as_str().unwrap_or("").to_string(),
+            agreement_hash: v["agreement_hash"].as_str().unwrap_or("").to_string(),
+            kind: v["kind"].as_str().or_else(|| v["type"].as_str()).unwrap_or("").to_string(),
+            attestor: v["attestor"].as_str().map(String::from),
+            proof_type: v["proof_type"].as_str().map(String::from),
+            created_at: v["created_at"].as_i64(),
+            raw: Some(v.clone()),
+        }).collect())
+    })
+}
+
+#[tauri::command]
+async fn agreement_policy_evaluate(
+    state: State<'_, AppState>,
+    agreement_id: String,
+) -> Result<serde_json::Value, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let output = run_wallet_cmd_with_rpc(
+        vec!["agreement-policy-evaluate".to_string(), "--agreement".to_string(), agreement_id, "--json".to_string()],
+        wallet_path, data_dir, rpc_url,
+    ).await?;
+    serde_json::from_str::<serde_json::Value>(&output).map_err(|e| format!("Parse error: {}", e))
+}
+
+// ============================================================
+// REPUTATION ACTIONS
+// ============================================================
+
+#[tauri::command]
+async fn reputation_record_outcome(
+    state: State<'_, AppState>,
+    seller: String,
+    outcome: String,
+    proof_response_secs: Option<u64>,
+    self_trade: Option<bool>,
+) -> Result<ReputationOutcomeResult, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let mut args = vec![
+        "reputation-record-outcome".to_string(),
+        "--seller".to_string(), seller.clone(),
+        "--outcome".to_string(), outcome.clone(),
+        "--json".to_string(),
+    ];
+    if let Some(secs) = proof_response_secs {
+        args.push("--proof-response-secs".to_string());
+        args.push(secs.to_string());
+    }
+    if self_trade.unwrap_or(false) {
+        args.push("--self-trade".to_string());
+    }
+    run_wallet_cmd(args, wallet_path, data_dir).await?;
+    Ok(ReputationOutcomeResult { success: true, seller, outcome, message: None })
+}
+
+#[tauri::command]
+async fn reputation_export(
+    state: State<'_, AppState>,
+    seller: String,
+    out_path: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let mut args = vec!["reputation-export".to_string(), "--seller".to_string(), seller, "--json".to_string()];
+    if let Some(op) = out_path {
+        args.push("--out".to_string());
+        args.push(op);
+    }
+    let output = run_wallet_cmd(args, wallet_path, data_dir).await?;
+    serde_json::from_str::<serde_json::Value>(&output).map_err(|e| format!("Parse error: {}", e))
+}
+
+#[tauri::command]
+async fn reputation_import(
+    state: State<'_, AppState>,
+    file_path: String,
+) -> Result<bool, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    run_wallet_cmd(
+        vec!["reputation-import".to_string(), "--file".to_string(), file_path],
+        wallet_path, data_dir,
+    ).await?;
+    Ok(true)
+}
+
+#[tauri::command]
+async fn reputation_self_trade_check(
+    state: State<'_, AppState>,
+    seller: String,
+    buyer: String,
+) -> Result<SelfTradeCheckResult, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let output = run_wallet_cmd(
+        vec![
+            "reputation-self-trade-check".to_string(),
+            "--seller".to_string(), seller.clone(),
+            "--buyer".to_string(), buyer.clone(),
+            "--json".to_string(),
+        ],
+        wallet_path, data_dir,
+    ).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(SelfTradeCheckResult {
+        is_self_trade: raw["is_self_trade"].as_bool().unwrap_or(false),
+        seller: raw["seller"].as_str().unwrap_or(&seller).to_string(),
+        buyer: raw["buyer"].as_str().unwrap_or(&buyer).to_string(),
+        message: raw["message"].as_str().map(String::from),
+    })
+}
+
+// ============================================================
+// SELLER / BUYER STATUS
+// ============================================================
+
+#[tauri::command]
+async fn seller_status(
+    state: State<'_, AppState>,
+    address: Option<String>,
+) -> Result<SellerStatus, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let mut args = vec!["seller-status".to_string(), "--json".to_string()];
+    if let Some(ref addr) = address {
+        args.push("--address".to_string());
+        args.push(addr.clone());
+    }
+    let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(SellerStatus {
+        address: raw["address"].as_str().or(address.as_deref()).unwrap_or("").to_string(),
+        active_offers: raw["active_offers"].as_u64(),
+        completed_agreements: raw["completed_agreements"].as_u64(),
+        open_agreements: raw["open_agreements"].as_u64(),
+        total_volume: raw["total_volume"].as_u64(),
+        reputation_score: raw["reputation_score"].as_f64(),
+        can_create_offers: raw["can_create_offers"].as_bool(),
+        restrictions: raw["restrictions"].as_array().map(|a| {
+            a.iter().filter_map(|v| v.as_str().map(String::from)).collect()
+        }),
+    })
+}
+
+#[tauri::command]
+async fn buyer_status(
+    state: State<'_, AppState>,
+    address: Option<String>,
+) -> Result<BuyerStatus, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let mut args = vec!["buyer-status".to_string(), "--json".to_string()];
+    if let Some(ref addr) = address {
+        args.push("--address".to_string());
+        args.push(addr.clone());
+    }
+    let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(BuyerStatus {
+        address: raw["address"].as_str().or(address.as_deref()).unwrap_or("").to_string(),
+        active_agreements: raw["active_agreements"].as_u64(),
+        completed_agreements: raw["completed_agreements"].as_u64(),
+        total_spent: raw["total_spent"].as_u64(),
+        reputation_score: raw["reputation_score"].as_f64(),
+        can_take_offers: raw["can_take_offers"].as_bool(),
+        restrictions: raw["restrictions"].as_array().map(|a| {
+            a.iter().filter_map(|v| v.as_str().map(String::from)).collect()
+        }),
+    })
+}
+
+// ============================================================
+// DISPUTES
+// ============================================================
+
+#[tauri::command]
+async fn agreement_dispute(
+    state: State<'_, AppState>,
+    agreement_id: String,
+    reason: Option<String>,
+) -> Result<DisputeOpenResult, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let mut args = vec!["agreement-dispute".to_string(), agreement_id, "--json".to_string()];
+    if let Some(r) = reason {
+        args.push("--reason".to_string());
+        args.push(r);
+    }
+    let output = run_wallet_cmd(args, wallet_path, data_dir).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(DisputeOpenResult {
+        dispute_id: raw["dispute_id"].as_str().map(String::from),
+        success: true,
+        message: None,
+    })
+}
+
+#[tauri::command]
+async fn agreement_dispute_list(state: State<'_, AppState>) -> Result<Vec<DisputeEntry>, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let output = run_wallet_cmd(
+        vec!["agreement-dispute-list".to_string(), "--json".to_string()],
+        wallet_path, data_dir,
+    ).await.unwrap_or_else(|_| "[]".to_string());
+    serde_json::from_str::<Vec<DisputeEntry>>(&output).or_else(|_| {
+        let val: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+        let arr = val.get("disputes").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+        Ok(arr.iter().filter_map(|v| {
+            Some(DisputeEntry {
+                id: v["id"].as_str().or_else(|| v["dispute_id"].as_str())?.to_string(),
+                agreement_id: v["agreement_id"].as_str().unwrap_or("").to_string(),
+                reason: v["reason"].as_str().map(String::from),
+                status: v["status"].as_str().unwrap_or("open").to_string(),
+                opened_at: v["opened_at"].as_i64(),
+                resolved_at: v["resolved_at"].as_i64(),
+            })
+        }).collect())
+    })
+}
+
+// ============================================================
+// NETWORK METRICS
+// ============================================================
+
+#[tauri::command]
+async fn get_network_metrics(state: State<'_, AppState>) -> Result<NetworkMetrics, String> {
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let last_status = state.last_node_status.lock().map_err(lock_err)?.clone();
+    let info = get_rpc_info(&rpc_url).await.unwrap_or_default();
+    let client = reqwest::Client::new();
+    let fee_est = client
+        .get(format!("{}/rpc/fee_estimate", rpc_url))
+        .timeout(Duration::from_secs(3))
+        .send()
+        .await
+        .ok();
+    let mempool_size = if let Some(resp) = fee_est {
+        resp.json::<FeeEstimateResponse>().await
+            .ok()
+            .and_then(|f| f.mempool_size)
+            .unwrap_or(0)
+    } else {
+        0
+    };
+    let (synced, height) = if let Some(s) = last_status {
+        (s.synced, s.height)
+    } else {
+        (false, info.height.unwrap_or(0))
+    };
+    Ok(NetworkMetrics {
+        height,
+        peers: info.peer_count.unwrap_or(0),
+        mempool_size,
+        hashrate_khs: None,
+        difficulty: None,
+        synced,
+    })
+}
+
+// ============================================================
+// EXPLORER
+// ============================================================
+
+#[tauri::command]
+async fn explorer_agreements(
+    state: State<'_, AppState>,
+    limit: Option<u64>,
+) -> Result<Vec<ExplorerAgreement>, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let _ = limit;
+    let output = run_wallet_cmd_with_rpc(
+        vec!["agreement-local-store-list".to_string(), "--json".to_string()],
+        wallet_path, data_dir, rpc_url,
+    ).await.unwrap_or_else(|_| "{}".to_string());
+    let val: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    let stored = val.get("stored_raw_agreements")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    Ok(stored.iter().map(|v| ExplorerAgreement {
+        id: v["agreement_id"].as_str().unwrap_or("").to_string(),
+        hash: v["agreement_hash"].as_str().map(String::from),
+        template: None,
+        buyer: None,
+        seller: None,
+        amount: 0,
+        status: "stored".to_string(),
+        created_at: None,
+    }).collect())
+}
+
+#[tauri::command]
+async fn explorer_stats(state: State<'_, AppState>) -> Result<ExplorerStats, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let store_output = run_wallet_cmd_with_rpc(
+        vec!["agreement-local-store-list".to_string(), "--json".to_string()],
+        wallet_path, data_dir, rpc_url,
+    ).await.unwrap_or_else(|_| "{}".to_string());
+    let store: serde_json::Value = serde_json::from_str(&store_output).unwrap_or_default();
+    Ok(ExplorerStats {
+        total_agreements: store.get("raw_agreement_count").and_then(|v| v.as_u64()),
+        active_agreements: None,
+        total_volume: None,
+        total_proofs: None,
+        registered_attestors: None,
+    })
+}
+
+// ============================================================
+// OFFER FEED OPERATIONS
+// ============================================================
+
+#[tauri::command]
+async fn offer_feed_discover(state: State<'_, AppState>) -> Result<FeedDiscoverResult, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let output = run_wallet_cmd(
+        vec!["offer-feed-discover".to_string(), "--json".to_string()],
+        wallet_path, data_dir,
+    ).await.unwrap_or_else(|_| "[]".to_string());
+    let discovered: Vec<String> = serde_json::from_str::<Vec<String>>(&output)
+        .or_else(|_| {
+            let val: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+            let arr = val.get("feeds").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+            Ok::<Vec<String>, serde_json::Error>(arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+        })
+        .unwrap_or_default();
+    let count = discovered.len() as u64;
+    Ok(FeedDiscoverResult { discovered, count })
+}
+
+#[tauri::command]
+async fn feed_bootstrap(state: State<'_, AppState>) -> Result<bool, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    run_wallet_cmd(vec!["feed-bootstrap".to_string()], wallet_path, data_dir).await?;
+    Ok(true)
+}
+
+// ============================================================
+// AGREEMENT STORE / SIGN / VERIFY / DECRYPT
+// ============================================================
+
+#[tauri::command]
+async fn agreement_local_store_list(state: State<'_, AppState>) -> Result<AgreementStoreListResponse, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let output = run_wallet_cmd_with_rpc(
+        vec!["agreement-local-store-list".to_string(), "--json".to_string()],
+        wallet_path, data_dir, rpc_url,
+    ).await.unwrap_or_else(|_| "{}".to_string());
+    serde_json::from_str::<AgreementStoreListResponse>(&output)
+        .map_err(|e| format!("Parse error: {}", e))
+}
+
+#[tauri::command]
+async fn agreement_sign_cmd(
+    state: State<'_, AppState>,
+    agreement_id: String,
+    signer_addr: String,
+    role: Option<String>,
+    out_path: Option<String>,
+) -> Result<AgreementSignResult, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let mut args = vec![
+        "agreement-sign".to_string(),
+        "--agreement".to_string(), agreement_id.clone(),
+        "--signer".to_string(), signer_addr.clone(),
+        "--json".to_string(),
+    ];
+    if let Some(r) = role {
+        args.push("--role".to_string());
+        args.push(r);
+    }
+    if let Some(ref op) = out_path {
+        args.push("--out".to_string());
+        args.push(op.clone());
+    }
+    let output = run_wallet_cmd(args, wallet_path, data_dir).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(AgreementSignResult {
+        agreement_hash: raw["agreement_hash"].as_str().unwrap_or(&agreement_id).to_string(),
+        signer: raw["signer"].as_str().unwrap_or(&signer_addr).to_string(),
+        success: true,
+        signature_path: out_path,
+    })
+}
+
+#[tauri::command]
+async fn agreement_verify_signature(
+    state: State<'_, AppState>,
+    signature_path: String,
+    agreement_id: Option<String>,
+) -> Result<AgreementVerifySignatureResult, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let mut args = vec![
+        "agreement-verify-signature".to_string(),
+        "--signature".to_string(), signature_path,
+        "--json".to_string(),
+    ];
+    if let Some(aid) = agreement_id {
+        args.push("--agreement".to_string());
+        args.push(aid);
+    }
+    let output = run_wallet_cmd(args, wallet_path, data_dir).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(AgreementVerifySignatureResult {
+        valid: raw["valid"].as_bool().unwrap_or(false),
+        signer: raw["signer"].as_str().map(String::from),
+        agreement_hash: raw["agreement_hash"].as_str().map(String::from),
+        message: raw["message"].as_str().map(String::from),
+    })
+}
+
+#[tauri::command]
+async fn agreement_decrypt(
+    state: State<'_, AppState>,
+    blob_path: String,
+) -> Result<AgreementDecryptResult, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let wp = wallet_path.clone().unwrap_or_else(resolve_wallet_path);
+    let output = run_wallet_cmd(
+        vec![
+            "agreement-decrypt".to_string(),
+            blob_path,
+            "--wallet".to_string(), wp,
+            "--json".to_string(),
+        ],
+        wallet_path, data_dir,
+    ).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    Ok(AgreementDecryptResult {
+        agreement_id: raw["agreement_id"].as_str().map(String::from),
+        agreement_hash: raw["agreement_hash"].as_str().map(String::from),
+        decrypted: raw,
+        success: true,
+    })
 }
 
 // ============================================================
@@ -2203,6 +4011,18 @@ async fn run_diagnostics(state: State<'_, AppState>) -> Result<DiagnosticsResult
 }
 
 // ============================================================
+// NODE LOGS
+// ============================================================
+
+#[tauri::command]
+async fn get_node_logs(state: State<'_, AppState>, lines: Option<usize>) -> Result<Vec<String>, String> {
+    let n = lines.unwrap_or(200).min(1000);
+    let logs = state.node_logs.lock().map_err(lock_err)?;
+    let start = if logs.len() > n { logs.len() - n } else { 0 };
+    Ok(logs[start..].to_vec())
+}
+
+// ============================================================
 // MAIN
 // ============================================================
 
@@ -2264,6 +4084,7 @@ fn main() {
             clear_node_state,
             save_discovered_peers,
             check_binaries,
+            try_upnp_port_map,
             // Wallet
             wallet_get_balance,
             wallet_new_address,
@@ -2275,10 +4096,14 @@ fn main() {
             wallet_import_mnemonic,
             wallet_import_wif,
             wallet_import_private_key,
+            wallet_export_seed,
+            wallet_backup,
+            wallet_restore_backup,
             // Config / Settings
             set_wallet_config,
             save_settings,
             load_settings,
+            detect_public_ip,
             // Offers
             offer_list,
             offer_show,
@@ -2329,12 +4154,66 @@ fn main() {
             rpc_get_peers,
             rpc_get_mempool,
             rpc_get_block,
+            rpc_get_tx,
+            rpc_get_address,
+            get_recent_blocks,
             rpc_get_offers_feed,
             rpc_set_url,
             // Diagnostics
             run_diagnostics,
-            // Update check
+            // Update check (GUI app)
             check_for_updates,
+            // Node source update check
+            check_node_update,
+            update_node_source,
+            // Multisig
+            multisig_create,
+            multisig_broadcast,
+            // Invoices
+            invoice_generate,
+            invoice_import,
+            // Agreement eligibility & status
+            agreement_release_eligibility,
+            agreement_refund_eligibility,
+            agreement_status,
+            agreement_fund,
+            // Policies
+            policy_build_otc,
+            policy_build_contractor,
+            policy_build_preorder,
+            agreement_policy_list,
+            agreement_policy_evaluate,
+            // Reputation actions
+            reputation_record_outcome,
+            reputation_export,
+            reputation_import,
+            reputation_self_trade_check,
+            // Trade status
+            seller_status,
+            buyer_status,
+            // Disputes
+            agreement_dispute,
+            agreement_dispute_list,
+            // Network metrics
+            get_network_metrics,
+            // Explorer
+            explorer_agreements,
+            explorer_stats,
+            // Explorer sidecar commands
+            start_explorer_sidecar,
+            get_explorer_stats,
+            get_explorer_peers,
+            get_explorer_blocks,
+            // Feed ops
+            offer_feed_discover,
+            feed_bootstrap,
+            // Agreement store / sign / verify
+            agreement_local_store_list,
+            agreement_sign_cmd,
+            agreement_verify_signature,
+            agreement_decrypt,
+            // Logs
+            get_node_logs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Irium Core");

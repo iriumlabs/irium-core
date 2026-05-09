@@ -18,10 +18,14 @@ import {
   Activity,
   Copy,
   XCircle,
+  GitBranch,
+  Download,
+  ExternalLink,
+  Trash2,
 } from "lucide-react";
 import { useStore } from "../lib/store";
-import { rpc, diagnostics, update } from "../lib/tauri";
-import { DEFAULT_SETTINGS, type DiagnosticsResult, timeAgo } from "../lib/types";
+import { rpc, diagnostics, update, nodeUpdate, node } from "../lib/tauri";
+import { DEFAULT_SETTINGS, type DiagnosticsResult, type NodeUpdateCheckResult, timeAgo } from "../lib/types";
 import { ONBOARDING_KEY } from "./Onboarding";
 
 // ─── Stagger variants ────────────────────────────────────────────────────────
@@ -126,10 +130,23 @@ export default function Settings() {
   const [runningDiag, setRunningDiag] = useState(false);
   const [diagResult, setDiagResult] = useState<DiagnosticsResult | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [checkingNodeUpdate, setCheckingNodeUpdate] = useState(false);
+  const [pullingNodeUpdate, setPullingNodeUpdate] = useState(false);
+  const [nodeUpdateInfo, setNodeUpdateInfo] = useState<NodeUpdateCheckResult | null>(null);
+  const [showNodeUpdateConfirm, setShowNodeUpdateConfirm] = useState(false);
+  const [clearingState, setClearingState] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const confirmClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showDetectPanel, setShowDetectPanel] = useState(false);
+  const [detectServiceUrl, setDetectServiceUrl] = useState('https://api.ipify.org');
+  const [fetchingIp, setFetchingIp] = useState(false);
+  const [retryingUpnp, setRetryingUpnp] = useState(false);
+  const nodeStatus = useStore((s) => s.nodeStatus);
 
   useEffect(() => {
     return () => {
       if (confirmResetTimerRef.current) clearTimeout(confirmResetTimerRef.current);
+      if (confirmClearTimerRef.current) clearTimeout(confirmClearTimerRef.current);
     };
   }, []);
 
@@ -240,6 +257,42 @@ export default function Settings() {
     }
   };
 
+  const checkNodeForUpdates = async () => {
+    setCheckingNodeUpdate(true);
+    try {
+      const info = await nodeUpdate.check();
+      if (info) {
+        setNodeUpdateInfo(info);
+        if (info.has_update) {
+          toast.success(`Node update available — ${info.commits_behind} commit${info.commits_behind !== 1 ? 's' : ''} behind`);
+        } else {
+          toast.success('Node source is up to date');
+        }
+      }
+    } catch {
+      toast.error('Node update check failed');
+    } finally {
+      setCheckingNodeUpdate(false);
+    }
+  };
+
+  const pullNodeUpdate = async () => {
+    setPullingNodeUpdate(true);
+    try {
+      const result = await nodeUpdate.pull();
+      if (result?.success) {
+        toast.success(`Pulled ${result.new_commit_short} — rebuild binaries to apply`);
+        setNodeUpdateInfo((prev) => prev ? { ...prev, has_update: false, current_commit: result.new_commit, current_commit_short: result.new_commit_short } : prev);
+      } else {
+        toast.error('Failed to pull update');
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Pull failed');
+    } finally {
+      setPullingNodeUpdate(false);
+    }
+  };
+
   const handleResetClick = () => {
     if (confirmReset) {
       reset();
@@ -250,8 +303,63 @@ export default function Settings() {
     }
   };
 
+  const handleClearStateClick = async () => {
+    if (!confirmClear) {
+      setConfirmClear(true);
+      confirmClearTimerRef.current = setTimeout(() => setConfirmClear(false), 4000);
+      return;
+    }
+    setConfirmClear(false);
+    setClearingState(true);
+    try {
+      await node.clearState();
+      toast.success('Chain state cleared — restarting node from scratch…');
+      await new Promise((r) => setTimeout(r, 800));
+      const result = await node.start(undefined, local.external_ip);
+      if (result.success) {
+        toast.success('Node restarting…');
+      } else {
+        toast.error(result.message);
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Clear state failed');
+    } finally {
+      setClearingState(false);
+    }
+  };
+
+  const handleDetectIp = async () => {
+    setFetchingIp(true);
+    try {
+      const ip = await node.detectPublicIp(detectServiceUrl);
+      patch('external_ip', ip);
+      setShowDetectPanel(false);
+      toast.success(`Detected IP: ${ip} — save settings to apply`);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Detection failed');
+    } finally {
+      setFetchingIp(false);
+    }
+  };
+
+  const handleRetryUpnp = async () => {
+    setRetryingUpnp(true);
+    try {
+      const ip = await node.tryUpnpPortMap();
+      if (ip) {
+        toast.success(`UPnP mapped TCP 38291 — external IP: ${ip}`);
+      } else {
+        toast.error('UPnP failed — router may not support it or port is already mapped');
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'UPnP failed');
+    } finally {
+      setRetryingUpnp(false);
+    }
+  };
+
   return (
-    <div className="max-w-2xl mx-auto space-y-5 p-6">
+    <div className="max-w-4xl mx-auto space-y-5 p-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold font-display gradient-text">Settings</h1>
@@ -444,7 +552,7 @@ export default function Settings() {
           </Section>
         </motion.div>
 
-        {/* Network info (read-only) */}
+        {/* Network info */}
         <motion.div variants={sectionVariants}>
           <Section title="Network" icon={Globe}>
             <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
@@ -472,6 +580,60 @@ export default function Settings() {
                 <span className="text-white/40">Total supply</span>
                 <span className="font-mono text-white">100,000,000 IRM</span>
               </div>
+            </div>
+
+            {/* UPnP status */}
+            <div className="mt-1 rounded-lg border border-white/10 bg-white/5 px-4 py-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="inline-block w-2 h-2 rounded-full"
+                    style={{
+                      background: nodeStatus?.upnp_active
+                        ? '#34d399'
+                        : nodeStatus?.running
+                          ? '#fbbf24'
+                          : 'rgba(255,255,255,0.2)',
+                    }}
+                  />
+                  <span className="text-sm text-white/70">UPnP Port Mapping</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono">
+                    {nodeStatus?.upnp_active
+                      ? <span className="text-emerald-400">Active — TCP 38291 open</span>
+                      : nodeStatus?.running
+                        ? <span className="text-amber-400">Inactive — outbound only</span>
+                        : <span className="text-white/30">Node offline</span>
+                    }
+                  </span>
+                  <button
+                    onClick={handleRetryUpnp}
+                    disabled={retryingUpnp || !nodeStatus?.running}
+                    title="Retry UPnP port mapping"
+                    className="btn-secondary px-2.5 py-1 text-xs flex items-center gap-1 disabled:opacity-40"
+                  >
+                    {retryingUpnp ? (
+                      <RefreshCw size={11} className="animate-spin" />
+                    ) : (
+                      <RefreshCw size={11} />
+                    )}
+                    Retry
+                  </button>
+                </div>
+              </div>
+              {nodeStatus?.upnp_external_ip && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-white/40">External IP</span>
+                  <span className="font-mono text-white/70">{nodeStatus.upnp_external_ip}</span>
+                </div>
+              )}
+              {!nodeStatus?.upnp_active && nodeStatus?.running && (
+                <p className="text-xs text-white/30 leading-relaxed">
+                  UPnP lets your router open TCP 38291 so peers behind NAT can dial you inbound.
+                  If your router does not support UPnP, use manual port forwarding instead.
+                </p>
+              )}
             </div>
           </Section>
         </motion.div>
@@ -643,7 +805,7 @@ export default function Settings() {
             </div>
 
             <div className="flex items-center justify-between pt-1">
-              <p className="text-xs text-white/40">Check GitHub releases for a newer version.</p>
+              <p className="text-xs text-white/40">Check GitHub releases for a newer GUI version.</p>
               <button
                 onClick={checkForUpdates}
                 disabled={checkingUpdate}
@@ -657,6 +819,211 @@ export default function Settings() {
                 {checkingUpdate ? 'Checking…' : 'Check for Updates'}
               </button>
             </div>
+          </Section>
+        </motion.div>
+
+        {/* Node Source / irium repo */}
+        <motion.div variants={sectionVariants}>
+          <Section title="Node Source" icon={GitBranch}>
+            <p className="text-xs text-white/40">
+              The node binaries (iriumd, irium-wallet, irium-miner) are compiled directly
+              from the{' '}
+              <a
+                href="https://github.com/iriumlabs/irium"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-irium-400 hover:text-irium-300 inline-flex items-center gap-0.5"
+              >
+                iriumlabs/irium <ExternalLink size={10} />
+              </a>{' '}
+              repository, which is embedded as a git submodule. No features are ever
+              missed — every capability added to the irium repo is automatically
+              available to this app.
+            </p>
+
+            {/* Current build commit */}
+            <div className="rounded-lg bg-white/5 border border-white/10 px-4 py-3 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-white/40">Built from commit</span>
+                <span className="font-mono text-white">
+                  {nodeUpdateInfo?.current_commit_short ?? 'loading…'}
+                </span>
+              </div>
+              {nodeUpdateInfo && (
+                <>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-white/40">Latest on main</span>
+                    <span className="font-mono text-white">{nodeUpdateInfo.latest_commit_short}</span>
+                  </div>
+                  {nodeUpdateInfo.has_update && (
+                    <div className="flex items-start gap-2 pt-1 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <AlertTriangle size={13} className="mt-0.5 shrink-0 text-amber-400" />
+                      <div className="text-xs">
+                        <p className="text-amber-300 font-medium">
+                          {nodeUpdateInfo.commits_behind} commit{nodeUpdateInfo.commits_behind !== 1 ? 's' : ''} behind
+                        </p>
+                        <p className="text-white/40 mt-0.5 font-mono truncate">{nodeUpdateInfo.latest_message}</p>
+                        <p className="text-white/30 mt-0.5">by {nodeUpdateInfo.latest_author}</p>
+                      </div>
+                    </div>
+                  )}
+                  {!nodeUpdateInfo.has_update && nodeUpdateInfo.current_commit !== 'unknown' && (
+                    <div className="flex items-center gap-2 pt-1 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                      <CheckCircle size={13} className="shrink-0 text-emerald-400" />
+                      <p className="text-xs text-emerald-300">Node source is up to date</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                onClick={checkNodeForUpdates}
+                disabled={checkingNodeUpdate || pullingNodeUpdate}
+                className="btn-secondary px-4 py-2 text-xs flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {checkingNodeUpdate ? (
+                  <RefreshCw size={13} className="animate-spin" />
+                ) : (
+                  <RefreshCw size={13} />
+                )}
+                {checkingNodeUpdate ? 'Checking…' : 'Check for Node Update'}
+              </button>
+
+              {nodeUpdateInfo?.has_update && (
+                <button
+                  onClick={() => setShowNodeUpdateConfirm(true)}
+                  disabled={pullingNodeUpdate || checkingNodeUpdate}
+                  className="btn-primary px-4 py-2 text-xs flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {pullingNodeUpdate ? (
+                    <RefreshCw size={13} className="animate-spin" />
+                  ) : (
+                    <Download size={13} />
+                  )}
+                  {pullingNodeUpdate ? 'Pulling…' : 'Pull Update'}
+                </button>
+              )}
+
+              {nodeUpdateInfo?.compare_url && (
+                <a
+                  href={nodeUpdateInfo.compare_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-secondary px-4 py-2 text-xs flex items-center gap-1.5"
+                >
+                  <ExternalLink size={13} />
+                  View Changes
+                </a>
+              )}
+            </div>
+
+            {/* After pull: rebuild instruction */}
+            <AnimatePresence>
+              {!nodeUpdateInfo?.has_update && nodeUpdateInfo && nodeUpdateInfo.current_commit !== 'unknown' && pullingNodeUpdate === false && (
+                <motion.div
+                  key="rebuild-note"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20 text-blue-300 text-xs"
+                >
+                  <Info size={13} className="mt-0.5 shrink-0" />
+                  <span>
+                    After pulling an update, rebuild the node binaries by running{' '}
+                    <code className="font-mono bg-white/5 px-1 rounded">npm run build:node -- --force</code>{' '}
+                    then restart Irium Core to apply the new version.
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Section>
+        </motion.div>
+
+        {/* Node Data */}
+        <motion.div variants={sectionVariants}>
+          <Section title="Node Data" icon={Trash2}>
+            <FieldRow
+              label="External IP"
+              description="Your public IP address announced to the network so peers can dial back to your node. Nothing is sent automatically — you control when detection happens."
+            >
+              <div className="flex flex-col gap-2 w-72">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={local.external_ip ?? ''}
+                    onChange={(e) => patch('external_ip', e.target.value || undefined)}
+                    placeholder="e.g. 203.0.113.42"
+                    className="input flex-1 text-xs"
+                  />
+                  <button
+                    onClick={() => setShowDetectPanel((v) => !v)}
+                    className="btn-secondary px-3 py-2 text-xs flex items-center gap-1.5 shrink-0"
+                  >
+                    <Globe size={12} />
+                    Detect
+                  </button>
+                </div>
+                {showDetectPanel && (
+                  <div className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-2">
+                    <p className="text-xs text-white/50">
+                      Enter a URL that returns your public IP as plain text. The request will only be sent when you click Fetch.
+                    </p>
+                    <input
+                      type="text"
+                      value={detectServiceUrl}
+                      onChange={(e) => setDetectServiceUrl(e.target.value)}
+                      className="input w-full text-xs"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleDetectIp}
+                        disabled={fetchingIp || !detectServiceUrl.trim()}
+                        className="btn-primary px-3 py-1.5 text-xs flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        {fetchingIp ? <RefreshCw size={12} className="animate-spin" /> : <Globe size={12} />}
+                        {fetchingIp ? 'Fetching…' : 'Fetch'}
+                      </button>
+                      <button
+                        onClick={() => setShowDetectPanel(false)}
+                        className="btn-secondary px-3 py-1.5 text-xs"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </FieldRow>
+            <FieldRow
+              label="Clear chain state"
+              description="Wipe block data and resync from scratch. Wallet and agreements are preserved."
+            >
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleClearStateClick}
+                  disabled={clearingState}
+                  className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 disabled:opacity-50 ${
+                    confirmClear
+                      ? 'bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30'
+                      : 'btn-secondary'
+                  }`}
+                >
+                  {clearingState ? (
+                    <RefreshCw size={13} className="animate-spin" />
+                  ) : confirmClear ? (
+                    <AlertTriangle size={13} />
+                  ) : (
+                    <Trash2 size={13} />
+                  )}
+                  {clearingState ? 'Clearing…' : confirmClear ? 'Confirm — this will resync!' : 'Clear & Resync'}
+                </button>
+                {confirmClear && (
+                  <p className="text-xs text-red-400/70">Click again to confirm. Blocks will be re-downloaded.</p>
+                )}
+              </div>
+            </FieldRow>
           </Section>
         </motion.div>
 
@@ -761,6 +1128,57 @@ export default function Settings() {
             : "Save Settings"}
         </button>
       </div>
+
+      {/* ── Update Node Source confirmation modal ─────────────── */}
+      <AnimatePresence>
+        {showNodeUpdateConfirm && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowNodeUpdateConfirm(false)}
+            />
+            <motion.div
+              className="relative z-10 w-full max-w-sm mx-4 rounded-xl border border-white/10 p-5 space-y-4"
+              style={{ background: 'rgba(16,18,32,0.97)' }}
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <div className="flex items-start gap-3">
+                <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-400" />
+                <div>
+                  <p className="text-sm font-semibold text-white">Update Node Source</p>
+                  <p className="mt-1.5 text-xs text-white/50 leading-relaxed">
+                    This will pull the latest iriumd source code and rebuild the node binary. If the
+                    new code is unstable it may break your running node and require a restart. Only
+                    proceed if you know what you are doing.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setShowNodeUpdateConfirm(false)}
+                  className="flex-1 px-4 py-2 text-xs rounded-lg border border-white/10 text-white/60 hover:text-white/80 hover:border-white/20 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => { setShowNodeUpdateConfirm(false); pullNodeUpdate(); }}
+                  className="flex-1 px-4 py-2 text-xs rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 transition-colors font-medium"
+                >
+                  I understand, update anyway
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
