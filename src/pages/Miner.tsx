@@ -49,7 +49,7 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
   return (
     <div style={{
       background: 'rgba(10,13,28,0.95)',
-      border: '1px solid rgba(139,92,246,0.25)',
+      border: '1px solid rgba(110,198,255,0.25)',
       borderRadius: 8,
       fontSize: 11,
       padding: '4px 10px',
@@ -114,10 +114,10 @@ function CpuMinerTab() {
   return (
     <div className="space-y-4">
       {/* Hero status card */}
-      <div className="card p-5 relative overflow-hidden" style={status?.running ? { boxShadow: '0 0 40px rgba(139,92,246,0.12), 0 4px 24px rgba(0,0,0,0.45)' } : {}}>
+      <div className="card p-5 relative overflow-hidden" style={status?.running ? { boxShadow: '0 0 40px rgba(110,198,255,0.12), 0 4px 24px rgba(0,0,0,0.45)' } : {}}>
         {status?.running && (
           <div className="absolute inset-0 pointer-events-none" style={{
-            background: 'radial-gradient(ellipse 70% 60% at 30% 50%, rgba(139,92,246,0.07) 0%, transparent 70%)',
+            background: 'radial-gradient(ellipse 70% 60% at 30% 50%, rgba(110,198,255,0.07) 0%, transparent 70%)',
           }} />
         )}
         <div className="relative z-10">
@@ -150,12 +150,12 @@ function CpuMinerTab() {
                   <AreaChart data={history} margin={{ top: 4, right: 0, left: -30, bottom: 0 }}>
                     <defs>
                       <linearGradient id="cpuGrad" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#8B5CF6" />
+                        <stop offset="0%" stopColor="#6ec6ff" />
                         <stop offset="100%" stopColor="#3B82F6" />
                       </linearGradient>
                       <linearGradient id="cpuFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#8B5CF6" stopOpacity={0.20} />
-                        <stop offset="100%" stopColor="#8B5CF6" stopOpacity={0} />
+                        <stop offset="0%" stopColor="#6ec6ff" stopOpacity={0.20} />
+                        <stop offset="100%" stopColor="#6ec6ff" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <XAxis dataKey="t" hide />
@@ -171,8 +171,8 @@ function CpuMinerTab() {
                 animate={{ opacity: 1 }}
                 className="flex flex-col items-center py-6 gap-3"
               >
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.10)', border: '1px solid rgba(139,92,246,0.20)' }}>
-                  <Cpu size={28} style={{ color: '#8B5CF6' }} />
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(110,198,255,0.10)', border: '1px solid rgba(110,198,255,0.20)' }}>
+                  <Cpu size={28} style={{ color: '#6ec6ff' }} />
                 </div>
                 <p className="text-sm" style={{ color: 'rgba(238,240,255,0.35)' }}>Configure your address below and start mining</p>
               </motion.div>
@@ -196,7 +196,7 @@ function CpuMinerTab() {
         <div>
           <label className="label">Mining Address</label>
           <input value={address} onChange={e => setAddress(e.target.value)} placeholder="P…" className="input" />
-          <button onClick={() => navigate('/wallet')} className="mt-1.5 flex items-center gap-1 text-xs transition-colors" style={{ color: '#8B5CF6' }}>
+          <button onClick={() => navigate('/wallet')} className="mt-1.5 flex items-center gap-1 text-xs transition-colors" style={{ color: '#6ec6ff' }}>
             View wallet <ArrowRight size={11} />
           </button>
         </div>
@@ -207,7 +207,7 @@ function CpuMinerTab() {
             type="range" min={1} max={maxThreads} value={threads}
             onChange={e => setThreads(parseInt(e.target.value))}
             className="w-full h-1.5 rounded-full appearance-none cursor-pointer mt-1"
-            style={{ background: `linear-gradient(to right, #8B5CF6 0%, #3B82F6 ${(threads / maxThreads) * 100}%, rgba(255,255,255,0.08) ${(threads / maxThreads) * 100}%, rgba(255,255,255,0.08) 100%)` }}
+            style={{ background: `linear-gradient(to right, #3b3bff 0%, #6ec6ff 50%, #a78bfa ${(threads / maxThreads) * 100}%, rgba(255,255,255,0.08) ${(threads / maxThreads) * 100}%, rgba(255,255,255,0.08) 100%)` }}
           />
         </div>
 
@@ -403,7 +403,7 @@ function GpuMinerTab() {
         <div>
           <label className="label">Mining Address</label>
           <input value={address} onChange={e => setAddress(e.target.value)} placeholder="P…" className="input" />
-          <button onClick={() => navigate('/wallet')} className="mt-1.5 flex items-center gap-1 text-xs transition-colors" style={{ color: '#8B5CF6' }}>
+          <button onClick={() => navigate('/wallet')} className="mt-1.5 flex items-center gap-1 text-xs transition-colors" style={{ color: '#6ec6ff' }}>
             View wallet <ArrowRight size={11} />
           </button>
         </div>
@@ -590,8 +590,8 @@ function StratumTab() {
                 }}
                 className="px-3 py-1.5 rounded-lg text-xs font-display font-semibold transition-all duration-150"
                 style={{
-                  background: selectedPreset === i ? 'rgba(139,92,246,0.18)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${selectedPreset === i ? 'rgba(139,92,246,0.40)' : 'rgba(255,255,255,0.10)'}`,
+                  background: selectedPreset === i ? 'rgba(110,198,255,0.18)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${selectedPreset === i ? 'rgba(110,198,255,0.40)' : 'rgba(255,255,255,0.10)'}`,
                   color: selectedPreset === i ? '#A78BFA' : 'var(--t2)',
                 }}
               >
@@ -639,10 +639,10 @@ function StratumTab() {
       </div>
 
       {/* Info banner */}
-      <div className="card p-4 flex gap-3" style={{ background: 'rgba(59,130,246,0.05)', borderColor: 'rgba(59,130,246,0.18)' }}>
-        <Server size={16} style={{ color: '#60a5fa', flexShrink: 0, marginTop: 1 }} />
+      <div className="card p-4 flex gap-3" style={{ borderColor: 'rgba(110,198,255,0.30)' }}>
+        <Server size={16} style={{ color: '#6ec6ff', flexShrink: 0, marginTop: 1 }} />
         <div className="text-xs space-y-1" style={{ color: 'var(--t2)' }}>
-          <p className="font-semibold font-display" style={{ color: '#60a5fa' }}>ASIC & External Miner Support</p>
+          <p className="font-semibold font-display" style={{ color: '#6ec6ff' }}>ASIC &amp; External Miner Support</p>
           <p style={{ color: 'var(--t3)' }}>Point your ASIC miner or mining software to the Stratum proxy at <span className="font-mono" style={{ color: 'var(--t2)', fontFamily: '"JetBrains Mono", monospace' }}>127.0.0.1:4444</span> once connected to a pool.</p>
         </div>
       </div>
@@ -668,15 +668,13 @@ export default function Miner() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="h-full overflow-y-auto p-6"
+      className="h-full overflow-y-auto"
     >
-      <div className="max-w-4xl mx-auto space-y-5">
+      <div className="w-full space-y-5 px-8 py-6">
       {/* Header */}
       <div>
-        <h1 className="font-display font-bold text-2xl gradient-text">Miner</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--t3)' }}>
-          SHA-256d miner — CPU, GPU, and ASIC pool support
-        </p>
+        <h1 className="page-title">Miner</h1>
+        <p className="page-subtitle">SHA-256d · CPU · GPU · ASIC pool support</p>
       </div>
 
       {/* Tabs */}
@@ -690,10 +688,10 @@ export default function Miner() {
             onClick={() => setActiveTab(key)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-display font-semibold transition-all duration-200"
             style={activeTab === key ? {
-              background: 'linear-gradient(135deg, rgba(139,92,246,0.25) 0%, rgba(59,130,246,0.15) 100%)',
-              border: '1px solid rgba(139,92,246,0.35)',
+              background: 'linear-gradient(135deg, rgba(110,198,255,0.25) 0%, rgba(59,130,246,0.15) 100%)',
+              border: '1px solid rgba(110,198,255,0.35)',
               color: '#A78BFA',
-              boxShadow: '0 2px 8px rgba(139,92,246,0.15)',
+              boxShadow: '0 2px 8px rgba(110,198,255,0.15)',
             } : {
               color: 'rgba(238,240,255,0.40)',
               border: '1px solid transparent',

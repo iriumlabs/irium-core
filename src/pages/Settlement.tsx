@@ -8,9 +8,9 @@ import {
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useStore } from '../lib/store';
-import { settlement, rpc } from '../lib/tauri';
+import { settlement, rpc, agreements as agreementsApi } from '../lib/tauri';
 import { SATS_PER_IRM, formatIRM, truncateHash } from '../lib/types';
-import type { OtcParams, FreelanceParams, MilestoneParams, DepositParams, AgreementResult } from '../lib/types';
+import type { OtcParams, FreelanceParams, MilestoneParams, DepositParams, AgreementResult, Agreement } from '../lib/types';
 
 // ── Template definitions ─────────────────────────────────────────
 
@@ -96,7 +96,7 @@ const DEFAULT_FORM: FormState = {
   paymentMethod: '',
 };
 
-type View = 'grid' | 'wizard' | 'success';
+type View = 'hub' | 'grid' | 'wizard' | 'success';
 
 function getLabels(id: TemplateId): { partyA: string; partyB: string } {
   switch (id) {
@@ -268,7 +268,7 @@ export default function SettlementPage() {
   const navigate = useNavigate();
   const nodeStatus = useStore((s) => s.nodeStatus);
   const rpcUrl = useStore((s) => s.settings.rpc_url);
-  const [view, setView] = useState<View>('grid');
+  const [view, setView] = useState<View>('hub');
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId | null>(null);
   const [wizardStep, setWizardStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -276,6 +276,9 @@ export default function SettlementPage() {
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [feeRate, setFeeRate] = useState(0);
+  const [hubAgreements, setHubAgreements] = useState<Agreement[]>([]);
+  const [allAgreements, setAllAgreements] = useState<Agreement[]>([]);
+  const [hubLoading, setHubLoading] = useState(false);
 
   const steps = ['Details', 'Review & Confirm'];
 
@@ -299,6 +302,16 @@ export default function SettlementPage() {
     fetchFee();
   }, []);
 
+  useEffect(() => {
+    if (view !== 'hub') return;
+    setHubLoading(true);
+    agreementsApi.list().then((list) => {
+      const all = list ?? [];
+      setAllAgreements(all);
+      setHubAgreements(all.slice(-5).reverse());
+    }).catch(() => {}).finally(() => setHubLoading(false));
+  }, [view]);
+
   const setField = useCallback((key: keyof FormState) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -316,7 +329,7 @@ export default function SettlementPage() {
 
   const handleBack = () => {
     if (view === 'success') {
-      setView('grid');
+      setView('hub');
       setSelectedTemplate(null);
       setResult(null);
       setForm(DEFAULT_FORM);
@@ -329,6 +342,8 @@ export default function SettlementPage() {
         setSelectedTemplate(null);
         setErrors({});
       }
+    } else if (view === 'grid') {
+      setView('hub');
     }
   };
 
@@ -414,7 +429,7 @@ export default function SettlementPage() {
   }, [result, selectedTemplate, form]);
 
   const resetAll = () => {
-    setView('grid');
+    setView('hub');
     setSelectedTemplate(null);
     setResult(null);
     setForm(DEFAULT_FORM);
@@ -427,18 +442,132 @@ export default function SettlementPage() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="h-full overflow-y-auto p-6"
+      className="h-full overflow-y-auto"
     >
-      <div className="max-w-6xl mx-auto">
+      <div className="w-full px-8 py-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="font-display font-bold text-2xl text-white">Settlement Hub</h1>
-        <p className="text-white/40 text-sm mt-0.5">
-          Create trustless on-chain settlements using Irium's proof-based escrow system
+        <h1 className="page-title">Settlement Hub</h1>
+        <p className="page-subtitle">
+          Trustless on-chain settlements using Irium's proof-based escrow system
         </p>
       </div>
 
       <AnimatePresence mode="wait">
+        {/* ── HUB VIEW ──────────────────────────────────────────── */}
+        {view === 'hub' && (
+          <motion.div
+            key="hub"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, x: -40 }}
+            transition={{ duration: 0.25 }}
+            className="space-y-6"
+          >
+            {/* Stat cards */}
+            {(() => {
+              const totalVol = allAgreements.reduce((s, a) => s + (a.amount ?? 0), 0) / SATS_PER_IRM;
+              const pendingProofs = allAgreements.filter(a =>
+                a.status === 'funded' && (a.proof_status === 'none' || a.proof_status == null)
+              ).length;
+              const stats = [
+                { label: 'Total Agreements', value: allAgreements.length > 0 ? String(allAgreements.length) : '0' },
+                { label: 'Pending Proofs',   value: String(pendingProofs) },
+                { label: 'Total Volume',     value: totalVol > 0 ? `${totalVol.toFixed(4)} IRM` : '0 IRM' },
+              ];
+              return (
+                <div className="grid grid-cols-3 gap-3">
+                  {stats.map((stat) => (
+                    <div key={stat.label} className="stat-card">
+                      <span className="stat-card-label">{stat.label}</span>
+                      <span className="stat-card-value">
+                        {hubLoading ? <Loader2 size={16} className="animate-spin" /> : stat.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* Entry buttons */}
+            <div className="grid grid-cols-2 gap-4">
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate('/settlement/seller-wizard')}
+                className="card-interactive p-6 text-left flex flex-col gap-3 relative overflow-hidden"
+              >
+                <div className="absolute top-4 right-4 w-20 h-20 rounded-full blur-2xl opacity-25" style={{ background: '#6ec6ff' }} />
+                <div className="p-3 rounded-xl w-fit" style={{ background: 'rgba(110,198,255,0.16)', border: '1px solid rgba(110,198,255,0.32)' }}>
+                  <Zap size={20} style={{ color: '#6ec6ff' }} />
+                </div>
+                <div>
+                  <div className="font-display font-bold text-lg text-white">I'm Selling</div>
+                  <div className="text-white/45 text-sm mt-1">Create an offer, share with buyer, receive payment on proof</div>
+                </div>
+                <div className="text-xs font-medium" style={{ color: '#6ec6ff' }}>Start Seller Flow →</div>
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate('/settlement/buyer-wizard')}
+                className="card-interactive p-6 text-left flex flex-col gap-3 relative overflow-hidden"
+              >
+                <div className="absolute top-4 right-4 w-20 h-20 rounded-full blur-2xl opacity-25" style={{ background: '#a78bfa' }} />
+                <div className="p-3 rounded-xl w-fit" style={{ background: 'rgba(167,139,250,0.18)', border: '1px solid rgba(167,139,250,0.30)' }}>
+                  <ArrowLeftRight size={20} style={{ color: '#a78bfa' }} />
+                </div>
+                <div>
+                  <div className="font-display font-bold text-lg text-white">I'm Buying</div>
+                  <div className="text-white/45 text-sm mt-1">Find an offer, fund escrow, release payment on delivery</div>
+                </div>
+                <div className="text-xs font-medium" style={{ color: '#a78bfa' }}>Start Buyer Flow →</div>
+              </motion.button>
+            </div>
+
+            {/* Create directly */}
+            <div className="text-center">
+              <button
+                onClick={() => setView('grid')}
+                className="text-sm text-white/35 hover:text-white/65 transition-colors underline underline-offset-2"
+              >
+                Create Agreement Directly (advanced)
+              </button>
+            </div>
+
+            {/* Recent agreements */}
+            {hubAgreements.length > 0 && (
+              <div className="card p-5">
+                <div className="text-xs font-semibold text-white/35 uppercase tracking-wider mb-3">Recent Agreements</div>
+                <div className="space-y-2">
+                  {hubAgreements.map((ag) => (
+                    <button
+                      key={ag.id}
+                      onClick={() => navigate(`/agreements/${ag.id}`)}
+                      className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors text-left"
+                    >
+                      <span className="font-mono text-xs text-white/50 flex-1 truncate">{ag.id}</span>
+                      <span className={`badge-${ag.status === 'released' || ag.status === 'refunded' ? 'success' : ag.status === 'funded' ? 'info' : 'warning'} text-xs`}>
+                        {ag.status}
+                      </span>
+                      {ag.amount != null && (
+                        <span className="text-xs text-white/40 font-mono">{formatIRM(ag.amount)} IRM</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => navigate('/agreements')}
+                  className="mt-3 text-xs text-white/30 hover:text-white/60 transition-colors"
+                >
+                  View all agreements →
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
+
         {/* ── GRID VIEW ─────────────────────────────────────────── */}
         {view === 'grid' && (
           <motion.div
@@ -447,6 +576,9 @@ export default function SettlementPage() {
             animate={{ opacity: 1, transition: { staggerChildren: 0.08 } }}
             exit={{ opacity: 0, x: -40 }}
           >
+            <button onClick={handleBack} className="btn-ghost flex items-center gap-2 text-white/50 hover:text-white mb-4">
+              <ArrowLeft size={16} />Back to Hub
+            </button>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
               {TEMPLATES.map((template) => (
                 <motion.div

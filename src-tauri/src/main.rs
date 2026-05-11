@@ -38,12 +38,18 @@ struct AppState {
 
 impl AppState {
     fn new() -> Self {
+        // Always start with wallet.json as the active wallet so the user sees
+        // their primary wallet's addresses and balance immediately on launch.
+        // The user can switch to wallet-2.json etc. via the Manage Wallets
+        // panel; settings persistence (set_wallet_config from saved settings)
+        // overrides this default if a different wallet was last active.
+        let default_wallet = resolve_wallet_path();
         AppState {
             node_process: Arc::new(Mutex::new(None)),
             miner_process: Arc::new(Mutex::new(None)),
             explorer_process: Arc::new(Mutex::new(None)),
             rpc_url: Arc::new(Mutex::new("http://127.0.0.1:38300".to_string())),
-            wallet_path: Arc::new(Mutex::new(None)),
+            wallet_path: Arc::new(Mutex::new(Some(default_wallet))),
             data_dir: Arc::new(Mutex::new(None)),
             miner_start_time: Arc::new(Mutex::new(None)),
             miner_address: Arc::new(Mutex::new(None)),
@@ -121,6 +127,11 @@ fn lock_err(e: impl std::fmt::Display) -> String {
     format!("Lock error: {}", e)
 }
 
+#[tauri::command]
+fn get_app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
 fn resolve_wallet_path() -> String {
     dirs::home_dir()
         .unwrap_or_default()
@@ -128,6 +139,27 @@ fn resolve_wallet_path() -> String {
         .join("wallet.json")
         .to_string_lossy()
         .to_string()
+}
+
+// Returns the first non-existing wallet path: wallet.json, wallet-2.json, wallet-3.json…
+// Used by wallet_create so a new wallet never silently overwrites an existing one.
+fn find_unique_wallet_path() -> String {
+    let irium_dir = dirs::home_dir().unwrap_or_default().join(".irium");
+    let base = irium_dir.join("wallet.json");
+    if !base.exists() {
+        return base.to_string_lossy().to_string();
+    }
+    for n in 2u32..=999 {
+        let candidate = irium_dir.join(format!("wallet-{}.json", n));
+        if !candidate.exists() {
+            return candidate.to_string_lossy().to_string();
+        }
+    }
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    irium_dir.join(format!("wallet-{}.json", ts)).to_string_lossy().to_string()
 }
 
 async fn get_rpc_info(rpc_url: &str) -> Result<RpcInfo, String> {
@@ -197,6 +229,13 @@ async fn get_first_wallet_address(
         .map(|l| l.trim().to_string())
         .find(|l| !l.is_empty())
         .ok_or_else(|| "No wallet addresses found — run new-address first".to_string())
+}
+
+async fn fetch_address_balance_sats(client: &reqwest::Client, rpc_url: &str, address: &str) -> Option<u64> {
+    let url = format!("{}/rpc/balance?address={}", rpc_url, address);
+    let resp = client.get(&url).timeout(Duration::from_secs(3)).send().await.ok()?;
+    let b = resp.json::<RpcBalance>().await.ok()?;
+    Some(b.balance)
 }
 
 // ============================================================
@@ -1096,11 +1135,12 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
 // wallet_get_balance: lists all addresses, sums balances via /rpc/balance
 #[tauri::command]
 async fn wallet_get_balance(state: State<'_, AppState>) -> Result<WalletBalance, String> {
+    // Mirror wallet_list_addresses: pass whatever wallet_path is in state to the
+    // binary (None → binary uses its own default ~/.irium/wallet.json). This was
+    // previously short-circuiting to all-zeros when wallet_path was None, which
+    // made the hero balance read 0 even though wallet_list_addresses correctly
+    // surfaced the same wallet's addresses with balances via the binary default.
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
-    // No wallet configured — return zero rather than exposing the default wallet's addresses
-    if wallet_path.is_none() {
-        return Ok(WalletBalance { confirmed: 0, unconfirmed: 0, total: 0 });
-    }
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
@@ -1149,21 +1189,30 @@ async fn wallet_new_address(state: State<'_, AppState>) -> Result<String, String
         .unwrap_or_default())
 }
 
-// wallet_list_addresses: list-addresses outputs one address per line (no JSON flag)
+// wallet_list_addresses: list-addresses outputs one address per line.
+// Also fetches RPC balance per address (best-effort — returns None if node offline).
 #[tauri::command]
 async fn wallet_list_addresses(state: State<'_, AppState>) -> Result<Vec<AddressInfo>, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+
     let output = run_wallet_cmd(vec!["list-addresses".to_string()], wallet_path, data_dir).await?;
 
-    let addresses = output
+    let raw_addrs: Vec<String> = output
         .lines()
         .map(|l| l.trim().to_string())
         .filter(|l| !l.is_empty())
-        .map(|address| AddressInfo { address, label: None, balance: None, index: None })
         .collect();
 
-    Ok(addresses)
+    let client = reqwest::Client::new();
+    let mut results = Vec::with_capacity(raw_addrs.len());
+    for (idx, address) in raw_addrs.into_iter().enumerate() {
+        let balance = fetch_address_balance_sats(&client, &rpc_url, &address).await;
+        results.push(AddressInfo { address, label: None, balance, index: Some(idx as u32) });
+    }
+
+    Ok(results)
 }
 
 // wallet_send: send <from_addr> <to_addr> <amount_irm> [--fee <irm>] --rpc <url>
@@ -1201,21 +1250,37 @@ async fn wallet_send(
 async fn wallet_transactions(
     state: State<'_, AppState>,
     limit: Option<u32>,
+    address: Option<String>,
 ) -> Result<Vec<Transaction>, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let addr_output = run_wallet_cmd(
-        vec!["list-addresses".to_string()],
-        wallet_path, data_dir,
-    ).await.unwrap_or_default();
-
-    let addresses: Vec<String> = addr_output
-        .lines()
-        .map(|l| l.trim().to_string())
-        .filter(|l| !l.is_empty())
-        .collect();
+    // If the caller passes an explicit `address`, query only that one —
+    // mirrors the binary's `history <base58_addr>` command and the RPC's
+    // `?address=` filter. Otherwise fall back to listing every wallet
+    // address and concatenating their histories (legacy "all transactions"
+    // behaviour used by the Dashboard's recent-activity feed).
+    let addresses: Vec<String> = if let Some(addr) = address {
+        let trimmed = addr.trim();
+        if trimmed.is_empty() {
+            return Ok(Vec::new());
+        }
+        vec![trimmed.to_string()]
+    } else {
+        let addr_output = run_wallet_cmd(
+            vec!["list-addresses".to_string()],
+            wallet_path,
+            data_dir,
+        )
+        .await
+        .unwrap_or_default();
+        addr_output
+            .lines()
+            .map(|l| l.trim().to_string())
+            .filter(|l| !l.is_empty())
+            .collect()
+    };
 
     let client = reqwest::Client::new();
     let mut all_txs: Vec<Transaction> = Vec::new();
@@ -1226,23 +1291,26 @@ async fn wallet_transactions(
             if let Ok(history) = resp.json::<RpcHistoryResponse>().await {
                 let current_height = history.height;
                 for tx in history.txs {
-                    let confirmations = match tx.height {
-                        Some(h) if h >= 0 => current_height.saturating_sub(h as u64),
-                        _ => 0,
-                    };
-                    let direction = if tx.is_coinbase.unwrap_or(false) {
-                        "receive"
+                    // Off-by-one fix: a tx in the tip block has 1 confirmation,
+                    // not 0. Frontend recomputes this from `height` anyway, but
+                    // we keep the field accurate too so any consumer using
+                    // `confirmations` directly gets the right value.
+                    let confirmations = if tx.height > 0 && current_height >= tx.height {
+                        current_height - tx.height + 1
                     } else {
-                        "receive"
+                        0
                     };
+                    let direction = if tx.net >= 0 { "receive" } else { "send" };
                     all_txs.push(Transaction {
                         txid: tx.txid,
-                        amount: tx.output_value.unwrap_or(0) as i64,
+                        amount: tx.net,
                         fee: None,
                         confirmations,
+                        height: if tx.height > 0 { Some(tx.height) } else { None },
                         timestamp: None,
                         direction: direction.to_string(),
                         address: Some(addr.clone()),
+                        is_coinbase: Some(tx.is_coinbase),
                     });
                 }
             }
@@ -1262,57 +1330,464 @@ async fn wallet_set_path(state: State<'_, AppState>, path: String) -> Result<boo
     Ok(true)
 }
 
-// wallet_create: creates a new BIP32 wallet, replacing any existing wallet file.
+// Info about a wallet file on disk — used by the Manage Wallets panel to list
+// every wallet*.json under ~/.irium/ so the user can switch between them.
+#[derive(serde::Serialize)]
+struct WalletFileInfo {
+    path:      String,
+    name:      String,
+    size:      u64,
+    is_active: bool,
+}
+
+// Known non-wallet JSON files written by iriumd or the GUI into ~/.irium/.
+// Fast-pathed by name so we don't even bother opening them. If new config
+// files appear in the future, the wallet-content check below will still
+// reject them defensively, but adding the name here saves a parse.
+const NON_WALLET_JSON_FILES: &[&str] = &[
+    "anchors.json",
+    "discovered_feeds.json",
+    "feeds.json",
+    "node.json",
+    "settings.json",
+    "config.json",
+];
+
+// Returns true if the file at `path` parses as a wallet JSON document.
+// Wallet files have at least one of these distinguishing top-level keys:
+//   - "bip32_seed"  (BIP32 wallets — current default)
+//   - "mnemonic"    (HD wallets with a recovery phrase)
+//   - "keys"        (legacy single-key wallets)
+// anchors.json has "anchors"; discovered_feeds.json has "feeds"; neither
+// has any of the wallet markers, so they're correctly filtered out by the
+// content check alone — the name list above is just a fast-path.
+fn is_wallet_json_file(path: &std::path::Path) -> bool {
+    let Ok(contents) = std::fs::read_to_string(path) else { return false };
+    let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&contents) else { return false };
+    let Some(obj) = parsed.as_object() else { return false };
+    obj.contains_key("bip32_seed")
+        || obj.contains_key("mnemonic")
+        || obj.contains_key("keys")
+}
+
+// Scan ~/.irium/ for any .json file that looks like a wallet. Returns a
+// list with wallet.json (if present) first, then every other wallet file
+// alphabetically. Files renamed away from the wallet*.json glob (e.g.
+// "Primary-wallet.json", "savings.json") still appear because the
+// detection is content-based, not name-based. The currently-active wallet
+// (state.wallet_path) is flagged so the UI can show the green dot /
+// "Active" badge.
+#[tauri::command]
+async fn list_wallet_files(state: State<'_, AppState>) -> Result<Vec<WalletFileInfo>, String> {
+    let irium_dir = dirs::home_dir().unwrap_or_default().join(".irium");
+    let active_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+
+    // Resolve "active" — when wallet_path is unset the binary defaults to
+    // ~/.irium/wallet.json, so report that as active in that case.
+    let active_resolved = active_path.unwrap_or_else(resolve_wallet_path);
+
+    let read = match std::fs::read_dir(&irium_dir) {
+        Ok(r) => r,
+        Err(_) => return Ok(Vec::new()), // no .irium dir yet — nothing to list
+    };
+
+    let mut files: Vec<WalletFileInfo> = Vec::new();
+    for entry in read.flatten() {
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|s| s.to_str()).map(|s| s.to_string()) else { continue };
+
+        // Must be a regular *.json file (not a subdirectory, not anchors etc).
+        if !name.to_ascii_lowercase().ends_with(".json") {
+            continue;
+        }
+        if !path.is_file() {
+            continue;
+        }
+        if NON_WALLET_JSON_FILES
+            .iter()
+            .any(|n| n.eq_ignore_ascii_case(&name))
+        {
+            continue;
+        }
+
+        // Content check — defensive against new config files. Files small
+        // (a few KB at most), and list_wallet_files only fires when the
+        // panel opens or after a wallet operation, so the parse cost is
+        // negligible.
+        if !is_wallet_json_file(&path) {
+            continue;
+        }
+
+        let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+        let path_s = path.to_string_lossy().to_string();
+        let is_active = path_s == active_resolved;
+        files.push(WalletFileInfo { path: path_s, name, size, is_active });
+    }
+
+    // Sort: wallet.json first (case-insensitive — Windows is flexible
+    // about filename case), then everything else alphabetically.
+    files.sort_by(|a, b| {
+        let a_is_primary = a.name.eq_ignore_ascii_case("wallet.json");
+        let b_is_primary = b.name.eq_ignore_ascii_case("wallet.json");
+        match (a_is_primary, b_is_primary) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.name.to_ascii_lowercase().cmp(&b.name.to_ascii_lowercase()),
+        }
+    });
+
+    Ok(files)
+}
+
+// Info about a single address inside a wallet file inspected via
+// get_wallet_info — `balance` is None when the RPC is offline or returns
+// nothing for that address (NOT zero, which means "node confirmed zero").
+#[derive(serde::Serialize)]
+struct WalletInfoAddress {
+    address: String,
+    balance: Option<u64>,
+}
+
+// Inspect a wallet file WITHOUT activating it. Returns the file's name,
+// addresses, and total balance — used by the Delete confirmation modal
+// so the user sees what's at stake before unlinking the file. The active
+// wallet (state.wallet_path) is NOT touched: we pass the requested path
+// directly to the binary via IRIUM_WALLET_FILE, so this is read-only and
+// has no side-effects on the rest of the app.
 //
-// The binary refuses to overwrite an existing wallet, so we remove the old file
-// first. IRIUM_WALLET_FILE is set explicitly so the path is deterministic on all
-// platforms regardless of how HOME is resolved inside the wallet binary.
+// Defensive checks mirror delete_wallet_file: path must canonicalise to
+// inside ~/.irium/, extension must be .json, and the file must content-
+// verify as a wallet via is_wallet_json_file. Anything else returns an
+// error before the binary is even invoked.
 //
-// Verified stdout format:
+// total_balance is None if every per-address fetch failed (e.g. RPC
+// offline). It is Some(0) only when the node confirmed zero across every
+// address — these two states are visually distinct in the UI.
+#[derive(serde::Serialize)]
+struct WalletInfo {
+    name:          String,
+    address_count: u32,
+    addresses:     Vec<WalletInfoAddress>,
+    total_balance: Option<u64>,
+}
+
+#[tauri::command]
+async fn get_wallet_info(
+    state: State<'_, AppState>,
+    path: String,
+) -> Result<WalletInfo, String> {
+    let irium_dir = dirs::home_dir().unwrap_or_default().join(".irium");
+    let target = std::path::PathBuf::from(&path);
+
+    if !target.exists() {
+        return Err(format!("Wallet file not found: {}", path));
+    }
+
+    let canonical = target
+        .canonicalize()
+        .map_err(|e| format!("Cannot resolve wallet path: {}", e))?;
+    let canonical_dir = irium_dir
+        .canonicalize()
+        .map_err(|e| format!("Cannot resolve data dir: {}", e))?;
+    if !canonical.starts_with(&canonical_dir) {
+        return Err("Refusing to inspect file outside ~/.irium/".to_string());
+    }
+
+    let name = canonical
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| "Wallet file has no name".to_string())?
+        .to_string();
+
+    if !name.to_ascii_lowercase().ends_with(".json") {
+        return Err(format!("Not a JSON file: {}", name));
+    }
+    if NON_WALLET_JSON_FILES.iter().any(|n| n.eq_ignore_ascii_case(&name)) {
+        return Err(format!("Not a wallet file: {}", name));
+    }
+    if !is_wallet_json_file(&canonical) {
+        return Err(format!("File is not a wallet: {}", name));
+    }
+
+    // Pass the requested path directly to the binary — do NOT touch
+    // state.wallet_path. The active wallet stays exactly as it was.
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url  = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let inspect_path = canonical.to_string_lossy().to_string();
+
+    let output = run_wallet_cmd(
+        vec!["list-addresses".to_string()],
+        Some(inspect_path),
+        data_dir,
+    )
+    .await?;
+
+    let raw_addrs: Vec<String> = output
+        .lines()
+        .map(|l| l.trim().to_string())
+        .filter(|l| !l.is_empty())
+        .collect();
+
+    let client = reqwest::Client::new();
+    let mut addresses: Vec<WalletInfoAddress> = Vec::with_capacity(raw_addrs.len());
+    let mut sum: u64 = 0;
+    let mut any_success = false;
+    for address in raw_addrs {
+        let balance = fetch_address_balance_sats(&client, &rpc_url, &address).await;
+        if let Some(b) = balance {
+            sum = sum.saturating_add(b);
+            any_success = true;
+        }
+        addresses.push(WalletInfoAddress { address, balance });
+    }
+
+    // total_balance distinguishes "node confirmed all zeros" (Some(0))
+    // from "every fetch failed" (None). The UI uses this to pick between
+    // the safe-zero warning and the cautionary-unknown warning.
+    let total_balance = if addresses.is_empty() {
+        Some(0)
+    } else if any_success {
+        Some(sum)
+    } else {
+        None
+    };
+
+    let address_count = addresses.len() as u32;
+    Ok(WalletInfo { name, address_count, addresses, total_balance })
+}
+
+// Permanently delete a wallet*.json file from disk. Used by the Manage
+// Wallets panel's per-file delete button.
+//
+// Multiple defensive checks before any unlink runs:
+//   * Path MUST canonicalise to inside ~/.irium/ — refuse anything outside
+//     the data dir, even if the caller passes an absolute path.
+//   * Filename MUST end in .json AND content-verify as a wallet file so a
+//     typo or malicious caller can't remove unrelated files in ~/.irium/
+//     (anchors.json, seedlist.txt etc).
+//   * Path MUST NOT be the currently active wallet (switch first, then
+//     delete) — otherwise the running app would be holding handles to a
+//     file that just disappeared. This is the ONLY identity-based rule;
+//     wallet.json is no longer special-cased — any non-active wallet file
+//     (including wallet.json) is deletable.
+#[tauri::command]
+async fn delete_wallet_file(
+    state: State<'_, AppState>,
+    path: String,
+) -> Result<(), String> {
+    let irium_dir = dirs::home_dir().unwrap_or_default().join(".irium");
+    let target = std::path::PathBuf::from(&path);
+
+    // Confirm the file actually exists before any other check — gives a
+    // clearer error than "outside data dir" if the caller passes garbage.
+    if !target.exists() {
+        return Err(format!("Wallet file not found: {}", path));
+    }
+
+    // Resolve symlinks etc, then verify the canonical path lives under
+    // ~/.irium/. canonicalize() requires the file to exist, hence the
+    // earlier exists() check.
+    let canonical = target
+        .canonicalize()
+        .map_err(|e| format!("Cannot resolve wallet path: {}", e))?;
+    let canonical_dir = irium_dir
+        .canonicalize()
+        .map_err(|e| format!("Cannot resolve data dir: {}", e))?;
+    if !canonical.starts_with(&canonical_dir) {
+        return Err("Refusing to delete file outside ~/.irium/".to_string());
+    }
+
+    let name = canonical
+        .file_name()
+        .and_then(|n| n.to_str())
+        .ok_or_else(|| "Wallet file has no name".to_string())?;
+
+    // Must be a .json file AND content-verified as a wallet. Renamed files
+    // (e.g. "Primary-wallet.json", "savings.json") no longer match the old
+    // wallet*.json glob, so we use the same wallet-content check that
+    // list_wallet_files uses — keeps the two commands in sync.
+    if !name.to_ascii_lowercase().ends_with(".json") {
+        return Err(format!("Refusing to delete non-JSON file: {}", name));
+    }
+    if NON_WALLET_JSON_FILES.iter().any(|n| n.eq_ignore_ascii_case(name)) {
+        return Err(format!("Refusing to delete non-wallet file: {}", name));
+    }
+    if !is_wallet_json_file(&canonical) {
+        return Err(format!("Refusing to delete file that is not a wallet: {}", name));
+    }
+
+    // Compare against the explicitly-active wallet path. We deliberately do
+    // NOT fall back to resolve_wallet_path() when state.wallet_path is None —
+    // None means "the user has not confirmed an active wallet yet" (fresh
+    // install, or just after the user cancelled a create-wallet flow). In
+    // that case nothing is "active" and the file is safe to delete.
+    // A non-None state.wallet_path is set by:
+    //   • set_wallet_config on app startup from persisted settings
+    //   • wallet_set_path (explicit user switch via the Manage panel, or the
+    //     Done button after a successful create)
+    //   • wallet_import_mnemonic / wallet_import_wif (implicit on import)
+    let active_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    if let Some(active) = active_path {
+        let active_canonical = std::path::PathBuf::from(&active).canonicalize().ok();
+        if active_canonical.as_ref() == Some(&canonical) {
+            return Err("This is the currently active wallet. Switch to another wallet first.".to_string());
+        }
+    }
+
+    std::fs::remove_file(&canonical)
+        .map_err(|e| format!("Failed to delete wallet file: {}", e))?;
+
+    Ok(())
+}
+
+// Rename a wallet*.json file. Used by the Manage Wallets panel's inline
+// rename affordance. Validates the new name, ensures both old and new
+// paths live inside ~/.irium/, refuses to clobber an existing file, then
+// std::fs::rename. If the renamed file was the currently-active wallet,
+// state.wallet_path is updated so subsequent commands use the new path.
+//
+// Returns the new full path string on success — the frontend uses this
+// to persist `settings.wallet_path` if the active wallet was the one
+// being renamed.
+#[tauri::command]
+async fn rename_wallet_file(
+    state: State<'_, AppState>,
+    old_path: String,
+    new_name: String,
+) -> Result<String, String> {
+    let irium_dir = dirs::home_dir().unwrap_or_default().join(".irium");
+    let old = std::path::PathBuf::from(&old_path);
+
+    if !old.exists() {
+        return Err(format!("Wallet file not found: {}", old_path));
+    }
+
+    let old_canonical = old
+        .canonicalize()
+        .map_err(|e| format!("Cannot resolve wallet path: {}", e))?;
+    let dir_canonical = irium_dir
+        .canonicalize()
+        .map_err(|e| format!("Cannot resolve data dir: {}", e))?;
+    if !old_canonical.starts_with(&dir_canonical) {
+        return Err("Refusing to rename file outside ~/.irium/".to_string());
+    }
+
+    let trimmed = new_name.trim();
+    if trimmed.is_empty() {
+        return Err("Name cannot be empty".to_string());
+    }
+    if trimmed.len() > 64 {
+        return Err("Name must be 64 characters or fewer".to_string());
+    }
+    if !trimmed.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
+        return Err("Name can contain only letters, numbers, hyphens, and underscores".to_string());
+    }
+
+    let new_filename = format!("{}.json", trimmed);
+    let new_path = dir_canonical.join(&new_filename);
+
+    // Same name — nothing to do, return current path so the UI flow can
+    // close its inline editor without showing an error.
+    if new_path == old_canonical {
+        return Ok(old_canonical.to_string_lossy().to_string());
+    }
+    if new_path.exists() {
+        return Err(format!("A wallet file named {} already exists", new_filename));
+    }
+
+    std::fs::rename(&old_canonical, &new_path)
+        .map_err(|e| format!("Failed to rename: {}", e))?;
+
+    // If the renamed file was the active wallet, update state so subsequent
+    // wallet commands keep working with the same wallet under its new name.
+    let active_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let active_resolved = active_path.unwrap_or_else(resolve_wallet_path);
+    let active_canonical_old = std::path::PathBuf::from(&active_resolved)
+        .canonicalize()
+        .ok();
+    if active_canonical_old.as_ref() == Some(&old_canonical) {
+        *state.wallet_path.lock().map_err(lock_err)? =
+            Some(new_path.to_string_lossy().to_string());
+    }
+
+    Ok(new_path.to_string_lossy().to_string())
+}
+
+// wallet_create: creates a new BIP32 wallet with a 24-word BIP39 mnemonic.
+//
+// Uses find_unique_wallet_path() so a second wallet goes to wallet-2.json,
+// wallet-3.json, etc. — the existing primary wallet.json is never touched.
+//
+// Verified stdout format for `create-wallet --bip32`:
 //   BIP32 wallet created
-//   mnemonic: advice knee story boss tent velvet voyage twelve grid rural reward inch ...
 //   derivation path: m/44'/1'/0'/0/0
-//   IMPORTANT: write down your mnemonic -- it cannot be recovered
-//   address: Q9WtU4CsQ6vkfMsjiz3reN4AneHmf14HtF
-//   wallet /home/user/.irium/wallet.json
+//   mnemonic stored in wallet; export with: irium-wallet export-mnemonic --out <file>
+//   wallet /path/to/wallet.json
+//
+// No address is printed — must call list-addresses after creation.
+// Mnemonic is stored in the wallet file — must call export-mnemonic after creation.
 #[tauri::command]
 async fn wallet_create(state: State<'_, AppState>) -> Result<WalletCreateResult, String> {
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
 
-    let wallet_file = resolve_wallet_path();
+    // find_unique_wallet_path never returns an existing file, so create-wallet
+    // won't hit its own "wallet already exists" guard.
+    let wallet_file = find_unique_wallet_path();
 
-    // Binary exits with code 1 if the wallet file already exists — remove it first
-    if std::path::Path::new(&wallet_file).exists() {
-        std::fs::remove_file(&wallet_file)
-            .map_err(|e| format!("Failed to remove existing wallet: {}", e))?;
+    // Step 1: create the BIP32 wallet
+    run_wallet_cmd(
+        vec!["create-wallet".to_string(), "--bip32".to_string()],
+        Some(wallet_file.clone()),
+        data_dir.clone(),
+    ).await?;
+
+    // Step 2: get the address — list-addresses outputs one bare address per line
+    let addr_output = run_wallet_cmd(
+        vec!["list-addresses".to_string()],
+        Some(wallet_file.clone()),
+        data_dir.clone(),
+    ).await?;
+
+    let address = addr_output
+        .lines()
+        .map(|l| l.trim())
+        .find(|l| !l.is_empty())
+        .unwrap_or("")
+        .to_string();
+
+    if address.is_empty() {
+        return Err(format!(
+            "Wallet created but list-addresses returned no address: {}",
+            &addr_output[..addr_output.len().min(200)]
+        ));
     }
 
-    let output = run_wallet_cmd(
-        vec!["create-wallet".to_string(), "--bip32".to_string()],
+    // Step 3: export the mnemonic from the wallet file via temp file
+    let tmp = std::env::temp_dir().join(format!(
+        "irium_mnemonic_{}.txt",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis()
+    ));
+
+    run_wallet_cmd(
+        vec!["export-mnemonic".to_string(), "--out".to_string(), tmp.to_string_lossy().to_string()],
         Some(wallet_file.clone()),
         data_dir,
     ).await?;
 
-    let mut mnemonic = String::new();
-    let mut address = String::new();
+    let mnemonic = std::fs::read_to_string(&tmp)
+        .map_err(|e| format!("Failed to read mnemonic file: {}", e))?;
+    let _ = std::fs::remove_file(&tmp);
+    let mnemonic = mnemonic.trim().to_string();
 
-    for line in output.lines() {
-        if let Some(rest) = line.strip_prefix("mnemonic: ") {
-            mnemonic = rest.trim().to_string();
-        } else if let Some(rest) = line.strip_prefix("address: ") {
-            address = rest.trim().to_string();
-        }
-    }
-
-    if mnemonic.is_empty() || address.is_empty() {
-        return Err(format!(
-            "Failed to parse wallet creation output: {}",
-            &output[..output.len().min(400)]
-        ));
-    }
-
-    // Register the new wallet so all subsequent commands use it
-    *state.wallet_path.lock().map_err(lock_err)? = Some(wallet_file.clone());
+    // Intentionally do NOT register the new wallet as state.wallet_path here.
+    // Registration is deferred to the frontend's Done-button flow (which calls
+    // wallet_set_path explicitly after the user has confirmed they saved the
+    // recovery phrase). This makes the cancel-after-create path work: the
+    // newly-created file is on disk but isn't "active", so delete_wallet_file
+    // can remove it without tripping the active-wallet safety check.
 
     Ok(WalletCreateResult { mnemonic, address, wallet_path: wallet_file })
 }
@@ -1401,6 +1876,31 @@ async fn wallet_export_seed(state: State<'_, AppState>) -> Result<String, String
 }
 
 #[tauri::command]
+async fn wallet_export_mnemonic(state: State<'_, AppState>) -> Result<String, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+
+    let tmp = std::env::temp_dir().join(format!(
+        "irium_mnemonic_{}.txt",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis()
+    ));
+
+    run_wallet_cmd(
+        vec!["export-mnemonic".to_string(), "--out".to_string(), tmp.to_string_lossy().to_string()],
+        wallet_path,
+        data_dir,
+    ).await?;
+
+    let content = std::fs::read_to_string(&tmp)
+        .map_err(|e| format!("Failed to read mnemonic file: {}", e))?;
+    let _ = std::fs::remove_file(&tmp);
+    Ok(content.trim().to_string())
+}
+
+#[tauri::command]
 async fn wallet_backup(state: State<'_, AppState>, out_path: String) -> Result<String, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
@@ -1422,6 +1922,63 @@ async fn wallet_restore_backup(state: State<'_, AppState>, file_path: String) ->
         data_dir,
     ).await?;
     Ok("Wallet restored successfully".to_string())
+}
+
+#[tauri::command]
+async fn wallet_export_wif(
+    state: State<'_, AppState>,
+    address: String,
+    out_path: String,
+) -> Result<String, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    run_wallet_cmd(
+        vec!["export-wif".to_string(), address, "--out".to_string(), out_path.clone()],
+        wallet_path,
+        data_dir,
+    ).await?;
+    Ok(out_path)
+}
+
+// wallet_read_wif: exports WIF to a temp file, reads it back, returns the WIF string.
+// Used to display the WIF key inline in the UI without requiring a user-chosen file path.
+//
+// Optional wallet_path parameter — when provided, reads from that specific
+// wallet file instead of state.wallet_path. Used by handleCreate after a
+// wallet creation, before the new wallet has been registered as active
+// (registration is deferred to the Done button). Without the explicit path
+// the call would target the previous wallet, where the just-created address
+// doesn't exist, and the WIF read would fail.
+#[tauri::command]
+async fn wallet_read_wif(
+    state: State<'_, AppState>,
+    address: String,
+    wallet_path: Option<String>,
+) -> Result<String, String> {
+    let resolved_path = match wallet_path {
+        Some(p) => Some(p),
+        None => state.wallet_path.lock().map_err(lock_err)?.clone(),
+    };
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+
+    let tmp = std::env::temp_dir().join(format!(
+        "irium_wif_{}.txt",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis()
+    ));
+
+    run_wallet_cmd(
+        vec!["export-wif".to_string(), address, "--out".to_string(), tmp.to_string_lossy().to_string()],
+        resolved_path,
+        data_dir,
+    ).await?;
+
+    let content = std::fs::read_to_string(&tmp)
+        .map_err(|e| format!("Failed to read WIF file: {}", e))?;
+    let _ = std::fs::remove_file(&tmp);
+    Ok(content.trim().to_string())
 }
 
 // ============================================================
@@ -2530,8 +3087,6 @@ async fn get_recent_blocks(
     let height = end_height.map(|h| h.min(tip)).unwrap_or(tip);
 
     // Build a single shared client with a tight per-request timeout.
-    // Requests are fired concurrently so total latency ≈ one round-trip,
-    // not N × round-trip, which previously starved the node-status poller.
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(3))
         .build()
@@ -2539,24 +3094,42 @@ async fn get_recent_blocks(
 
     let start = height.saturating_sub(n - 1);
 
-    // Spawn one task per block height — all requests run in parallel.
+    // Limit to 5 concurrent requests so the node-status poller can still reach
+    // iriumd's RPC while blocks are being fetched (firing 30 requests at once
+    // would saturate iriumd's HTTP server and cause the poller to see the node
+    // as offline, producing spurious "Node Disconnected" toasts).
+    let sem = std::sync::Arc::new(tokio::sync::Semaphore::new(5));
+
     let handles: Vec<tokio::task::JoinHandle<Option<ExplorerBlock>>> =
         (start..=height).rev().map(|h| {
             let url    = format!("{}/rpc/block?height={}", rpc_url, h);
             let client = client.clone();
+            let sem    = sem.clone();
             tokio::spawn(async move {
+                let _permit = sem.acquire().await.ok()?;
                 let resp = client.get(&url).send().await.ok()?;
                 let b    = resp.json::<serde_json::Value>().await.ok()?;
-                let blk  = ExplorerBlock {
+                // iriumd nests hash/time inside a "header" sub-object:
+                // { "height": N, "header": { "hash": "...", "time": N, ... },
+                //   "tx_hex": [...], "miner_address": "..." }
+                let hdr = &b["header"];
+                let blk = ExplorerBlock {
                     height:        b["height"].as_u64().unwrap_or(h),
-                    hash:          b["hash"].as_str().unwrap_or("").to_string(),
+                    hash:          hdr["hash"].as_str().unwrap_or("").to_string(),
                     miner_address: b["miner_address"].as_str()
                         .or_else(|| b["miner"].as_str())
                         .map(String::from),
-                    time:          b["time"].as_u64()
-                        .or_else(|| b["timestamp"].as_u64())
+                    time:          hdr["time"].as_u64().unwrap_or(0),
+                    tx_count:      b["tx_hex"].as_array()
+                        .map(|a| a.len() as u32)
                         .unwrap_or(0),
-                    tx_count:      b["tx_count"].as_u64().unwrap_or(0) as u32,
+                    prev_hash:     hdr["prev_hash"].as_str().map(String::from),
+                    merkle_root:   hdr["merkle_root"].as_str().map(String::from),
+                    bits:          hdr["bits"].as_str()
+                        .map(String::from)
+                        .or_else(|| hdr["bits"].as_u64().map(|n| format!("{:#010x}", n)))
+                        .or_else(|| hdr["bits"].as_f64().map(|n| format!("{:.0}", n))),
+                    nonce:         hdr["nonce"].as_u64(),
                 };
                 if blk.hash.is_empty() { None } else { Some(blk) }
             })
@@ -2572,6 +3145,24 @@ async fn get_recent_blocks(
     blocks.sort_by(|a, b| b.height.cmp(&a.height));
 
     Ok(blocks)
+}
+
+#[tauri::command]
+async fn get_network_hashrate(state: State<'_, AppState>) -> Result<NetworkHashrateInfo, String> {
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let client = reqwest::Client::new();
+    let resp = client
+        .get(format!("{}/rpc/network_hashrate", rpc_url))
+        .timeout(Duration::from_secs(5))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    let v = resp.json::<serde_json::Value>().await.map_err(|e| e.to_string())?;
+    Ok(NetworkHashrateInfo {
+        hashrate:   v["hashrate"].as_f64().or_else(|| v["hash_rate"].as_f64()),
+        difficulty: v["difficulty"].as_f64(),
+        height:     v["height"].as_u64(),
+    })
 }
 
 #[tauri::command]
@@ -2744,6 +3335,10 @@ async fn get_explorer_blocks() -> Result<Vec<ExplorerBlock>, String> {
         miner_address: b["miner_address"].as_str().or_else(|| b["miner"].as_str()).map(String::from),
         time:          b["time"].as_u64().or_else(|| b["timestamp"].as_u64()).unwrap_or(0),
         tx_count:      b["tx_count"].as_u64().unwrap_or(0) as u32,
+        prev_hash:     b["prev_hash"].as_str().map(String::from),
+        merkle_root:   b["merkle_root"].as_str().map(String::from),
+        bits:          b["bits"].as_str().map(String::from).or_else(|| b["bits"].as_u64().map(|n| format!("{:#010x}", n))),
+        nonce:         b["nonce"].as_u64(),
     }).collect())
 }
 
@@ -4085,6 +4680,7 @@ fn main() {
             save_discovered_peers,
             check_binaries,
             try_upnp_port_map,
+            get_app_version,
             // Wallet
             wallet_get_balance,
             wallet_new_address,
@@ -4092,13 +4688,20 @@ fn main() {
             wallet_send,
             wallet_transactions,
             wallet_set_path,
+            list_wallet_files,
+            get_wallet_info,
+            delete_wallet_file,
+            rename_wallet_file,
             wallet_create,
             wallet_import_mnemonic,
             wallet_import_wif,
             wallet_import_private_key,
             wallet_export_seed,
+            wallet_export_mnemonic,
             wallet_backup,
             wallet_restore_backup,
+            wallet_export_wif,
+            wallet_read_wif,
             // Config / Settings
             set_wallet_config,
             save_settings,
@@ -4157,6 +4760,7 @@ fn main() {
             rpc_get_tx,
             rpc_get_address,
             get_recent_blocks,
+            get_network_hashrate,
             rpc_get_offers_feed,
             rpc_set_url,
             // Diagnostics

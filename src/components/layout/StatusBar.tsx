@@ -6,8 +6,9 @@ import { useStore } from '../../lib/store';
 const CHAIN_NODES = 7;
 
 const StatusBar = memo(function StatusBar() {
-  const nodeStatus = useStore((s) => s.nodeStatus);
-  const rpcUrl     = useStore((s) => s.settings.rpc_url);
+  const nodeStatus  = useStore((s) => s.nodeStatus);
+  const rpcUrl      = useStore((s) => s.settings.rpc_url);
+  const appVersion  = useStore((s) => s.appVersion);
 
   const height  = nodeStatus?.height       ?? 0;
   const tipH    = nodeStatus?.network_tip  ?? 0;
@@ -54,13 +55,12 @@ const StatusBar = memo(function StatusBar() {
       className="relative flex items-center justify-between px-4 flex-shrink-0 overflow-hidden"
       style={{
         height: 26,
-        background: 'rgba(8,11,20,0.85)',
+        background: 'rgba(2,5,14,0.90)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
-        borderTop: '1px solid rgba(255,255,255,0.05)',
         fontFamily: '"JetBrains Mono", monospace',
         fontSize: 11,
-        color: 'rgba(238,240,255,0.22)',
+        color: 'rgba(238,240,255,0.30)',
       }}
     >
       {/* ── Sync progress bar at bottom edge ──────────────────── */}
@@ -70,8 +70,8 @@ const StatusBar = memo(function StatusBar() {
             key="progress"
             className="absolute bottom-0 left-0 h-px"
             style={{
-              background: 'linear-gradient(90deg, rgba(139,92,246,0.85), rgba(59,130,246,0.70))',
-              boxShadow: '0 0 4px rgba(139,92,246,0.6)',
+              background: 'linear-gradient(90deg, rgba(59,59,255,0.85), rgba(110,198,255,0.85), rgba(167,139,250,0.75))',
+              boxShadow: '0 0 6px rgba(110,198,255,0.55)',
             }}
             initial={{ width: 0 }}
             animate={{ width: `${syncPct}%` }}
@@ -83,7 +83,7 @@ const StatusBar = memo(function StatusBar() {
           <motion.div
             key="synced-flash"
             className="absolute bottom-0 left-0 right-0 h-px"
-            style={{ background: 'linear-gradient(90deg, rgba(52,211,153,0.6), rgba(59,130,246,0.4))' }}
+            style={{ background: 'linear-gradient(90deg, rgba(52,211,153,0.6), rgba(110,198,255,0.5), rgba(167,139,250,0.4))' }}
             initial={{ opacity: 0 }}
             animate={{ opacity: [0, 1, 0] }}
             transition={{ duration: 1.6 }}
@@ -94,12 +94,12 @@ const StatusBar = memo(function StatusBar() {
       {/* ── Left section ──────────────────────────────────────── */}
       <div className="flex items-center gap-3">
         {/* Brand + version */}
-        <span style={{ color: 'rgba(138,92,246,0.75)', fontWeight: 600, letterSpacing: '0.02em' }}>
+        <span style={{ color: 'rgba(110,198,255,0.80)', fontWeight: 600, letterSpacing: '0.04em' }}>
           Irium Core
         </span>
-        <span style={{ color: 'rgba(138,92,246,0.40)', fontSize: 10 }}>v1.0.0</span>
+        <span style={{ color: 'rgba(110,198,255,0.45)', fontSize: 10 }}>v{appVersion}</span>
         <Dot />
-        <span style={{ color: 'rgba(238,240,255,0.30)' }}>Mainnet</span>
+        <span style={{ color: 'rgba(238,240,255,0.40)' }}>Mainnet</span>
 
         {/* Chain node visualisation */}
         {running && (
@@ -119,10 +119,10 @@ const StatusBar = memo(function StatusBar() {
                       background: synced
                         ? '#34d399'
                         : filled
-                          ? (isActive ? '#a78bfa' : 'rgba(139,92,246,0.55)')
+                          ? (isActive ? '#6ec6ff' : 'rgba(110,198,255,0.60)')
                           : 'rgba(255,255,255,0.09)',
                       boxShadow: (synced || isActive)
-                        ? `0 0 5px ${synced ? '#34d399' : '#a78bfa'}`
+                        ? `0 0 6px ${synced ? '#34d399' : '#6ec6ff'}`
                         : 'none',
                     }}
                     animate={
@@ -158,7 +158,7 @@ const StatusBar = memo(function StatusBar() {
                 <motion.span
                   key={height}
                   initial={{ y: 8, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1, color: flash ? '#c4b5fd' : 'rgba(238,240,255,0.50)' }}
+                  animate={{ y: 0, opacity: 1, color: flash ? '#6ec6ff' : 'rgba(238,240,255,0.55)' }}
                   exit={{ y: -8, opacity: 0 }}
                   transition={{ duration: 0.22 }}
                 >
@@ -241,12 +241,12 @@ const StatusBar = memo(function StatusBar() {
       {nodeStatus?.tip && (
         <motion.div
           className="flex items-center gap-1.5 cursor-pointer"
-          style={{ color: 'rgba(238,240,255,0.20)' }}
+          style={{ color: 'rgba(238,240,255,0.30)' }}
           onClick={handleCopyTip}
-          whileHover={{ color: 'rgba(167,139,250,0.65)' }}
+          whileHover={{ color: 'rgba(110,198,255,0.85)' }}
           title="Click to copy tip hash"
         >
-          <span style={{ color: 'rgba(238,240,255,0.11)' }}>tip</span>
+          <span style={{ color: 'rgba(110,198,255,0.30)' }}>tip</span>
           <span>{nodeStatus.tip.slice(0, 8)}…{nodeStatus.tip.slice(-6)}</span>
         </motion.div>
       )}

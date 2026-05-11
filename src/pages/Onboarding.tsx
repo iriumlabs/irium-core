@@ -28,7 +28,7 @@ async function fetchRpcStatus(rpcUrl: string): Promise<NodeStatus | null> {
 
     const d      = await statusSettled.value.json();
     const height = Number(d.height ?? 0);
-    const tipH   = Number(d.best_header_tip?.height ?? height);
+    const tipH   = Number(d.best_header_tip?.height ?? 0);
     const tipHash: string = d.best_header_tip?.hash ?? '';
 
     let peers = Number(d.peer_count ?? 0);
@@ -39,16 +39,21 @@ async function fetchRpcStatus(rpcUrl: string): Promise<NodeStatus | null> {
       } catch { /* optional */ }
     }
 
+    // Mirror Rust logic: synced only when anchor loaded, have peers, know the tip,
+    // and local height is within 10 blocks of the network tip.
+    const synced = Boolean(d.anchor_loaded) && peers > 0 && tipH > 0 && height >= tipH - 10;
+
     return {
-      running:     true,
-      synced:      Boolean(d.anchor_loaded),
+      running:      true,
+      synced,
       height,
-      network_tip: tipH,
-      tip:         tipHash,
+      network_tip:  tipH,
+      tip:          tipHash,
       peers,
-      network:     String(d.network_era ?? 'Mainnet'),
-      version:     String(d.version     ?? '1.0.0'),
-      rpc_url:     rpcUrl,
+      network:      String(d.network_era ?? 'Mainnet'),
+      version:      String(d.version     ?? '1.0.0'),
+      rpc_url:      rpcUrl,
+      upnp_active:  false,
     };
   } catch {
     return null;
@@ -98,8 +103,8 @@ const ParticleField = memo(function ParticleField() {
             width:  p.size,
             height: p.size,
             background: p.blue
-              ? `rgba(59,130,246,${p.opacity})`
-              : `rgba(139,92,246,${p.opacity})`,
+              ? `rgba(110,198,255,${p.opacity})`
+              : `rgba(167,139,250,${p.opacity})`,
           }}
           animate={{ y: [-8, 8, -8], opacity: [p.opacity * 0.4, p.opacity, p.opacity * 0.4] }}
           transition={{ duration: p.duration, delay: p.delay, repeat: Infinity, ease: 'easeInOut' }}
@@ -119,6 +124,7 @@ const SPLASH_STATUSES = [
 ];
 
 export function Splash({ onDone }: { onDone: () => void }) {
+  const appVersion  = useStore((s) => s.appVersion);
   const [pct, setPct]           = useState(0);
   const [statusIdx, setStatusIdx] = useState(0);
 
@@ -152,18 +158,18 @@ export function Splash({ onDone }: { onDone: () => void }) {
   return (
     <motion.div
       className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden"
-      style={{ background: '#080B14' }}
+      style={{ background: '#02050E' }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.5 }}
     >
-      {/* Ambient glow layers */}
+      {/* Ambient glow layers — brand cyan + purple, matches app aurora */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background: `
-            radial-gradient(ellipse 70% 60% at 18% 18%, rgba(139,92,246,0.13) 0%, transparent 55%),
-            radial-gradient(ellipse 60% 55% at 82% 82%, rgba(59,130,246,0.11) 0%, transparent 55%),
-            radial-gradient(ellipse 45% 45% at 50% 50%, rgba(139,92,246,0.07) 0%, transparent 55%)
+            radial-gradient(ellipse 70% 60% at 18% 18%, rgba(59,59,255,0.18) 0%, transparent 55%),
+            radial-gradient(ellipse 60% 55% at 82% 82%, rgba(167,139,250,0.13) 0%, transparent 55%),
+            radial-gradient(ellipse 45% 45% at 50% 50%, rgba(110,198,255,0.10) 0%, transparent 55%)
           `,
         }}
       />
@@ -179,30 +185,35 @@ export function Splash({ onDone }: { onDone: () => void }) {
           style={{
             position: 'absolute',
             top: 0, left: 0, right: 0, height: '100%',
-            background: 'linear-gradient(180deg, transparent 0%, rgba(139,92,246,0.8) 50%, transparent 100%)',
+            background: 'linear-gradient(180deg, transparent 0%, rgba(110,198,255,0.8) 50%, transparent 100%)',
             width: '40%',
             animation: 'scan-bar 5s ease-in-out infinite',
           }}
         />
       </div>
 
-      {/* Center: orbital rings + logo */}
-      <div className="relative flex items-center justify-center mb-9">
+      {/* Center: orbital rings + logo. Container has explicit height so the
+          absolute-positioned rings (190px diameter) don't overflow into the
+          title that follows. */}
+      <div
+        className="relative flex items-center justify-center mb-12"
+        style={{ width: 220, height: 220 }}
+      >
         {/* Outer ring — slow CW */}
         <div
           style={{
             position: 'absolute',
             width: 190, height: 190,
             borderRadius: '50%',
-            border: '1px solid rgba(139,92,246,0.22)',
+            border: '1px solid rgba(110,198,255,0.22)',
             animation: 'orbit-cw 9s linear infinite',
           }}
         >
           <div style={{
             position: 'absolute', top: -4, left: '50%', transform: 'translateX(-50%)',
             width: 7, height: 7, borderRadius: '50%',
-            background: '#8B5CF6',
-            boxShadow: '0 0 14px #8B5CF6, 0 0 28px rgba(139,92,246,0.45)',
+            background: '#6ec6ff',
+            boxShadow: '0 0 14px #6ec6ff, 0 0 28px rgba(110,198,255,0.45)',
           }} />
         </div>
 
@@ -219,8 +230,8 @@ export function Splash({ onDone }: { onDone: () => void }) {
           <div style={{
             position: 'absolute', top: -3, left: '50%', transform: 'translateX(-50%)',
             width: 5, height: 5, borderRadius: '50%',
-            background: '#3B82F6',
-            boxShadow: '0 0 10px #3B82F6, 0 0 22px rgba(59,130,246,0.35)',
+            background: '#a78bfa',
+            boxShadow: '0 0 10px #a78bfa, 0 0 22px rgba(59,130,246,0.35)',
           }} />
         </div>
 
@@ -268,10 +279,10 @@ export function Splash({ onDone }: { onDone: () => void }) {
             transition={{ delay: 0.28 + i * 0.045, duration: 0.38, ease: 'easeOut' }}
             className="font-display font-bold"
             style={{
-              fontSize: 30,
-              letterSpacing: '0.12em',
+              fontSize: 34,
+              letterSpacing: '0.18em',
               background: char !== ' '
-                ? 'linear-gradient(170deg, #FFFFFF 0%, rgba(167,139,250,0.75) 100%)'
+                ? 'linear-gradient(135deg, #d4eeff 0%, #6ec6ff 50%, #a78bfa 100%)'
                 : undefined,
               WebkitBackgroundClip: char !== ' ' ? 'text' : undefined,
               WebkitTextFillColor: char !== ' ' ? 'transparent' : undefined,
@@ -305,8 +316,8 @@ export function Splash({ onDone }: { onDone: () => void }) {
         transition={{ delay: 1.05, duration: 0.4 }}
         className="mt-2 mb-11"
         style={{
-          background: 'rgba(139,92,246,0.10)',
-          border: '1px solid rgba(139,92,246,0.22)',
+          background: 'rgba(110,198,255,0.10)',
+          border: '1px solid rgba(110,198,255,0.22)',
           borderRadius: 20,
           padding: '2px 12px',
           fontFamily: '"JetBrains Mono", monospace',
@@ -315,7 +326,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
           letterSpacing: '0.1em',
         }}
       >
-        v1.0.0
+        v{appVersion}
       </motion.div>
 
       {/* Status message */}
@@ -365,8 +376,8 @@ export function Splash({ onDone }: { onDone: () => void }) {
             style={{
               height: '100%',
               borderRadius: 1,
-              background: 'linear-gradient(90deg, #8B5CF6 0%, #3B82F6 100%)',
-              boxShadow: '0 0 8px rgba(139,92,246,0.6)',
+              background: 'linear-gradient(90deg, #3b3bff 0%, #6ec6ff 50%, #a78bfa 100%)',
+              boxShadow: '0 0 10px rgba(110,198,255,0.6)',
             }}
           />
         </div>
@@ -388,12 +399,31 @@ export function Splash({ onDone }: { onDone: () => void }) {
 function StepRail({ current, showStep5 }: { current: number; showStep5: boolean }) {
   const steps = showStep5 ? STEPS : STEPS.slice(0, 4);
   return (
-    <div className="flex flex-col gap-0 w-44 flex-shrink-0">
-      <div className="flex items-center gap-2.5 mb-10">
-        <img src="/logo.png" alt="Irium" className="w-7 h-7 flex-shrink-0" style={{ borderRadius: '50%' }} />
+    <div className="flex flex-col gap-0 w-48 flex-shrink-0">
+      <div className="flex items-center gap-3 mb-12">
+        <img
+          src="/logo.png"
+          alt="Irium"
+          className="w-8 h-8 flex-shrink-0"
+          style={{
+            borderRadius: '50%',
+            boxShadow: '0 0 18px rgba(110,198,255,0.45), 0 0 36px rgba(167,139,250,0.18)',
+          }}
+        />
         <div>
-          <div className="font-display font-bold text-sm text-white leading-none">IRIUM</div>
-          <div className="font-mono text-[9px] tracking-widest leading-none mt-0.5" style={{ color: 'rgba(238,240,255,0.25)' }}>CORE</div>
+          <div
+            className="font-display font-bold leading-none"
+            style={{
+              fontSize: 14,
+              letterSpacing: '0.10em',
+              background: 'linear-gradient(135deg, #d4eeff 0%, #6ec6ff 55%, #a78bfa 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            IRIUM
+          </div>
+          <div className="font-mono text-[9px] tracking-widest leading-none mt-1" style={{ color: 'rgba(110,198,255,0.55)' }}>CORE</div>
         </div>
       </div>
 
@@ -402,46 +432,48 @@ function StepRail({ current, showStep5 }: { current: number; showStep5: boolean 
         const active  = current === step.id;
         const pending = current < step.id;
         return (
-          <div key={step.id} className="flex items-start gap-3 relative">
+          <div key={step.id} className="flex items-start gap-3.5 relative">
             {i < steps.length - 1 && (
               <motion.div
                 className="absolute w-[1px]"
-                style={{ left: 11, top: 24, bottom: 0 }}
-                animate={{ background: done ? '#7c3aed' : 'rgba(255,255,255,0.08)' }}
+                style={{ left: 12, top: 26, bottom: 0 }}
+                animate={{ background: done ? '#6ec6ff' : 'rgba(110,198,255,0.10)' }}
                 transition={{ duration: 0.4 }}
               />
             )}
             <motion.div
-              className="w-[22px] h-[22px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 z-10"
+              className="w-[24px] h-[24px] rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 z-10"
               animate={{
-                background:   done ? '#7c3aed' : 'transparent',
-                borderColor:  done ? '#7c3aed' : active ? '#7c3aed' : 'rgba(255,255,255,0.15)',
+                background:   done ? '#6ec6ff' : 'transparent',
+                borderColor:  done ? '#6ec6ff' : active ? '#6ec6ff' : 'rgba(110,198,255,0.25)',
                 borderWidth:  done ? 0 : 2,
+                boxShadow:    active ? '0 0 14px rgba(110,198,255,0.55)' : (done ? '0 0 10px rgba(110,198,255,0.45)' : 'none'),
               }}
               style={{ borderStyle: 'solid' }}
               transition={{ duration: 0.3 }}
             >
               {done ? (
                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400 }}>
-                  <CheckCircle2 size={13} className="text-white" />
+                  <CheckCircle2 size={14} style={{ color: '#02050E' }} />
                 </motion.div>
               ) : active ? (
                 <motion.div
                   className="w-2 h-2 rounded-full"
-                  style={{ background: '#7c3aed' }}
-                  animate={{ scale: [1, 1.3, 1] }}
+                  style={{ background: '#6ec6ff' }}
+                  animate={{ scale: [1, 1.4, 1], opacity: [0.85, 1, 0.85] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
                 />
               ) : (
-                <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.20)' }} />
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'rgba(110,198,255,0.30)' }} />
               )}
             </motion.div>
             <div
-              className={clsx('text-sm pb-7 leading-tight', {
-                'text-white font-semibold': active,
-                'text-[#a78bfa]': done,
+              className={clsx('text-sm pb-9 leading-tight font-display', {
+                'text-white font-bold': active,
+                'text-[#6ec6ff] font-semibold': done,
                 'text-[rgba(238,240,255,0.30)]': pending,
               })}
+              style={{ letterSpacing: '0.02em' }}
             >
               {step.label}
             </div>
@@ -487,7 +519,7 @@ function StepBinaryCheck({ onNext }: { onNext: () => void }) {
 
   return (
     <motion.div key="bin-check" {...fadeIn}>
-      <h2 className="font-display font-bold text-xl text-white mb-1">System Check</h2>
+      <h2 className="font-display font-bold text-2xl mb-1.5 gradient-text">System Check</h2>
       <p className="text-sm mb-6" style={{ color: 'rgba(238,240,255,0.45)' }}>
         Verifying required node binaries are present on this machine.
       </p>
@@ -587,7 +619,7 @@ function StepBootstrap({ onNext }: { onNext: () => void }) {
 
   return (
     <motion.div key="bootstrap" {...fadeIn}>
-      <h2 className="font-display font-bold text-xl text-white mb-1">Network Bootstrap</h2>
+      <h2 className="font-display font-bold text-2xl mb-1.5 gradient-text">Network Bootstrap</h2>
       <p className="text-sm mb-6" style={{ color: 'rgba(238,240,255,0.45)' }}>
         Configuring seed nodes, trust anchors, and genesis block.
       </p>
@@ -610,7 +642,7 @@ function StepBootstrap({ onNext }: { onNext: () => void }) {
           </motion.div>
         ))}
         {!done && !error && (
-          <span className="terminal-cursor" style={{ display: 'inline-block', width: 8, height: 14, background: 'rgba(139,92,246,0.7)', animation: 'terminal-blink 1s step-end infinite', verticalAlign: 'text-bottom' }} />
+          <span className="terminal-cursor" style={{ display: 'inline-block', width: 8, height: 14, background: 'rgba(110,198,255,0.7)', animation: 'terminal-blink 1s step-end infinite', verticalAlign: 'text-bottom' }} />
         )}
         <div ref={bottomRef} />
       </div>
@@ -676,7 +708,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
 
   return (
     <motion.div key="sync" {...fadeIn}>
-      <h2 className="font-display font-bold text-xl text-white mb-1">Network Sync</h2>
+      <h2 className="font-display font-bold text-2xl mb-1.5 gradient-text">Network Sync</h2>
       <p className="text-sm mb-6" style={{ color: 'rgba(238,240,255,0.45)' }}>
         Connecting to the Irium P2P network and downloading the blockchain.
       </p>
@@ -753,14 +785,14 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
               {pct}%
             </motion.span>
           </div>
-          <div className="progress-track" style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+          <div className="progress-track" style={{ height: 6, borderRadius: 3, background: 'rgba(0,0,0,0.40)', overflow: 'hidden' }}>
             <motion.div
               animate={{ width: `${pct}%` }}
               transition={{ duration: 0.6, ease: 'easeOut' }}
               style={{
                 height: '100%', borderRadius: 3,
-                background: 'linear-gradient(90deg, #8B5CF6 0%, #3B82F6 100%)',
-                boxShadow: '0 0 8px rgba(139,92,246,0.5)',
+                background: 'linear-gradient(90deg, #3b3bff 0%, #6ec6ff 50%, #a78bfa 100%)',
+                boxShadow: '0 0 10px rgba(110,198,255,0.55)',
               }}
             />
           </div>
@@ -836,6 +868,7 @@ function StepWalletSetup({
   onCreated:  (r: WalletCreateResult) => void;
   onImported: () => void;
 }) {
+  const updateSettings = useStore((s) => s.updateSettings);
   const [flow, setFlow]           = useState<WalletFlow>('choose');
   const [importTab, setImportTab] = useState<ImportTab>('mnemonic');
   const [importValue, setImportValue] = useState('');
@@ -846,6 +879,8 @@ function StepWalletSetup({
     setFlow('creating');
     try {
       const r = await wallet.create();
+      // Persist the wallet path so the app uses it on next launch
+      updateSettings({ wallet_path: r.wallet_path });
       onCreated(r);
     } catch (e) {
       toast.error(`Failed to create wallet: ${e}`);
@@ -872,12 +907,17 @@ function StepWalletSetup({
 
     setFlow('importing');
     try {
+      let resolvedPath: string | null = null;
       if (importTab === 'mnemonic') {
-        await wallet.importMnemonic(val);
+        resolvedPath = await wallet.importMnemonic(val);
       } else if (importTab === 'wif') {
-        await wallet.importWif(val);
+        resolvedPath = await wallet.importWif(val);
       } else {
         await wallet.importPrivateKey(val);
+      }
+      // Persist the wallet path so subsequent launches use the right file
+      if (resolvedPath) {
+        updateSettings({ wallet_path: resolvedPath });
       }
       // Fetch addresses to show confirmation screen
       let addrs: string[] = [];
@@ -916,7 +956,7 @@ function StepWalletSetup({
           <div className="relative w-16 h-16 flex items-center justify-center">
             <motion.div
               className="absolute inset-0 rounded-full"
-              style={{ border: '1px solid rgba(139,92,246,0.25)' }}
+              style={{ border: '1px solid rgba(110,198,255,0.25)' }}
               animate={{ rotate: 360 }}
               transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
             />
@@ -938,16 +978,20 @@ function StepWalletSetup({
     return (
       <motion.div key="restored" {...fadeIn}>
         {/* Success header */}
-        <div className="flex items-center gap-3 mb-5">
+        <div className="flex items-center gap-3 mb-6">
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'rgba(34,197,94,0.14)', border: '1px solid rgba(34,197,94,0.30)' }}
+            style={{
+              background: 'rgba(34,197,94,0.14)',
+              border: '1px solid rgba(34,197,94,0.40)',
+              boxShadow: '0 0 18px rgba(52,211,153,0.30)',
+            }}
           >
-            <CheckCircle2 size={18} style={{ color: '#4ade80' }} />
+            <CheckCircle2 size={18} style={{ color: '#34d399' }} />
           </div>
           <div>
-            <h2 className="font-display font-bold text-xl text-white">Wallet Restored</h2>
-            <p className="text-xs" style={{ color: 'rgba(238,240,255,0.45)' }}>
+            <h2 className="font-display font-bold text-2xl gradient-text leading-none">Wallet Restored</h2>
+            <p className="text-xs mt-1.5" style={{ color: 'rgba(238,240,255,0.50)' }}>
               Your wallet has been imported successfully.
             </p>
           </div>
@@ -955,36 +999,30 @@ function StepWalletSetup({
 
         {/* Address card */}
         {primaryAddr ? (
-          <div
-            className="rounded-xl p-4 mb-3"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)' }}
-          >
-            <p className="text-xs font-medium mb-2" style={{ color: 'rgba(238,240,255,0.45)' }}>
+          <div className="panel p-4 mb-3">
+            <p className="text-xs font-display font-bold mb-2 uppercase" style={{ color: 'rgba(110,198,255,0.55)', letterSpacing: '0.12em' }}>
               Primary Address
             </p>
             <div className="flex items-center gap-2">
               <code
                 className="flex-1 text-sm break-all"
-                style={{ color: '#c4b5fd', fontFamily: '"JetBrains Mono", monospace' }}
+                style={{ color: '#6ec6ff', fontFamily: '"JetBrains Mono", monospace' }}
               >
                 {primaryAddr}
               </code>
               <button
                 onClick={() => copyAddr(primaryAddr)}
                 className="flex-shrink-0 p-1.5 rounded-lg transition-colors"
-                style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)' }}
+                style={{ background: 'rgba(110,198,255,0.12)', border: '1px solid rgba(110,198,255,0.30)' }}
                 title="Copy address"
               >
-                <Copy size={13} style={{ color: copied ? '#4ade80' : '#a78bfa' }} />
+                <Copy size={13} style={{ color: copied ? '#34d399' : '#6ec6ff' }} />
               </button>
             </div>
           </div>
         ) : (
-          <div
-            className="rounded-xl p-4 mb-3"
-            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
-          >
-            <p className="text-xs" style={{ color: 'rgba(238,240,255,0.35)' }}>
+          <div className="panel p-4 mb-3">
+            <p className="text-xs" style={{ color: 'rgba(238,240,255,0.45)' }}>
               Address will appear on the Dashboard once the node finishes syncing.
             </p>
           </div>
@@ -992,10 +1030,7 @@ function StepWalletSetup({
 
         {/* Extra addresses */}
         {restoredAddresses.length > 1 && (
-          <div
-            className="rounded-xl p-4 mb-3"
-            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
-          >
+          <div className="panel p-4 mb-3">
             <p className="text-xs mb-2" style={{ color: 'rgba(238,240,255,0.40)' }}>
               {restoredAddresses.length - 1} additional address{restoredAddresses.length > 2 ? 'es' : ''} found
             </p>
@@ -1029,9 +1064,9 @@ function StepWalletSetup({
           whileTap={{ scale: 0.98 }}
           animate={{
             boxShadow: [
-              '0 4px 16px rgba(139,92,246,0.35)',
-              '0 6px 28px rgba(139,92,246,0.55)',
-              '0 4px 16px rgba(139,92,246,0.35)',
+              '0 4px 16px rgba(110,198,255,0.35)',
+              '0 6px 28px rgba(110,198,255,0.55)',
+              '0 4px 16px rgba(110,198,255,0.35)',
             ],
           }}
           transition={{ duration: 2, repeat: Infinity }}
@@ -1071,15 +1106,15 @@ function StepWalletSetup({
 
     return (
       <motion.div key="import" {...fadeIn}>
-        <h2 className="font-display font-bold text-xl text-white mb-1">Import Wallet</h2>
-        <p className="text-sm mb-5" style={{ color: 'rgba(238,240,255,0.45)' }}>
+        <h2 className="font-display font-bold text-2xl mb-1.5 gradient-text">Import Wallet</h2>
+        <p className="text-sm mb-5" style={{ color: 'rgba(238,240,255,0.50)' }}>
           Choose your restore method below.
         </p>
 
         {/* Tab row */}
         <div
           className="flex gap-1 p-1 rounded-xl mb-5"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          style={{ background: 'rgba(0,0,0,0.40)', border: '1px solid rgba(110,198,255,0.14)' }}
         >
           {TABS.map((t) => {
             const TabIcon = t.icon;
@@ -1089,14 +1124,15 @@ function StepWalletSetup({
                 key={t.id}
                 onClick={() => { setImportTab(t.id); setImportValue(''); }}
                 disabled={busy}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-medium transition-all"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-display font-semibold transition-all"
                 style={{
-                  background:  isActive ? 'rgba(139,92,246,0.22)' : 'transparent',
-                  color:       isActive ? '#c4b5fd' : 'rgba(238,240,255,0.45)',
-                  border:      isActive ? '1px solid rgba(139,92,246,0.35)' : '1px solid transparent',
+                  background:  isActive ? 'rgba(110,198,255,0.14)' : 'transparent',
+                  color:       isActive ? '#6ec6ff' : 'rgba(238,240,255,0.45)',
+                  border:      isActive ? '1px solid rgba(110,198,255,0.40)' : '1px solid transparent',
+                  letterSpacing: '0.04em',
                 }}
               >
-                <TabIcon size={12} />
+                <TabIcon size={13} />
                 {t.label}
               </button>
             );
@@ -1146,37 +1182,41 @@ function StepWalletSetup({
     <motion.div key="choose" {...fadeIn}>
       <div className="flex items-center gap-3 mb-2">
         <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.28)' }}
+          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{
+            background: 'linear-gradient(135deg, rgba(59,59,255,0.20) 0%, rgba(110,198,255,0.14) 50%, rgba(167,139,250,0.18) 100%)',
+            border: '1px solid rgba(110,198,255,0.30)',
+            boxShadow: '0 0 18px rgba(110,198,255,0.18)',
+          }}
         >
-          <Shield size={16} style={{ color: '#a78bfa' }} />
+          <Shield size={17} style={{ color: '#6ec6ff' }} />
         </div>
-        <h2 className="font-display font-bold text-xl text-white">Wallet Setup</h2>
+        <h2 className="font-display font-bold text-2xl gradient-text">Wallet Setup</h2>
       </div>
-      <p className="text-sm mb-7" style={{ color: 'rgba(238,240,255,0.45)' }}>
+      <p className="text-sm mb-7" style={{ color: 'rgba(238,240,255,0.50)' }}>
         Create a fresh HD wallet or restore from an existing wallet.
       </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         {/* Create */}
         <motion.button
           onClick={handleCreate}
           whileHover={{ scale: 1.02, y: -2 }}
           whileTap={{ scale: 0.98 }}
-          className="card-interactive p-5 flex flex-col items-start gap-4 text-left"
+          className="panel-elevated p-5 flex flex-col items-start gap-4 text-left"
         >
           <div
-            className="w-11 h-11 rounded-xl flex items-center justify-center"
+            className="w-12 h-12 rounded-xl flex items-center justify-center"
             style={{
-              background: 'linear-gradient(135deg, rgba(139,92,246,0.20) 0%, rgba(59,130,246,0.12) 100%)',
-              border: '1px solid rgba(139,92,246,0.30)',
+              background: 'linear-gradient(135deg, #3b3bff 0%, #6ec6ff 50%, #a78bfa 100%)',
+              boxShadow: '0 4px 18px rgba(59,59,255,0.32), 0 0 22px rgba(110,198,255,0.22)',
             }}
           >
-            <WalletIcon size={18} style={{ color: '#a78bfa' }} />
+            <WalletIcon size={20} style={{ color: '#fff' }} />
           </div>
           <div>
-            <div className="font-display font-semibold text-white mb-1">Create New Wallet</div>
-            <div className="text-xs leading-relaxed" style={{ color: 'rgba(238,240,255,0.40)' }}>
+            <div className="font-display font-bold text-white mb-1.5" style={{ fontSize: 15 }}>Create New Wallet</div>
+            <div className="text-xs leading-relaxed" style={{ color: 'rgba(238,240,255,0.50)' }}>
               Generate a fresh BIP32 HD wallet with a 24-word seed phrase.
             </div>
           </div>
@@ -1187,20 +1227,20 @@ function StepWalletSetup({
           onClick={goImport}
           whileHover={{ scale: 1.02, y: -2 }}
           whileTap={{ scale: 0.98 }}
-          className="card-interactive p-5 flex flex-col items-start gap-4 text-left"
+          className="panel-elevated p-5 flex flex-col items-start gap-4 text-left"
         >
           <div
-            className="w-11 h-11 rounded-xl flex items-center justify-center"
+            className="w-12 h-12 rounded-xl flex items-center justify-center"
             style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.10)',
+              background: 'rgba(0,0,0,0.40)',
+              border: '1px solid rgba(110,198,255,0.30)',
             }}
           >
-            <FileText size={18} style={{ color: 'rgba(238,240,255,0.55)' }} />
+            <FileText size={20} style={{ color: '#6ec6ff' }} />
           </div>
           <div>
-            <div className="font-display font-semibold text-white mb-1">Import Existing</div>
-            <div className="text-xs leading-relaxed" style={{ color: 'rgba(238,240,255,0.40)' }}>
+            <div className="font-display font-bold text-white mb-1.5" style={{ fontSize: 15 }}>Import Existing</div>
+            <div className="text-xs leading-relaxed" style={{ color: 'rgba(238,240,255,0.50)' }}>
               Restore via seed phrase, WIF key, or raw private key.
             </div>
           </div>
@@ -1211,8 +1251,17 @@ function StepWalletSetup({
 }
 
 // ─── Step 5: Backup & Secure ──────────────────────────────────────────────────
+// Three cards — matches what the wallet binary actually exposes:
+//   - address     : the wallet's bare address (always available)
+//   - wif         : WIF key for that address — fetched via wallet.readWif()
+//                   on mount. The WIF IS the private key in portable format;
+//                   there is no separate "private key" surface to show.
+//   - mnemonic    : BIP39 24-word recovery phrase from `export-mnemonic`,
+//                   already populated in walletData by wallet_create.
+// Public key is intentionally NOT shown — the wallet binary doesn't expose it,
+// and it isn't needed for backup or recovery anyway.
 type BackupField = {
-  key: 'address' | 'pubkey' | 'private_key' | 'mnemonic';
+  key: 'address' | 'wif' | 'mnemonic';
   label: string;
   icon: React.ElementType;
   sensitive: boolean;
@@ -1226,26 +1275,19 @@ const BACKUP_FIELDS: BackupField[] = [
     label: 'Wallet Address',
     icon: WalletIcon,
     sensitive: false,
-    color: '#3B82F6',
+    color: '#a78bfa',
   },
   {
-    key: 'pubkey',
-    label: 'Public Key',
+    key: 'wif',
+    label: 'WIF Key',
     icon: Key,
-    sensitive: false,
-    color: '#8B5CF6',
-  },
-  {
-    key: 'private_key',
-    label: 'Private Key',
-    icon: Lock,
     sensitive: true,
     color: '#ef4444',
-    warning: 'Never share. Anyone with this key controls your funds.',
+    warning: 'The WIF is your private key in portable format. Anyone with it controls funds at this address.',
   },
   {
     key: 'mnemonic',
-    label: 'Seed Phrase',
+    label: 'Recovery Phrase (24 words)',
     icon: FileText,
     sensitive: true,
     color: '#ef4444',
@@ -1343,11 +1385,11 @@ function BackupCard({
               'grid grid-cols-4 gap-1.5 rounded-lg p-3 transition-all duration-200',
               !revealed && field.sensitive && 'blur-sm select-none',
             )}
-            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+            style={{ background: 'rgba(0,0,0,0.40)', border: '1px solid rgba(110,198,255,0.12)' }}
           >
             {words.slice(0, 24).map((w, i) => (
-              <div key={i} className="flex items-center gap-1 px-1.5 py-1 rounded" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                <span className="font-mono text-[9px] w-3 text-right flex-shrink-0" style={{ color: 'rgba(238,240,255,0.28)' }}>
+              <div key={i} className="flex items-center gap-1.5 px-2 py-1.5 rounded" style={{ background: 'rgba(110,198,255,0.05)', border: '1px solid rgba(110,198,255,0.10)' }}>
+                <span className="font-mono text-[9px] w-4 text-right flex-shrink-0" style={{ color: 'rgba(110,198,255,0.55)' }}>
                   {i + 1}
                 </span>
                 <span className="font-mono text-[11px] text-white truncate">{w}</span>
@@ -1361,9 +1403,9 @@ function BackupCard({
               !revealed && field.sensitive && 'blur-sm select-none',
             )}
             style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.07)',
-              color: 'rgba(238,240,255,0.80)',
+              background: 'rgba(0,0,0,0.40)',
+              border: '1px solid rgba(110,198,255,0.12)',
+              color: 'rgba(238,240,255,0.85)',
               lineHeight: 1.6,
             }}
           >
@@ -1397,11 +1439,9 @@ function BackupCard({
         />
         <span className="text-xs leading-snug" style={{ color: 'rgba(238,240,255,0.50)' }}>
           {field.key === 'mnemonic'
-            ? 'I have written down my seed phrase offline'
-            : field.key === 'private_key'
-            ? 'I have securely stored my private key'
-            : field.key === 'pubkey'
-            ? 'I have saved my public key'
+            ? 'I have written down my recovery phrase offline'
+            : field.key === 'wif'
+            ? 'I have securely stored my WIF key'
             : 'I have saved my wallet address'}
         </span>
       </label>
@@ -1419,12 +1459,30 @@ function StepBackupSecure({
   const [revealed, setRevealed]   = useState<Set<string>>(new Set());
   const [confirmed, setConfirmed] = useState<Set<string>>(new Set());
 
+  // WIF is fetched separately from wallet creation — wallet_create returns
+  // address + mnemonic but not the per-address WIF. We call wallet.readWif
+  // once on mount for the just-created wallet's primary address.
+  // cancelled flag protects against an unlikely early-unmount before the
+  // request resolves (would otherwise warn about setState on unmounted).
+  const [wif, setWif]               = useState<string>('');
+  const [wifLoading, setWifLoading] = useState<boolean>(true);
+  useEffect(() => {
+    let cancelled = false;
+    setWifLoading(true);
+    wallet.readWif(walletData.address)
+      .then((value) => { if (!cancelled) setWif(value ?? ''); })
+      .catch(() => { if (!cancelled) setWif(''); })
+      .finally(() => { if (!cancelled) setWifLoading(false); });
+    return () => { cancelled = true; };
+  }, [walletData.address]);
+
   const getValue = (key: BackupField['key']): string => {
     switch (key) {
-      case 'address':     return walletData.address;
-      case 'pubkey':      return walletData.pubkey      ?? '(not available from wallet daemon)';
-      case 'private_key': return walletData.private_key ?? '(not available from wallet daemon)';
-      case 'mnemonic':    return walletData.mnemonic;
+      case 'address':  return walletData.address;
+      case 'wif':      return wifLoading
+                         ? 'Loading…'
+                         : (wif || '(failed to read WIF — open Security panel after launch)');
+      case 'mnemonic': return walletData.mnemonic;
     }
   };
 
@@ -1441,15 +1499,15 @@ function StepBackupSecure({
       {/* Header */}
       <div className="flex items-center gap-3 mb-1">
         <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
           style={{
-            background: 'linear-gradient(135deg, rgba(139,92,246,0.20) 0%, rgba(59,130,246,0.12) 100%)',
-            border: '1px solid rgba(139,92,246,0.28)',
+            background: 'linear-gradient(135deg, #3b3bff 0%, #6ec6ff 50%, #a78bfa 100%)',
+            boxShadow: '0 4px 18px rgba(59,59,255,0.30), 0 0 22px rgba(110,198,255,0.20)',
           }}
         >
-          <Shield size={17} style={{ color: '#a78bfa' }} />
+          <Shield size={18} style={{ color: '#fff' }} />
         </div>
-        <h2 className="font-display font-bold text-xl text-white">Backup & Secure</h2>
+        <h2 className="font-display font-bold text-2xl gradient-text">Backup &amp; Secure</h2>
       </div>
       <p className="text-sm mb-4" style={{ color: 'rgba(238,240,255,0.45)' }}>
         This information is shown <strong className="text-white">one time only</strong>. Store every item offline before continuing.
@@ -1467,7 +1525,7 @@ function StepBackupSecure({
       >
         <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" style={{ color: '#f87171' }} />
         <p className="text-xs leading-relaxed" style={{ color: '#f87171' }}>
-          <strong>You will not be able to recover your wallet</strong> if you lose your seed phrase or private key. Irium Core has no cloud backup. Write everything down now.
+          <strong>You will not be able to recover your wallet</strong> if you lose your recovery phrase or WIF key. Irium Core has no cloud backup. Write everything down now.
         </p>
       </motion.div>
 
@@ -1503,11 +1561,12 @@ function StepBackupSecure({
         {BACKUP_FIELDS.map((f) => (
           <motion.div
             key={f.key}
-            className="h-1 flex-1 rounded-full"
+            className="h-1.5 flex-1 rounded-full"
             animate={{
               background: confirmed.has(f.key)
-                ? 'linear-gradient(90deg, #8B5CF6 0%, #3B82F6 100%)'
-                : 'rgba(255,255,255,0.08)',
+                ? 'linear-gradient(90deg, #3b3bff 0%, #6ec6ff 50%, #a78bfa 100%)'
+                : 'rgba(0,0,0,0.45)',
+              boxShadow: confirmed.has(f.key) ? '0 0 8px rgba(110,198,255,0.45)' : 'none',
             }}
             transition={{ duration: 0.3 }}
           />
@@ -1526,9 +1585,9 @@ function StepBackupSecure({
         whileTap={allConfirmed ? { scale: 0.98 } : {}}
         animate={allConfirmed ? {
           boxShadow: [
-            '0 4px 16px rgba(139,92,246,0.35)',
-            '0 6px 28px rgba(139,92,246,0.55)',
-            '0 4px 16px rgba(139,92,246,0.35)',
+            '0 4px 16px rgba(110,198,255,0.35)',
+            '0 6px 28px rgba(110,198,255,0.55)',
+            '0 4px 16px rgba(110,198,255,0.35)',
           ],
         } : {}}
         transition={{ duration: 2, repeat: Infinity }}
@@ -1549,32 +1608,32 @@ function StepBackupSecure({
 function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
   return (
     <motion.div
-      className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden"
-      style={{ background: '#080B14' }}
+      className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden app-bg"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.45 }}
     >
-      {/* Ambient glow */}
+      {/* Ambient glow — brand cyan + purple */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background: `
-            radial-gradient(ellipse 70% 55% at 50% 40%, rgba(139,92,246,0.12) 0%, transparent 65%),
-            radial-gradient(ellipse 45% 40% at 20% 80%, rgba(59,130,246,0.08) 0%, transparent 55%)
+            radial-gradient(ellipse 70% 55% at 50% 40%, rgba(59,59,255,0.16) 0%, transparent 65%),
+            radial-gradient(ellipse 50% 45% at 18% 80%, rgba(110,198,255,0.10) 0%, transparent 55%),
+            radial-gradient(ellipse 50% 45% at 82% 20%, rgba(167,139,250,0.10) 0%, transparent 55%)
           `,
         }}
       />
       <ParticleField />
 
-      <div className="relative z-10 flex flex-col items-center text-center px-8 max-w-lg">
+      <div className="relative z-10 flex flex-col items-center text-center px-8" style={{ maxWidth: 620 }}>
         {/* Logo */}
         <motion.img
           src="/logo.png"
           alt="Irium Core"
-          className="mb-8"
-          style={{ width: 88, height: 88, objectFit: 'contain', filter: 'drop-shadow(0 0 28px rgba(139,92,246,0.45))' }}
+          className="mb-10"
+          style={{ width: 96, height: 96, objectFit: 'contain', filter: 'drop-shadow(0 0 32px rgba(110,198,255,0.55)) drop-shadow(0 0 64px rgba(167,139,250,0.20))' }}
           initial={{ scale: 0.7, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.55, ease: 'easeOut' }}
@@ -1582,13 +1641,14 @@ function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
 
         {/* Title */}
         <motion.h1
-          className="font-display font-bold text-4xl text-white mb-3"
+          className="font-display font-bold mb-4"
+          style={{ fontSize: 44, lineHeight: 1.1, letterSpacing: '0.01em' }}
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.4 }}
         >
-          Welcome to{' '}
-          <span style={{ background: 'linear-gradient(90deg, #a78bfa, #60a5fa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <span style={{ color: '#eef0ff' }}>Welcome to</span>{' '}
+          <span style={{ background: 'linear-gradient(135deg, #d4eeff 0%, #6ec6ff 50%, #a78bfa 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Irium Core
           </span>
         </motion.h1>
@@ -1623,11 +1683,12 @@ function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
           {['Full Node', 'HD Wallet', 'P2P Trade', 'On-Chain Settlement', 'Privacy First'].map((f) => (
             <span
               key={f}
-              className="text-xs px-3 py-1 rounded-full"
+              className="text-xs px-3 py-1.5 rounded-full font-display font-semibold"
               style={{
-                background: 'rgba(139,92,246,0.12)',
-                border: '1px solid rgba(139,92,246,0.25)',
-                color: '#c4b5fd',
+                background: 'rgba(110,198,255,0.10)',
+                border: '1px solid rgba(110,198,255,0.30)',
+                color: '#6ec6ff',
+                letterSpacing: '0.04em',
               }}
             >
               {f}
@@ -1652,7 +1713,7 @@ function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
 }
 
 // ─── Main Onboarding ──────────────────────────────────────────────────────────
-export default function Onboarding() {
+export default function Onboarding({ onComplete: onGateComplete }: { onComplete?: () => void } = {}) {
   const navigate   = useNavigate();
   const [showWelcome,  setShowWelcome]  = useState(true);
   const [step, setStep]               = useState(1);
@@ -1661,6 +1722,10 @@ export default function Onboarding() {
 
   const complete = () => {
     localStorage.setItem(ONBOARDING_KEY, '1');
+    // Flip the OnboardingGate first — otherwise the wildcard <Navigate>
+    // in OnboardingGate catches the /dashboard redirect and bounces it
+    // back to /onboarding.
+    onGateComplete?.();
     navigate('/dashboard', { replace: true });
   };
 
@@ -1684,24 +1749,31 @@ export default function Onboarding() {
 
   return (
     <motion.div
-      className="fixed inset-0 flex items-start justify-center overflow-y-auto"
-      style={{ background: '#080B14' }}
+      className="fixed inset-0 overflow-y-auto app-bg"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
     >
-      {/* Ambient background */}
+      {/* Ambient background — brand cyan + purple */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
           background: `
-            radial-gradient(ellipse 65% 55% at 15% 35%, rgba(139,92,246,0.07) 0%, transparent 60%),
-            radial-gradient(ellipse 55% 60% at 85% 70%, rgba(59,130,246,0.06) 0%, transparent 55%)
+            radial-gradient(ellipse 65% 55% at 15% 28%, rgba(59,59,255,0.10) 0%, transparent 60%),
+            radial-gradient(ellipse 55% 60% at 85% 78%, rgba(167,139,250,0.08) 0%, transparent 55%),
+            radial-gradient(ellipse 40% 40% at 50% 50%, rgba(110,198,255,0.05) 0%, transparent 55%)
           `,
         }}
       />
 
-      <div className="relative z-10 flex items-start gap-14 px-8 py-16 max-w-3xl w-full">
+      {/* Vertically + horizontally centred shell. Uses min-h-full so the
+          content centres when it fits the viewport, and scrolls naturally
+          when it doesn't. */}
+      <div className="relative z-10 min-h-full flex items-center justify-center px-10 py-16">
+        <div
+          className="flex items-start gap-16 w-full"
+          style={{ maxWidth: 980 }}
+        >
         {/* Left: Step rail */}
         <StepRail current={step} showStep5={showStep5} />
 
@@ -1732,6 +1804,7 @@ export default function Onboarding() {
               />
             )}
           </AnimatePresence>
+        </div>
         </div>
       </div>
     </motion.div>

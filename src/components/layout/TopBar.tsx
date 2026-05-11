@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, X, Play, Square, Wifi, WifiOff } from 'lucide-react';
+import { Bell, X, Play, Square, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { useStore } from '../../lib/store';
 import { node } from '../../lib/tauri';
 import { startAggressivePoll } from '../../hooks/useNodePoller';
-import { formatIRM } from '../../lib/types';
+import { formatIRM, getAddressBadgeText } from '../../lib/types';
 import type { NodeStatus } from '../../lib/types';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
@@ -12,12 +12,17 @@ import toast from 'react-hot-toast';
 const TopBar = memo(function TopBar() {
   const nodeStatus      = useStore((s) => s.nodeStatus);
   const balance         = useStore((s) => s.balance);
+  const addresses       = useStore((s) => s.addresses);
+  const activeAddrIdx   = useStore((s) => s.activeAddrIdx);
+  const addressLabels   = useStore((s) => s.addressLabels);
   const notifications      = useStore((s) => s.notifications);
   const dismiss            = useStore((s) => s.dismissNotification);
   const clearAll           = useStore((s) => s.clearAllNotifications);
   const addNotification    = useStore((s) => s.addNotification);
   const nodeStarting       = useStore((s) => s.nodeStarting);
   const setNodeStarting    = useStore((s) => s.setNodeStarting);
+  const setNodeOperation   = useStore((s) => s.setNodeOperation);
+  const externalIp         = useStore((s) => s.settings.external_ip);
 
   const [showNotifs, setShowNotifs]         = useState(false);
   const [pendingRunning, setPendingRunning] = useState<boolean | null>(null);
@@ -25,15 +30,33 @@ const TopBar = memo(function TopBar() {
   const prevBalance = useRef<number | null>(null);
   const notifRef    = useRef<HTMLDivElement>(null);
 
+  // The TopBar mirrors whichever address the user has selected on the Wallet
+  // page (or the primary by default). The fallback to wallet-wide
+  // balance.confirmed only applies before addresses have loaded for the first
+  // time — once addresses is non-empty we trust addresses[idx].balance (which
+  // may be 0 for an empty address, or undefined if the per-address RPC
+  // balance call timed out). Without this gating, a slow node could cause the
+  // TopBar to show the wallet-wide aggregate while the Wallet page's hero
+  // correctly shows 0 for the selected address.
+  const displayedConfirmed = addresses.length > 0
+    ? (addresses[activeAddrIdx]?.balance ?? 0)
+    : (balance?.confirmed ?? 0);
+  // Badge text mirrors the wallet hero / address card / manage panel via
+  // the shared getAddressBadgeText helper, so custom labels (e.g.
+  // "Mining") propagate everywhere automatically.
+  const activeAddr = addresses[activeAddrIdx]?.address;
+  const balanceLabelText = addresses.length > 0 && activeAddr
+    ? getAddressBadgeText(activeAddr, activeAddrIdx, addressLabels)
+    : null;
+
   useEffect(() => {
-    const confirmed = balance?.confirmed ?? null;
-    if (confirmed !== null && prevBalance.current !== null && confirmed > prevBalance.current) {
+    if (prevBalance.current !== null && displayedConfirmed > prevBalance.current) {
       setBalanceGlowing(true);
       const t = setTimeout(() => setBalanceGlowing(false), 2000);
       return () => clearTimeout(t);
     }
-    prevBalance.current = confirmed;
-  }, [balance?.confirmed]);
+    prevBalance.current = displayedConfirmed;
+  }, [displayedConfirmed]);
 
   useEffect(() => {
     if (!showNotifs) return;
@@ -70,14 +93,17 @@ const TopBar = memo(function TopBar() {
       if (!next) {
         // Stop: cancel any in-progress startup too
         setNodeStarting(false);
+        setNodeOperation(null);
         await node.stop();
         toast('Node stopping…', { icon: '🔴' });
         addNotification({ type: 'info', title: 'Node stopping…' });
         startAggressivePoll(6_000);
       } else {
-        const result = await node.start();
+        setNodeOperation('starting');
+        const result = await node.start(undefined, externalIp);
         if (!result.success) {
           revert();
+          setNodeOperation(null);
           toast.error(result.message);
           addNotification({ type: 'error', title: 'Failed to start node', message: result.message });
           return;
@@ -93,26 +119,27 @@ const TopBar = memo(function TopBar() {
       toast.error(msg);
       addNotification({ type: 'error', title: 'Error', message: msg });
     }
-  }, [isRunning, addNotification, setNodeStarting]);
+  }, [isRunning, addNotification, setNodeStarting, setNodeOperation]);
 
   return (
     <header
-      className="flex items-center justify-between px-5 flex-shrink-0"
+      className="flex items-center justify-between px-8 flex-shrink-0"
       style={{
         height: 'var(--topbar-h)',
-        background: 'rgba(8, 11, 20, 0.85)',
+        background: 'rgba(2, 5, 14, 0.88)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        position: 'relative',
+        zIndex: 40,
       }}
     >
       {/* Left: Node status pill */}
       <div className="flex items-center gap-3">
-        <NodeStatusPill status={nodeStatus} />
+        <NodeStatusPill status={nodeStatus} nodeStarting={nodeStarting} />
         {nodeStatus?.running && (
           <div
             className="hidden sm:flex items-center gap-2 text-xs"
-            style={{ fontFamily: '"JetBrains Mono", monospace', color: 'rgba(238,240,255,0.30)' }}
+            style={{ fontFamily: '"JetBrains Mono", monospace', color: 'rgba(110,198,255,0.50)' }}
           >
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.span
@@ -132,41 +159,66 @@ const TopBar = memo(function TopBar() {
         )}
       </div>
 
-      {/* Center: Balance */}
-      {balance && (
-        <div className="flex items-center gap-2">
-          <div className="flex flex-col items-end">
-            <div className="flex items-baseline gap-1.5">
-              <motion.span
-                className={clsx(
-                  'font-display font-bold text-base leading-none',
-                  balanceGlowing ? 'glow-green' : '',
-                )}
-                style={{
-                  background: 'linear-gradient(90deg, #A78BFA 0%, #60A5FA 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                }}
-              >
-                {formatIRM(balance.confirmed)}
-              </motion.span>
-              {balance.unconfirmed > 0 && (
-                <span
-                  className="text-xs font-display"
-                  style={{ color: '#fbbf24' }}
-                >
-                  +{formatIRM(balance.unconfirmed)}
-                </span>
-              )}
-            </div>
+      {/* Center: Balance of the currently selected address (mirrors the
+          wallet hero). Falls back to total confirmed only if the addresses
+          list hasn't loaded yet. */}
+      {(addresses.length > 0 || balance) && (
+        <div
+          className="flex items-baseline gap-2"
+          title={
+            balanceLabelText
+              ? `${balanceLabelText} address balance`
+              : 'Wallet balance'
+          }
+        >
+          {/* Balance — same gradient as the page titles (`.page-title`),
+              applied with the bullet-proof combo: `backgroundImage` only
+              (NOT the `background` shorthand — that also sets background-
+              color and the clipped colour paints the bounding box, which
+              is what produced the "black highlight" artifact earlier),
+              explicit `color: transparent`, and `display: inline-block`
+              so background-clip:text has a positioned box to clip against
+              in WebView2. */}
+          <motion.span
+            className={clsx(
+              'font-display font-bold leading-none',
+              balanceGlowing ? 'glow-green' : '',
+            )}
+            style={{
+              fontSize: 18,
+              letterSpacing: '0.01em',
+              display: 'inline-block',
+              backgroundImage: 'linear-gradient(90deg, #d4eeff 0%, #6ec6ff 55%, #a78bfa 100%)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            {formatIRM(displayedConfirmed)}
+          </motion.span>
+          {balanceLabelText && (
             <span
-              className="text-[10px] uppercase tracking-widest mt-0.5"
-              style={{ fontFamily: '"JetBrains Mono", monospace', color: 'rgba(238,240,255,0.25)' }}
+              className="ml-2 text-[9px] font-display font-bold uppercase px-1.5 py-0.5 rounded-full"
+              style={{
+                color: '#6ec6ff',
+                background: 'rgba(110,198,255,0.10)',
+                border: '1px solid rgba(110,198,255,0.28)',
+                letterSpacing: '0.14em',
+              }}
             >
-              Balance
+              {balanceLabelText}
             </span>
-          </div>
+          )}
+          {balance && balance.unconfirmed > 0 && activeAddrIdx === 0 && (
+            <span
+              className="text-xs font-display font-semibold"
+              style={{ color: '#fbbf24' }}
+              title="Unconfirmed (incoming) balance"
+            >
+              +{formatIRM(balance.unconfirmed)}
+            </span>
+          )}
         </div>
       )}
 
@@ -186,10 +238,10 @@ const TopBar = memo(function TopBar() {
             color: '#f87171',
             boxShadow: '0 0 12px rgba(239,68,68,0.10)',
           } : {
-            background: 'linear-gradient(135deg, rgba(139,92,246,0.18) 0%, rgba(59,130,246,0.12) 100%)',
-            border: '1px solid rgba(139,92,246,0.30)',
-            color: '#A78BFA',
-            boxShadow: '0 0 12px rgba(139,92,246,0.12)',
+            background: 'linear-gradient(135deg, #3b3bff 0%, #6ec6ff 50%, #a78bfa 100%)',
+            border: '1px solid rgba(110,198,255,0.40)',
+            color: '#fff',
+            boxShadow: '0 4px 14px rgba(59,59,255,0.30), 0 0 18px rgba(110,198,255,0.18)',
           }}
         >
           <AnimatePresence mode="wait" initial={false}>
@@ -215,9 +267,9 @@ const TopBar = memo(function TopBar() {
             onClick={() => setShowNotifs(!showNotifs)}
             className="relative flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-150"
             style={{
-              background: showNotifs ? 'rgba(139,92,246,0.12)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${showNotifs ? 'rgba(139,92,246,0.30)' : 'rgba(255,255,255,0.07)'}`,
-              color: showNotifs ? '#A78BFA' : 'rgba(238,240,255,0.40)',
+              background: showNotifs ? 'rgba(110,198,255,0.12)' : 'rgba(0,0,0,0.30)',
+              border: `1px solid ${showNotifs ? 'rgba(110,198,255,0.36)' : 'rgba(110,198,255,0.12)'}`,
+              color: showNotifs ? '#6ec6ff' : 'rgba(238,240,255,0.50)',
             }}
           >
             <Bell size={14} />
@@ -230,8 +282,8 @@ const TopBar = memo(function TopBar() {
                   exit={{ scale: 0 }}
                   className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white text-[10px] flex items-center justify-center font-bold"
                   style={{
-                    background: 'linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%)',
-                    boxShadow: '0 0 8px rgba(139,92,246,0.6)',
+                    background: 'linear-gradient(135deg, #3b3bff 0%, #6ec6ff 60%, #a78bfa 100%)',
+                    boxShadow: '0 0 10px rgba(110,198,255,0.55)',
                   }}
                 >
                   {unread > 9 ? '9+' : unread}
@@ -251,17 +303,17 @@ const TopBar = memo(function TopBar() {
                 transition={{ duration: 0.15, ease: 'easeOut' }}
                 className="absolute right-0 top-full mt-2 w-80 z-50 overflow-hidden"
                 style={{
-                  background: 'rgba(10, 13, 28, 0.92)',
+                  background: 'rgba(2, 5, 14, 0.96)',
                   backdropFilter: 'blur(24px)',
                   WebkitBackdropFilter: 'blur(24px)',
-                  border: '1px solid rgba(139,92,246,0.20)',
+                  border: '1px solid rgba(110,198,255,0.26)',
                   borderRadius: 16,
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.08)',
+                  boxShadow: '0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(110,198,255,0.06)',
                 }}
               >
                 <div
                   className="flex items-center justify-between px-4 py-3"
-                  style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+                  style={{ borderBottom: '1px solid rgba(110,198,255,0.10)' }}
                 >
                   <span className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>
                     Notifications
@@ -331,8 +383,30 @@ const TopBar = memo(function TopBar() {
 
 export default TopBar;
 
-const NodeStatusPill = memo(function NodeStatusPill({ status }: { status: NodeStatus | null }) {
-  if (!status || !status.running) {
+const NodeStatusPill = memo(function NodeStatusPill({
+  status,
+  nodeStarting,
+}: {
+  status: NodeStatus | null;
+  nodeStarting: boolean;
+}) {
+  if (!status?.running) {
+    if (nodeStarting) {
+      return (
+        <div
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
+          style={{
+            background: 'rgba(110,198,255,0.10)',
+            border: '1px solid rgba(110,198,255,0.30)',
+          }}
+        >
+          <Loader2 size={12} className="animate-spin" style={{ color: '#6ec6ff' }} />
+          <span className="text-xs font-display font-semibold" style={{ color: '#6ec6ff' }}>
+            Starting…
+          </span>
+        </div>
+      );
+    }
     return (
       <div
         className="flex items-center gap-2 px-3 py-1.5 rounded-xl"

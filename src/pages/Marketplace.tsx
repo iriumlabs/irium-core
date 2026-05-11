@@ -24,7 +24,6 @@ type Tab = 'browse' | 'my-offers' | 'feeds';
 
 // ─── Offer Card ────────────────────────────────────────────────
 function OfferCard({ offer, onTake, isOnline }: { offer: Offer; onTake: () => void; isOnline: boolean }) {
-  const [hovered, setHovered] = useState(false);
   const navigate = useNavigate();
   const score = offer.reputation?.score ?? 0;
   const riskBadge =
@@ -37,105 +36,85 @@ function OfferCard({ offer, onTake, isOnline }: { offer: Offer; onTake: () => vo
   return (
     <motion.div
       variants={itemVariants}
-      onHoverStart={() => setHovered(true)}
-      onHoverEnd={() => setHovered(false)}
-      className="card p-4 relative overflow-hidden cursor-pointer group"
+      className="card-interactive flex items-center gap-4 px-4 py-3.5"
     >
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="font-mono text-xs text-white/40 truncate flex-1">{offer.id}</div>
-        <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+      {/* Left: id, seller, optional description — flexes to fill */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="font-mono text-[11px] text-white/55 truncate">{offer.id}</span>
+          {offer.payment_method && (
+            <span className="badge badge-info text-[9px]">{offer.payment_method}</span>
+          )}
           {offer.risk_signal && (
-            <span className={`badge ${riskBadge} text-[10px]`}>{offer.risk_signal}</span>
+            <span className={`badge ${riskBadge} text-[9px]`}>{offer.risk_signal}</span>
           )}
           {offer.ranking_score !== undefined && (
-            <span className="badge badge-irium text-[10px]">⭐ {offer.ranking_score}</span>
+            <span className="badge badge-irium text-[9px]">⭐ {offer.ranking_score}</span>
           )}
         </div>
-      </div>
-
-      {/* Seller */}
-      {offer.seller && (
-        <div className="mb-2">
-          <div className="font-mono text-[11px] text-white/30">
-            {truncateAddr(offer.seller, 8, 6)}
-          </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate('/reputation', { state: { prefillAddress: offer.seller } });
-            }}
-            className="text-[10px] text-irium-400 hover:text-irium-300 mt-1 flex items-center gap-1 transition-colors"
-          >
-            <Star size={10} /> View Seller Reputation
-          </button>
-        </div>
-      )}
-
-      {/* Amount */}
-      <div className="font-display font-bold text-2xl gradient-text mb-1">
-        {formatIRM(offer.amount)}
-      </div>
-
-      {/* Description */}
-      {offer.description && (
-        <div className="text-white/50 text-xs mb-3 line-clamp-2">{offer.description}</div>
-      )}
-
-      {/* Payment method + time */}
-      <div className="flex items-center gap-2 mb-3">
-        {offer.payment_method && (
-          <span className="badge badge-info text-[10px]">{offer.payment_method}</span>
-        )}
-        {offer.created_at && (
-          <span className="text-white/30 text-[10px]">{timeAgo(offer.created_at)}</span>
-        )}
-      </div>
-
-      {/* Reputation score bar */}
-      {offer.reputation?.score !== undefined && (
-        <div className="mb-3">
-          <div className="h-1 bg-surface-600 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full rounded-full"
-              style={{
-                background: score > 80 ? '#22c55e' : score > 60 ? '#f59e0b' : '#ef4444',
-              }}
-              initial={{ width: 0 }}
-              animate={{ width: `${score}%` }}
-              transition={{ duration: 0.8, ease: 'easeOut' }}
-            />
-          </div>
-          <div className="text-[10px] text-white/30 mt-0.5">
-            {offer.reputation.completed ?? 0} completed
-          </div>
-        </div>
-      )}
-
-      {/* Take Offer button — slides up on hover */}
-      <AnimatePresence>
-        {hovered && (
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 20, opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-surface-800 to-transparent"
-          >
+        {offer.seller && (
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[10px] text-white/35">{truncateAddr(offer.seller, 8, 6)}</span>
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onTake();
+                navigate('/reputation', { state: { prefillAddress: offer.seller } });
               }}
-              disabled={!isOnline}
-              title={!isOnline ? 'Node must be online to take offers' : undefined}
-              className="btn-primary w-full justify-center py-2 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+              className="text-[10px] text-irium-400 hover:text-irium-300 flex items-center gap-1 transition-colors"
             >
-              Take Offer
+              <Star size={9} /> reputation
             </button>
-          </motion.div>
+            {offer.created_at && (
+              <span className="text-[10px] text-white/30">· {timeAgo(offer.created_at)}</span>
+            )}
+          </div>
         )}
-      </AnimatePresence>
+        {offer.description && (
+          <div className="text-white/45 text-[11px] mt-1 line-clamp-1">{offer.description}</div>
+        )}
+        {/* Reputation score bar */}
+        {offer.reputation?.score !== undefined && (
+          <div className="flex items-center gap-2 mt-1.5">
+            <div className="h-1 flex-1 max-w-[140px] rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.40)' }}>
+              <motion.div
+                className="h-full rounded-full"
+                style={{ background: score > 80 ? '#22c55e' : score > 60 ? '#f59e0b' : '#ef4444' }}
+                initial={{ width: 0 }}
+                animate={{ width: `${score}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+              />
+            </div>
+            <span className="text-[9px] text-white/35">{offer.reputation.completed ?? 0} completed</span>
+          </div>
+        )}
+      </div>
+
+      {/* Center: amount in brand-gradient */}
+      <div
+        className="font-display font-bold text-lg tabular-nums flex-shrink-0"
+        style={{
+          background: 'linear-gradient(90deg, #d4eeff 0%, #6ec6ff 55%, #a78bfa 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          letterSpacing: '0.01em',
+        }}
+      >
+        {formatIRM(offer.amount)}
+      </div>
+
+      {/* Right: Take Offer button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onTake();
+        }}
+        disabled={!isOnline}
+        title={!isOnline ? 'Node must be online to take offers' : undefined}
+        className="btn-primary text-xs py-1.5 px-4 flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        Take Offer
+      </button>
     </motion.div>
   );
 }
@@ -317,8 +296,8 @@ function CreateOfferModal({
           <div
             className="flex items-start gap-2 px-3 py-2.5 rounded-xl mb-5 text-xs"
             style={{
-              background: 'rgba(139,92,246,0.08)',
-              border: '1px solid rgba(139,92,246,0.20)',
+              background: 'rgba(110,198,255,0.08)',
+              border: '1px solid rgba(110,198,255,0.20)',
               color: 'rgba(238,240,255,0.55)',
             }}
           >
@@ -418,7 +397,10 @@ export default function MarketplacePage() {
       const data = await offers.list({ source: filterSource, sort: filterSort, limit: 50 });
       setOfferList(data);
     } catch (e) {
-      toast.error('Failed to load offers: ' + String(e));
+      // Suppress toast when offline — empty state communicates the problem.
+      if (nodeStatus?.running) {
+        toast.error('Failed to load offers: ' + String(e));
+      }
     } finally {
       setLoading(false);
     }
@@ -430,7 +412,9 @@ export default function MarketplacePage() {
       const data = await offers.list({ source: 'local' });
       setMyOffers(data);
     } catch (e) {
-      toast.error('Failed to load your offers: ' + String(e));
+      if (nodeStatus?.running) {
+        toast.error('Failed to load your offers: ' + String(e));
+      }
     } finally {
       setLoading(false);
     }
@@ -442,23 +426,23 @@ export default function MarketplacePage() {
       const data = await feeds.list();
       setFeedList(data);
     } catch (e) {
-      toast.error('Failed to load feeds: ' + String(e));
+      if (nodeStatus?.running) {
+        toast.error('Failed to load feeds: ' + String(e));
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // Single effect handles initial load + tab changes + filter changes.
+  // Merging prevents the second useEffect([filterSource, filterSort]) from
+  // firing a redundant loadOffers() on mount, which caused 4 toast errors.
   useEffect(() => {
     if (activeTab === 'browse') loadOffers();
     else if (activeTab === 'my-offers') loadMyOffers();
     else if (activeTab === 'feeds') loadFeeds();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
-
-  useEffect(() => {
-    if (activeTab === 'browse') loadOffers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterSource, filterSort]);
+  }, [activeTab, filterSource, filterSort]);
 
   // ── Feed actions ─────────────────────────────────────────────
   const handleAddFeed = async () => {
@@ -525,9 +509,14 @@ export default function MarketplacePage() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="h-full overflow-y-auto p-6"
+      className="h-full overflow-y-auto"
     >
-      <div className="max-w-7xl mx-auto space-y-5">
+      <div className="w-full space-y-5 px-8 py-6">
+      {/* Page header */}
+      <div>
+        <h1 className="page-title">Marketplace</h1>
+        <p className="page-subtitle">Browse and post settlement offers on the Irium peer-to-peer network.</p>
+      </div>
       {/* Tab bar */}
       <div className="flex border-b border-white/[0.06] mb-5">
         {(['browse', 'my-offers', 'feeds'] as Tab[]).map((tab) => (
@@ -605,7 +594,7 @@ export default function MarketplacePage() {
 
           {/* Offer grid */}
           {loading ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="space-y-2">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="card p-4">
                   <div className="shimmer h-20 rounded" />
@@ -621,7 +610,7 @@ export default function MarketplacePage() {
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+              className="space-y-2"
             >
               {filteredOffers.map((offer) => (
                 <OfferCard
@@ -651,7 +640,7 @@ export default function MarketplacePage() {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="space-y-2">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="card p-4">
                   <div className="shimmer h-20 rounded" />
@@ -667,7 +656,7 @@ export default function MarketplacePage() {
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+              className="space-y-2"
             >
               {myOffers.map((offer) => (
                 <OfferCard

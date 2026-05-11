@@ -40,10 +40,10 @@ export default function TitleBar() {
       className="fixed top-0 left-0 right-0 z-[200] flex items-center overflow-hidden"
       style={{
         height: visible ? BAR_HEIGHT_PX : 0,
-        background: 'rgba(4, 6, 14, 0.96)',
+        background: 'rgba(2, 5, 14, 0.96)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: '1px solid rgba(110,198,255,0.18)',
         transition: 'height 0.12s ease',
       }}
       data-tauri-drag-region
@@ -59,8 +59,14 @@ export default function TitleBar() {
             draggable={false}
           />
           <span
-            className="text-xs font-display font-semibold"
-            style={{ color: 'rgba(238,240,255,0.50)', letterSpacing: '0.06em' }}
+            className="text-xs font-display font-bold"
+            style={{
+              background: 'linear-gradient(90deg, #d4eeff 0%, #6ec6ff 55%, #a78bfa 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              letterSpacing: '0.10em',
+            }}
           >
             IRIUM CORE
           </span>

@@ -15,6 +15,9 @@ import {
   CheckCircle2,
   Circle,
   Loader2,
+  X,
+  ChevronDown,
+  Pickaxe,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -28,8 +31,9 @@ import {
 import toast from 'react-hot-toast';
 import { useStore } from '../lib/store';
 import { wallet, agreements, node } from '../lib/tauri';
+import TxDetailModal from '../components/TxDetailModal';
 import { startAggressivePoll } from '../hooks/useNodePoller';
-import { formatIRM, timeAgo, satsToIRM } from '../lib/types';
+import { formatIRM, timeAgo, satsToIRM, computeConfirmations } from '../lib/types';
 import type { Agreement, Transaction, AgreementStatus, PeerInfo } from '../lib/types';
 
 // ── Operation banner ──────────────────────────────────────────
@@ -55,86 +59,225 @@ function NodeOperationBanner({ type }: { type: OperationType }) {
   const [elapsed, setElapsed] = useState(0);
   const steps = OPERATION_STEPS[type];
 
+  // Live node status — drives the transition from CONNECTING to "Connected"
+  // and ultimately the banner's own dismissal.
+  const nodeStatus = useStore((s) => s.nodeStatus);
+  const setNodeStarting = useStore((s) => s.setNodeStarting);
+  const setNodeOperation = useStore((s) => s.setNodeOperation);
+
+  // Once peers are connected the operation is functionally done. Show a
+  // celebratory "Connected" state, then signal the parent to unmount us
+  // after a short delay.
+  const completionTrigger = !!(nodeStatus?.running && (nodeStatus?.peers ?? 0) > 0);
+  const [completed, setCompleted] = useState(false);
+  useEffect(() => {
+    if (completionTrigger && !completed) setCompleted(true);
+  }, [completionTrigger, completed]);
+
+  // Clock — freezes once we hit the completed state so the elapsed seconds
+  // stop ticking on the celebration card.
   useEffect(() => {
     const start = Date.now();
-    const id = setInterval(() => setElapsed(Date.now() - start), 200);
+    const id = setInterval(() => {
+      if (!completed) setElapsed(Date.now() - start);
+    }, 200);
     return () => clearInterval(id);
-  }, []);
+  }, [completed]);
+
+  // After 2s of celebration, clear the operation flags. The parent's
+  // <AnimatePresence> picks this up and animates the banner out (height
+  // 0, opacity 0). We clear both flags so other listeners (TopBar's
+  // "Starting…" pill) update in step.
+  useEffect(() => {
+    if (!completed) return;
+    const t = setTimeout(() => {
+      setNodeStarting(false);
+      setNodeOperation(null);
+    }, 2000);
+    return () => clearTimeout(t);
+  }, [completed, setNodeStarting, setNodeOperation]);
 
   const currentStepIdx = [...steps].reverse().findIndex((s) => elapsed >= s.ms);
-  const activeIdx = currentStepIdx === -1 ? 0 : steps.length - 1 - currentStepIdx;
-  const activeStep = steps[activeIdx];
-  const dots = '.'.repeat(((elapsed / 500) | 0) % 4);
-  const color = type === 'clearing' ? 'rgba(251,191,36,1)' : 'rgba(139,92,246,1)';
-  const bgColor = type === 'clearing' ? 'rgba(251,191,36,0.07)' : 'rgba(99,102,241,0.07)';
-  const borderColor = type === 'clearing' ? 'rgba(251,191,36,0.22)' : 'rgba(99,102,241,0.22)';
+  // When completed, push activeIdx past the last step so every step renders
+  // as "done" (checkmarks + filled connector lines).
+  const activeIdx = completed
+    ? steps.length
+    : (currentStepIdx === -1 ? 0 : steps.length - 1 - currentStepIdx);
+  const activeStep = steps[Math.min(activeIdx, steps.length - 1)];
+  const dots = completed ? '' : '.'.repeat(((elapsed / 500) | 0) % 4);
+
+  // Brand cyan for starting, amber for clearing — higher saturation so the
+  // banner reads cleanly against the aurora backdrop instead of fading into it.
+  const isStart = type !== 'clearing';
+  // Once completed, swap to brand-green so the colour shift reinforces the
+  // "we're done" message in addition to the checkmarks.
+  const color    = completed ? '#34d399' : isStart ? '#6ec6ff' : '#fbbf24';
+  const accentBg = completed
+    ? 'rgba(52,211,153,0.10)'
+    : isStart ? 'rgba(110,198,255,0.10)' : 'rgba(251,191,36,0.10)';
+  const accentBd = completed
+    ? 'rgba(52,211,153,0.45)'
+    : isStart ? 'rgba(110,198,255,0.40)' : 'rgba(251,191,36,0.40)';
+  const glowGrad = `radial-gradient(ellipse 70% 100% at 50% -20%, ${
+    completed
+      ? 'rgba(52,211,153,0.20)'
+      : isStart
+        ? 'rgba(110,198,255,0.18)'
+        : 'rgba(251,191,36,0.18)'
+  } 0%, transparent 60%)`;
+
+  // Slow-connect hint: the user is sitting on the CONNECTING step longer
+  // than expected. Surface a subtle note so they know it's normal.
+  const onConnectingStep = !completed && activeIdx === steps.length - 1;
+  const slowConnect      = onConnectingStep && elapsed > 30_000;
+  const peers = nodeStatus?.peers ?? 0;
 
   return (
-    <div className="rounded-xl p-4" style={{ background: bgColor, border: `1px solid ${borderColor}` }}>
-      {/* Step dots */}
-      <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1">
-        {steps.map((step, i) => {
-          const done = i < activeIdx;
-          const active = i === activeIdx;
-          return (
-            <React.Fragment key={i}>
-              {i > 0 && (
-                <div
-                  className="flex-1 h-px min-w-[12px] transition-all duration-500"
-                  style={{ background: done ? color : 'rgba(255,255,255,0.10)' }}
-                />
-              )}
-              <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                <div className="w-6 h-6 flex items-center justify-center">
-                  {done ? (
-                    <CheckCircle2 size={16} style={{ color }} />
-                  ) : active ? (
-                    <Loader2 size={16} className="animate-spin" style={{ color }} />
-                  ) : (
-                    <Circle size={16} style={{ color: 'rgba(255,255,255,0.15)' }} />
-                  )}
-                </div>
-                <span
-                  className="text-[9px] font-display font-semibold uppercase tracking-wide whitespace-nowrap"
-                  style={{ color: done || active ? color : 'rgba(255,255,255,0.20)' }}
-                >
-                  {step.label.split(' ')[0]}
-                </span>
-              </div>
-            </React.Fragment>
-          );
-        })}
-      </div>
+    <div
+      className="relative rounded-xl p-5 overflow-hidden"
+      style={{
+        background: 'rgba(8,11,22,0.94)',                 // opaque — hides the aurora behind it
+        border: `1px solid ${accentBd}`,
+        boxShadow: `0 12px 36px rgba(0,0,0,0.50), 0 0 28px ${accentBg}`,
+        transition: 'border-color 0.4s ease, box-shadow 0.4s ease',
+      }}
+    >
+      {/* Subtle accent glow at top */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: glowGrad, transition: 'background 0.4s ease' }} />
 
-      {/* Current step info */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeIdx}
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -4 }}
-          transition={{ duration: 0.2 }}
-          className="flex items-center gap-3"
-        >
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-display font-semibold" style={{ color }}>
-              {activeStep.label}{dots}
-            </p>
-            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              {activeStep.detail} · {(elapsed / 1000).toFixed(0)}s
-            </p>
-          </div>
-          {/* Progress bar */}
-          <div className="w-28 h-1 rounded-full overflow-hidden flex-shrink-0" style={{ background: 'rgba(255,255,255,0.08)' }}>
-            <motion.div
-              className="h-full rounded-full"
-              style={{ background: color }}
-              animate={{ width: `${Math.min(98, 5 + (elapsed / 200))}%` }}
-              transition={{ duration: 0.5, ease: 'linear' }}
-            />
-          </div>
-        </motion.div>
-      </AnimatePresence>
+      <div className="relative">
+        {/* Header */}
+        <div className="flex items-center gap-2.5 mb-4">
+          {completed
+            ? <CheckCircle2 size={14} style={{ color }} />
+            : <Loader2 size={14} className="animate-spin" style={{ color }} />}
+          <span
+            className="text-[10px] font-display font-bold uppercase"
+            style={{ color, letterSpacing: '0.16em' }}
+          >
+            {completed
+              ? `Connected${peers > 0 ? ` to ${peers} peer${peers === 1 ? '' : 's'}` : ''}`
+              : isStart ? 'Starting node' : 'Clearing & restarting'}
+          </span>
+        </div>
+
+        {/* Step dots — note: NO overflow-x-auto here. That was clipping the
+            active step's glowing box-shadow on the vertical axis and
+            producing a "stuck in a box / cut off" appearance on the final
+            CONNECTING step where the glow is most pronounced. The row
+            shrinks to fit on narrow viewports via `flex-1` connectors and
+            `whitespace-nowrap` labels instead. */}
+        <div className="flex items-center gap-2 mb-4 px-1 py-2">
+          {steps.map((step, i) => {
+            const done = i < activeIdx;
+            const active = i === activeIdx && !completed;
+            const isStepConnected = done; // for connector colour
+            return (
+              <React.Fragment key={i}>
+                {i > 0 && (
+                  <div
+                    className="flex-1 h-0.5 min-w-[16px] rounded-full transition-all duration-500"
+                    style={{ background: isStepConnected ? color : 'rgba(255,255,255,0.14)' }}
+                  />
+                )}
+                <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300"
+                    style={{
+                      background: done || active ? accentBg : 'rgba(0,0,0,0.40)',
+                      border: `1px solid ${done || active ? accentBd : 'rgba(255,255,255,0.12)'}`,
+                      boxShadow: active ? `0 0 14px ${accentBg.replace('0.10', '0.45')}` : 'none',
+                    }}
+                  >
+                    {done ? (
+                      <CheckCircle2 size={14} style={{ color }} />
+                    ) : active ? (
+                      <Loader2 size={14} className="animate-spin" style={{ color }} />
+                    ) : (
+                      <Circle size={14} style={{ color: 'rgba(255,255,255,0.30)' }} />
+                    )}
+                  </div>
+                  <span
+                    className="text-[9px] font-display font-bold uppercase whitespace-nowrap transition-colors duration-300"
+                    style={{
+                      color: done || active ? color : 'rgba(255,255,255,0.40)',
+                      letterSpacing: '0.10em',
+                    }}
+                  >
+                    {step.label.split(' ')[0]}
+                  </span>
+                </div>
+              </React.Fragment>
+            );
+          })}
+        </div>
+
+        {/* Current step info */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={completed ? 'done' : activeIdx}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center gap-3"
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-display font-bold" style={{ color }}>
+                {completed
+                  ? `Connected to ${peers} peer${peers === 1 ? '' : 's'}`
+                  : `${activeStep.label}${dots}`}
+              </p>
+              <p className="text-xs mt-1" style={{ color: 'rgba(238,240,255,0.55)' }}>
+                {completed
+                  ? 'Node is online and synced with the network.'
+                  : <>{activeStep.detail} · <span className="font-mono">{(elapsed / 1000).toFixed(0)}s</span></>}
+              </p>
+            </div>
+            {/* Progress bar — fills to 100% on completion (was capped at 98%
+                so the bar never reached the end of the track even after the
+                node was up). */}
+            <div
+              className="w-32 h-1.5 rounded-full overflow-hidden flex-shrink-0"
+              style={{ background: 'rgba(0,0,0,0.40)', border: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              <motion.div
+                className="h-full rounded-full"
+                style={{
+                  background: completed
+                    ? 'linear-gradient(90deg, #10b981 0%, #34d399 100%)'
+                    : isStart
+                      ? 'linear-gradient(90deg, #3b3bff 0%, #6ec6ff 50%, #a78bfa 100%)'
+                      : 'linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)',
+                  boxShadow: `0 0 8px ${color}`,
+                }}
+                animate={{
+                  width: completed ? '100%' : `${Math.min(98, 5 + (elapsed / 200))}%`,
+                }}
+                transition={{
+                  duration: completed ? 0.5 : 0.5,
+                  ease: completed ? 'easeOut' : 'linear',
+                }}
+              />
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Slow-connect hint */}
+        <AnimatePresence>
+          {slowConnect && (
+            <motion.p
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="text-[11px] mt-3 leading-relaxed"
+              style={{ color: 'rgba(238,240,255,0.45)' }}
+            >
+              This may take a moment if no peers are immediately available.
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
@@ -185,20 +328,184 @@ function agreementBorderColor(status: AgreementStatus): string {
   return 'border-white/20';
 }
 
+// ── Decentralization banner ───────────────────────────────────
+const DECENTRAL_DISMISSED_KEY = 'irium-decentral-dismissed';
+
+// SVG viewBox 0 0 112 78 — 5 healthy network nodes + 1 dimmed "you" node at bottom
+const NET_POS = [
+  { x: 18, y: 13 },
+  { x: 94, y: 13 },
+  { x: 56, y: 38 },
+  { x: 18, y: 63 },
+  { x: 94, y: 63 },
+];
+const YOU_POS = { x: 56, y: 70 };
+const EDGES: [number, number][] = [[0,1],[0,2],[1,2],[2,3],[2,4],[3,4]];
+
+function NetworkGraphic() {
+  return (
+    <svg viewBox="0 0 112 78" width={112} height={78} className="flex-shrink-0 select-none">
+      {/* Animated edges between network nodes */}
+      {EDGES.map(([a, b], i) => (
+        <motion.line
+          key={i}
+          x1={NET_POS[a].x} y1={NET_POS[a].y}
+          x2={NET_POS[b].x} y2={NET_POS[b].y}
+          stroke="rgba(52,211,153,0.28)"
+          strokeWidth={0.8}
+          strokeDasharray="3 3"
+          animate={{ strokeDashoffset: [0, -6] }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: 'linear', delay: i * 0.18 }}
+        />
+      ))}
+
+      {/* Outbound-only dashed line from YOU → center node (N2) — no return path */}
+      <line
+        x1={YOU_POS.x} y1={YOU_POS.y - 5}
+        x2={NET_POS[2].x} y2={NET_POS[2].y + 5}
+        stroke="rgba(255,255,255,0.12)"
+        strokeWidth={0.8}
+        strokeDasharray="2 3"
+      />
+      {/* Arrowhead pointing up (outbound from you) */}
+      <polygon
+        points={`${NET_POS[2].x - 3},${NET_POS[2].y + 8} ${NET_POS[2].x + 3},${NET_POS[2].y + 8} ${NET_POS[2].x},${NET_POS[2].y + 4}`}
+        fill="rgba(255,255,255,0.15)"
+      />
+
+      {/* Network nodes — pulsing green */}
+      {NET_POS.map((n, i) => (
+        <g key={i}>
+          <motion.circle
+            cx={n.x} cy={n.y} r={4}
+            fill="none"
+            stroke="rgba(52,211,153,0.45)"
+            strokeWidth={0.8}
+            animate={{ r: [4, 10], opacity: [0.5, 0] }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: 'easeOut', delay: i * 0.42 }}
+          />
+          <motion.circle
+            cx={n.x} cy={n.y} r={3.5}
+            fill="rgba(52,211,153,0.85)"
+            animate={{ opacity: [0.65, 1, 0.65] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.35 }}
+          />
+        </g>
+      ))}
+
+      {/* Your node — dimmed, dashed border, no pulse */}
+      <motion.circle
+        cx={YOU_POS.x} cy={YOU_POS.y} r={4}
+        fill="rgba(255,255,255,0.06)"
+        stroke="rgba(255,255,255,0.22)"
+        strokeWidth={0.8}
+        strokeDasharray="2 2"
+        animate={{ opacity: [0.5, 0.8, 0.5] }}
+        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <text x={YOU_POS.x} y={YOU_POS.y + 9} textAnchor="middle" fontSize={4.5} fill="rgba(255,255,255,0.28)" fontFamily="monospace">
+        you
+      </text>
+    </svg>
+  );
+}
+
+function DecentralizationBanner({ onDismiss }: { onDismiss: () => void }) {
+  const navigate = useNavigate();
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.3, ease: 'easeInOut' }}
+      className="overflow-hidden"
+    >
+      <div
+        className="relative rounded-xl px-5 py-4 flex items-center gap-4 overflow-hidden"
+        style={{
+          background: 'rgba(8,11,22,0.94)',
+          border: '1px solid rgba(110,198,255,0.32)',
+          boxShadow: '0 8px 28px rgba(0,0,0,0.45), 0 0 22px rgba(110,198,255,0.10)',
+        }}
+      >
+        <NetworkGraphic />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm font-display font-bold" style={{ color: '#6ec6ff' }}>
+                Your node isn't reachable by the network
+              </p>
+              <p className="text-xs mt-1 leading-relaxed" style={{ color: 'rgba(238,240,255,0.55)' }}>
+                You're connected outbound but other nodes can't dial back to you. For a healthy
+                decentralized network every node should be a full two-way peer. Set your public IP
+                so the network knows how to reach you.
+              </p>
+            </div>
+            <button
+              onClick={onDismiss}
+              className="flex-shrink-0 transition-colors mt-0.5"
+              style={{ color: 'rgba(255,255,255,0.18)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.45)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.18)')}
+            >
+              <X size={13} />
+            </button>
+          </div>
+          <div className="flex items-center gap-3 mt-3">
+            <button
+              onClick={() => navigate('/settings')}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-display font-semibold transition-all active:scale-[0.97]"
+              style={{
+                background: 'rgba(110,198,255,0.16)',
+                border: '1px solid rgba(110,198,255,0.55)',
+                color: '#fff',
+                boxShadow: '0 0 14px rgba(110,198,255,0.18)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background  = 'rgba(110,198,255,0.24)';
+                e.currentTarget.style.borderColor = 'rgba(110,198,255,0.75)';
+                e.currentTarget.style.boxShadow   = '0 0 22px rgba(110,198,255,0.30)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background  = 'rgba(110,198,255,0.16)';
+                e.currentTarget.style.borderColor = 'rgba(110,198,255,0.55)';
+                e.currentTarget.style.boxShadow   = '0 0 14px rgba(110,198,255,0.18)';
+              }}
+            >
+              Set External IP
+            </button>
+            <span className="text-xs" style={{ color: 'rgba(238,240,255,0.45)' }}>
+              Sync and wallet work without this
+            </span>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const nodeStatus = useStore((s) => s.nodeStatus);
   const setNodeStarting = useStore((s) => s.setNodeStarting);
+  const nodeStarting = useStore((s) => s.nodeStarting);
+  const operation = useStore((s) => s.nodeOperation);
+  const setOperation = useStore((s) => s.setNodeOperation);
   const balance = useStore((s) => s.balance);
   const addNotification = useStore((s) => s.addNotification);
   const peerList = useStore((s) => s.peerList);
+  const externalIp = useStore((s) => s.settings.external_ip);
   const heightLastChanged = useStore((s) => s.heightLastChanged);
+  const [showDecentral, setShowDecentral] = useState(
+    () => !localStorage.getItem(DECENTRAL_DISMISSED_KEY)
+  );
+  const [peersExpanded, setPeersExpanded] = useState(false);
   const [recentTx, setRecentTx] = useState<Transaction[]>([]);
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [activeAgreements, setActiveAgreements] = useState<Agreement[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastTip, setLastTip] = useState<string>('');
   const [tickerGlow, setTickerGlow] = useState(false);
-  const [operation, setOperation] = useState<OperationType | null>(null);
 
   const statsRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(statsRef, { once: true });
@@ -210,7 +517,8 @@ export default function Dashboard() {
         wallet.transactions(10),
         agreements.list(),
       ]);
-      if (txs.status === 'fulfilled') setRecentTx(txs.value);
+      if (txs.status === 'fulfilled')
+        setRecentTx(txs.value.filter((tx) => Math.abs(tx.amount) > 0));
       if (agrs.status === 'fulfilled')
         setActiveAgreements(agrs.value.filter((a) => a.status === 'funded' || a.status === 'open'));
     } catch {}
@@ -221,15 +529,12 @@ export default function Dashboard() {
     loadData();
   }, [loadData]);
 
-  // Safety valve: for 'starting', clear when node comes online; both types clear after 90s.
-  // 'clearing' does NOT auto-clear on running because the node may still show running
-  // from the previous poll while the kill is in-flight.
+  // Safety timeout: clear any stuck operation banner after 90s.
   useEffect(() => {
     if (!operation) return;
-    if (operation === 'starting' && nodeStatus?.running) { setOperation(null); return; }
     const id = setTimeout(() => setOperation(null), 90_000);
     return () => clearTimeout(id);
-  }, [operation, nodeStatus?.running]);
+  }, [operation, setOperation]);
 
   useEffect(() => {
     const tip = nodeStatus?.tip ?? '';
@@ -247,7 +552,7 @@ export default function Dashboard() {
       await node.clearState();
       addNotification({ type: 'info', title: 'State cleared', message: 'Restarting node from scratch…' });
       await new Promise((r) => setTimeout(r, 500));
-      const result = await node.start();
+      const result = await node.start(undefined, externalIp);
       if (result.success) {
         setNodeStarting(true);
         setOperation('starting');
@@ -266,7 +571,7 @@ export default function Dashboard() {
   const handleStartNode = async () => {
     setOperation('starting');
     try {
-      const result = await node.start();
+      const result = await node.start(undefined, externalIp);
       if (!result.success) {
         toast.error(result.message);
         addNotification({ type: 'error', title: 'Failed to start node', message: result.message });
@@ -306,21 +611,21 @@ export default function Dashboard() {
       transition={{ duration: 0.25, ease: 'easeOut' }}
       className="h-full overflow-y-auto"
     >
-      <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      <div className="px-8 py-6 space-y-6 w-full">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-display font-bold text-2xl text-white">Dashboard</h1>
-            <p className="text-white/40 text-sm mt-0.5">Irium blockchain overview</p>
+            <h1 className="page-title">Dashboard</h1>
+            <p className="page-subtitle">Irium blockchain overview · live</p>
           </div>
-          <button onClick={loadData} className="btn-ghost" disabled={loading}>
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            Refresh
+          <button onClick={loadData} className="btn-secondary text-xs gap-2" disabled={loading}>
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            {loading ? 'Refreshing…' : 'Refresh'}
           </button>
         </div>
 
         <AnimatePresence mode="wait">
           {/* ── Operation in progress ─────────────────────────── */}
-          {operation ? (
+          {(operation || nodeStarting) ? (
             <motion.div
               key="operation-banner"
               initial={{ opacity: 0, height: 0 }}
@@ -329,7 +634,7 @@ export default function Dashboard() {
               transition={{ duration: 0.25 }}
               className="overflow-hidden"
             >
-              <NodeOperationBanner type={operation} />
+              <NodeOperationBanner type={operation ?? 'starting'} />
             </motion.div>
           ) : !nodeStatus?.running ? (
             /* ── Node offline ─────────────────────────────────── */
@@ -341,18 +646,40 @@ export default function Dashboard() {
               transition={{ duration: 0.25 }}
               className="overflow-hidden"
             >
-              <div className="flex items-center justify-between gap-4 rounded-xl border border-amber-500/20 bg-amber-500/08 px-5 py-4">
-                <div>
-                  <p className="text-sm font-display font-semibold text-amber-300">
-                    iriumd is not running
-                  </p>
-                  <p className="text-xs text-amber-300/50 mt-0.5">
-                    Start the node to sync with the Irium network.
-                  </p>
+              <div
+                className="flex items-center justify-between gap-4 rounded-xl px-5 py-4 relative overflow-hidden"
+                style={{
+                  background: 'rgba(8,11,22,0.94)',
+                  border: '1px solid rgba(245,158,11,0.45)',
+                  boxShadow: '0 8px 28px rgba(0,0,0,0.40), 0 0 24px rgba(245,158,11,0.15)',
+                }}
+              >
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{ background: 'radial-gradient(ellipse 60% 100% at 0% 0%, rgba(245,158,11,0.16) 0%, transparent 70%)' }}
+                />
+                <div className="relative flex items-center gap-3">
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{
+                      background: 'rgba(245,158,11,0.14)',
+                      border: '1px solid rgba(245,158,11,0.40)',
+                    }}
+                  >
+                    <span className="dot-syncing" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-display font-bold" style={{ color: '#fbbf24' }}>
+                      iriumd is not running
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: 'rgba(251,191,36,0.65)' }}>
+                      Start the node to sync with the Irium network.
+                    </p>
+                  </div>
                 </div>
                 <button
                   onClick={handleStartNode}
-                  className="btn-primary flex-shrink-0 text-xs py-1.5 px-4"
+                  className="btn-primary flex-shrink-0 text-sm relative"
                 >
                   Start Node
                 </button>
@@ -369,28 +696,135 @@ export default function Dashboard() {
               className="overflow-hidden"
             >
               <div
-                className="flex items-center gap-3 rounded-xl px-4 py-3"
-                style={{ background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.18)' }}
+                className="relative flex items-center gap-3 rounded-xl px-5 py-4 overflow-hidden"
+                style={{
+                  background: 'rgba(8,11,22,0.94)',
+                  border: '1px solid rgba(110,198,255,0.40)',
+                  boxShadow: '0 8px 28px rgba(0,0,0,0.45), 0 0 24px rgba(110,198,255,0.14)',
+                }}
               >
-                <span className="dot-syncing flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-xs font-semibold" style={{ color: '#a5b4fc' }}>
-                    Searching for peers…
-                  </p>
-                  <p className="text-xs mt-0.5" style={{ color: 'rgba(165,180,252,0.50)' }}>
-                    Block #{nodeStatus.height.toLocaleString()} · iriumd is discovering the network. If stuck, try Clear & Restart.
-                  </p>
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{ background: 'radial-gradient(ellipse 60% 100% at 0% 0%, rgba(110,198,255,0.16) 0%, transparent 70%)' }}
+                />
+                <div className="relative flex items-center gap-3 flex-1">
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'rgba(110,198,255,0.14)', border: '1px solid rgba(110,198,255,0.40)' }}
+                  >
+                    <span className="dot-syncing" style={{ animationDuration: '1.2s' }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-display font-bold" style={{ color: '#6ec6ff' }}>
+                      Searching for peers…
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: 'rgba(238,240,255,0.55)' }}>
+                      Block #{nodeStatus.height.toLocaleString()} · iriumd is discovering the network. If stuck, try Clear &amp; Restart.
+                    </p>
+                  </div>
                 </div>
                 <button
                   onClick={handleReconnect}
-                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                  style={{ background: 'rgba(99,102,241,0.18)', border: '1px solid rgba(99,102,241,0.30)', color: '#a5b4fc' }}
+                  disabled={operation === 'clearing'}
+                  className="relative flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-display font-semibold transition-all active:scale-[0.97] disabled:opacity-50"
+                  style={{
+                    background: 'rgba(110,198,255,0.14)',
+                    border: '1px solid rgba(110,198,255,0.55)',
+                    color: '#fff',
+                    boxShadow: '0 0 16px rgba(110,198,255,0.18)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (operation === 'clearing') return;
+                    e.currentTarget.style.background  = 'rgba(110,198,255,0.22)';
+                    e.currentTarget.style.borderColor = 'rgba(110,198,255,0.75)';
+                    e.currentTarget.style.boxShadow   = '0 0 22px rgba(110,198,255,0.30)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background  = 'rgba(110,198,255,0.14)';
+                    e.currentTarget.style.borderColor = 'rgba(110,198,255,0.55)';
+                    e.currentTarget.style.boxShadow   = '0 0 16px rgba(110,198,255,0.18)';
+                  }}
                 >
-                  <RefreshCw size={11} /> Clear &amp; Restart
+                  <RefreshCw size={12} className={operation === 'clearing' ? 'animate-spin' : ''} /> Clear &amp; Restart
+                </button>
+              </div>
+            </motion.div>
+          ) : nodeStatus.running && nodeStatus.network_tip > 0 && (nodeStatus.network_tip - nodeStatus.height) > 50 ? (
+            /* ── Has peers but stuck behind chain tip ─────────── */
+            <motion.div
+              key="stuck-banner"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div
+                className="relative flex items-center gap-3 rounded-xl px-5 py-4 overflow-hidden"
+                style={{
+                  background: 'rgba(8,11,22,0.94)',
+                  border: '1px solid rgba(245,158,11,0.45)',
+                  boxShadow: '0 8px 28px rgba(0,0,0,0.45), 0 0 24px rgba(245,158,11,0.16)',
+                }}
+              >
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{ background: 'radial-gradient(ellipse 60% 100% at 0% 0%, rgba(245,158,11,0.16) 0%, transparent 70%)' }}
+                />
+                <div className="relative flex items-center gap-3 flex-1">
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.40)' }}
+                  >
+                    <span className="dot-syncing" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-display font-bold" style={{ color: '#fbbf24' }}>
+                      Sync stalled — {(nodeStatus.network_tip - nodeStatus.height).toLocaleString()} blocks behind
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: 'rgba(238,240,255,0.55)' }}>
+                      Block #{nodeStatus.height.toLocaleString()} / #{nodeStatus.network_tip.toLocaleString()} · Chain state may be corrupted. Clear &amp; Restart to resync from scratch.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleReconnect}
+                  disabled={operation === 'clearing'}
+                  className="relative flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-display font-semibold transition-all active:scale-[0.97] disabled:opacity-50"
+                  style={{
+                    background: 'rgba(245,158,11,0.16)',
+                    border: '1px solid rgba(245,158,11,0.55)',
+                    color: '#fff',
+                    boxShadow: '0 0 16px rgba(245,158,11,0.18)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (operation === 'clearing') return;
+                    e.currentTarget.style.background  = 'rgba(245,158,11,0.24)';
+                    e.currentTarget.style.borderColor = 'rgba(245,158,11,0.75)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background  = 'rgba(245,158,11,0.16)';
+                    e.currentTarget.style.borderColor = 'rgba(245,158,11,0.55)';
+                  }}
+                >
+                  <RefreshCw size={12} className={operation === 'clearing' ? 'animate-spin' : ''} /> Clear &amp; Restart
                 </button>
               </div>
             </motion.div>
           ) : null}
+        </AnimatePresence>
+
+        {/* ── Decentralization nudge — separate AnimatePresence so it coexists with status banners */}
+        <AnimatePresence>
+          {nodeStatus?.running && !externalIp && showDecentral && (
+            <DecentralizationBanner
+              key="decentral-banner"
+              onDismiss={() => {
+                localStorage.setItem(DECENTRAL_DISMISSED_KEY, '1');
+                setShowDecentral(false);
+              }}
+            />
+          )}
         </AnimatePresence>
 
         <AnimatePresence>
@@ -463,15 +897,33 @@ export default function Dashboard() {
             </>
           ) : (
             <>
+              {/* Confirmed Balance — shows "Syncing…" while the chain is
+                  catching up so the user doesn't watch the IRM number
+                  change rapidly as old blocks are processed. The actual
+                  balance only renders once nodeStatus.synced flips true. */}
               <StatCard
                 title="Confirmed Balance"
-                value={formatIRM(balanceCount)}
+                value={
+                  !nodeStatus?.running
+                    ? '—'
+                    : !nodeStatus.synced
+                      ? 'Syncing…'
+                      : formatIRM(balanceCount)
+                }
                 sub={
-                  balance
-                    ? balance.unconfirmed > 0
-                      ? `+${formatIRM(balance.unconfirmed)} pending`
-                      : 'All confirmed'
-                    : 'Wallet not open'
+                  !nodeStatus?.running
+                    ? 'Node offline'
+                    : !nodeStatus.synced
+                      ? `Catching up · #${(nodeStatus.height ?? 0).toLocaleString()}${
+                          nodeStatus.network_tip
+                            ? ` / #${nodeStatus.network_tip.toLocaleString()}`
+                            : ''
+                        }`
+                      : balance
+                        ? balance.unconfirmed > 0
+                          ? `+${formatIRM(balance.unconfirmed)} pending`
+                          : 'All confirmed'
+                        : 'Wallet not open'
                 }
                 icon={<TrendingUp size={18} />}
                 color="irium"
@@ -513,29 +965,74 @@ export default function Dashboard() {
           )}
         </div>
 
-        {peerList.length > 0 && (
+        {nodeStatus?.running && (
           <div className="card p-4">
-            <div className="flex items-center justify-between mb-3">
+            <button
+              className="flex items-center justify-between w-full mb-0 text-left"
+              onClick={() => peerList.length > 0 && setPeersExpanded((v) => !v)}
+              style={{ cursor: peerList.length > 0 ? 'pointer' : 'default' }}
+            >
               <h2 className="font-display font-semibold text-white/90">Network Peers</h2>
-              <span className="badge badge-irium">{peerList.length} known</span>
-            </div>
-            <div className="space-y-1.5">
-              {peerList.map((p, i) => {
-                const a = anonymizePeer(p, i);
-                return (
-                  <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-700/50">
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${a.live ? 'bg-green-400' : 'bg-white/20'}`} />
-                    <span className="text-sm text-white/70 font-mono flex-1">{a.label}</span>
-                    {p.height && (
-                      <span className="text-xs text-white/35 font-mono">#{p.height.toLocaleString()}</span>
-                    )}
-                    <span className={`badge text-[10px] ${a.live ? 'badge-success' : 'badge-info'}`}>
-                      {a.source}
-                    </span>
+              <div className="flex items-center gap-2">
+                {peerList.length > 0 ? (
+                  <>
+                    <span className="badge badge-irium">{peerList.length} known</span>
+                    <ChevronDown
+                      size={14}
+                      className="transition-transform duration-200 text-white/40"
+                      style={{ transform: peersExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                    />
+                  </>
+                ) : (
+                  <span className="text-xs text-white/30 animate-pulse">Discovering peers…</span>
+                )}
+              </div>
+            </button>
+            <AnimatePresence initial={false}>
+              {peersExpanded && peerList.length > 0 && (
+                <motion.div
+                  key="peers-list"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="w-full text-xs border-separate" style={{ borderSpacing: 0 }}>
+                      <thead>
+                        <tr>
+                          <th className="text-left pb-2 pr-4 font-semibold uppercase tracking-wider text-white/25" style={{ fontSize: 9.5 }}>Address</th>
+                          <th className="text-left pb-2 pr-4 font-semibold uppercase tracking-wider text-white/25" style={{ fontSize: 9.5 }}>Dialable</th>
+                          <th className="text-left pb-2 pr-4 font-semibold uppercase tracking-wider text-white/25" style={{ fontSize: 9.5 }}>Height</th>
+                          <th className="text-left pb-2 font-semibold uppercase tracking-wider text-white/25" style={{ fontSize: 9.5 }}>Last Seen</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {peerList.map((p, i) => (
+                          <tr key={i} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                            <td className="py-1.5 pr-4 font-mono text-white/55 max-w-[220px]" style={{ fontSize: 11 }}>
+                              <span className="block truncate" title={p.multiaddr}>{p.multiaddr || '—'}</span>
+                            </td>
+                            <td className="py-1.5 pr-4">
+                              {p.dialable
+                                ? <span className="text-green-400 font-semibold">Yes</span>
+                                : <span className="text-white/25">No</span>}
+                            </td>
+                            <td className="py-1.5 pr-4 font-mono text-white/45">
+                              {p.height ? `#${p.height.toLocaleString()}` : '—'}
+                            </td>
+                            <td className="py-1.5 text-white/35">
+                              {p.last_seen ? timeAgo(p.last_seen) : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                );
-              })}
-            </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 
@@ -543,15 +1040,15 @@ export default function Dashboard() {
           <div className="lg:col-span-2 card p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display font-semibold text-white/90">Recent Activity</h2>
-              <span className="badge badge-irium">Last 10 txs</span>
+              {recentTx.length > 0 && <span className="badge badge-irium">Last 10 txs</span>}
             </div>
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={180}>
                 <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
                   <defs>
                     <linearGradient id="txGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="rgba(123,47,226,0.4)" stopOpacity={1} />
-                      <stop offset="95%" stopColor="rgba(123,47,226,0)" stopOpacity={1} />
+                      <stop offset="5%" stopColor="rgba(110,198,255,0.4)" stopOpacity={1} />
+                      <stop offset="95%" stopColor="rgba(110,198,255,0)" stopOpacity={1} />
                     </linearGradient>
                   </defs>
                   <XAxis
@@ -606,11 +1103,11 @@ export default function Dashboard() {
                     key={a.id}
                     variants={itemVariants}
                     onClick={() => navigate('/agreements', { state: { expandId: a.id } })}
-                    className={`flex items-center justify-between p-2 rounded-lg hover:bg-white/5 cursor-pointer border-l-2 pl-3 ${agreementBorderColor(a.status)}`}
+                    className={`flex items-center justify-between p-2 rounded-lg hover:bg-white/5 cursor-pointer border-l-2 pl-3 overflow-hidden ${agreementBorderColor(a.status)}`}
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="font-mono text-xs text-white/70 truncate">
-                        {a.id.slice(0, 12)}
+                      <div className="font-mono text-xs text-white/70 truncate" title={a.id}>
+                        {a.id}
                       </div>
                       <div className="text-xs text-white/40 mt-0.5">
                         {formatIRM(a.amount)}
@@ -639,12 +1136,19 @@ export default function Dashboard() {
               animate="visible"
             >
               {recentTx.map((tx) => (
-                <TxRow key={tx.txid} tx={tx} />
+                <TxRow key={tx.txid} tx={tx} onClick={() => setSelectedTx(tx)} />
               ))}
             </motion.div>
           )}
         </div>
       </div>
+
+      {/* ── Tx Detail Modal ───────────────────────────────────── */}
+      <AnimatePresence>
+        {selectedTx && (
+          <TxDetailModal tx={selectedTx} onClose={() => setSelectedTx(null)} />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -671,90 +1175,100 @@ function StatCard({
 
   return (
     <div
-      className="card p-4 relative overflow-hidden"
+      className="relative overflow-hidden p-4 rounded-[10px]"
       style={{
-        background: 'rgba(13,13,26,0.7)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        border: '1px solid rgba(255,255,255,0.07)',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
+        background: 'var(--bg-elev-1)',
+        border: '1px solid var(--brand-line)',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.03)',
       }}
     >
-      {/* Subtle gradient tint in top-right corner */}
+      {/* Subtle accent tint per stat colour — sits in the corner so the
+          card stays readable while reading as "this stat is X-coloured". */}
       <div
-        className="absolute top-0 right-0 w-20 h-20 pointer-events-none"
+        className="absolute top-0 right-0 w-24 h-24 pointer-events-none"
         style={{
           background: color === 'irium'
-            ? 'radial-gradient(circle at top right, rgba(123,47,226,0.12) 0%, transparent 70%)'
+            ? 'radial-gradient(circle at top right, rgba(110,198,255,0.18) 0%, transparent 70%)'
             : color === 'blue'
-            ? 'radial-gradient(circle at top right, rgba(37,99,235,0.12) 0%, transparent 70%)'
+            ? 'radial-gradient(circle at top right, rgba(167,139,250,0.16) 0%, transparent 70%)'
             : color === 'green'
-            ? 'radial-gradient(circle at top right, rgba(34,197,94,0.1) 0%, transparent 70%)'
-            : 'radial-gradient(circle at top right, rgba(245,158,11,0.1) 0%, transparent 70%)',
+            ? 'radial-gradient(circle at top right, rgba(52,211,153,0.14) 0%, transparent 70%)'
+            : 'radial-gradient(circle at top right, rgba(251,191,36,0.14) 0%, transparent 70%)',
         }}
       />
-      <div className="flex items-start justify-between mb-3">
+      <div className="relative flex items-start justify-between mb-3">
         <span className="text-white/40 text-xs font-display font-semibold uppercase tracking-wider">
           {title}
         </span>
         <span className={`p-1.5 rounded-lg flex-shrink-0 ${colors[color]}`}>{icon}</span>
       </div>
+      {/* Value uses the same brand text gradient as the TopBar balance so
+          every prominent number in the app reads with the same colour signature. */}
       <div
-        className="font-display font-bold text-2xl"
+        className="relative font-display font-bold text-2xl tabular-nums leading-tight"
         style={{
-          background: 'linear-gradient(90deg, #a855f7 0%, #60a5fa 100%)',
+          background: 'linear-gradient(90deg, #d4eeff 0%, #6ec6ff 55%, #a78bfa 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
+          letterSpacing: '0.01em',
         }}
       >
         {value}
       </div>
-      <div className="text-white/40 text-xs mt-1">{sub}</div>
+      <div className="relative text-white/40 text-xs mt-1">{sub}</div>
     </div>
   );
 }
 
-function TxRow({ tx }: { tx: Transaction }) {
+function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
   const isSend = tx.direction === 'send';
+  const isCoinbase = tx.is_coinbase === true;
+  // Coinbase wins over send/receive direction — mining rewards are
+  // semantically distinct from regular incoming txs. Matches the Wallet
+  // page's TxRow triage so confs/labels stay consistent across pages.
+  const accentBar = isCoinbase ? 'bg-green-500' : isSend ? 'bg-red-500' : 'bg-green-500';
+  const iconBg    = isCoinbase ? 'bg-green-500/10 text-green-400' : isSend ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400';
+  const amountColor = isCoinbase ? 'text-green-400' : isSend ? 'text-red-400' : 'text-green-400';
+  const TypeIcon = isCoinbase ? Pickaxe : isSend ? ArrowUpRight : ArrowDownLeft;
+  const typeLabel = isCoinbase ? 'Mining Reward' : isSend ? 'Sent' : 'Received';
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(tx.txid).then(() => {
-      toast.success('TX ID copied');
-    });
-  };
+  // Confirmations — shared helper so Dashboard and Wallet show the same
+  // value for the same tx. Falls back to tx.confirmations when no height
+  // is set (mempool / legacy data without a block reference).
+  const currentTip = useStore((s) => s.nodeStatus?.height) ?? 0;
+  const confirmations = tx.height
+    ? computeConfirmations(tx.height, currentTip)
+    : tx.confirmations;
 
   return (
     <motion.div
       variants={itemVariants}
-      onClick={handleCopy}
-      className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 cursor-pointer group relative overflow-hidden"
+      onClick={onClick}
+      className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-white/5 cursor-pointer group relative overflow-hidden"
     >
-      <div
-        className={`absolute left-0 top-0 bottom-0 w-1 ${isSend ? 'bg-red-500' : 'bg-green-500'}`}
-      />
-      <div
-        className={`ml-2 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-          isSend ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400'
-        }`}
-      >
-        {isSend ? <ArrowUpRight size={14} /> : <ArrowDownLeft size={14} />}
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${accentBar}`} />
+      <div className={`ml-2 mt-0.5 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${iconBg}`}>
+        <TypeIcon size={14} />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="font-mono text-xs text-white/60 truncate">
-          {tx.txid.slice(0, 16)}...
+        {/* Type label — small, dim, sits above the full TXID so the row
+            is identifiable at a glance even when the hash wraps. */}
+        <div className={`text-[11px] font-display font-semibold ${amountColor}`}>
+          {typeLabel}
         </div>
-        <div className="text-xs text-white/30 mt-0.5">
-          {tx.confirmations} conf
+        {/* Full TXID with break-all — no `...` truncation. Wraps to
+            multiple lines on narrow screens; full hash is always visible. */}
+        <div className="font-mono text-[10px] text-white/55 break-all leading-snug mt-0.5">
+          {tx.txid}
+        </div>
+        <div className="text-[10px] text-white/30 mt-0.5">
+          {confirmations} conf
           {tx.timestamp ? ` · ${timeAgo(tx.timestamp)}` : ''}
         </div>
       </div>
-      <div
-        className={`font-display font-semibold text-sm flex-shrink-0 ${
-          isSend ? 'text-red-400' : 'text-green-400'
-        }`}
-      >
-        {isSend ? '-' : '+'}
+      <div className={`font-display font-semibold text-sm flex-shrink-0 ${amountColor}`}>
+        {isSend ? '−' : '+'}
         {formatIRM(Math.abs(tx.amount))}
       </div>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
@@ -769,12 +1283,9 @@ function TxRow({ tx }: { tx: Transaction }) {
           <Copy size={12} />
         </button>
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            toast('Block explorer coming soon', { icon: '🔗' });
-          }}
+          onClick={(e) => { e.stopPropagation(); onClick(); }}
           className="p-1.5 rounded hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
-          title="View on block explorer"
+          title="View transaction details"
         >
           <ExternalLink size={12} />
         </button>

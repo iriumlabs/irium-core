@@ -9,7 +9,7 @@ import type {
   OtcParams, FreelanceParams, MilestoneParams, DepositParams,
   PeerInfo, MempoolInfo, DiagnosticsResult, UpdateCheckResult,
   NodeUpdateCheckResult, NodeUpdatePullResult,
-  WalletCreateResult,
+  WalletCreateResult, WalletFileInfo, WalletInfo,
   MultisigCreateResult, MultisigSpendResult,
   Invoice, InvoiceImportResult,
   SpendEligibilityResult, ProofPolicy, AgreementStatusResult,
@@ -17,7 +17,7 @@ import type {
   SellerStatus, BuyerStatus,
   DisputeEntry, DisputeOpenResult,
   NetworkMetrics, ExplorerAgreement, ExplorerStats,
-  ExplorerNetworkStats, ExplorerPeer, ExplorerBlock,
+  ExplorerNetworkStats, ExplorerPeer, ExplorerBlock, NetworkHashrateInfo,
   FeedDiscoverResult,
   AgreementSignResult, AgreementVerifySignatureResult,
   AgreementDecryptResult, AgreementStoreListResult,
@@ -49,6 +49,9 @@ export const node = {
   tryUpnpPortMap: () =>
     safeInvoke<string | null>('try_upnp_port_map'),
 
+  getAppVersion: () =>
+    safeInvoke<string>('get_app_version'),
+
   saveDiscoveredPeers: (multiaddrs: string[]) =>
     safeInvoke<number>('save_discovered_peers', { multiaddrs }),
 
@@ -70,11 +73,26 @@ export const wallet = {
   send: (to: string, amountSats: number, feeSats?: number) =>
     safeInvoke<SendResult>('wallet_send', { to, amountSats, feeSats }),
 
-  transactions: (limit?: number) =>
-    safeInvoke<Transaction[]>('wallet_transactions', { limit }),
+  transactions: (limit?: number, address?: string) =>
+    safeInvoke<Transaction[]>('wallet_transactions', { limit, address }),
 
   setPath: (path: string) =>
     safeInvoke<boolean>('wallet_set_path', { path }),
+
+  listFiles: () =>
+    safeInvoke<WalletFileInfo[]>('list_wallet_files'),
+
+  // Read-only inspection of a wallet file — does NOT change which wallet
+  // is active. Used by the Delete confirmation modal to show contents at
+  // stake before unlinking.
+  getInfo: (path: string) =>
+    safeInvoke<WalletInfo>('get_wallet_info', { path }),
+
+  deleteFile: (path: string) =>
+    safeInvoke<void>('delete_wallet_file', { path }),
+
+  renameFile: (oldPath: string, newName: string) =>
+    safeInvoke<string>('rename_wallet_file', { oldPath, newName }),
 
   create: () =>
     safeInvoke<WalletCreateResult>('wallet_create'),
@@ -91,11 +109,24 @@ export const wallet = {
   exportSeed: () =>
     safeInvoke<string>('wallet_export_seed'),
 
+  exportMnemonic: () =>
+    safeInvoke<string>('wallet_export_mnemonic'),
+
   backup: (outPath: string) =>
     safeInvoke<string>('wallet_backup', { outPath }),
 
   restoreBackup: (filePath: string) =>
     safeInvoke<string>('wallet_restore_backup', { filePath }),
+
+  exportWif: (address: string, outPath: string) =>
+    safeInvoke<string>('wallet_export_wif', { address, outPath }),
+
+  // Optional walletPath — when provided, reads from that specific wallet
+  // file. Used by the Create-wallet flow before the new wallet is
+  // registered as active. Defaults to the backend's currently-active
+  // wallet otherwise. Tauri converts walletPath → wallet_path.
+  readWif: (address: string, walletPath?: string) =>
+    safeInvoke<string>('wallet_read_wif', { address, walletPath }),
 };
 
 // ── OFFERS ────────────────────────────────────────────────────
@@ -437,6 +468,9 @@ export const rpc = {
 
   recentBlocks: (limit = 20, endHeight?: number) =>
     safeInvoke<ExplorerBlock[]>('get_recent_blocks', { limit, endHeight }),
+
+  networkHashrate: () =>
+    safeInvoke<NetworkHashrateInfo>('get_network_hashrate'),
 
   offersFeed: () =>
     safeInvoke<unknown>('rpc_get_offers_feed'),

@@ -354,11 +354,17 @@ export default function Reputation() {
     : "0.00";
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 p-6">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className="h-full overflow-y-auto"
+    >
+    <div className="w-full space-y-6 px-8 py-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold font-display gradient-text">Reputation Lookup</h1>
-        <p className="text-sm text-white/40 mt-1">
+        <h1 className="page-title">Reputation</h1>
+        <p className="page-subtitle">
           Query the on-chain reputation score for any Irium address or public key.
         </p>
       </div>
@@ -623,5 +629,6 @@ export default function Reputation() {
         )}
       </AnimatePresence>
     </div>
+    </motion.div>
   );
 }

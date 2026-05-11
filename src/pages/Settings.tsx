@@ -142,6 +142,7 @@ export default function Settings() {
   const [fetchingIp, setFetchingIp] = useState(false);
   const [retryingUpnp, setRetryingUpnp] = useState(false);
   const nodeStatus = useStore((s) => s.nodeStatus);
+  const appVersion = useStore((s) => s.appVersion);
 
   useEffect(() => {
     return () => {
@@ -359,12 +360,13 @@ export default function Settings() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5 p-6">
+    <div className="w-full h-full overflow-y-auto px-8 py-6">
+      <div className="reading-col space-y-5" style={{ maxWidth: 1100 }}>
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold font-display gradient-text">Settings</h1>
-        <p className="text-sm text-white/40 mt-1">
-          Configure your Irium Core node connection, wallet paths, and display preferences.
+        <h1 className="page-title">Settings</h1>
+        <p className="page-subtitle">
+          Configure your node connection, wallet paths, and display preferences.
         </p>
       </div>
 
@@ -792,7 +794,7 @@ export default function Settings() {
               </div>
               <div className="flex justify-between">
                 <span className="text-white/40">Version</span>
-                <span className="font-mono text-white">1.0.0</span>
+                <span className="font-mono text-white">{appVersion}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-white/40">Framework</span>
@@ -1179,6 +1181,7 @@ export default function Settings() {
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }

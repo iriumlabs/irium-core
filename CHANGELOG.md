@@ -91,3 +91,22 @@ All notable changes across all Irium products are documented here.
 - Reputation scoring display
 - Block explorer
 - Settings with node configuration
+
+"NEW RULE — applies to every fix from now on, not just the wallet:
+Before making ANY code change:
+
+Read the ENTIRE file you are about to modify end to end
+Identify every function, condition, and state variable that could be affected by the change
+List what you are changing AND what you are NOT changing — confirm nothing else breaks
+Make the fix
+After the fix, re-read the modified file and verify no other logic was broken by the change
+Run npx tsc --noEmit and npm run build
+
+If I report a bug, do NOT immediately start coding. First show me:
+
+What the current code does (the exact lines)
+Why it is wrong
+What you will change
+What else in the file could be affected and why it will NOT break
+
+Only write code after I confirm the plan. No more fix-one-break-another."

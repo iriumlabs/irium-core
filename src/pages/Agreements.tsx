@@ -99,7 +99,11 @@ export default function AgreementsPage() {
       const data = await agreements.list();
       setAgreementList(data);
     } catch (e) {
-      toast.error('Failed to load agreements');
+      // Suppress toast when offline — the empty state already communicates the problem.
+      // This also prevents the React 18 strict-mode double-invoke from firing two toasts.
+      if (nodeStatus?.running) {
+        toast.error('Failed to load agreements');
+      }
     } finally {
       setLoading(false);
     }
@@ -129,14 +133,14 @@ export default function AgreementsPage() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="h-full overflow-y-auto p-6"
+      className="h-full overflow-y-auto"
     >
-      <div className="max-w-6xl mx-auto space-y-5">
+      <div className="w-full space-y-5 px-8 py-6">
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display font-bold text-2xl text-white">Agreements</h1>
-          <p className="text-white/40 text-sm mt-0.5">On-chain settlement agreements</p>
+          <h1 className="page-title">Agreements</h1>
+          <p className="page-subtitle">On-chain settlement agreements</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -689,8 +693,8 @@ function ProofModal({
         <div
           className="rounded-xl p-5 mb-4"
           style={{
-            background: 'rgba(139,92,246,0.04)',
-            border: '1px dashed rgba(139,92,246,0.25)',
+            background: 'rgba(110,198,255,0.04)',
+            border: '1px dashed rgba(110,198,255,0.25)',
           }}
         >
           <div className="flex items-center gap-3 mb-3">
@@ -730,7 +734,7 @@ function ProofModal({
         {/* Format note */}
         <div
           className="flex items-start gap-2 rounded-lg p-3 mb-4 text-xs"
-          style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)' }}
+          style={{ background: 'rgba(0,0,0,0.40)', border: '1px solid rgba(110,198,255,0.30)' }}
         >
           <span style={{ color: '#60a5fa', flexShrink: 0 }}>ℹ</span>
           <span style={{ color: 'rgba(238,240,255,0.50)' }}>
@@ -914,8 +918,8 @@ function ImportPackModal({ onClose, onSuccess }: ImportPackModalProps) {
         <div
           className="rounded-xl p-5 mb-4 mt-4"
           style={{
-            background: 'rgba(139,92,246,0.04)',
-            border: '1px dashed rgba(139,92,246,0.25)',
+            background: 'rgba(110,198,255,0.04)',
+            border: '1px dashed rgba(110,198,255,0.25)',
           }}
         >
           <div className="flex items-center gap-3 mb-3">

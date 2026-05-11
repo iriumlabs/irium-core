@@ -29,12 +29,15 @@ pub struct NodeStatus {
     pub network: String,
     pub version: String,
     pub rpc_url: String,
+    pub upnp_active: bool,
+    pub upnp_external_ip: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WalletCreateResult {
     pub mnemonic: String,
     pub address: String,
+    pub wallet_path: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -94,14 +97,15 @@ pub struct RpcBalance {
     pub utxo_count: Option<u64>,
 }
 
-// Matches GET /rpc/history: {"address":"Q...","height":20725,"txs":[...]}
+// Matches GET /rpc/history: {"txid":"...","height":N,"received":N,"spent":N,"net":N,"is_coinbase":bool}
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RpcHistoryEntry {
     pub txid: String,
-    pub height: Option<i64>,
-    pub output_value: Option<u64>,
-    pub is_coinbase: Option<bool>,
-    pub index: Option<u32>,
+    pub height: u64,
+    pub received: u64,
+    pub spent: u64,
+    pub net: i64,
+    pub is_coinbase: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -149,9 +153,19 @@ pub struct Transaction {
     pub amount: i64,
     pub fee: Option<u64>,
     pub confirmations: u64,
+    /// Block height of the tx (0 if unconfirmed). Surfaced so the frontend
+    /// can compute `currentTip - height + 1` consistently in both the list
+    /// and the detail modal — `confirmations` from the binary alone has been
+    /// observed to disagree with the modal's RPC-derived figure.
+    pub height: Option<u64>,
     pub timestamp: Option<i64>,
     pub direction: String,
     pub address: Option<String>,
+    /// Whether the transaction is a coinbase (mining reward). Surfaced
+    /// directly from `/rpc/history` so the frontend can render the row
+    /// with a Pickaxe icon + "Mining Reward" label instead of a regular
+    /// Receive.
+    pub is_coinbase: Option<bool>,
 }
 
 // ============================================================
@@ -232,6 +246,8 @@ pub struct CreateOfferParams {
     pub amount_sats: u64,
     pub description: Option<String>,
     pub payment_method: Option<String>,
+    pub payment_instructions: Option<String>,
+    pub timeout_blocks: Option<u64>,
     pub offer_id: Option<String>,
 }
 
@@ -436,6 +452,54 @@ pub struct GpuDevice {
     pub vram_mb: u64,
 }
 
+// ============================================================
+// EXPLORER (irium-explorer sidecar on localhost:38310)
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct ExplorerNetworkStats {
+    pub height: u64,
+    pub total_blocks: u64,
+    pub supply_irm: f64,
+    pub peer_count: u32,
+    pub active_miners: u32,
+    pub hashrate: f64,
+    pub difficulty: f64,
+    pub diff_change_1h_pct: f64,
+    pub diff_change_24h_pct: f64,
+    pub avg_block_time: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExplorerPeer {
+    pub multiaddr: String,
+    pub dialable: bool,
+    pub height: Option<u64>,
+    pub last_seen: Option<f64>,
+    pub agent: Option<String>,
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExplorerBlock {
+    pub height: u64,
+    pub hash: String,
+    pub miner_address: Option<String>,
+    pub time: u64,
+    pub tx_count: u32,
+    pub prev_hash: Option<String>,
+    pub merkle_root: Option<String>,
+    pub bits: Option<String>,
+    pub nonce: Option<u64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct NetworkHashrateInfo {
+    pub hashrate: Option<f64>,
+    pub difficulty: Option<f64>,
+    pub height: Option<u64>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GpuMinerStatus {
     pub running: bool,
@@ -507,6 +571,262 @@ pub struct UpdateCheckResult {
     pub latest_version: String,
     pub release_notes: Option<String>,
     pub release_url: Option<String>,
+}
+
+/// Result of checking the irium node source repo for new commits.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NodeUpdateCheckResult {
+    pub has_update: bool,
+    pub current_commit: String,
+    pub current_commit_short: String,
+    pub latest_commit: String,
+    pub latest_commit_short: String,
+    pub latest_message: String,
+    pub latest_author: String,
+    pub latest_date: String,
+    pub commits_behind: u32,
+    pub compare_url: String,
+}
+
+/// Result of pulling the irium-source submodule to the latest remote commit.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct NodeUpdatePullResult {
+    pub success: bool,
+    pub new_commit: String,
+    pub new_commit_short: String,
+    pub message: String,
+}
+
+// ============================================================
+// MULTISIG TYPES
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MultisigCreateResult {
+    pub script_pubkey: String,
+    pub address: String,
+    pub threshold: u32,
+    pub pubkeys: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MultisigSpendResult {
+    pub raw_tx: Option<String>,
+    pub txid: Option<String>,
+    pub success: bool,
+    pub message: Option<String>,
+}
+
+// ============================================================
+// INVOICE TYPES
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Invoice {
+    pub id: String,
+    pub recipient: String,
+    pub amount: u64,
+    pub reference: String,
+    pub expires_height: Option<u64>,
+    pub created_at: Option<i64>,
+    pub status: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct InvoiceImportResult {
+    pub success: bool,
+    pub invoice_id: Option<String>,
+    pub message: Option<String>,
+}
+
+// ============================================================
+// ELIGIBILITY / SPEND TYPES
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SpendEligibilityResult {
+    pub eligible: bool,
+    pub reason: Option<String>,
+    pub funding_txid: Option<String>,
+    pub amount: Option<u64>,
+    pub timelock_remaining: Option<u64>,
+}
+
+// ============================================================
+// POLICY TYPES
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ProofPolicy {
+    pub policy_id: String,
+    pub agreement_hash: String,
+    pub kind: String,
+    pub attestor: Option<String>,
+    pub proof_type: Option<String>,
+    pub created_at: Option<i64>,
+    pub raw: Option<serde_json::Value>,
+}
+
+// ============================================================
+// AGREEMENT STATUS
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AgreementStatusResult {
+    pub agreement_id: String,
+    pub agreement_hash: Option<String>,
+    pub status: String,
+    pub funded: Option<bool>,
+    pub funding_txid: Option<String>,
+    pub release_eligible: Option<bool>,
+    pub refund_eligible: Option<bool>,
+    pub current_height: Option<u64>,
+    pub proof_status: Option<String>,
+}
+
+// ============================================================
+// REPUTATION ACTION TYPES
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ReputationOutcomeResult {
+    pub success: bool,
+    pub seller: String,
+    pub outcome: String,
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SelfTradeCheckResult {
+    pub is_self_trade: bool,
+    pub seller: String,
+    pub buyer: String,
+    pub message: Option<String>,
+}
+
+// ============================================================
+// SELLER / BUYER STATUS TYPES
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SellerStatus {
+    pub address: String,
+    pub active_offers: Option<u64>,
+    pub completed_agreements: Option<u64>,
+    pub open_agreements: Option<u64>,
+    pub total_volume: Option<u64>,
+    pub reputation_score: Option<f64>,
+    pub can_create_offers: Option<bool>,
+    pub restrictions: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BuyerStatus {
+    pub address: String,
+    pub active_agreements: Option<u64>,
+    pub completed_agreements: Option<u64>,
+    pub total_spent: Option<u64>,
+    pub reputation_score: Option<f64>,
+    pub can_take_offers: Option<bool>,
+    pub restrictions: Option<Vec<String>>,
+}
+
+// ============================================================
+// DISPUTE TYPES
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DisputeEntry {
+    pub id: String,
+    pub agreement_id: String,
+    pub reason: Option<String>,
+    pub status: String,
+    pub opened_at: Option<i64>,
+    pub resolved_at: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DisputeOpenResult {
+    pub dispute_id: Option<String>,
+    pub success: bool,
+    pub message: Option<String>,
+}
+
+// ============================================================
+// NETWORK METRICS
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct NetworkMetrics {
+    pub height: u64,
+    pub peers: u32,
+    pub mempool_size: u64,
+    pub hashrate_khs: Option<f64>,
+    pub difficulty: Option<f64>,
+    pub synced: bool,
+}
+
+// ============================================================
+// EXPLORER TYPES
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ExplorerAgreement {
+    pub id: String,
+    pub hash: Option<String>,
+    pub template: Option<String>,
+    pub buyer: Option<String>,
+    pub seller: Option<String>,
+    pub amount: u64,
+    pub status: String,
+    pub created_at: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExplorerStats {
+    pub total_agreements: Option<u64>,
+    pub active_agreements: Option<u64>,
+    pub total_volume: Option<u64>,
+    pub total_proofs: Option<u64>,
+    pub registered_attestors: Option<u64>,
+}
+
+// ============================================================
+// FEED OPS TYPES
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FeedDiscoverResult {
+    pub discovered: Vec<String>,
+    pub count: u64,
+}
+
+// ============================================================
+// AGREEMENT SIGNING / STORE TYPES
+// ============================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AgreementSignResult {
+    pub agreement_hash: String,
+    pub signer: String,
+    pub success: bool,
+    pub signature_path: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AgreementVerifySignatureResult {
+    pub valid: bool,
+    pub signer: Option<String>,
+    pub agreement_hash: Option<String>,
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AgreementDecryptResult {
+    pub agreement_id: Option<String>,
+    pub agreement_hash: Option<String>,
+    pub decrypted: serde_json::Value,
+    pub success: bool,
 }
 
 // ============================================================
