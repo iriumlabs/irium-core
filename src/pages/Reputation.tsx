@@ -7,17 +7,11 @@ import {
   ShieldCheck,
   ShieldAlert,
   AlertTriangle,
-  TrendingUp,
-  TrendingDown,
-  Minus,
   Activity,
   Hash,
-  Clock,
   CheckCircle,
   XCircle,
   User,
-  ChevronDown,
-  ChevronUp,
   Copy,
 } from "lucide-react";
 import { reputation } from "../lib/tauri";
@@ -88,31 +82,29 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
-const rowVariants = {
-  hidden: { opacity: 0, x: -12 },
-  visible: { opacity: 1, x: 0 },
-};
-
 // ─── ScoreRing ────────────────────────────────────────────────────────────────
-function ScoreRing({ score, active }: { score: number; active: boolean }) {
+// `score` is the success-rate percentage (0–100). When `hasData` is false the
+// seller has no trade history on this node — show a neutral grey ring with
+// "—" instead of a misleading 0/red score.
+function ScoreRing({ score, active, hasData = true }: { score: number; active: boolean; hasData?: boolean }) {
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const pct = Math.max(0, Math.min(1, score / 100));
   const offset = circumference * (1 - pct);
 
-  const color =
-    score >= 75
-      ? "#10b981"
-      : score >= 45
-      ? "#f59e0b"
-      : "#f43f5e";
+  const color = !hasData
+    ? "rgba(255,255,255,0.20)"
+    : score >= 75
+    ? "#10b981"
+    : score >= 45
+    ? "#f59e0b"
+    : "#f43f5e";
 
-  const displayScore = useCountUp(score, 1200, active);
+  const displayScore = useCountUp(score, 1200, active && hasData);
 
   return (
     <div className="relative w-36 h-36 flex items-center justify-center">
       <svg className="w-36 h-36 -rotate-90" viewBox="0 0 128 128">
-        {/* Track */}
         <circle
           cx="64"
           cy="64"
@@ -121,7 +113,6 @@ function ScoreRing({ score, active }: { score: number; active: boolean }) {
           stroke="rgba(255,255,255,0.06)"
           strokeWidth="10"
         />
-        {/* Progress — animated via framer-motion */}
         <motion.circle
           cx="64"
           cy="64"
@@ -132,15 +123,17 @@ function ScoreRing({ score, active }: { score: number; active: boolean }) {
           strokeLinecap="round"
           strokeDasharray={circumference}
           initial={{ strokeDashoffset: circumference }}
-          animate={{ strokeDashoffset: active ? offset : circumference }}
+          animate={{ strokeDashoffset: active && hasData ? offset : circumference }}
           transition={{ duration: 1.2, ease: "easeOut" }}
         />
       </svg>
       <div className="absolute flex flex-col items-center">
         <span className="text-3xl font-bold font-display" style={{ color }}>
-          {displayScore}
+          {hasData ? displayScore : "—"}
         </span>
-        <span className="text-xs text-white/40 font-mono">/ 100</span>
+        <span className="text-xs text-white/40 font-mono">
+          {hasData ? "% success" : "no data"}
+        </span>
       </div>
     </div>
   );
@@ -179,110 +172,6 @@ function StatCard({
   );
 }
 
-// ─── AgreementRow ─────────────────────────────────────────────────────────────
-function AgreementRow({
-  ag,
-}: {
-  ag: { id: string; role: string; status: string; amount: number; timestamp: number };
-}) {
-  const success = ag.status === "released";
-  const failed = ag.status === "refunded";
-
-  return (
-    <motion.div
-      variants={rowVariants}
-      className="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0"
-    >
-      {success ? (
-        <CheckCircle size={15} className="text-emerald-400 shrink-0" />
-      ) : failed ? (
-        <XCircle size={15} className="text-rose-400 shrink-0" />
-      ) : (
-        <Clock size={15} className="text-amber-400 shrink-0" />
-      )}
-      <span className="font-mono text-xs text-white/40 truncate flex-1">{ag.id}</span>
-      <span
-        className={`text-xs capitalize px-2 py-0.5 rounded-full border ${
-          success
-            ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
-            : failed
-            ? "text-rose-400 bg-rose-500/10 border-rose-500/20"
-            : "text-amber-400 bg-amber-500/10 border-amber-500/20"
-        }`}
-      >
-        {ag.role}
-      </span>
-      <span className="text-xs font-mono text-white">
-        {(ag.amount / 1e8).toFixed(4)} IRM
-      </span>
-    </motion.div>
-  );
-}
-
-// ─── ScoreHistoryBars ─────────────────────────────────────────────────────────
-function ScoreHistoryBars({
-  history,
-  active,
-}: {
-  history: number[];
-  active: boolean;
-}) {
-  const [hoveredBar, setHoveredBar] = useState<number | null>(null);
-
-  return (
-    <div className="card p-4">
-      <p className="text-xs text-white/40 uppercase tracking-wider mb-3">
-        Score History
-      </p>
-      <div className="flex items-end gap-1 h-16 relative">
-        {history.slice(-24).map((s: number, i: number) => {
-          const h = Math.max(4, (s / 100) * 64);
-          const color = s >= 75 ? "#10b981" : s >= 45 ? "#f59e0b" : "#f43f5e";
-          return (
-            <div
-              key={i}
-              className="flex-1 relative flex flex-col justify-end"
-              style={{ height: "64px" }}
-              onMouseEnter={() => setHoveredBar(i)}
-              onMouseLeave={() => setHoveredBar(null)}
-            >
-              {/* Hover tooltip */}
-              <AnimatePresence>
-                {hoveredBar === i && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 4 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 z-10 pointer-events-none"
-                  >
-                    <div className="glass px-1.5 py-0.5 rounded text-[10px] font-mono text-white whitespace-nowrap">
-                      {s}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Bar */}
-              <motion.div
-                className="rounded-t-sm w-full"
-                style={{ backgroundColor: color }}
-                initial={{ height: 0, opacity: 0 }}
-                animate={
-                  active
-                    ? { height: `${h}px`, opacity: 0.7 }
-                    : { height: 0, opacity: 0 }
-                }
-                transition={{ duration: 0.4, delay: i * 0.03, ease: "easeOut" }}
-              />
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function Reputation() {
   const location = useLocation();
@@ -291,7 +180,6 @@ export default function Reputation() {
   const [shimmer, setShimmer] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ReputationData | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
   const [resultVisible, setResultVisible] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -336,22 +224,23 @@ export default function Reputation() {
   };
 
   const copyAddr = () => {
-    if (data?.address) navigator.clipboard.writeText(data.address);
+    if (data?.seller) navigator.clipboard.writeText(data.seller);
   };
 
   const risk = data
-    ? RISK_CONFIG[data.risk_level ?? "unknown"] ?? RISK_CONFIG.unknown
+    ? RISK_CONFIG[data.risk] ?? RISK_CONFIG.unknown
     : null;
 
-  const trend =
-    data && data.score_history && data.score_history.length >= 2
-      ? data.score_history[data.score_history.length - 1] -
-        data.score_history[data.score_history.length - 2]
-      : 0;
+  // Lifetime success rate, parsed from the binary's string format ("83.3").
+  // 0 when no history exists; pair with hasData on ScoreRing for the empty
+  // state so we don't show a misleading red "0/100".
+  const hasData = !!data && data.total_agreements > 0;
+  const successPct = data?.success_rate ? parseFloat(data.success_rate) : 0;
 
-  const volumeDisplay = data?.volume_sats
-    ? (data.volume_sats / 1e8).toFixed(2)
-    : "0.00";
+  // Recent-window risk lookup (separate from lifetime risk).
+  const recentRiskConfig = data
+    ? RISK_CONFIG[data.recent.risk] ?? RISK_CONFIG.unknown
+    : null;
 
   return (
     <motion.div
@@ -452,10 +341,10 @@ export default function Reputation() {
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
                 {/* Score ring */}
                 <div className="flex flex-col items-center gap-2">
-                  <ScoreRing score={data.score} active={resultVisible} />
+                  <ScoreRing score={successPct} active={resultVisible} hasData={hasData} />
 
                   {/* Risk badge — pulsing if high risk */}
-                  {data.risk_signal === "high" ? (
+                  {data.risk === "high" ? (
                     <motion.div
                       animate={{ opacity: [1, 0.6, 1] }}
                       transition={{ duration: 1.5, repeat: Infinity }}
@@ -474,53 +363,50 @@ export default function Reputation() {
                   )}
                 </div>
 
-                {/* Address + stats */}
+                {/* Address + summary + derived flags */}
                 <div className="flex-1 min-w-0 space-y-3">
                   <div>
                     <p className="text-xs text-white/40 uppercase tracking-wider mb-1">
                       Address
                     </p>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm text-white break-all">{data.address}</span>
+                      <span className="font-mono text-sm text-white break-all">{data.seller}</span>
                       <button onClick={copyAddr} className="text-white/40 hover:text-white shrink-0">
                         <Copy size={14} />
                       </button>
                     </div>
                   </div>
 
-                  {/* Trend */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-white/40">Score trend:</span>
-                    {trend > 0 ? (
-                      <span className="flex items-center gap-1 text-emerald-400 text-xs">
-                        <TrendingUp size={13} /> +{trend.toFixed(1)} pts
+                  {/* Summary text directly from the binary — covers the "no
+                      history on this node" case and the explanatory blurb
+                      for sellers that do have a record. */}
+                  <p className="text-sm text-white/55">{data.summary}</p>
+
+                  {/* Derived flags — computed client-side from the structured
+                      fields the binary returns (no `flags` array exists). */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {data.sybil_suppressed && (
+                      <span className="badge badge-warning text-xs px-2 py-0.5 inline-flex items-center gap-1">
+                        <AlertTriangle size={11} /> Sybil-suppressed
                       </span>
-                    ) : trend < 0 ? (
-                      <span className="flex items-center gap-1 text-rose-400 text-xs">
-                        <TrendingDown size={13} /> {trend.toFixed(1)} pts
+                    )}
+                    {data.self_trade_count > 0 && (
+                      <span className="badge badge-warning text-xs px-2 py-0.5">
+                        Self-trades: {data.self_trade_count}
                       </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-white/40 text-xs">
-                        <Minus size={13} /> Stable
+                    )}
+                    {data.dispute_rate && parseFloat(data.dispute_rate) >= 10 && (
+                      <span className="badge badge-warning text-xs px-2 py-0.5">
+                        High disputes: {data.dispute_rate}%
                       </span>
                     )}
                   </div>
-
-                  {/* Flags */}
-                  {data.flags && data.flags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {data.flags.map((f: string) => (
-                        <span key={f} className="badge-warning text-xs px-2 py-0.5">
-                          {f}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
 
-            {/* Stats grid — staggered cards */}
+            {/* Stats grid — staggered cards. Labels and sources updated to
+                match the actual binary response shape. */}
             <motion.div
               variants={containerVariants}
               initial="hidden"
@@ -530,99 +416,76 @@ export default function Reputation() {
               <motion.div variants={itemVariants}>
                 <StatCard
                   label="Total Agreements"
-                  rawValue={data.total_agreements ?? 0}
+                  rawValue={data.total_agreements}
                   icon={Hash}
                   active={resultVisible}
                 />
               </motion.div>
               <motion.div variants={itemVariants}>
                 <StatCard
-                  label="Released"
-                  rawValue={data.released ?? 0}
-                  sub="Successful trades"
+                  label="Satisfied Trades"
+                  rawValue={data.satisfied ?? 0}
+                  sub="Released successfully"
                   icon={CheckCircle}
                   active={resultVisible}
                 />
               </motion.div>
               <motion.div variants={itemVariants}>
                 <StatCard
-                  label="Refunded"
-                  rawValue={data.refunded ?? 0}
-                  sub="Disputes lost"
+                  label="Defaults"
+                  rawValue={data.defaults ?? 0}
+                  sub="Failed obligations"
                   icon={XCircle}
                   active={resultVisible}
                 />
               </motion.div>
               <motion.div variants={itemVariants}>
                 <StatCard
-                  label="Volume (IRM)"
-                  value={volumeDisplay}
-                  sub="Total settled"
+                  label="Success Rate"
+                  value={data.success_rate ? `${data.success_rate}%` : "—"}
+                  sub="Lifetime"
                   icon={Activity}
                   active={resultVisible}
                 />
               </motion.div>
             </motion.div>
 
-            {/* Score history bars */}
-            {data.score_history && data.score_history.length > 0 && (
-              <ScoreHistoryBars
-                history={data.score_history}
-                active={resultVisible}
-              />
-            )}
-
-            {/* Agreement history — collapsible with AnimatePresence */}
-            {data.agreements && data.agreements.length > 0 && (
+            {/* Recent window — short rolling summary from data.recent.
+                Only shown when the binary has something to display, otherwise
+                a tiny "no recent activity" placeholder. */}
+            {recentRiskConfig && (
               <div className="card p-4">
-                <button
-                  className="flex items-center justify-between w-full text-left"
-                  onClick={() => setShowHistory(!showHistory)}
-                >
-                  <p className="text-xs text-white/40 uppercase tracking-wider">
-                    Agreement History ({data.agreements.length})
-                  </p>
-                  {showHistory ? (
-                    <ChevronUp size={15} className="text-white/40" />
-                  ) : (
-                    <ChevronDown size={15} className="text-white/40" />
+                <p className="text-xs text-white/40 uppercase tracking-wider mb-3">
+                  Recent Window
+                  {data.recent.window != null && (
+                    <span className="ml-1 text-white/30 normal-case tracking-normal">
+                      · last {data.recent.window.toLocaleString()} blocks
+                    </span>
                   )}
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {showHistory && (
-                    <motion.div
-                      key="agreement-list"
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.28, ease: "easeOut" }}
-                      className="overflow-hidden"
-                    >
-                      <motion.div
-                        variants={{
-                          hidden: {},
-                          visible: { transition: { staggerChildren: 0.06 } },
-                        }}
-                        initial="hidden"
-                        animate="visible"
-                        className="mt-3 space-y-0"
-                      >
-                        {data.agreements.map(
-                          (ag: {
-                            id: string;
-                            role: string;
-                            status: string;
-                            amount: number;
-                            timestamp: number;
-                          }) => (
-                            <AgreementRow key={ag.id} ag={ag} />
-                          )
-                        )}
-                      </motion.div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <div className="text-white/40 uppercase tracking-wider mb-1">Satisfied</div>
+                    <div className="font-mono text-white">{data.recent.satisfied ?? "—"}</div>
+                  </div>
+                  <div>
+                    <div className="text-white/40 uppercase tracking-wider mb-1">Defaults</div>
+                    <div className="font-mono text-white">{data.recent.defaults ?? "—"}</div>
+                  </div>
+                  <div>
+                    <div className="text-white/40 uppercase tracking-wider mb-1">Success Rate</div>
+                    <div className="font-mono text-white">
+                      {data.recent.success_rate ? `${data.recent.success_rate}%` : "—"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-white/40 uppercase tracking-wider mb-1">Risk</div>
+                    <div className={`inline-flex items-center gap-1 ${recentRiskConfig.color}`}>
+                      <recentRiskConfig.icon size={11} />
+                      {recentRiskConfig.label}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </motion.div>

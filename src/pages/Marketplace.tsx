@@ -122,21 +122,28 @@ function OfferCard({ offer, onTake, isOnline }: { offer: Offer; onTake: () => vo
 // ─── Take Offer Modal ──────────────────────────────────────────
 function TakeOfferModal({
   offer,
+  defaultBuyerAddress,
   onClose,
   onSuccess,
   isOnline,
 }: {
   offer: Offer;
+  defaultBuyerAddress: string;
   onClose: () => void;
   onSuccess: () => void;
   isOnline: boolean;
 }) {
   const [takingOffer, setTakingOffer] = useState(false);
+  // Buyer-address override. Pre-filled with the currently selected wallet
+  // address; user can clear it (backend then falls back to the wallet's
+  // first derivation) or paste a different one of their own addresses.
+  const [buyerAddress, setBuyerAddress] = useState(defaultBuyerAddress);
 
   const handleTake = async () => {
     setTakingOffer(true);
     try {
-      const result = await offers.take(offer.id);
+      const trimmed = buyerAddress.trim();
+      const result = await offers.take(offer.id, trimmed.length > 0 ? trimmed : undefined);
       toast.success('Offer taken! Agreement: ' + result.agreement_id);
       onSuccess();
     } catch (e) {
@@ -211,6 +218,24 @@ function TakeOfferModal({
             embedded in the offer.
           </div>
 
+          {/* Optional explicit buyer address. Pre-filled with the wallet's
+              currently selected address. Leave blank to let the backend fall
+              back to the wallet's first derived address. */}
+          <div className="mb-5">
+            <label className="label">Buyer Address (optional)</label>
+            <input
+              className="input font-mono text-xs"
+              placeholder="Optional · leave blank for wallet default"
+              value={buyerAddress}
+              onChange={(e) => setBuyerAddress(e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <p className="text-[11px] text-white/30 mt-1">
+              Pre-filled from your selected wallet address. Must be an address whose key your wallet holds.
+            </p>
+          </div>
+
           <div className="flex gap-3">
             <button onClick={onClose} className="btn-secondary flex-1 justify-center">
               Cancel
@@ -233,9 +258,11 @@ function TakeOfferModal({
 
 // ─── Create Offer Modal ────────────────────────────────────────
 function CreateOfferModal({
+  defaultSellerAddress,
   onClose,
   onSuccess,
 }: {
+  defaultSellerAddress: string;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -244,6 +271,9 @@ function CreateOfferModal({
     desc: '',
     paymentMethod: '',
     id: '',
+    // Pre-fill with the currently selected wallet address. Blank is accepted —
+    // the backend falls back to the wallet's first derived address.
+    sellerAddress: defaultSellerAddress,
   });
   const [loading, setLoading] = useState(false);
 
@@ -251,11 +281,13 @@ function CreateOfferModal({
     if (!form.amount) return;
     setLoading(true);
     try {
+      const trimmedSeller = form.sellerAddress.trim();
       const result = await offers.create({
         amount_sats: Math.round(parseFloat(form.amount) * SATS_PER_IRM),
         description: form.desc || undefined,
         payment_method: form.paymentMethod || undefined,
         offer_id: form.id || undefined,
+        seller_address: trimmedSeller.length > 0 ? trimmedSeller : undefined,
       });
       toast.success('Offer created: ' + result.id);
       onSuccess();
@@ -321,6 +353,23 @@ function CreateOfferModal({
               />
               <p className="text-[11px] text-white/30 mt-1">This amount will be deducted from your wallet and locked in escrow.</p>
             </div>
+            {/* Optional explicit seller address — pre-filled with the wallet's
+                currently selected address. Leave blank to let the backend
+                pick the wallet's first derived address. */}
+            <div>
+              <label className="label">Seller Address (optional)</label>
+              <input
+                className="input font-mono text-xs"
+                placeholder="Optional · leave blank for wallet default"
+                value={form.sellerAddress}
+                onChange={(e) => setForm((f) => ({ ...f, sellerAddress: e.target.value }))}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <p className="text-[11px] text-white/30 mt-1">
+                Pre-filled from your selected wallet address. Must be an address whose key your wallet holds.
+              </p>
+            </div>
             <div>
               <label className="label">Price / Notes (optional)</label>
               <input
@@ -375,6 +424,13 @@ function CreateOfferModal({
 // ─── Main Page ─────────────────────────────────────────────────
 export default function MarketplacePage() {
   const nodeStatus = useStore((s) => s.nodeStatus);
+  // Currently-selected wallet address — used to pre-fill the seller/buyer
+  // inputs in the Create and Take modals so the user doesn't have to paste
+  // their own address. The backend still accepts empty (falls back to the
+  // wallet's first derivation), so leaving it blank is harmless.
+  const addresses = useStore((s) => s.addresses);
+  const activeAddrIdx = useStore((s) => s.activeAddrIdx);
+  const selectedAddress = addresses[activeAddrIdx]?.address ?? '';
   const [activeTab, setActiveTab] = useState<Tab>('browse');
   const [offerList, setOfferList] = useState<Offer[]>([]);
   const [myOffers, setMyOffers] = useState<Offer[]>([]);
@@ -807,6 +863,7 @@ export default function MarketplacePage() {
       {showTakeModal && (
         <TakeOfferModal
           offer={showTakeModal}
+          defaultBuyerAddress={selectedAddress}
           onClose={() => setShowTakeModal(null)}
           onSuccess={() => {
             setShowTakeModal(null);
@@ -819,6 +876,7 @@ export default function MarketplacePage() {
 
       {showCreateModal && (
         <CreateOfferModal
+          defaultSellerAddress={selectedAddress}
           onClose={() => setShowCreateModal(false)}
           onSuccess={() => {
             setShowCreateModal(false);

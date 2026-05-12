@@ -1,11 +1,23 @@
 import { create } from "zustand";
-import type { NodeStatus, WalletBalance, AppSettings, UpdateCheckResult, AddressInfo } from "./types";
+import type { NodeStatus, NodeMetrics, WalletBalance, AppSettings, UpdateCheckResult, AddressInfo, MinerStatus, GpuMinerStatus, GpuDevice, StratumStatus } from "./types";
 import { DEFAULT_SETTINGS } from "./types";
+
+// Sample window for the hashrate spark-chart on the Miner page. 40 points at
+// 3s cadence = 2-minute rolling window. Defined here so the poller in
+// useNodePoller can push fresh samples without needing the Miner page to be
+// mounted.
+const MINER_HISTORY_MAX = 40;
+const GPU_HISTORY_MAX   = 40;
 
 interface AppStore {
   // Node
   nodeStatus: NodeStatus | null;
   setNodeStatus: (s: NodeStatus | null) => void;
+  // Polled from iriumd's /metrics every node-poll cycle. Used by the
+  // Settings UPnP card to detect whether port forwarding is actually
+  // working (inbound_accepted_total > 0) independent of UPnP success.
+  nodeMetrics: NodeMetrics | null;
+  setNodeMetrics: (m: NodeMetrics | null) => void;
 
   // Tracks the window between clicking "Start" and the RPC becoming reachable
   nodeStarting: boolean;
@@ -84,6 +96,33 @@ interface AppStore {
   // App version — populated at startup from Cargo.toml via get_app_version command
   appVersion: string;
   setAppVersion: (v: string) => void;
+
+  // ── Miner state — persisted across navigation so the hashrate chart and
+  // status badges don't reset when the user leaves the Miner page. Populated
+  // by useNodePoller's pollMiner / pollGpuMiner / pollStratum.
+  minerStatus: MinerStatus | null;
+  setMinerStatus: (s: MinerStatus | null) => void;
+  minerHistory: { t: number; khs: number }[];
+  appendMinerHistory: (point: { t: number; khs: number }) => void;
+  resetMinerHistory: () => void;
+
+  gpuMinerStatus: GpuMinerStatus | null;
+  setGpuMinerStatus: (s: GpuMinerStatus | null) => void;
+  gpuDevices: GpuDevice[];
+  setGpuDevices: (d: GpuDevice[]) => void;
+  gpuMinerHistory: { t: number; khs: number }[];
+  appendGpuMinerHistory: (point: { t: number; khs: number }) => void;
+  resetGpuMinerHistory: () => void;
+
+  stratumStatus: StratumStatus | null;
+  setStratumStatus: (s: StratumStatus | null) => void;
+
+  // CPU core count from std::thread::available_parallelism() — fetched once on
+  // app start by useNodePoller, used by the Miner page to drive the threads
+  // slider's max and default. Falls back to navigator.hardwareConcurrency when
+  // null (e.g. before the first fetch returns).
+  cpuCores: number | null;
+  setCpuCores: (n: number | null) => void;
 }
 
 interface ErrorEntry {
@@ -104,6 +143,8 @@ interface Notification {
 export const useStore = create<AppStore>((set) => ({
   nodeStatus: null,
   setNodeStatus: (nodeStatus) => set({ nodeStatus }),
+  nodeMetrics: null,
+  setNodeMetrics: (nodeMetrics) => set({ nodeMetrics }),
 
   nodeStarting: false,
   setNodeStarting: (nodeStarting) => set({ nodeStarting }),
@@ -117,11 +158,16 @@ export const useStore = create<AppStore>((set) => ({
   addresses: [],
   hiddenAddresses: loadHiddenAddresses(),
   hideAddress: (addr) => set((state) => {
+    // Normalize on insert so the Set never holds a value that wouldn't match
+    // .has(addr.address.trim()) later — guards against stale data in
+    // localStorage with stray whitespace, or future callers that pass
+    // non-trimmed strings.
+    const normalized = addr.trim();
     const next = new Set(state.hiddenAddresses);
-    next.add(addr);
+    next.add(normalized);
     saveHiddenAddresses(next);
     // If the now-hidden address is currently selected, fall back to primary.
-    const visible = state.addresses.filter((a) => !next.has(a.address));
+    const visible = state.addresses.filter((a) => !next.has(a.address.trim()));
     const currentSelected = state.addresses[state.activeAddrIdx]?.address;
     const stillVisible = currentSelected && visible.some((a) => a.address === currentSelected);
     return {
@@ -133,8 +179,10 @@ export const useStore = create<AppStore>((set) => ({
     };
   }),
   unhideAddress: (addr) => set((state) => {
+    // Normalize on remove so a delete of "X " also clears any stored "X".
+    const normalized = addr.trim();
     const next = new Set(state.hiddenAddresses);
-    next.delete(addr);
+    next.delete(normalized);
     saveHiddenAddresses(next);
     return { hiddenAddresses: next };
     // Note: the address itself will reappear in the list on the next poll
@@ -164,9 +212,38 @@ export const useStore = create<AppStore>((set) => ({
     // the addresses array funnels through this setter, so applying the
     // filter HERE guarantees no path can bypass it (loadData, the poller,
     // Set-as-Primary reorders, file switches — all enter through this).
-    const filtered = state.hiddenAddresses.size > 0
-      ? inputAddresses.filter((addr) => !state.hiddenAddresses.has(addr.address))
+    //
+    // We read directly from localStorage via loadHiddenAddresses() instead
+    // of from state.hiddenAddresses. This was added after observing the
+    // filter fail to apply on app restart even though localStorage held the
+    // correct data — most likely a dev-mode HMR / store re-creation race
+    // where state.hiddenAddresses was an empty Set at the moment the first
+    // setAddresses call fired. Reading from localStorage makes the filter
+    // authoritative against the on-disk truth on every call. Cost is one
+    // localStorage.getItem + JSON.parse per call — negligible.
+    //
+    // Both sides are .trim()'d defensively: if localStorage somehow holds a
+    // padded entry (older builds, manual edit) or if the wallet binary
+    // returns an address with stray whitespace, exact-match would fail and
+    // the hidden address would reappear in the visible list after restart.
+    const hiddenNormalized = new Set([...loadHiddenAddresses()].map((s) => s.trim()));
+    let filtered = hiddenNormalized.size > 0
+      ? inputAddresses.filter((addr) => !hiddenNormalized.has(addr.address.trim()))
       : inputAddresses;
+
+    // Safety: if the filter would remove EVERY address from a non-empty
+    // input, that's a bad-state localStorage (every wallet address ended
+    // up in the hidden set somehow — corrupted entry, leftover from a
+    // different wallet, or simply a user who hid them all and now wonders
+    // why nothing shows). Showing the user a wallet with zero addresses
+    // while the binary reports several is the worst possible UX: balance
+    // appears as 0, the hero shows "—", and there's no obvious way to
+    // recover. Fall back to the unfiltered list so the user always sees
+    // their real wallet. They can re-hide whatever they want from the
+    // Manage drawer; the on-disk hidden set is NOT modified here.
+    if (filtered.length === 0 && inputAddresses.length > 0) {
+      filtered = inputAddresses;
+    }
 
     // Order preservation — the critical bit.
     //
@@ -190,6 +267,20 @@ export const useStore = create<AppStore>((set) => ({
     let merged: AddressInfo[];
     if (typeof a === 'function') {
       merged = filtered;
+    } else if (filtered.length === 0 && state.addresses.length > 0) {
+      // Transient empty list — almost certainly a backend hiccup, not a
+      // real "wallet now has zero addresses" state. A wallet with at
+      // least one address doesn't lose all of them between polls under
+      // normal operation, and the rest of the UI assumes addresses
+      // remain present once they've been seen. Preserve the current
+      // list and wait for the next successful poll to reconcile.
+      //
+      // This is the seatbelt for the "balance flickers to 0 then comes
+      // back" pattern: if iriumd's RPC is briefly saturated (e.g. by
+      // concurrent /rpc/balance calls), wallet_list_addresses can
+      // return an empty array. Without this guard, the merge below
+      // would filter every current address out of the merged list.
+      merged = state.addresses;
     } else {
       const freshByAddr = new Map(filtered.map((x) => [x.address, x]));
       const currentAddrSet = new Set(state.addresses.map((x) => x.address));
@@ -290,6 +381,31 @@ export const useStore = create<AppStore>((set) => ({
 
   appVersion: '1.0.0',
   setAppVersion: (appVersion) => set({ appVersion }),
+
+  // Miner — see interface comments above for cadence/persistence rationale.
+  minerStatus: null,
+  setMinerStatus: (minerStatus) => set({ minerStatus }),
+  minerHistory: [],
+  appendMinerHistory: (point) => set((state) => ({
+    minerHistory: [...state.minerHistory, point].slice(-MINER_HISTORY_MAX),
+  })),
+  resetMinerHistory: () => set({ minerHistory: [] }),
+
+  gpuMinerStatus: null,
+  setGpuMinerStatus: (gpuMinerStatus) => set({ gpuMinerStatus }),
+  gpuDevices: [],
+  setGpuDevices: (gpuDevices) => set({ gpuDevices }),
+  gpuMinerHistory: [],
+  appendGpuMinerHistory: (point) => set((state) => ({
+    gpuMinerHistory: [...state.gpuMinerHistory, point].slice(-GPU_HISTORY_MAX),
+  })),
+  resetGpuMinerHistory: () => set({ gpuMinerHistory: [] }),
+
+  stratumStatus: null,
+  setStratumStatus: (stratumStatus) => set({ stratumStatus }),
+
+  cpuCores: null,
+  setCpuCores: (cpuCores) => set({ cpuCores }),
 }));
 
 const SETTINGS_KEY = "irium_core_settings";

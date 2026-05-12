@@ -3,16 +3,42 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, CheckCircle2, Copy, Loader2, AlertCircle,
-  Upload, Download, Package, ChevronDown,
+  Upload, ChevronDown,
+  ArrowLeftRight, Briefcase, Target, Landmark,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { open as openDialog, save as saveDialog } from '@tauri-apps/api/dialog';
-import { offers, agreements as agreementsApi, proofs, wallet } from '../lib/tauri';
+import { save as saveDialog } from '@tauri-apps/api/dialog';
+import { offers, wallet } from '../lib/tauri';
+import { useStore } from '../lib/store';
 import type { CreateOfferParams, CreateOfferResult, AddressInfo } from '../lib/types';
 import { SATS_PER_IRM } from '../lib/types';
 
-const STEPS = ['Create Offer', 'Share Offer', 'Receive Agreement', 'Submit Proof & Release'];
+// Step 0 = Choose Type, then create + share. The seller's job ends at the
+// Share step — once the buyer takes the offer an agreement is automatically
+// created and visible on the Agreements page. Proof submission and release
+// happen there, not in this wizard.
+const STEPS = ['Choose Type', 'Create Offer', 'Share Offer'];
 const PAYMENT_SUGGESTIONS = ['bank transfer', 'cash', 'crypto', 'PayPal', 'wire transfer', 'other'];
+
+// Settlement type the seller is initiating. The offer-create binary command
+// has no typed-template field, so the chosen label gets prefixed onto the
+// offer description so buyers see what kind of trade this is.
+type TemplateId = 'otc' | 'freelance' | 'milestone' | 'deposit';
+
+const TEMPLATES: ReadonlyArray<{
+  id: TemplateId;
+  name: string;
+  desc: string;
+  Icon: React.ElementType;
+  iconBg: string;
+  iconColor: string;
+  glowBg: string;
+}> = [
+  { id: 'otc',       name: 'OTC Trade',  desc: 'Peer-to-peer trade with escrow', Icon: ArrowLeftRight, iconBg: 'bg-irium-500/20', iconColor: 'text-irium-400', glowBg: 'bg-irium-500' },
+  { id: 'freelance', name: 'Freelance',  desc: 'Contractor milestone payment',   Icon: Briefcase,      iconBg: 'bg-blue-500/20',  iconColor: 'text-blue-400',  glowBg: 'bg-blue-500'  },
+  { id: 'milestone', name: 'Milestone',  desc: 'Multi-stage project payment',    Icon: Target,         iconBg: 'bg-green-500/20', iconColor: 'text-green-400', glowBg: 'bg-green-500' },
+  { id: 'deposit',   name: 'Deposit',    desc: 'Collateral deposit escrow',      Icon: Landmark,       iconBg: 'bg-amber-500/20', iconColor: 'text-amber-400', glowBg: 'bg-amber-500' },
+];
 
 export default function SellerWizard() {
   const navigate = useNavigate();
@@ -20,11 +46,17 @@ export default function SellerWizard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Wallet addresses
+  // Step 0 (Choose Type) state. Null until the user clicks a template card.
+  const [template, setTemplate] = useState<TemplateId | null>(null);
+
+  // Wallet addresses — filtered against the store's hidden-address set so
+  // the seller dropdown stays in lock-step with the Wallet page (an address
+  // the user has hidden there shouldn't reappear as a sellable choice here).
+  const hiddenAddresses = useStore((s) => s.hiddenAddresses);
   const [addresses, setAddresses] = useState<AddressInfo[]>([]);
   const [sellerAddr, setSellerAddr] = useState('');
 
-  // Step 0 form state
+  // Step 1 (Create Offer) form state
   const [amountIrm, setAmountIrm] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [timeoutBlocks, setTimeoutBlocks] = useState('1000');
@@ -32,21 +64,17 @@ export default function SellerWizard() {
   const [paymentInstructions, setPaymentInstructions] = useState('');
   const [offerResult, setOfferResult] = useState<CreateOfferResult | null>(null);
 
-  // Step 2 state
-  const [agreementId, setAgreementId] = useState('');
-
-  // Step 3 state
-  const [proofFile, setProofFile] = useState('');
-  const [releaseResult, setReleaseResult] = useState<{ txid?: string; success: boolean } | null>(null);
-
   useEffect(() => {
     wallet.listAddresses().then((list) => {
       if (list && list.length > 0) {
-        setAddresses(list);
-        setSellerAddr(list[0].address);
+        // Match the store's internal trim() normalization so an address
+        // hidden as "X " also hides matching "X".
+        const visible = list.filter((a) => !hiddenAddresses.has(a.address.trim()));
+        setAddresses(visible);
+        if (visible.length > 0) setSellerAddr(visible[0].address);
       }
     }).catch(() => {});
-  }, []);
+  }, [hiddenAddresses]);
 
   const estTime = (blocks: string) => {
     const n = parseInt(blocks);
@@ -69,17 +97,26 @@ export default function SellerWizard() {
     setError('');
     setLoading(true);
     try {
+      // Prefix the chosen template label into description so buyers see what
+      // kind of settlement this is — the offer-create binary command has no
+      // typed template field of its own.
+      const tmplLabel = TEMPLATES.find((t) => t.id === template)?.name;
+      const userNote = priceNote.trim();
+      const description = tmplLabel
+        ? (userNote ? `[${tmplLabel}] ${userNote}` : `[${tmplLabel}]`)
+        : (userNote || undefined);
       const params: CreateOfferParams = {
         amount_sats: Math.round(parseFloat(amountIrm) * SATS_PER_IRM),
+        seller_address: sellerAddr || undefined,
         payment_method: paymentMethod.trim(),
         payment_instructions: paymentInstructions.trim() || undefined,
         timeout_blocks: parseInt(timeoutBlocks) || 1000,
-        description: priceNote.trim() || undefined,
+        description,
       };
       const res = await offers.create(params);
       if (!res) throw new Error('No response from node');
       setOfferResult(res);
-      setStep(1);
+      setStep(2);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -107,45 +144,6 @@ export default function SellerWizard() {
     if (!offerResult?.id) return;
     navigator.clipboard.writeText(offerResult.id);
     toast.success('Offer ID copied');
-  };
-
-  const handleImportAgreement = async () => {
-    if (!agreementId.trim()) {
-      setError('Enter the agreement ID from your buyer');
-      return;
-    }
-    setError('');
-    setStep(3);
-  };
-
-  const handlePickProof = async () => {
-    try {
-      const selected = await openDialog({
-        title: 'Select Proof File',
-        filters: [{ name: 'All Files', extensions: ['*'] }],
-      });
-      if (selected && typeof selected === 'string') setProofFile(selected);
-    } catch (e) {
-      toast.error(String(e));
-    }
-  };
-
-  const handleSubmitAndRelease = async () => {
-    if (!agreementId.trim()) { setError('Agreement ID required'); return; }
-    if (!proofFile) { setError('Select a proof file'); return; }
-    setError('');
-    setLoading(true);
-    try {
-      await proofs.submit(agreementId.trim(), proofFile);
-      const res = await agreementsApi.release(agreementId.trim());
-      setReleaseResult(res ?? { success: false });
-      if (res?.success) toast.success('Payment released!');
-      else toast.error(res?.message ?? 'Release failed');
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleBack = useCallback(() => {
@@ -183,8 +181,72 @@ export default function SellerWizard() {
         </div>
 
         <AnimatePresence mode="wait">
-          {/* ── Step 0: Create Offer ── */}
+          {/* ── Step 0: Choose Type ── four-card template grid mirroring
+              the "Create Agreement Directly" path from the Settlement Hub.
+              The selected template label is carried forward and prefixed
+              onto the offer description so the buyer knows the trade type. */}
           {step === 0 && (
+            <motion.div
+              key="s0-type"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-5"
+            >
+              <div>
+                <h2 className="font-display font-bold text-xl text-white">Choose Settlement Type</h2>
+                <p className="text-white/40 text-sm mt-1">
+                  Pick the template that best describes what you are selling. This becomes part of the offer your buyer sees.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {TEMPLATES.map((t) => {
+                  const selected = template === t.id;
+                  return (
+                    <motion.button
+                      key={t.id}
+                      type="button"
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setTemplate(t.id)}
+                      className={`card-interactive p-6 text-left flex flex-col gap-3 relative overflow-hidden transition-colors ${
+                        selected ? 'ring-2 ring-irium-500/60 bg-irium-500/[0.04]' : ''
+                      }`}
+                    >
+                      <div className={`absolute top-4 right-4 w-20 h-20 rounded-full blur-2xl opacity-25 ${t.glowBg}`} />
+                      <div className={`p-3 rounded-xl w-fit ${t.iconBg}`}>
+                        <t.Icon size={20} className={t.iconColor} />
+                      </div>
+                      <div>
+                        <div className="font-display font-bold text-lg text-white">{t.name}</div>
+                        <div className="text-white/45 text-sm mt-1">{t.desc}</div>
+                      </div>
+                      {selected && (
+                        <div className="absolute top-3 left-3 w-5 h-5 rounded-full bg-irium-500 flex items-center justify-center">
+                          <CheckCircle2 size={12} className="text-white" />
+                        </div>
+                      )}
+                    </motion.button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => template && setStep(1)}
+                disabled={!template}
+                className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {template
+                  ? `Continue with ${TEMPLATES.find((t) => t.id === template)?.name} →`
+                  : 'Select a template to continue'}
+              </button>
+            </motion.div>
+          )}
+
+          {/* ── Step 1: Create Offer ── */}
+          {step === 1 && (
             <motion.div
               key="s0"
               initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
@@ -208,9 +270,23 @@ export default function SellerWizard() {
                       value={sellerAddr}
                       onChange={(e) => setSellerAddr(e.target.value)}
                     >
-                      {addresses.length === 0 && <option value="">No wallet addresses found</option>}
+                      {/* Inline styles on <option> propagate to the native
+                          dropdown list in Chromium / WebView2 — CSS class
+                          selectors on the parent <select> do not. Without
+                          this the list rendered white-on-white on Windows. */}
+                      {addresses.length === 0 && (
+                        <option value="" style={{ background: '#0f0f23', color: '#eef0ff' }}>
+                          No wallet addresses found
+                        </option>
+                      )}
                       {addresses.map((a) => (
-                        <option key={a.address} value={a.address}>{a.address}</option>
+                        <option
+                          key={a.address}
+                          value={a.address}
+                          style={{ background: '#0f0f23', color: '#eef0ff' }}
+                        >
+                          {a.address}
+                        </option>
                       ))}
                     </select>
                     <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
@@ -218,15 +294,25 @@ export default function SellerWizard() {
                   <p className="text-xs text-white/25">Auto-detected from your wallet. Buyers will send payment here.</p>
                 </div>
 
-                {/* Amount */}
+                {/* Amount — matches the Settlement.tsx OTC wizard treatment
+                    (numeric input + sats preview) so the field is clearly
+                    visible and the user sees the on-chain value as they type. */}
                 <div className="space-y-1">
                   <label className="label">Amount (IRM)</label>
                   <input
                     className={`input ${error && !amountIrm ? 'border-red-500/50' : ''}`}
-                    placeholder="0.00"
+                    type="number"
+                    min="0"
+                    step="0.0001"
+                    placeholder="0.0000"
                     value={amountIrm}
                     onChange={(e) => { setAmountIrm(e.target.value); setError(''); }}
                   />
+                  {amountIrm && parseFloat(amountIrm) > 0 && (
+                    <p className="text-xs text-white/30 font-mono">
+                      {Math.round(parseFloat(amountIrm) * SATS_PER_IRM).toLocaleString()} sats
+                    </p>
+                  )}
                 </div>
 
                 {/* Payment Method */}
@@ -302,9 +388,14 @@ export default function SellerWizard() {
             </motion.div>
           )}
 
-          {/* ── Step 1: Share Offer ── */}
-          {step === 1 && offerResult && (
-            <motion.div key="s1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="card p-6 space-y-5">
+          {/* ── Step 2: Share Offer — wizard endpoint ──
+              The buyer takes the offer on their side; an agreement is
+              auto-created and appears on the Agreements page. The seller
+              has nothing else to do in this wizard — proof submission and
+              release happen on the Agreements page where each agreement
+              card already has Submit Proof, Release, and Refund actions. */}
+          {step === 2 && offerResult && (
+            <motion.div key="s2-share" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="card p-6 space-y-5">
               <div>
                 <h2 className="font-display font-bold text-xl text-white">Share Your Offer</h2>
                 <p className="text-white/40 text-sm mt-1">Send the offer ID or file to your buyer</p>
@@ -320,105 +411,29 @@ export default function SellerWizard() {
                   <Copy size={14} />Copy ID
                 </button>
                 <button onClick={handleExportOffer} className="btn-secondary flex items-center justify-center gap-2">
-                  <Download size={14} />Export File
+                  <Upload size={14} />Export File
                 </button>
               </div>
 
-              <p className="text-xs text-white/35 leading-relaxed">
-                Share the offer ID or exported file with your buyer. Once they take the offer and create an agreement, they'll send you the agreement ID.
-              </p>
-
-              <button onClick={() => setStep(2)} className="btn-primary w-full">
-                Buyer Has Taken the Offer →
-              </button>
-            </motion.div>
-          )}
-
-          {/* ── Step 2: Receive Agreement ── */}
-          {step === 2 && (
-            <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="card p-6 space-y-5">
-              <div>
-                <h2 className="font-display font-bold text-xl text-white">Receive Agreement</h2>
-                <p className="text-white/40 text-sm mt-1">Enter the agreement ID your buyer sent you</p>
-              </div>
-
-              <div className="space-y-1">
-                <label className="label">Agreement ID</label>
-                <input
-                  className={`input ${error ? 'border-red-500/50' : ''}`}
-                  placeholder="agr_..."
-                  value={agreementId}
-                  onChange={(e) => { setAgreementId(e.target.value); setError(''); }}
-                />
-              </div>
-
-              {error && (
-                <p className="text-xs text-red-400 flex items-center gap-1">
-                  <AlertCircle size={12} />{error}
-                </p>
-              )}
-
-              <p className="text-xs text-white/35 leading-relaxed">
-                The agreement is funded by the buyer. Once you confirm their agreement ID, you can submit proof of delivery to release payment.
-              </p>
-
-              <button onClick={handleImportAgreement} className="btn-primary w-full">
-                Confirm Agreement →
-              </button>
-            </motion.div>
-          )}
-
-          {/* ── Step 3: Submit Proof & Release ── */}
-          {step === 3 && (
-            <motion.div key="s3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="card p-6 space-y-5">
-              {releaseResult?.success ? (
-                <div className="text-center space-y-4 py-4">
-                  <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center mx-auto">
-                    <CheckCircle2 size={28} className="text-green-400" />
-                  </div>
-                  <h2 className="font-display font-bold text-xl text-white">Payment Released!</h2>
-                  {releaseResult.txid && (
-                    <p className="font-mono text-xs text-white/40 break-all">{releaseResult.txid}</p>
-                  )}
-                  <div className="flex gap-3 justify-center">
-                    <button onClick={() => navigate('/agreements')} className="btn-secondary">View Agreements</button>
-                    <button onClick={() => navigate('/settlement')} className="btn-primary">Done</button>
-                  </div>
+              {/* Wait-for-buyer note + green check accent. Replaces the old
+                  "Buyer Has Taken the Offer →" button which was forcing the
+                  seller to manually paste an agreement ID; the agreement
+                  flows in automatically via the local store. */}
+              <div className="rounded-xl p-4 flex items-start gap-3" style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.20)' }}>
+                <CheckCircle2 size={18} className="text-green-400 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-white/65 leading-relaxed">
+                  Share the offer ID with your buyer. When they take the offer, an agreement is created automatically. Check your <span className="font-semibold text-white/85">Agreements</span> page for the new agreement — proof submission and release happen there.
                 </div>
-              ) : (
-                <>
-                  <div>
-                    <h2 className="font-display font-bold text-xl text-white">Submit Proof & Release</h2>
-                    <p className="text-white/40 text-sm mt-1">Attach proof of delivery to release payment from escrow</p>
-                  </div>
+              </div>
 
-                  <div className="p-3 rounded-lg bg-white/5 text-xs font-mono text-white/50">
-                    Agreement: {agreementId}
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="label">Proof File</label>
-                    <button
-                      onClick={handlePickProof}
-                      className="input w-full text-left flex items-center gap-2 text-white/50 hover:text-white/80"
-                    >
-                      <Upload size={14} />
-                      {proofFile ? proofFile.split(/[\\/]/).pop() : 'Select proof file…'}
-                    </button>
-                  </div>
-
-                  {error && (
-                    <p className="text-xs text-red-400 flex items-center gap-1">
-                      <AlertCircle size={12} />{error}
-                    </p>
-                  )}
-
-                  <button onClick={handleSubmitAndRelease} disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
-                    {loading ? <Loader2 size={15} className="animate-spin" /> : <Package size={15} />}
-                    Submit Proof & Release Payment
-                  </button>
-                </>
-              )}
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => navigate('/settlement')} className="btn-secondary w-full">
+                  Done
+                </button>
+                <button onClick={() => navigate('/agreements')} className="btn-primary w-full">
+                  View My Agreements →
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

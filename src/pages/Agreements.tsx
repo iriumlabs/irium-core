@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen } from 'lucide-react';
+import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen, FileJson, AlertCircle } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useStore } from '../lib/store';
-import { agreements, proofs } from '../lib/tauri';
+import { agreements, proofs, agreementSpend } from '../lib/tauri';
 import {
   formatIRM,
   timeAgo,
@@ -39,6 +39,16 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'refunded', label: 'Refunded' },
 ];
 
+// Proof types accepted by `agreement-proof-create` — limited to the common
+// settlement variants the wizard surfaces in its dropdown. Advanced users
+// fall through to the Upload File mode for niche proof_kinds.
+const PROOF_TYPES: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'delivery_confirmed', label: 'Delivery Confirmed' },
+  { value: 'payment_received',   label: 'Payment Received'   },
+  { value: 'otc_release',        label: 'OTC Release'        },
+  { value: 'milestone_complete', label: 'Milestone Complete' },
+];
+
 // ── Helper component ──────────────────────────────────────────
 
 function Detail({ label, value }: { label: string; value: string }) {
@@ -70,6 +80,9 @@ export default function AgreementsPage() {
   const [showProofModal, setShowProofModal] = useState<string | null>(null);
   const [showReleaseModal, setShowReleaseModal] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
+  // Holds the agreement id currently being funded — drives the Fund modal.
+  // Null when the modal is closed.
+  const [fundingId, setFundingId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [proofFilePath, setProofFilePath] = useState('');
 
@@ -112,7 +125,9 @@ export default function AgreementsPage() {
   const handleRefund = async (id: string) => {
     setActionLoading(true);
     try {
-      const res = await agreements.refund(id);
+      // broadcast=true so the refund tx is actually transmitted; without it
+      // the binary only builds the tx and the UI would falsely report success.
+      const res = await agreements.refund(id, true);
       if (res.success) toast.success('Refund initiated');
       else toast.error(res.message ?? 'Refund failed');
       loadData();
@@ -209,6 +224,7 @@ export default function AgreementsPage() {
                 expanded={expandedId === a.id}
                 onToggle={() => setExpandedId(expandedId === a.id ? null : a.id)}
                 proofs={proofsByAgreement[a.id]}
+                onFund={() => setFundingId(a.id)}
                 onSubmitProof={() => setShowProofModal(a.id)}
                 onRelease={() => {
                   if (a.release_eligible) setShowReleaseModal(a.id);
@@ -227,6 +243,7 @@ export default function AgreementsPage() {
         {showProofModal !== null && (
           <ProofModal
             agreementId={showProofModal}
+            agreementHashDefault={agreementList.find((a) => a.id === showProofModal)?.hash ?? ''}
             proofFilePath={proofFilePath}
             onPathChange={setProofFilePath}
             onClose={() => {
@@ -265,6 +282,21 @@ export default function AgreementsPage() {
         )}
       </AnimatePresence>
 
+      {/* Fund Escrow Modal */}
+      <AnimatePresence>
+        {fundingId !== null && (
+          <FundModal
+            agreement={agreementList.find((a) => a.id === fundingId)!}
+            onClose={() => setFundingId(null)}
+            onSuccess={() => {
+              setFundingId(null);
+              loadData();
+            }}
+            isOnline={!!nodeStatus?.running}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Import Pack Modal */}
       <AnimatePresence>
         {showImportModal && (
@@ -289,6 +321,7 @@ interface AgreementCardProps {
   expanded: boolean;
   onToggle: () => void;
   proofs: Proof[] | undefined;
+  onFund: () => void;
   onSubmitProof: () => void;
   onRelease: () => void;
   onRefund: () => void;
@@ -380,12 +413,17 @@ function AgreementCard({
   expanded,
   onToggle,
   proofs: agreementProofs,
+  onFund,
   onSubmitProof,
   onRelease,
   onRefund,
   actionLoading,
   isOnline,
 }: AgreementCardProps) {
+  // Fund button only meaningful before the agreement has been funded.
+  // Once status moves to 'funded'/'released'/'refunded' the HTLC is on-chain
+  // and re-funding is invalid.
+  const isUnfunded = a.status === 'open' || a.status === 'pending';
   const borderColor = borderColorForStatus(a.status);
 
   // Deadline progress
@@ -529,6 +567,16 @@ function AgreementCard({
 
               {/* Action buttons */}
               <div className="flex gap-2 pt-2 flex-wrap">
+                {isUnfunded && (
+                  <button
+                    onClick={onFund}
+                    disabled={actionLoading || !isOnline}
+                    title={!isOnline ? 'Node must be online to fund escrow' : 'Lock the agreement amount into the HTLC escrow'}
+                    className="btn-primary text-xs py-1.5 px-3 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Fund Escrow
+                  </button>
+                )}
                 <button
                   onClick={onSubmitProof}
                   className="btn-secondary text-xs py-1.5 px-3"
@@ -574,6 +622,10 @@ function AgreementCard({
 
 interface ProofModalProps {
   agreementId: string;
+  // Pre-fill for the Create-from-Evidence form when the parent has the
+  // agreement's hash on hand (it usually does — comes from agreement.hash
+  // in the local store list). Falls back to empty if unknown.
+  agreementHashDefault: string;
   proofFilePath: string;
   onPathChange: (v: string) => void;
   onClose: () => void;
@@ -625,6 +677,7 @@ async function openSavePicker(opts: { defaultName: string; extensions: string[];
 
 function ProofModal({
   agreementId,
+  agreementHashDefault,
   proofFilePath,
   onPathChange,
   onClose,
@@ -632,6 +685,18 @@ function ProofModal({
 }: ProofModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [browsing, setBrowsing]     = useState(false);
+
+  // Create-from-Evidence form state.
+  const addresses = useStore((s) => s.addresses);
+  const activeAddrIdx = useStore((s) => s.activeAddrIdx);
+  const selectedAddress = addresses[activeAddrIdx]?.address ?? '';
+
+  const [proofMode, setProofMode] = useState<'create' | 'upload'>('create');
+  const [proofType, setProofType] = useState('delivery_confirmed');
+  const [agreementHash, setAgreementHash] = useState(agreementHashDefault);
+  const [attestedBy, setAttestedBy] = useState('');
+  const [evidenceSummary, setEvidenceSummary] = useState('');
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const handleBrowse = async () => {
     setBrowsing(true);
@@ -648,6 +713,39 @@ function ProofModal({
     setSubmitting(true);
     try {
       const result = await proofs.submit(agreementId, proofFilePath.trim());
+      if (result.success) {
+        toast.success('Proof submitted: ' + result.proof_id);
+        onSuccess();
+      } else {
+        toast.error(result.message ?? result.status ?? 'Submission failed');
+      }
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Create-from-Evidence path: build the signed JSON in-app via the
+  // proof_create_and_submit Tauri command. Mirrors the SellerWizard
+  // create-mode handler.
+  const handleCreateSubmit = async () => {
+    setCreateError(null);
+    const hash = agreementHash.trim();
+    if (!hash) { setCreateError('Agreement hash required'); return; }
+    if (!proofType) { setCreateError('Pick a proof type'); return; }
+    const attestor = (attestedBy.trim() || selectedAddress).trim();
+    if (!attestor) { setCreateError('Attested-by address required'); return; }
+    if (!evidenceSummary.trim()) { setCreateError('Describe what happened in the Evidence Summary'); return; }
+    setSubmitting(true);
+    try {
+      const result = await proofs.createAndSubmit({
+        agreementHash: hash,
+        proofType,
+        attestedBy: attestor,
+        address: attestor,
+        evidenceSummary: evidenceSummary.trim(),
+      });
       if (result.success) {
         toast.success('Proof submitted: ' + result.proof_id);
         onSuccess();
@@ -684,82 +782,192 @@ function ProofModal({
             <X size={16} />
           </button>
         </div>
-        <p className="text-xs mb-5" style={{ color: 'rgba(238,240,255,0.35)' }}>
-          Accepted format: <span className="font-mono text-irium-300">.json</span> — proof file generated by{' '}
-          <span className="font-mono">irium-wallet agreement-proof-sign</span>
+        <p className="text-xs mb-4" style={{ color: 'rgba(238,240,255,0.35)' }}>
+          Build a signed proof in-app, or upload one you already have.
         </p>
 
-        {/* File selector */}
-        <div
-          className="rounded-xl p-5 mb-4"
-          style={{
-            background: 'rgba(110,198,255,0.04)',
-            border: '1px dashed rgba(110,198,255,0.25)',
-          }}
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <Upload size={18} style={{ color: '#a78bfa' }} className="flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-display font-semibold text-white mb-0.5">Proof File</div>
-              <div className="text-xs" style={{ color: 'rgba(238,240,255,0.35)' }}>
-                {proofFilePath
-                  ? proofFilePath.split(/[\\/]/).pop()
-                  : 'No file selected'}
+        {/* Mode toggle — default "create" so normal users can build the
+            proof in-app without ever opening a CLI. Advanced users switch
+            to "upload" for a pre-signed .json from `irium-wallet proof-sign`. */}
+        <div className="flex gap-1 rounded-lg bg-white/5 p-1 mb-4">
+          {(['create', 'upload'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => { setProofMode(m); setCreateError(null); }}
+              className={`flex-1 px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-colors ${
+                proofMode === m
+                  ? 'bg-irium-500 text-white'
+                  : 'text-white/40 hover:text-white/70'
+              }`}
+            >
+              {m === 'create' ? 'Create from Evidence' : 'Upload File'}
+            </button>
+          ))}
+        </div>
+
+        {proofMode === 'create' ? (
+          <>
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="label">Agreement Hash</label>
+                <input
+                  className="input font-mono text-xs"
+                  placeholder="64-character hex"
+                  value={agreementHash}
+                  onChange={(e) => { setAgreementHash(e.target.value); setCreateError(null); }}
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+                {!agreementHashDefault && (
+                  <p className="text-[11px] text-white/30 mt-1">
+                    No hash on file for this agreement — paste the hash shared by the counterparty.
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="label">Proof Type</label>
+                <div className="relative">
+                  <select
+                    className="input w-full appearance-none pr-8"
+                    value={proofType}
+                    onChange={(e) => setProofType(e.target.value)}
+                  >
+                    {PROOF_TYPES.map((t) => (
+                      <option key={t.value} value={t.value} style={{ background: '#0f0f23', color: '#eef0ff' }}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+                </div>
+              </div>
+
+              <div>
+                <label className="label">Attested By</label>
+                <input
+                  className="input font-mono text-xs"
+                  placeholder="Your wallet address"
+                  value={attestedBy || selectedAddress}
+                  onChange={(e) => setAttestedBy(e.target.value)}
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+                <p className="text-[11px] text-white/30 mt-1">
+                  Pre-filled with your selected wallet address.
+                </p>
+              </div>
+
+              <div>
+                <label className="label">Evidence Summary</label>
+                <textarea
+                  className="input resize-none"
+                  rows={4}
+                  placeholder="e.g. Payment of $50 received via bank transfer, reference #12345."
+                  value={evidenceSummary}
+                  onChange={(e) => setEvidenceSummary(e.target.value)}
+                />
               </div>
             </div>
-            <button
-              onClick={handleBrowse}
-              disabled={browsing}
-              className="btn-secondary text-xs py-1.5 px-3 flex-shrink-0"
+
+            {createError && (
+              <p className="text-xs text-red-400 flex items-center gap-1 mb-3">
+                <AlertCircle size={12} />{createError}
+              </p>
+            )}
+
+            <div className="flex gap-3">
+              <button onClick={onClose} className="btn-secondary flex-1 justify-center">
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateSubmit}
+                disabled={submitting}
+                className="btn-primary flex-1 justify-center"
+              >
+                {submitting
+                  ? <><RefreshCw size={14} className="animate-spin" /> Submitting…</>
+                  : 'Create & Submit Proof'
+                }
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* File selector */}
+            <div
+              className="rounded-xl p-5 mb-4"
+              style={{
+                background: 'rgba(110,198,255,0.04)',
+                border: '1px dashed rgba(110,198,255,0.25)',
+              }}
             >
-              {browsing
-                ? <RefreshCw size={12} className="animate-spin" />
-                : <><Upload size={12} /> Browse</>
-              }
-            </button>
-          </div>
+              <div className="flex items-center gap-3 mb-3">
+                <FileJson size={18} style={{ color: '#a78bfa' }} className="flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-display font-semibold text-white mb-0.5">Proof File</div>
+                  <div className="text-xs" style={{ color: 'rgba(238,240,255,0.35)' }}>
+                    {proofFilePath
+                      ? proofFilePath.split(/[\\/]/).pop()
+                      : 'No file selected'}
+                  </div>
+                </div>
+                <button
+                  onClick={handleBrowse}
+                  disabled={browsing}
+                  className="btn-secondary text-xs py-1.5 px-3 flex-shrink-0"
+                >
+                  {browsing
+                    ? <RefreshCw size={12} className="animate-spin" />
+                    : <><Upload size={12} /> Browse</>
+                  }
+                </button>
+              </div>
 
-          {/* Manual path input */}
-          <div className="flex items-center gap-2">
-            <input
-              value={proofFilePath}
-              onChange={(e) => onPathChange(e.target.value)}
-              placeholder="/path/to/proof.json"
-              className="input text-xs flex-1"
-              style={{ fontFamily: '"JetBrains Mono", monospace' }}
-            />
-          </div>
-        </div>
+              {/* Manual path input */}
+              <div className="flex items-center gap-2">
+                <input
+                  value={proofFilePath}
+                  onChange={(e) => onPathChange(e.target.value)}
+                  placeholder="/path/to/proof.json"
+                  className="input text-xs flex-1"
+                  style={{ fontFamily: '"JetBrains Mono", monospace' }}
+                />
+              </div>
+            </div>
 
-        {/* Format note */}
-        <div
-          className="flex items-start gap-2 rounded-lg p-3 mb-4 text-xs"
-          style={{ background: 'rgba(0,0,0,0.40)', border: '1px solid rgba(110,198,255,0.30)' }}
-        >
-          <span style={{ color: '#60a5fa', flexShrink: 0 }}>ℹ</span>
-          <span style={{ color: 'rgba(238,240,255,0.50)' }}>
-            The proof file must be a signed JSON document produced by{' '}
-            <span className="font-mono text-white/70">irium-wallet agreement-proof-sign</span>.
-            Only <span className="font-mono text-white/70">.json</span> files are accepted.
-          </span>
-        </div>
+            {/* Format note */}
+            <div
+              className="flex items-start gap-2 rounded-lg p-3 mb-4 text-xs"
+              style={{ background: 'rgba(0,0,0,0.40)', border: '1px solid rgba(110,198,255,0.30)' }}
+            >
+              <span style={{ color: '#60a5fa', flexShrink: 0 }}>ℹ</span>
+              <span style={{ color: 'rgba(238,240,255,0.50)' }}>
+                The proof file must be a signed JSON document produced by{' '}
+                <span className="font-mono text-white/70">irium-wallet proof-sign</span>.
+                Only <span className="font-mono text-white/70">.json</span> files are accepted.
+              </span>
+            </div>
 
-        {/* Actions */}
-        <div className="flex gap-3">
-          <button onClick={onClose} className="btn-secondary flex-1 justify-center">
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={!proofFilePath.trim() || submitting}
-            className="btn-primary flex-1 justify-center"
-          >
-            {submitting
-              ? <><RefreshCw size={14} className="animate-spin" /> Submitting…</>
-              : 'Submit Proof'
-            }
-          </button>
-        </div>
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button onClick={onClose} className="btn-secondary flex-1 justify-center">
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={!proofFilePath.trim() || submitting}
+                className="btn-primary flex-1 justify-center"
+              >
+                {submitting
+                  ? <><RefreshCw size={14} className="animate-spin" /> Submitting…</>
+                  : 'Submit Proof'
+                }
+              </button>
+            </div>
+          </>
+        )}
       </motion.div>
     </motion.div>
   );
@@ -776,11 +984,25 @@ interface ReleaseModalProps {
 
 function ReleaseModal({ agreement, onClose, onSuccess, isOnline }: ReleaseModalProps) {
   const [releasing, setReleasing] = useState(false);
+  const [secret, setSecret] = useState('');
+
+  // Validate the HTLC preimage. Empty is allowed (the wallet binary will try
+  // to auto-derive a secret it owns) — non-empty must be a 64-char hex string.
+  const trimmedSecret = secret.trim();
+  const secretError =
+    trimmedSecret.length > 0 && !/^[0-9a-fA-F]{64}$/.test(trimmedSecret)
+      ? 'Must be exactly 64 hex characters (0-9, a-f).'
+      : null;
 
   const handleConfirm = async () => {
+    if (secretError) return;
     setReleasing(true);
     try {
-      const result = await agreements.release(agreement.id);
+      const result = await agreements.release(
+        agreement.id,
+        trimmedSecret.length > 0 ? trimmedSecret : undefined,
+        true,
+      );
       if (result.success) {
         toast.success('Funds released · txid: ' + (result.txid?.slice(0, 12) ?? ''));
         onSuccess();
@@ -808,23 +1030,133 @@ function ReleaseModal({ agreement, onClose, onSuccess, isOnline }: ReleaseModalP
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="glass-heavy w-full max-w-sm rounded-2xl p-6 text-center"
+        className="glass-heavy w-full max-w-md rounded-2xl p-6"
       >
-        <h2 className="font-display font-bold text-xl text-white mb-3">
+        <h2 className="font-display font-bold text-xl text-white mb-3 text-center">
           Release Funds?
         </h2>
 
         {/* Large gradient amount */}
-        <div className="font-display font-bold text-3xl gradient-text mb-3">
+        <div className="font-display font-bold text-3xl gradient-text mb-3 text-center">
           {formatIRM(agreement.amount)}
         </div>
 
-        <p className="text-white/50 text-sm mb-6">
+        <p className="text-white/50 text-sm mb-5 text-center">
           This will release{' '}
           <span className="text-white/70 font-semibold">
             {formatIRM(agreement.amount)}
           </span>{' '}
           to the seller.
+        </p>
+
+        {/* Secret preimage input — optional. The binary's auto-derive path
+            works only when the wallet funded the agreement; otherwise the
+            counterparty must paste the 64-hex preimage of the agreement's
+            secret-hash. */}
+        <div className="mb-5 text-left">
+          <label htmlFor="release-secret" className="label">Secret Preimage (hex)</label>
+          <input
+            id="release-secret"
+            className={`input font-mono text-xs ${secretError ? 'border-red-500/50' : ''}`}
+            placeholder="Optional · 64-character hex"
+            value={secret}
+            onChange={(e) => setSecret(e.target.value)}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          {secretError ? (
+            <p className="text-xs text-red-400 mt-1">{secretError}</p>
+          ) : (
+            <p className="text-xs text-white/40 mt-1">
+              Required if you did not create this agreement yourself. Leave blank if your wallet auto-derives it.
+            </p>
+          )}
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="btn-secondary flex-1 justify-center">
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={releasing || !isOnline || !!secretError}
+            title={!isOnline ? 'Node must be online to release funds' : undefined}
+            className="btn-primary flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {releasing ? (
+              <RefreshCw size={14} className="animate-spin" />
+            ) : (
+              'Confirm Release'
+            )}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Fund Escrow Modal ─────────────────────────────────────────
+// Calls agreement-fund (with --broadcast) so the HTLC funding tx is
+// actually transmitted. Without funding, the on-chain escrow does not
+// exist and Release/Refund have nothing to spend.
+
+interface FundModalProps {
+  agreement: Agreement;
+  onClose: () => void;
+  onSuccess: () => void;
+  isOnline: boolean;
+}
+
+function FundModal({ agreement, onClose, onSuccess, isOnline }: FundModalProps) {
+  const [funding, setFunding] = useState(false);
+
+  const handleConfirm = async () => {
+    setFunding(true);
+    try {
+      const result = await agreementSpend.fund(agreement.id, true);
+      if (result.success) {
+        toast.success('Escrow funded · txid: ' + (result.txid?.slice(0, 12) ?? ''));
+        onSuccess();
+      } else {
+        toast.error(result.message ?? 'Funding failed');
+      }
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setFunding(false);
+    }
+  };
+
+  return (
+    <motion.div
+      key="fund-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="glass-heavy w-full max-w-sm rounded-2xl p-6 text-center"
+      >
+        <h2 className="font-display font-bold text-xl text-white mb-3">
+          Fund Escrow?
+        </h2>
+
+        <div className="font-display font-bold text-3xl gradient-text mb-3">
+          {formatIRM(agreement.amount)}
+        </div>
+
+        <p className="text-white/50 text-sm mb-6">
+          This will lock{' '}
+          <span className="text-white/70 font-semibold">
+            {formatIRM(agreement.amount)}
+          </span>{' '}
+          into the HTLC escrow. Funds release to the counterparty on proof acceptance, or refund after the timeout height.
         </p>
 
         <div className="flex gap-3">
@@ -833,14 +1165,14 @@ function ReleaseModal({ agreement, onClose, onSuccess, isOnline }: ReleaseModalP
           </button>
           <button
             onClick={handleConfirm}
-            disabled={releasing || !isOnline}
-            title={!isOnline ? 'Node must be online to release funds' : undefined}
+            disabled={funding || !isOnline}
+            title={!isOnline ? 'Node must be online to fund escrow' : undefined}
             className="btn-primary flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {releasing ? (
+            {funding ? (
               <RefreshCw size={14} className="animate-spin" />
             ) : (
-              'Confirm Release'
+              'Confirm Fund'
             )}
           </button>
         </div>

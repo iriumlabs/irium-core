@@ -81,8 +81,9 @@
     "bundle": {
       "active": true,
       "targets": "all",
-      "identifier": "com.iriumlabs.core",
+      "identifier": "org.iriumlabs.core",
       "publisher": "Irium Labs",
+      "category": "Finance",
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",
@@ -97,9 +98,9 @@
         "binaries/irium-miner",
         "binaries/irium-explorer"
       ],
-      "copyright": "2024 Irium Labs",
-      "longDescription": "Irium Core is a full node desktop wallet for the Irium blockchain network. It enables decentralized commerce, settlement, and trust.",
-      "shortDescription": "Irium Full Node Desktop Wallet",
+      "copyright": "Copyright © 2026 Irium Labs",
+      "longDescription": "Irium Core is the official full-node desktop wallet and miner for the Irium (IRM) blockchain — a proof-of-work, settlement-first chain for trustless commerce.",
+      "shortDescription": "Full-node desktop wallet and miner for the Irium blockchain",
       "windows": {
         "wix": {
           "language": "en-US"

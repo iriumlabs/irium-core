@@ -24,6 +24,9 @@ const ROOT         = path.resolve(__dirname, '..');
 const SOURCE_DIR   = path.join(ROOT, 'irium-source');
 const BINARIES_DIR = path.join(ROOT, 'src-tauri', 'binaries');
 const BINARIES     = ['iriumd', 'irium-wallet', 'irium-miner'];
+// GPU miner needs the `gpu` cargo feature + an OpenCL ICD on the build host.
+// Built separately so a missing OpenCL.lib doesn't block the core binaries.
+const GPU_BINARY   = 'irium-miner-gpu';
 
 const FORCE = process.argv.includes('--force');
 const CHECK = process.argv.includes('--check');
@@ -112,7 +115,7 @@ function build() {
   console.log('  First build: 30–90 minutes  |  Incremental: 1–5 minutes');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-  // Build all three binaries. Works whether they share a workspace or are
+  // Build all three core binaries. Works whether they share a workspace or are
   // separate crates — cargo resolves which packages define each binary name.
   const binFlags = BINARIES.map((b) => `--bin ${b}`).join(' ');
   try {
@@ -123,6 +126,22 @@ function build() {
     // Fall back to building the entire release target (picks up all [[bin]] entries).
     console.log('\nRetrying with full workspace build …\n');
     execSync('cargo build --release', { cwd: SOURCE_DIR, stdio: 'inherit' });
+  }
+
+  // GPU miner is built separately with `--features gpu`. It links against
+  // OpenCL.lib, so on Windows it requires an OpenCL ICD (NVIDIA/AMD driver
+  // or Intel SDK). On failure, log a warning and continue — the GPU tab
+  // will show "No GPU detected" but the rest of the app still works.
+  console.log('\n── GPU miner (optional) ─────────────────────────────────────');
+  try {
+    execSync(`cargo build --release --features gpu --bin ${GPU_BINARY}`, {
+      cwd: SOURCE_DIR, stdio: 'inherit',
+    });
+  } catch {
+    console.log(`\n⚠  GPU miner build failed — likely missing OpenCL SDK.`);
+    console.log(`    GPU tab will be unavailable. Install your GPU vendor's`);
+    console.log(`    OpenCL runtime (NVIDIA/AMD driver, Intel OpenCL SDK) to`);
+    console.log(`    enable it. Core binaries are unaffected.\n`);
   }
 }
 
@@ -135,34 +154,38 @@ function copyBinaries() {
   const debugDir = path.join(ROOT, 'src-tauri', 'target', 'debug');
   const hasDebugDir = fs.existsSync(debugDir);
 
-  const missing = [];
-  for (const name of BINARIES) {
+  const copyOne = (name, required) => {
     const src  = srcPath(name);
     const dest = destPath(name);
 
     if (!fs.existsSync(src)) {
-      missing.push(name);
-      continue;
+      return required ? { missing: true } : { skipped: true };
     }
 
     fs.copyFileSync(src, dest);
-
-    // Also copy to target/debug/ for Tauri dev mode sidecar resolution.
     if (hasDebugDir) {
-      try {
-        fs.copyFileSync(src, path.join(debugDir, `${name}-${TARGET}${EXE}`));
-      } catch {}
+      try { fs.copyFileSync(src, path.join(debugDir, `${name}-${TARGET}${EXE}`)); } catch {}
     }
-
-    // Mark executable on Unix
     if (EXE === '') {
       try { fs.chmodSync(dest, 0o755); } catch {}
       if (hasDebugDir) {
         try { fs.chmodSync(path.join(debugDir, `${name}-${TARGET}`), 0o755); } catch {}
       }
     }
-
     console.log(`  ✓  ${path.basename(dest)}`);
+    return { ok: true };
+  };
+
+  const missing = [];
+  for (const name of BINARIES) {
+    const r = copyOne(name, true);
+    if (r.missing) missing.push(name);
+  }
+
+  // GPU binary is optional — only copy if the build step succeeded.
+  const gpuRes = copyOne(GPU_BINARY, false);
+  if (gpuRes.skipped) {
+    console.log(`  ⚠  ${GPU_BINARY} not built (skipped) — GPU tab will be unavailable.`);
   }
 
   if (missing.length > 0) {

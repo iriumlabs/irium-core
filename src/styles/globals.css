@@ -138,10 +138,6 @@ html, body, #root {
   0%, 100% { transform: translateY(0px); }
   50%      { transform: translateY(-8px); }
 }
-@keyframes scan-bar {
-  from { transform: translateX(-100%); }
-  to   { transform: translateX(600%); }
-}
 @keyframes gradient-shift {
   0%   { background-position: 0%   50%; }
   50%  { background-position: 100% 50%; }

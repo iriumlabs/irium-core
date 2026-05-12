@@ -121,44 +121,111 @@ export default function WalletPage() {
   const [restoreBackupPath, setRestoreBackupPath] = useState('');
   const [restoringBackup, setRestoringBackup] = useState(false);
 
-  // The transactions panel below shows ONLY the selected address's
-  // history — the Tauri command's new `address` parameter is forwarded to
-  // the RPC's `/rpc/history?address=…` so the binary returns just that
-  // address's txs (the Dashboard's recent-activity feed still calls
-  // wallet.transactions() with no address and gets the wallet-wide list).
-  // loadData depends on `activeAddress` so React re-fires the effect
-  // whenever the user switches addresses via the Manage panel or the
-  // standalone Addresses list.
-  const loadData = useCallback(async () => {
-    // Only show the address-list shimmer on the very first load. Every
-    // subsequent call (e.g. activeAddress change) refetches the address
-    // list too, but keeping the existing list visible avoids a jarring
-    // blank-out when the user is just switching which address is selected.
+  // Refreshes the wallet's address list + balances. Called on mount and
+  // by the wallet poller (every 15s via useNodePoller). NOT called on
+  // simple address switch — switching is a pure UI change with no
+  // on-chain effect, so re-fetching the entire list (which fires N
+  // concurrent /rpc/balance calls inside wallet_list_addresses) would
+  // just saturate iriumd's RPC port and cause spurious "node disconnected"
+  // toasts on rapid alternation.
+  //
+  // Independent identity (only depends on setAddresses, which is stable
+  // from the Zustand store), so the mount useEffect below fires exactly
+  // once for this concern.
+  const refreshAddresses = useCallback(async () => {
     if (!hasLoadedOnceRef.current) setLoadingAddresses(true);
-    setLoadingTxs(true);
     try {
-      const [addrs, transactions] = await Promise.allSettled([
-        wallet.listAddresses(),
-        activeAddress
-          ? wallet.transactions(20, activeAddress)
-          : Promise.resolve([] as Transaction[]),
-      ]);
-      if (addrs.status === "fulfilled") setAddresses(addrs.value);
-      if (transactions.status === "fulfilled") setTxs(transactions.value);
-      // Surface fetch failures to the user — but only when the node is
-      // running, since offline wallets are a valid mode and the wallet
-      // CLI calls will silently fall back to no-data without an error
-      // worth showing.
-      const anyRejected = addrs.status === 'rejected' || transactions.status === 'rejected';
-      if (anyRejected && nodeStatusRef.current?.running) {
-        toast.error('Failed to load wallet data');
-      }
+      const addrs = await wallet.listAddresses();
+      if (addrs) setAddresses(addrs);
+    } catch {
+      // Only surface errors when the node is supposed to be running —
+      // offline wallets are a valid mode.
+      if (nodeStatusRef.current?.running) toast.error('Failed to load addresses');
     } finally {
       hasLoadedOnceRef.current = true;
       setLoadingAddresses(false);
-      setLoadingTxs(false);
     }
-  }, [activeAddress, setAddresses]);
+  }, [setAddresses]);
+
+  // Refreshes ONLY the transactions list for the currently selected
+  // address. The Tauri command's `address` parameter is forwarded to the
+  // RPC's `/rpc/history?address=…` so the binary returns just that
+  // address's txs (the Dashboard's recent-activity feed still calls
+  // wallet.transactions() with no address and gets the wallet-wide list).
+  //
+  // SERIALIZED — at most ONE /rpc/history HTTP request is in flight at
+  // any time. Without this, slow clicks (>250ms apart, debounce can't
+  // help) each fire their own 10-second-budget HTTP request; 3-4 of
+  // them in flight is enough to saturate iriumd's RPC port, which makes
+  // get_node_status time out (3s budget) and the UI flips to "Node
+  // Disconnected" → reconnect on the next poll. The lock+loop pattern
+  // below ensures clicks during an in-flight fetch only bump a "wanted"
+  // counter; the in-flight fetch's finally re-loops and catches up to
+  // the latest activeAddress. So 10 clicks during one in-flight fetch
+  // collapse into AT MOST 2 HTTP requests total (the in-flight one +
+  // one catch-up for the final address).
+  //
+  // First-load shimmer is gated by hasLoadedTxsOnceRef. After the first
+  // successful load we keep the previous list visible while fetching
+  // the new one — eliminates the shimmer flicker that appeared on
+  // every switch before.
+  //
+  // activeAddressRef holds the latest value so the loop body uses the
+  // current address rather than the closure's stale capture. This is
+  // why refreshTxs has no React deps — the latest address is always
+  // read via the ref.
+  const hasLoadedTxsOnceRef = useRef(false);
+  const isFetchingTxsRef = useRef(false);
+  const txsWantedGenRef = useRef(0);
+  const txsLastFetchedGenRef = useRef(-1);
+  const activeAddressRef = useRef(activeAddress);
+  useEffect(() => { activeAddressRef.current = activeAddress; }, [activeAddress]);
+
+  const refreshTxs = useCallback(async () => {
+    // Bump "wanted" generation. Either start the loop ourselves or
+    // piggyback on an existing in-flight loop (which will see the
+    // bumped wantedGenRef and continue).
+    txsWantedGenRef.current++;
+    if (isFetchingTxsRef.current) return;
+    isFetchingTxsRef.current = true;
+    try {
+      while (txsLastFetchedGenRef.current < txsWantedGenRef.current) {
+        const targetGen = txsWantedGenRef.current;
+        txsLastFetchedGenRef.current = targetGen;
+        const targetAddr = activeAddressRef.current;
+
+        if (!hasLoadedTxsOnceRef.current) setLoadingTxs(true);
+        try {
+          const transactions = targetAddr
+            ? await wallet.transactions(20, targetAddr)
+            : [];
+          // Only apply if this is still the latest wanted gen (no newer
+          // click happened while we awaited the fetch).
+          if (targetGen === txsWantedGenRef.current) {
+            setTxs(transactions);
+          }
+        } catch {
+          if (targetGen === txsWantedGenRef.current && nodeStatusRef.current?.running) {
+            toast.error('Failed to load transactions');
+          }
+        } finally {
+          if (targetGen === txsWantedGenRef.current) {
+            hasLoadedTxsOnceRef.current = true;
+            setLoadingTxs(false);
+          }
+        }
+      }
+    } finally {
+      isFetchingTxsRef.current = false;
+    }
+  }, []);
+
+  // Convenience helper for callers that legitimately need both refreshed
+  // at once (after add-address, restore-backup, wallet file switch, etc).
+  // Not used by the activeAddress-driven useEffect — only refreshTxs is.
+  const loadData = useCallback(async () => {
+    await Promise.all([refreshAddresses(), refreshTxs()]);
+  }, [refreshAddresses, refreshTxs]);
 
   // Add a fresh address derived from the active wallet's BIP32 seed.
   // Declared AFTER loadData so React's exhaustive-deps rule can include
@@ -193,7 +260,25 @@ export default function WalletPage() {
     setShowAddAddressConfirm(true);
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  // Two split effects (was one `loadData` effect): the addresses effect
+  // fires exactly once on mount; the transactions effect fires on mount
+  // AND every time activeAddress changes. This decouples the per-switch
+  // refresh from the (expensive) list-addresses RPC storm — see the
+  // refreshAddresses / refreshTxs comments above.
+  useEffect(() => { refreshAddresses(); }, [refreshAddresses]);
+  // 250ms debounce on tx refresh. Rapid alternating clicks between
+  // addresses collapse into a single refreshTxs call. Combined with
+  // refreshTxs's internal serialization (only one /rpc/history in
+  // flight at a time, queued clicks fetch the latest activeAddress
+  // after the in-flight completes), this caps iriumd's RPC load
+  // regardless of click cadence. activeAddress is the dep — refreshTxs
+  // is intentionally stable (reads activeAddressRef inside the loop).
+  // First mount also debounces (250ms delay before tx list appears).
+  useEffect(() => {
+    const handle = setTimeout(() => { refreshTxs(); }, 250);
+    return () => clearTimeout(handle);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAddress]);
   useEffect(() => { loadWalletFiles(); }, [loadWalletFiles]);
 
   useEffect(() => {
@@ -743,6 +828,10 @@ export default function WalletPage() {
             onSwitchWallet={async (path) => {
               try {
                 await wallet.setPath(path);
+                // Persist so the switch survives restart — App.tsx's startup
+                // effect rehydrates state.wallet_path from settings.wallet_path
+                // on every launch, so the backend setPath alone is not enough.
+                updateSettings({ wallet_path: path });
                 // Order matters: load the NEW wallet's addresses first so
                 // the store has fresh data, THEN reset the selection to 0.
                 // If we reset first, the next render briefly points idx 0
@@ -1211,62 +1300,70 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
     toast.success("TXID copied");
   };
 
+  // Middle-truncate helper. Uses three literal dots (not ellipsis char) to
+  // match the spec format ("Q8Ni6T...vaLa", "6a133c3a...1c2b6").
+  const shortMid = (s: string, head: number, tail: number) =>
+    s.length <= head + tail + 3 ? s : `${s.slice(0, head)}...${s.slice(-tail)}`;
+
+  // Type-specific detail tail rendered after "Block #N" (or the full
+  // mempool string when the tx isn't yet in a block). The full miner
+  // address and full TXID stay accessible — full TXID is shown on Row 2
+  // below, and the detail modal exposes the full miner address.
+  const detailTail = (() => {
+    if (!tx.height) return "Mempool · awaiting confirmation";
+    const parts: string[] = [];
+    if (isCoinbase) {
+      if (tx.address) parts.push(`Miner: ${shortMid(tx.address, 6, 4)}`);
+    } else if (isSend) {
+      if (tx.fee != null && tx.fee > 0) parts.push(`Fee: ${tx.fee.toLocaleString()} sats`);
+      parts.push(`TXID: ${shortMid(tx.txid, 8, 5)}`);
+    } else {
+      parts.push(`TXID: ${shortMid(tx.txid, 8, 5)}`);
+    }
+    parts.push(`${confirmations} conf`);
+    return parts.join(" · ");
+  })();
+
   return (
     <div
       className="px-4 py-3 cursor-pointer hover:bg-white/[0.03] transition-colors border-b border-white/[0.04] last:border-b-0"
       onClick={onClick}
     >
-      {/* ── Row 1 — flex justify-between. Left: icon + type label +
-          inline type-specific details. Right: amount, status badge,
-          confs as a tight cluster (flex-shrink-0 — never crowded). The
-          left side has overflow-hidden so a long details line ellipsizes
-          via the truncate on its last token rather than pushing the
-          right cluster around. */}
-      <div className="flex items-center justify-between gap-4">
-        {/* LEFT: icon + inline text line (type label + details) */}
-        <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+      {/* ── Row 1 — three flex children:
+          LEFT: icon + type label + clickable Block# + truncating detail tail,
+                content-sized so it doesn't leave empty space to the right.
+          MIDDLE: a dotted leader (`flex-1 border-b border-dotted`) that
+                  visually fills the gap between LEFT and RIGHT.
+          RIGHT: amount + status badge + confirmations, fixed cluster. */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
           <div className={clsx("w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0", typeBg)}>
             <TypeIcon size={11} className={typeColor} />
           </div>
-          <div className="flex items-center gap-1.5 min-w-0 flex-1 text-sm whitespace-nowrap">
-            <span className={clsx("font-display font-semibold flex-shrink-0", typeColor)}>
+          <div className="flex items-baseline gap-1.5 min-w-0 whitespace-nowrap overflow-hidden">
+            <span className={clsx("font-display font-semibold text-sm flex-shrink-0", typeColor)}>
               {typeLabel}
             </span>
-            {!tx.height ? (
-              <>
-                <span className="text-white/20 flex-shrink-0">·</span>
-                <span className="flex-shrink-0" style={{ color: 'rgba(238,240,255,0.55)' }}>Mempool</span>
-                <span className="text-white/20 flex-shrink-0">·</span>
-                <span className="truncate" style={{ color: 'rgba(238,240,255,0.55)' }}>awaiting confirmation</span>
-              </>
-            ) : (
+            {tx.height && (
               <>
                 <span className="text-white/20 flex-shrink-0">·</span>
                 <button
                   onClick={goToBlock}
-                  className="transition-colors hover:underline flex-shrink-0"
+                  className="text-xs hover:underline flex-shrink-0"
                   style={{ color: '#6ec6ff' }}
                   title="Open in Explorer"
                 >
                   Block #{tx.height.toLocaleString()}
                 </button>
-                {/* Coinbase miner address — moved to its own line below
-                    Row 1 (see "Miner" line further down) so the full hash
-                    can be shown break-all without forcing Row 1 to wrap. */}
-                {isSend && tx.fee != null && tx.fee > 0 && (
-                  <>
-                    <span className="text-white/20 flex-shrink-0">·</span>
-                    <span className="flex-shrink-0" style={{ color: 'rgba(238,240,255,0.55)' }}>
-                      Fee: {tx.fee.toLocaleString()} sats
-                    </span>
-                  </>
-                )}
               </>
             )}
+            <span className="text-white/20 flex-shrink-0">·</span>
+            <span className="truncate text-xs text-white/50">{detailTail}</span>
           </div>
         </div>
 
-        {/* RIGHT: amount + status badge + confs (never shrinks) */}
+        <div className="flex-1 self-center border-b border-dotted border-white/15" aria-hidden="true" />
+
         <div className="flex items-center gap-3 flex-shrink-0">
           <span className={clsx("font-display font-semibold text-sm tabular-nums whitespace-nowrap", typeColor)}>
             {isSend ? "−" : "+"}{formatIRM(Math.abs(tx.amount))}
@@ -1280,27 +1377,14 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
         </div>
       </div>
 
-      {/* ── Miner line — coinbase only. Full miner address shown
-          break-all (wraps to fit any width). Aligned under the type
-          label so it visually nests with the TXID line below. */}
-      {isCoinbase && tx.address && (
-        <div
-          className="mt-1 text-[10px] font-mono leading-snug break-all"
-          style={{ paddingLeft: 32, color: 'rgba(238,240,255,0.45)' }}
-        >
-          <span className="opacity-70">Miner: </span>{tx.address}
-        </div>
-      )}
-
-      {/* ── Row 2 — full TXID + inline copy. Always present, subtle
-          (opacity-40 on the TXID itself), 32px left padding so the hex
+      {/* ── Row 2 — full TXID + inline copy. 32px left padding so the hex
           starts under the type label rather than under the icon.
           break-all wraps the long hex on narrow windows. */}
       <div
-        className="mt-1.5 flex items-start gap-1.5 text-[10px] font-mono leading-snug"
-        style={{ paddingLeft: 32, color: 'rgba(238,240,255,0.40)' }}
+        className="mt-1.5 flex items-start gap-1.5 text-[10px] font-mono opacity-40 leading-snug"
+        style={{ paddingLeft: 32 }}
       >
-        <span className="break-all min-w-0 opacity-40" title={tx.txid}>{tx.txid}</span>
+        <span className="break-all min-w-0" title={tx.txid}>{tx.txid}</span>
         <button
           onClick={copyTxid}
           className="text-white/30 hover:text-white/85 transition-colors flex-shrink-0 mt-0.5"

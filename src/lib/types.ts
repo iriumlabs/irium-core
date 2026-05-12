@@ -19,6 +19,23 @@ export interface NodeStatus {
   upnp_external_ip?: string;
 }
 
+// Subset of iriumd's /metrics — only the counters the GUI consumes.
+// inbound_accepted_total is the authoritative "port forwarding works"
+// signal: it increments whenever iriumd accepts a connection from an
+// external peer, regardless of whether UPnP or manual NAT config did
+// the work. Settings page uses this to distinguish "UPnP active" from
+// "manual forwarding confirmed" vs "inactive — outbound only".
+export interface NodeMetrics {
+  inbound_accepted_total: number;
+  outbound_dial_success_total: number;
+}
+
+// Returned by get_system_info — cpu_cores reflects
+// std::thread::available_parallelism() on the host.
+export interface SystemInfo {
+  cpu_cores: number;
+}
+
 // Returned by wallet_create — `create-wallet --bip32` produces all three
 // fields below via two follow-up CLI calls (list-addresses + export-mnemonic).
 // The wallet binary does NOT expose a raw public key or a hex private key, so
@@ -190,6 +207,9 @@ export interface CreateOfferParams {
   payment_instructions?: string;
   timeout_blocks?: number;
   offer_id?: string;
+  // Optional explicit seller address. Falls back to the wallet's first
+  // derived address on the backend when omitted.
+  seller_address?: string;
 }
 
 export interface CreateOfferResult {
@@ -228,6 +248,7 @@ export interface FeedSyncResult {
 
 export type AgreementStatus =
   | "open"
+  | "pending"   // created locally, awaiting agreement-fund broadcast
   | "funded"
   | "released"
   | "refunded";
@@ -309,30 +330,36 @@ export interface ProofSubmitResult {
 
 export type RiskSignal = "low" | "medium" | "high" | "unknown";
 
+// Sub-object inside Reputation — recent-window summary.
+// success_rate is returned as a formatted string like "83.3" (not a float),
+// so callers should parseFloat() before doing numeric comparisons.
+export interface ReputationRecent {
+  satisfied:    number | null;
+  defaults:     number | null;
+  success_rate: string | null;
+  risk:         RiskSignal;
+  window:       number | null;  // block-window size used for the rollup
+}
+
+// Matches the exact JSON returned by `irium-wallet reputation-show --json`.
+// Nullable fields are null when the seller has no history on this node.
+// Rate fields (success_rate, completion_rate, dispute_rate) are returned as
+// formatted strings like "83.3" — use parseFloat() when computing numerically.
 export interface Reputation {
-  pubkey: string;
-  address?: string;
-  score: number;
-  completed: number;
-  failed: number;
-  default_count: number;
-  risk_signal: RiskSignal;
-  total_volume?: number;
-  // Extended fields used by Reputation page
-  risk_level?: string;
-  total_agreements?: number;
-  released?: number;
-  refunded?: number;
-  volume_sats?: number;
-  score_history?: number[];
-  flags?: string[];
-  agreements?: Array<{
-    id: string;
-    role: string;
-    status: string;
-    amount: number;
-    timestamp: number;
-  }>;
+  seller:                   string;
+  total_agreements:         number;
+  satisfied:                number | null;
+  defaults:                 number | null;
+  success_rate:             string | null;
+  completion_rate:          string | null;
+  dispute_rate:             string | null;
+  avg_proof_response_secs:  number | null;
+  disputes:                 number | null;
+  self_trade_count:         number;
+  sybil_suppressed:         boolean;
+  summary:                  string;
+  risk:                     RiskSignal;
+  recent:                   ReputationRecent;
 }
 
 // ============================================================
@@ -347,6 +374,11 @@ export interface MinerStatus {
   difficulty: number;
   threads: number;
   address?: string;
+  // Last sync-progress line from the miner sidecar (e.g.
+  // "[sync] Miner downloading blocks 1..21269 from node"). Present
+  // during the 30–60 s startup window where the miner catches up to
+  // the chain tip; cleared the moment the first rate line arrives.
+  sync_status?: string;
 }
 
 export interface GpuDevice {

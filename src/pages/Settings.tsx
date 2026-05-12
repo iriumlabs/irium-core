@@ -142,7 +142,36 @@ export default function Settings() {
   const [fetchingIp, setFetchingIp] = useState(false);
   const [retryingUpnp, setRetryingUpnp] = useState(false);
   const nodeStatus = useStore((s) => s.nodeStatus);
+  const nodeMetrics = useStore((s) => s.nodeMetrics);
   const appVersion = useStore((s) => s.appVersion);
+
+  // Track when the node first started running (this session). Drives the
+  // "Detecting..." → "Inactive" timeout on the UPnP card so we don't show
+  // "Inactive — outbound only" the instant the node starts (PEX takes a
+  // minute to propagate our dialable address to other peers). Resets when
+  // running flips false → null, so a restart re-enters the detecting window.
+  const nodeRunningSinceRef = useRef<number | null>(null);
+  const [nowTick, setNowTick] = useState(0); // re-render every second to update elapsed time
+  useEffect(() => {
+    if (nodeStatus?.running) {
+      if (nodeRunningSinceRef.current === null) {
+        nodeRunningSinceRef.current = Date.now();
+      }
+    } else {
+      nodeRunningSinceRef.current = null;
+    }
+  }, [nodeStatus?.running]);
+  // Tick once per second while node is running and we're still inside the
+  // 60s detecting window. Stops once we transition out so it doesn't burn
+  // cycles forever.
+  useEffect(() => {
+    if (!nodeStatus?.running) return;
+    const started = nodeRunningSinceRef.current;
+    if (started === null) return;
+    if (Date.now() - started > 60_000) return; // already past the window
+    const id = setInterval(() => setNowTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [nodeStatus?.running, nowTick]);
 
   useEffect(() => {
     return () => {
@@ -584,59 +613,96 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* UPnP status */}
-            <div className="mt-1 rounded-lg border border-white/10 bg-white/5 px-4 py-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="inline-block w-2 h-2 rounded-full"
-                    style={{
-                      background: nodeStatus?.upnp_active
-                        ? '#34d399'
-                        : nodeStatus?.running
-                          ? '#fbbf24'
-                          : 'rgba(255,255,255,0.2)',
-                    }}
-                  />
-                  <span className="text-sm text-white/70">UPnP Port Mapping</span>
+            {/* Port-mapping status — four states:
+                  - active-upnp : UPnP succeeded (green)
+                  - active-manual: UPnP failed but inbound peers have arrived,
+                    confirming manual port forwarding is reachable (green)
+                  - detecting   : node has been running < 60s and no inbound
+                    peers yet — PEX hasn't had time to propagate our address
+                    so we don't yet know whether forwarding works (amber)
+                  - inactive    : node running > 60s, no UPnP, no inbound —
+                    nothing got through (amber)
+                Inbound detection comes from iriumd's /metrics endpoint
+                (`irium_inbound_accepted_total`), polled every node tick. */}
+            {(() => {
+              const inboundCount = nodeMetrics?.inbound_accepted_total ?? 0;
+              const upnpActive = nodeStatus?.upnp_active === true;
+              const running = nodeStatus?.running === true;
+              const startedAt = nodeRunningSinceRef.current;
+              const elapsedSec = startedAt ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0;
+              // Reference nowTick so the IIFE re-runs once per second while
+              // we're inside the detecting window (effect ticks setNowTick).
+              void nowTick;
+              const inDetectingWindow = running && startedAt !== null && elapsedSec < 60;
+
+              const statusKind: 'active-upnp' | 'active-manual' | 'detecting' | 'inactive' | 'offline' =
+                !running        ? 'offline'
+                : upnpActive    ? 'active-upnp'
+                : inboundCount > 0 ? 'active-manual'
+                : inDetectingWindow ? 'detecting'
+                : 'inactive';
+
+              const dotColor =
+                statusKind === 'active-upnp' || statusKind === 'active-manual' ? '#34d399'
+                : statusKind === 'detecting' || statusKind === 'inactive'      ? '#fbbf24'
+                : 'rgba(255,255,255,0.2)';
+
+              const statusEl =
+                statusKind === 'active-upnp'   ? <span className="text-emerald-400">Active (UPnP) — TCP 38291 open</span>
+              : statusKind === 'active-manual' ? <span className="text-emerald-400">Active (manual) — {inboundCount} inbound peer{inboundCount === 1 ? '' : 's'}</span>
+              : statusKind === 'detecting'     ? <span className="text-amber-400">Detecting… ({Math.max(0, 60 - elapsedSec)}s)</span>
+              : statusKind === 'inactive'      ? <span className="text-amber-400">Inactive — outbound only</span>
+              : <span className="text-white/30">Node offline</span>;
+
+              return (
+                <div className="mt-1 rounded-lg border border-white/10 bg-white/5 px-4 py-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="inline-block w-2 h-2 rounded-full"
+                        style={{ background: dotColor }}
+                      />
+                      <span className="text-sm text-white/70">Port Reachability</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono">{statusEl}</span>
+                      <button
+                        onClick={handleRetryUpnp}
+                        disabled={retryingUpnp || !running}
+                        title="Retry UPnP port mapping"
+                        className="btn-secondary px-2.5 py-1 text-xs flex items-center gap-1 disabled:opacity-40"
+                      >
+                        {retryingUpnp ? (
+                          <RefreshCw size={11} className="animate-spin" />
+                        ) : (
+                          <RefreshCw size={11} />
+                        )}
+                        Retry
+                      </button>
+                    </div>
+                  </div>
+                  {nodeStatus?.upnp_external_ip && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white/40">External IP</span>
+                      <span className="font-mono text-white/70">{nodeStatus.upnp_external_ip}</span>
+                    </div>
+                  )}
+                  {statusKind === 'detecting' && (
+                    <p className="text-xs text-white/30 leading-relaxed">
+                      Waiting up to 60s for an inbound peer to confirm reachability. PEX needs a
+                      moment to propagate your address to other nodes after start.
+                    </p>
+                  )}
+                  {statusKind === 'inactive' && (
+                    <p className="text-xs text-white/30 leading-relaxed">
+                      UPnP failed and no inbound peers have arrived. Configure manual port
+                      forwarding on your router (TCP 38291) or enable UPnP, then click Retry.
+                      Outbound connections still work in this state.
+                    </p>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono">
-                    {nodeStatus?.upnp_active
-                      ? <span className="text-emerald-400">Active — TCP 38291 open</span>
-                      : nodeStatus?.running
-                        ? <span className="text-amber-400">Inactive — outbound only</span>
-                        : <span className="text-white/30">Node offline</span>
-                    }
-                  </span>
-                  <button
-                    onClick={handleRetryUpnp}
-                    disabled={retryingUpnp || !nodeStatus?.running}
-                    title="Retry UPnP port mapping"
-                    className="btn-secondary px-2.5 py-1 text-xs flex items-center gap-1 disabled:opacity-40"
-                  >
-                    {retryingUpnp ? (
-                      <RefreshCw size={11} className="animate-spin" />
-                    ) : (
-                      <RefreshCw size={11} />
-                    )}
-                    Retry
-                  </button>
-                </div>
-              </div>
-              {nodeStatus?.upnp_external_ip && (
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-white/40">External IP</span>
-                  <span className="font-mono text-white/70">{nodeStatus.upnp_external_ip}</span>
-                </div>
-              )}
-              {!nodeStatus?.upnp_active && nodeStatus?.running && (
-                <p className="text-xs text-white/30 leading-relaxed">
-                  UPnP lets your router open TCP 38291 so peers behind NAT can dial you inbound.
-                  If your router does not support UPnP, use manual port forwarding instead.
-                </p>
-              )}
-            </div>
+              );
+            })()}
           </Section>
         </motion.div>
 

@@ -30,6 +30,11 @@ struct AppState {
     miner_address: Arc<Mutex<Option<String>>>,
     miner_threads: Arc<Mutex<u32>>,
     miner_hashrate: Arc<Mutex<f64>>,
+    // Last sync-progress line from the miner sidecar (e.g. `[sync] Miner
+    // downloading blocks 1..21269 from node`). Populated by start_miner's
+    // event loop while no rate line has arrived yet; cleared on the first
+    // successful rate parse so the UI flips from "Syncing…" to live hashrate.
+    miner_sync_status: Arc<Mutex<Option<String>>>,
     last_node_status: Arc<Mutex<Option<NodeStatus>>>,
     pool_url: Arc<Mutex<Option<String>>>,
     upnp_external_ip: Arc<Mutex<Option<String>>>,
@@ -55,6 +60,7 @@ impl AppState {
             miner_address: Arc::new(Mutex::new(None)),
             miner_threads: Arc::new(Mutex::new(0)),
             miner_hashrate: Arc::new(Mutex::new(0.0)),
+            miner_sync_status: Arc::new(Mutex::new(None)),
             last_node_status: Arc::new(Mutex::new(None)),
             pool_url: Arc::new(Mutex::new(None)),
             upnp_external_ip: Arc::new(Mutex::new(None)),
@@ -130,6 +136,19 @@ fn lock_err(e: impl std::fmt::Display) -> String {
 #[tauri::command]
 fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
+}
+
+// Returns hardware info the GUI needs at startup. cpu_cores is what
+// std::thread::available_parallelism() reports — accounts for cgroup limits,
+// container CPU shares, Windows scheduling masks, etc, which the browser
+// API navigator.hardwareConcurrency doesn't. Used to drive the Miner page's
+// threads slider's max and its default value (half of cores).
+#[tauri::command]
+fn get_system_info() -> SystemInfo {
+    let cpu_cores = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1);
+    SystemInfo { cpu_cores }
 }
 
 fn resolve_wallet_path() -> String {
@@ -266,6 +285,79 @@ fn read_extra_seeds() -> Vec<String> {
             if ip.is_empty() { None } else { Some(ip) }
         })
         .collect()
+}
+
+/// Trim seedlist.extra to MAX_KEPT_EXTRA_SEEDS entries on app start.
+/// iriumd's SeedlistManager (irium-source/src/network.rs:326) merges
+/// seedlist.txt (12 signed) + seedlist.extra (this file) + static + runtime
+/// into a single bootstrap dial list, with no priority distinction between
+/// them. Without trimming, accumulated gossip-discovered IPs can reach 60+
+/// entries, and iriumd's bootstrap maintenance loop (iriumd.rs:7798) dials
+/// only 5 peers per 5s cycle when peer_count is 0 — so cycling through 70+
+/// candidates (most dead) takes minutes before settling on the alive few.
+///
+/// This function bounds the file size BEFORE iriumd starts, so the merged
+/// list stays small (~32 = 12 signed + 20 extras) and bootstrap is fast.
+///
+/// Random selection (Fisher-Yates with LCG seeded by SystemTime nanos):
+/// each restart picks a different 20-entry subset. Dead IPs eventually get
+/// cycled out; `save_discovered_peers` re-adds live peers whenever the
+/// poller observes them, so the file recovers organically. No `rand` crate
+/// dependency.
+///
+/// Below the threshold the file is left untouched. On trim we write a
+/// clean sorted file (matches the format produced by `save_discovered_peers`).
+fn trim_seedlist_extra() {
+    const MAX_KEPT_EXTRA_SEEDS: usize = 20;
+
+    let home_dir = match dirs::home_dir() {
+        Some(d) => d,
+        None => return,
+    };
+    let extra_path = home_dir.join(".irium").join("bootstrap").join("seedlist.extra");
+    let contents = match std::fs::read_to_string(&extra_path) {
+        Ok(s) => s,
+        Err(_) => return, // file doesn't exist — first run, nothing to trim
+    };
+
+    // Collect valid IP:PORT lines, drop empties and comments.
+    let mut entries: Vec<String> = contents
+        .lines()
+        .filter_map(|l| {
+            let t = l.trim();
+            if t.is_empty() || t.starts_with('#') { None } else { Some(t.to_string()) }
+        })
+        .collect();
+
+    let original_len = entries.len();
+    if original_len <= MAX_KEPT_EXTRA_SEEDS {
+        return; // below threshold, leave file untouched
+    }
+
+    // Fisher-Yates shuffle with an LCG seeded by current time nanos.
+    // Constants are MMIX (Knuth) — not cryptographic, just deterministic
+    // distribution for picking a different subset on each restart.
+    let mut seed: u64 = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(1)
+        .max(1);
+    for i in (1..entries.len()).rev() {
+        seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        let j = (seed % (i as u64 + 1)) as usize;
+        entries.swap(i, j);
+    }
+    entries.truncate(MAX_KEPT_EXTRA_SEEDS);
+    entries.sort(); // sorted output matches save_discovered_peers' format
+
+    let body = entries.join("\n") + "\n";
+    match std::fs::write(&extra_path, &body) {
+        Ok(_) => tracing::info!(
+            "[trim_seedlist_extra] trimmed seedlist.extra: {} → {} entries (random subset; live peers will be re-added by save_discovered_peers)",
+            original_len, MAX_KEPT_EXTRA_SEEDS
+        ),
+        Err(e) => tracing::warn!("[trim_seedlist_extra] failed to write trimmed file: {}", e),
+    }
 }
 
 // ============================================================
@@ -472,6 +564,13 @@ async fn start_node(
     // Refresh bootstrap / seed files before starting.
     let _ = setup_data_dir().await;
 
+    // Trim accumulated gossip-discovered peers in seedlist.extra to a small
+    // random subset BEFORE iriumd reads the file. Without this, iriumd's
+    // SeedlistManager hands its bootstrap loop 60+ candidates, most of which
+    // are dead nodes from past sessions, and cycling through them at 5
+    // peers/5s pushes initial peer connect time into the minutes range.
+    trim_seedlist_extra();
+
     let mut args = vec!["--http-rpc".to_string()];
     if let Some(dir) = &data_dir {
         args.push("--data-dir".to_string());
@@ -515,10 +614,19 @@ async fn start_node(
 
     // Peers organically discovered by iriumd in previous sessions via P2P gossip.
     // No external server dependency — purely local data iriumd wrote itself.
-    // Promoting them to IRIUM_ADDNODE gives them highest-priority retry behaviour.
+    //
+    // We deliberately do NOT chain these into IRIUM_ADDNODE anymore: that list
+    // was treating every stale gossip IP as a high-priority dial target, and
+    // with 60+ accumulated dead peers in seedlist.extra the seed-dial loop
+    // would burn 4-5 minutes timing out + banning each one before settling
+    // on the alive few. iriumd's SeedlistManager (irium-source/src/network.rs)
+    // reads seedlist.extra independently, so those IPs are still dialed —
+    // just at lower priority, after the hardcoded seeds have connected and
+    // gossip can re-validate them. We keep the read here only to log the
+    // count so it's visible in app logs how many extras the node knows about.
     let extra_seeds = read_extra_seeds();
     if !extra_seeds.is_empty() {
-        tracing::info!("[start_node] {} extra seeds from seedlist.extra", extra_seeds.len());
+        tracing::info!("[start_node] {} extra seeds in seedlist.extra (iriumd reads these via SeedlistManager; not promoted to IRIUM_ADDNODE)", extra_seeds.len());
     }
 
     // UPnP: ask the router to open TCP 38291 so other NAT-behind nodes can
@@ -546,13 +654,15 @@ async fn start_node(
             .map(|ip| ip.trim().to_string())
     };
 
-    // Combined deduplicated seed list, own public IP filtered out.
+    // High-priority dial list — only the known-reliable hardcoded seeds.
+    // Own public IP filtered out so iriumd doesn't try to dial itself.
+    // seedlist.extra entries are intentionally NOT included here (see the
+    // longer comment above where extra_seeds is read).
     let own_ip = resolved_public_ip.as_deref().unwrap_or("").trim().to_string();
     let mut seen = std::collections::HashSet::new();
     let bootstrap_seeds: String = hardcoded_seeds
         .iter()
         .map(|s| s.to_string())
-        .chain(extra_seeds.into_iter())
         .filter(|ip| !ip.is_empty() && ip != &own_ip && seen.insert(ip.clone()))
         .collect::<Vec<_>>()
         .join(",");
@@ -570,6 +680,14 @@ async fn start_node(
 
     // Parallel blocking threads for header/block processing (default 2).
     node_env.insert("IRIUM_P2P_BLOCKING_CONCURRENCY".to_string(), "4".to_string());
+
+    // RPC rate limit: bump from default 120/min (2/s) to 600/min (10/s).
+    // The GUI's 15s wallet poll fires 8 sequential /rpc/balance calls in a
+    // burst, and the Explorer Refresh button can fire up to ~30 /rpc/block
+    // calls. At the default 120 limit the burst depletes the token bucket
+    // (shared per IP across all RPC endpoints), causing /rpc/balance to
+    // return 429 and the wallet UI to render "—" for some addresses.
+    node_env.insert("IRIUM_RATE_LIMIT_PER_MIN".to_string(), "600".to_string());
 
     // Raise the total peer ceiling so iriumd keeps seeking peers via gossip.
     // Real var is IRIUM_P2P_MAX_PEERS (clamp 10-500, default 100). 24 gives
@@ -1044,6 +1162,57 @@ async fn check_binaries() -> Result<BinaryCheckResult, String> {
         irium_wallet: Command::new_sidecar("irium-wallet").is_ok(),
         irium_miner:  Command::new_sidecar("irium-miner").is_ok(),
     })
+}
+
+// get_node_metrics: scrapes iriumd's Prometheus-style /metrics endpoint and
+// extracts the two counters the GUI cares about — inbound_accepted_total
+// (used to detect whether port forwarding is actually working, independent
+// of UPnP success) and outbound_dial_success_total. Returns zeros on any
+// failure so the UI can render without special-casing — a stuck/offline
+// node simply shows 0 inbound, same as a healthy node before peers dial in.
+#[tauri::command]
+async fn get_node_metrics(state: State<'_, AppState>) -> Result<NodeMetrics, String> {
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let client = reqwest::Client::new();
+    let resp = match client
+        .get(format!("{}/metrics", rpc_url))
+        .timeout(Duration::from_secs(3))
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(_) => return Ok(NodeMetrics::default()),
+    };
+    let text = match resp.text().await {
+        Ok(t) => t,
+        Err(_) => return Ok(NodeMetrics::default()),
+    };
+
+    // Each metric line is `metric_name <value>`. Lines starting with '#'
+    // are HELP/TYPE annotations — Prometheus convention. We only need two
+    // counters here, so a line-by-line scan is simpler than a real parser.
+    let mut metrics = NodeMetrics::default();
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') { continue; }
+        let mut parts = line.splitn(2, char::is_whitespace);
+        let name = match parts.next() { Some(n) => n, None => continue };
+        let value_str = match parts.next() { Some(v) => v.trim(), None => continue };
+        match name {
+            "irium_inbound_accepted_total" => {
+                if let Ok(v) = value_str.parse::<u64>() {
+                    metrics.inbound_accepted_total = v;
+                }
+            }
+            "irium_outbound_dial_success_total" => {
+                if let Ok(v) = value_str.parse::<u64>() {
+                    metrics.outbound_dial_success_total = v;
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(metrics)
 }
 
 // get_node_status: fully decentralized — reads only from the local node's RPC.
@@ -2040,8 +2209,14 @@ async fn offer_create(
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    // Need seller address and timeout height
-    let seller = get_first_wallet_address(wallet_path.clone(), data_dir.clone()).await?;
+    // Seller address: use the caller-supplied value when present, otherwise
+    // fall back to the wallet's first derived address (the prior behaviour).
+    // The address must still be one whose key the wallet can sign with; the
+    // binary will fail at sign time otherwise.
+    let seller = match params.seller_address.as_ref() {
+        Some(s) if !s.trim().is_empty() => s.trim().to_string(),
+        _ => get_first_wallet_address(wallet_path.clone(), data_dir.clone()).await?,
+    };
     let height = get_current_height(&rpc_url).await;
     let timeout = height + params.timeout_blocks.unwrap_or(1000);
 
@@ -2079,12 +2254,18 @@ async fn offer_create(
 async fn offer_take(
     state: State<'_, AppState>,
     offer_id: String,
+    buyer_address: Option<String>,
 ) -> Result<OfferTakeResult, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let buyer = get_first_wallet_address(wallet_path.clone(), data_dir.clone()).await?;
+    // Buyer address: caller-supplied when present, otherwise wallet first
+    // address (prior behaviour). Empty/whitespace strings are treated as None.
+    let buyer = match buyer_address.as_ref() {
+        Some(b) if !b.trim().is_empty() => b.trim().to_string(),
+        _ => get_first_wallet_address(wallet_path.clone(), data_dir.clone()).await?,
+    };
 
     // offer-take --offer <id> --buyer <addr> --rpc <url> --json
     let output = run_wallet_cmd_with_rpc(
@@ -2385,14 +2566,25 @@ async fn agreement_unpack(state: State<'_, AppState>, file_path: String) -> Resu
 async fn agreement_release(
     state: State<'_, AppState>,
     agreement_id: String,
+    secret: Option<String>,
+    broadcast: Option<bool>,
 ) -> Result<ReleaseResult, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let output = run_wallet_cmd_with_rpc(
-        vec!["agreement-release".to_string(), agreement_id, "--json".to_string()],
-        wallet_path, data_dir, rpc_url,
-    ).await?;
+    // The binary accepts --secret <hex> for HTLC unlock (required when the
+    // wallet did not fund the agreement itself) and --broadcast to actually
+    // transmit the spending tx. Without --broadcast it builds but does not
+    // send, which previously caused the GUI to claim success on a no-op.
+    let mut args = vec!["agreement-release".to_string(), agreement_id, "--json".to_string()];
+    if let Some(s) = secret.and_then(|s| { let t = s.trim().to_string(); if t.is_empty() { None } else { Some(t) } }) {
+        args.push("--secret".to_string());
+        args.push(s);
+    }
+    if broadcast.unwrap_or(true) {
+        args.push("--broadcast".to_string());
+    }
+    let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await?;
     let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
     Ok(ReleaseResult {
         txid: raw["txid"].as_str().map(String::from),
@@ -2405,14 +2597,16 @@ async fn agreement_release(
 async fn agreement_refund(
     state: State<'_, AppState>,
     agreement_id: String,
+    broadcast: Option<bool>,
 ) -> Result<ReleaseResult, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let output = run_wallet_cmd_with_rpc(
-        vec!["agreement-refund".to_string(), agreement_id, "--json".to_string()],
-        wallet_path, data_dir, rpc_url,
-    ).await?;
+    let mut args = vec!["agreement-refund".to_string(), agreement_id, "--json".to_string()];
+    if broadcast.unwrap_or(true) {
+        args.push("--broadcast".to_string());
+    }
+    let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await?;
     let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
     Ok(ReleaseResult {
         txid: raw["txid"].as_str().map(String::from),
@@ -2499,6 +2693,86 @@ async fn proof_submit(
         ],
         wallet_path, data_dir, rpc_url,
     ).await?;
+    serde_json::from_str::<ProofSubmitResult>(&output)
+        .map_err(|e| format!("Parse error: {} | raw: {}", e, &output[..output.len().min(200)]))
+}
+
+// proof_create_and_submit: end-to-end proof creation flow for users who
+// don't have a pre-signed proof file. Runs agreement-proof-create to write
+// a signed proof JSON to a temp file, then immediately runs
+// agreement-proof-submit against that file, then cleans up. The user never
+// sees the JSON. Mirrors the manual two-step CLI sequence documented in
+// SETTLEMENT-DEV.md §"Step 5".
+#[tauri::command]
+async fn proof_create_and_submit(
+    state: State<'_, AppState>,
+    agreement_hash: String,
+    proof_type: String,
+    attested_by: String,
+    address: String,
+    evidence_summary: Option<String>,
+    evidence_hash: Option<String>,
+) -> Result<ProofSubmitResult, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+
+    // Temp file lives in OS temp dir; nanos suffix avoids collisions across
+    // concurrent invocations. Cleaned up on every exit path below.
+    let ts_nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let tmp_path = std::env::temp_dir().join(format!("irium_proof_{}.json", ts_nanos));
+    let tmp_str = tmp_path.to_string_lossy().to_string();
+
+    // Step 1 — agreement-proof-create writes the signed JSON to tmp_path.
+    let mut create_args = vec![
+        "agreement-proof-create".to_string(),
+        "--agreement-hash".to_string(), agreement_hash,
+        "--proof-type".to_string(), proof_type,
+        "--attested-by".to_string(), attested_by,
+        "--address".to_string(), address,
+        "--out".to_string(), tmp_str.clone(),
+        "--json".to_string(),
+    ];
+    if let Some(s) = evidence_summary.as_ref().filter(|s| !s.trim().is_empty()) {
+        create_args.push("--evidence-summary".to_string());
+        create_args.push(s.clone());
+    }
+    if let Some(h) = evidence_hash.as_ref().filter(|h| !h.trim().is_empty()) {
+        create_args.push("--evidence-hash".to_string());
+        create_args.push(h.clone());
+    }
+    if let Err(e) = run_wallet_cmd_with_rpc(
+        create_args,
+        wallet_path.clone(),
+        data_dir.clone(),
+        rpc_url.clone(),
+    ).await {
+        let _ = std::fs::remove_file(&tmp_path);
+        return Err(format!("proof-create failed: {}", e));
+    }
+
+    // Step 2 — agreement-proof-submit reads the file we just wrote and
+    // broadcasts the proof. Capture the result before cleanup so we can
+    // still return it on success.
+    let submit_result = run_wallet_cmd_with_rpc(
+        vec![
+            "agreement-proof-submit".to_string(),
+            "--proof".to_string(), tmp_str,
+            "--json".to_string(),
+        ],
+        wallet_path,
+        data_dir,
+        rpc_url,
+    ).await;
+
+    // Always clean up — success or failure. The proof has already been
+    // broadcast on-chain at this point, so the local file has no further use.
+    let _ = std::fs::remove_file(&tmp_path);
+
+    let output = submit_result?;
     serde_json::from_str::<ProofSubmitResult>(&output)
         .map_err(|e| format!("Parse error: {} | raw: {}", e, &output[..output.len().min(200)]))
 }
@@ -2753,6 +3027,7 @@ async fn start_miner(
 
     let (mut rx, child) = cmd.spawn().map_err(|e| format!("Failed to start miner: {}", e))?;
     let hashrate_ref = Arc::clone(&state.miner_hashrate);
+    let sync_ref = Arc::clone(&state.miner_sync_status);
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
             let line = match event {
@@ -2760,8 +3035,22 @@ async fn start_miner(
                 CommandEvent::Stderr(l) => { tracing::warn!("[irium-miner stderr] {}", l); l }
                 _ => break,
             };
+            // TEMPORARY diagnostic: surface every miner line to the dev
+            // terminal so we can see whether output reaches Rust at all and
+            // at what cadence. Remove once the pipeline is trusted.
+            eprintln!("[miner-rx] (parsed={:?}) {}", parse_hashrate_khs(&line), line.trim_end());
+
             if let Some(khs) = parse_hashrate_khs(&line) {
                 if let Ok(mut h) = hashrate_ref.lock() { *h = khs; }
+                // Mining started — drop any stale sync line so the UI
+                // transitions cleanly from "Syncing…" to live hashrate.
+                if let Ok(mut s) = sync_ref.lock() { *s = None; }
+            } else if line.contains("[sync]") || line.contains("Miner downloading blocks") {
+                // irium-miner.rs prints these tags while it's catching up
+                // to the chain tip before mining starts. We want the UI
+                // to surface this so the user understands the 30–60 s
+                // startup delay isn't a hung miner.
+                if let Ok(mut s) = sync_ref.lock() { *s = Some(line.trim().to_string()); }
             }
         }
     });
@@ -2782,6 +3071,7 @@ async fn stop_miner(state: State<'_, AppState>) -> Result<bool, String> {
         *state.miner_address.lock().map_err(lock_err)? = None;
         *state.miner_threads.lock().map_err(lock_err)? = 0;
         *state.miner_hashrate.lock().map_err(lock_err)? = 0.0;
+        *state.miner_sync_status.lock().map_err(lock_err)? = None;
         return Ok(true);
     }
     Ok(false)
@@ -2798,6 +3088,7 @@ async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, Str
     let threads = *state.miner_threads.lock().map_err(lock_err)?;
 
     let hashrate_khs = *state.miner_hashrate.lock().map_err(lock_err)?;
+    let sync_status = state.miner_sync_status.lock().map_err(lock_err)?.clone();
 
     Ok(MinerStatus {
         running,
@@ -2807,6 +3098,7 @@ async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, Str
         difficulty: 0,
         threads,
         address,
+        sync_status,
     })
 }
 
@@ -2816,8 +3108,62 @@ async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, Str
 
 #[tauri::command]
 async fn list_gpu_devices() -> Result<Vec<GpuDevice>, String> {
-    // irium-miner GPU enumeration is not exposed via CLI; return empty list
-    Ok(vec![])
+    // Probe the GPU sidecar with --list-platforms. Output format:
+    //   [GPU] OpenCL platforms detected:
+    //     Platform 0: NVIDIA CUDA (1 device(s))
+    //       Device 0: NVIDIA GeForce RTX 4070 SUPER
+    // When no OpenCL ICD is present the binary prints:
+    //   [GPU] No OpenCL platforms found.
+    let cmd = match Command::new_sidecar("irium-miner-gpu") {
+        Ok(c) => c,
+        // Sidecar absent (no OpenCL on the build host). Treat as empty list.
+        Err(_) => return Ok(Vec::new()),
+    };
+    let (mut rx, _child) = cmd
+        .args(&["--list-platforms"])
+        .spawn()
+        .map_err(|e| format!("Failed to probe GPUs: {}", e))?;
+
+    let mut output = String::new();
+    while let Some(event) = rx.recv().await {
+        match event {
+            CommandEvent::Stdout(l) | CommandEvent::Stderr(l) => {
+                output.push_str(&l);
+                output.push('\n');
+            }
+            CommandEvent::Terminated(_) => break,
+            _ => {}
+        }
+    }
+
+    if output.contains("No OpenCL platforms found") {
+        return Ok(Vec::new());
+    }
+
+    let mut devices = Vec::new();
+    let mut current_vendor = String::new();
+    let mut flat_index: u32 = 0;
+    for line in output.lines() {
+        let trimmed = line.trim();
+        if let Some(rest) = trimmed.strip_prefix("Platform ") {
+            if let Some(colon) = rest.find(": ") {
+                let after = &rest[colon + 2..];
+                current_vendor = after.split(" (").next().unwrap_or(after).to_string();
+            }
+        } else if let Some(rest) = trimmed.strip_prefix("Device ") {
+            if let Some(colon) = rest.find(": ") {
+                let name = rest[colon + 2..].to_string();
+                devices.push(GpuDevice {
+                    index: flat_index,
+                    name,
+                    vendor: current_vendor.clone(),
+                    vram_mb: 0,
+                });
+                flat_index += 1;
+            }
+        }
+    }
+    Ok(devices)
 }
 
 #[tauri::command]
@@ -2825,7 +3171,7 @@ async fn start_gpu_miner(
     state: State<'_, AppState>,
     address: String,
     device_index: u32,
-    intensity: u32,
+    _intensity: u32,
 ) -> Result<bool, String> {
     let mut miner_lock = state.miner_process.lock().map_err(lock_err)?;
     if miner_lock.is_some() {
@@ -2835,18 +3181,10 @@ async fn start_gpu_miner(
     let home_dir = dirs::home_dir().unwrap_or_default();
     let irium_dir = home_dir.join(".irium");
 
-    let mut env = HashMap::new();
-    env.insert("IRIUM_MINER_ADDRESS".to_string(), address.clone());
-    env.insert("IRIUM_RPC_URL".to_string(), rpc_url.clone());
-    env.insert("IRIUM_NODE_RPC".to_string(), rpc_url);
-    env.insert("IRIUM_GPU_DEVICE".to_string(), device_index.to_string());
-    env.insert("IRIUM_GPU_INTENSITY".to_string(), intensity.to_string());
-    env.insert("IRIUM_MINER_GPU".to_string(), "1".to_string());
-
-    let (mut rx, child) = Command::new_sidecar("irium-miner")
-        .map_err(|e| format!("irium-miner not found: {}", e))?
-        .envs(env)
-        .args(&["--gpu"])
+    let device_str = device_index.to_string();
+    let (mut rx, child) = Command::new_sidecar("irium-miner-gpu")
+        .map_err(|e| format!("irium-miner-gpu not bundled: {}", e))?
+        .args(&["--wallet", &address, "--rpc", &rpc_url, "--device", &device_str])
         .current_dir(irium_dir)
         .spawn()
         .map_err(|e| format!("Failed to start GPU miner: {}", e))?;
@@ -2915,11 +3253,9 @@ async fn stratum_connect(
     env.insert("IRIUM_MINER_ADDRESS".to_string(), mining_addr.clone());
     env.insert("IRIUM_RPC_URL".to_string(), rpc_url.clone());
     env.insert("IRIUM_NODE_RPC".to_string(), rpc_url);
-    env.insert("IRIUM_POOL_URL".to_string(), pool_url.clone());
-    env.insert("IRIUM_POOL_WORKER".to_string(), worker.clone());
-    env.insert("IRIUM_POOL_PASS".to_string(), password);
     env.insert("IRIUM_STRATUM_URL".to_string(), pool_url.clone());
-    env.insert("IRIUM_WORKER".to_string(), worker.clone());
+    env.insert("IRIUM_STRATUM_USER".to_string(), worker.clone());
+    env.insert("IRIUM_STRATUM_PASS".to_string(), password);
 
     let (mut rx, child) = Command::new_sidecar("irium-miner")
         .map_err(|e| format!("irium-miner not found: {}", e))?
@@ -3352,7 +3688,20 @@ async fn set_wallet_config(
     wallet_path: Option<String>,
     data_dir: Option<String>,
 ) -> Result<bool, String> {
-    *state.wallet_path.lock().map_err(lock_err)? = wallet_path;
+    // Reject a stale persisted wallet_path (file moved/deleted between runs)
+    // by falling back to None — irium-wallet then defaults to
+    // ~/.irium/wallet.json instead of failing on every command.
+    let validated_wallet_path = match wallet_path {
+        Some(p) if !std::path::Path::new(&p).exists() => {
+            tracing::warn!(
+                "[set_wallet_config] persisted wallet_path does not exist on disk: {} — falling back to default",
+                p
+            );
+            None
+        }
+        other => other,
+    };
+    *state.wallet_path.lock().map_err(lock_err)? = validated_wallet_path;
     *state.data_dir.lock().map_err(lock_err)? = data_dir;
     Ok(true)
 }
@@ -4675,12 +5024,14 @@ fn main() {
             start_node,
             stop_node,
             get_node_status,
+            get_node_metrics,
             setup_data_dir,
             clear_node_state,
             save_discovered_peers,
             check_binaries,
             try_upnp_port_map,
             get_app_version,
+            get_system_info,
             // Wallet
             wallet_get_balance,
             wallet_new_address,
@@ -4733,6 +5084,7 @@ fn main() {
             proof_list,
             proof_sign,
             proof_submit,
+            proof_create_and_submit,
             // Reputation
             reputation_show,
             // Settlement templates

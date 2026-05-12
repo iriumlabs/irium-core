@@ -7,14 +7,15 @@ import {
 import clsx from 'clsx';
 import { useStore } from '../../lib/store';
 
+// Settlement / Marketplace / Agreements / Reputation removed from the
+// sidebar by request — their routes are redirected to /dashboard in
+// App.tsx, but the page files, lazy imports, and the four lucide icons
+// (ShieldCheck, ShoppingBag, FileText, Star) above are intentionally
+// preserved so the entries can be reinstated by re-adding them here.
 const NAV = [
   { to: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard'   },
   { to: '/explorer',    icon: Globe,           label: 'Explorer'    },
   { to: '/wallet',      icon: Wallet,          label: 'Wallet'      },
-  { to: '/settlement',  icon: ShieldCheck,     label: 'Settlement'  },
-  { to: '/marketplace', icon: ShoppingBag,     label: 'Marketplace' },
-  { to: '/agreements',  icon: FileText,        label: 'Agreements'  },
-  { to: '/reputation',  icon: Star,            label: 'Reputation'  },
   { to: '/miner',       icon: Cpu,             label: 'Miner'       },
   { to: '/logs',        icon: Terminal,        label: 'Logs'        },
 ];

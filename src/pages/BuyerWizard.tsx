@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, CheckCircle2, Loader2, AlertCircle,
   RefreshCw, Upload, Star, ArrowRight,
+  ArrowLeftRight, Briefcase, Target, Landmark,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { open as openDialog } from '@tauri-apps/api/dialog';
@@ -11,7 +12,30 @@ import { offers, feeds, agreements as agreementsApi, agreementSpend } from '../l
 import type { Offer, AgreementStatusResult } from '../lib/types';
 import { formatIRM } from '../lib/types';
 
-const STEPS = ['Find Offer', 'Take Offer', 'Fund & Pay', 'Monitor & Complete'];
+// Step 0 = Choose Type, then the regular find/take/fund/monitor flow. Mirrors
+// the four-card template grid in Settlement.tsx and SellerWizard.tsx so all
+// three entry paths share the same visual template selection.
+const STEPS = ['Choose Type', 'Find Offer', 'Take Offer', 'Fund & Pay', 'Monitor & Complete'];
+
+// Settlement type the buyer is looking for. The offer-create binary command
+// has no typed-template field, so this is a UX signal only — the find-offer
+// step still shows all offers; the chosen template is surfaced for context.
+type TemplateId = 'otc' | 'freelance' | 'milestone' | 'deposit';
+
+const TEMPLATES: ReadonlyArray<{
+  id: TemplateId;
+  name: string;
+  desc: string;
+  Icon: React.ElementType;
+  iconBg: string;
+  iconColor: string;
+  glowBg: string;
+}> = [
+  { id: 'otc',       name: 'OTC Trade',  desc: 'Peer-to-peer trade with escrow', Icon: ArrowLeftRight, iconBg: 'bg-irium-500/20', iconColor: 'text-irium-400', glowBg: 'bg-irium-500' },
+  { id: 'freelance', name: 'Freelance',  desc: 'Contractor milestone payment',   Icon: Briefcase,      iconBg: 'bg-blue-500/20',  iconColor: 'text-blue-400',  glowBg: 'bg-blue-500'  },
+  { id: 'milestone', name: 'Milestone',  desc: 'Multi-stage project payment',    Icon: Target,         iconBg: 'bg-green-500/20', iconColor: 'text-green-400', glowBg: 'bg-green-500' },
+  { id: 'deposit',   name: 'Deposit',    desc: 'Collateral deposit escrow',      Icon: Landmark,       iconBg: 'bg-amber-500/20', iconColor: 'text-amber-400', glowBg: 'bg-amber-500' },
+];
 
 export default function BuyerWizard() {
   const navigate = useNavigate();
@@ -19,7 +43,10 @@ export default function BuyerWizard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Step 0 — browse / id / file
+  // Step 0 (Choose Type) state. Null until the user clicks a template card.
+  const [template, setTemplate] = useState<TemplateId | null>(null);
+
+  // Step 1 — browse / id / file
   const [syncing, setSyncing] = useState(false);
   const [marketOffers, setMarketOffers] = useState<Offer[]>([]);
   const [marketLoaded, setMarketLoaded] = useState(false);
@@ -92,7 +119,7 @@ export default function BuyerWizard() {
     // Path 1: card selected from marketplace
     if (selectedOffer) {
       setFoundOffer(selectedOffer);
-      setStep(1);
+      setStep(2);
       return;
     }
 
@@ -103,7 +130,7 @@ export default function BuyerWizard() {
         const o = await offers.show(offerIdInput.trim());
         if (!o) throw new Error('Offer not found');
         setFoundOffer(o);
-        setStep(1);
+        setStep(2);
       } catch (e) {
         setError(String(e));
       } finally {
@@ -124,7 +151,7 @@ export default function BuyerWizard() {
       const res = await offers.take(foundOffer.id);
       if (!res?.success) throw new Error(res?.message ?? 'Failed to take offer');
       setAgreementId(res.agreement_id);
-      setStep(2);
+      setStep(3);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -140,7 +167,7 @@ export default function BuyerWizard() {
       const res = await agreementSpend.fund(agreementId);
       if (!res?.success) throw new Error(res?.message ?? 'Funding failed');
       toast.success('Escrow funded');
-      setStep(3);
+      setStep(4);
       startPolling();
     } catch (e) {
       setError(String(e));
@@ -232,8 +259,72 @@ export default function BuyerWizard() {
         </div>
 
         <AnimatePresence mode="wait">
-          {/* ── Step 0: Find Offer ── */}
+          {/* ── Step 0: Choose Type ── four-card template grid mirroring
+              the Settlement Hub's "Create Agreement Directly" path and the
+              Seller Wizard's first step. The selected template is shown as
+              a chip in the next step so the buyer keeps context. */}
           {step === 0 && (
+            <motion.div
+              key="s0-type"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-5"
+            >
+              <div>
+                <h2 className="font-display font-bold text-xl text-white">Choose Settlement Type</h2>
+                <p className="text-white/40 text-sm mt-1">
+                  Pick the kind of trade you're looking for. We'll surface matching offers in the next step.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {TEMPLATES.map((t) => {
+                  const selected = template === t.id;
+                  return (
+                    <motion.button
+                      key={t.id}
+                      type="button"
+                      whileHover={{ scale: 1.02, y: -2 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setTemplate(t.id)}
+                      className={`card-interactive p-6 text-left flex flex-col gap-3 relative overflow-hidden transition-colors ${
+                        selected ? 'ring-2 ring-blue-500/60 bg-blue-500/[0.04]' : ''
+                      }`}
+                    >
+                      <div className={`absolute top-4 right-4 w-20 h-20 rounded-full blur-2xl opacity-25 ${t.glowBg}`} />
+                      <div className={`p-3 rounded-xl w-fit ${t.iconBg}`}>
+                        <t.Icon size={20} className={t.iconColor} />
+                      </div>
+                      <div>
+                        <div className="font-display font-bold text-lg text-white">{t.name}</div>
+                        <div className="text-white/45 text-sm mt-1">{t.desc}</div>
+                      </div>
+                      {selected && (
+                        <div className="absolute top-3 left-3 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                          <CheckCircle2 size={12} className="text-white" />
+                        </div>
+                      )}
+                    </motion.button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => template && setStep(1)}
+                disabled={!template}
+                className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {template
+                  ? `Continue with ${TEMPLATES.find((t) => t.id === template)?.name} →`
+                  : 'Select a template to continue'}
+              </button>
+            </motion.div>
+          )}
+
+          {/* ── Step 1: Find Offer ── */}
+          {step === 1 && (
             <motion.div key="s0" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-4">
 
               {/* Marketplace section */}
@@ -361,8 +452,8 @@ export default function BuyerWizard() {
             </motion.div>
           )}
 
-          {/* ── Step 1: Review & Take Offer ── */}
-          {step === 1 && foundOffer && (
+          {/* ── Step 2: Review & Take Offer ── */}
+          {step === 2 && foundOffer && (
             <motion.div key="s1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="card p-6 space-y-5">
               <div>
                 <h2 className="font-display font-bold text-xl text-white">Review Offer</h2>
@@ -397,8 +488,8 @@ export default function BuyerWizard() {
             </motion.div>
           )}
 
-          {/* ── Step 2: Fund ── */}
-          {step === 2 && (
+          {/* ── Step 3: Fund ── */}
+          {step === 3 && (
             <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="card p-6 space-y-5">
               <div>
                 <h2 className="font-display font-bold text-xl text-white">Fund Escrow</h2>
@@ -435,8 +526,8 @@ export default function BuyerWizard() {
             </motion.div>
           )}
 
-          {/* ── Step 3: Monitor & Complete ── */}
-          {step === 3 && (
+          {/* ── Step 4: Monitor & Complete ── */}
+          {step === 4 && (
             <motion.div key="s3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="card p-6 space-y-5">
               {releaseResult?.success ? (
                 <div className="text-center space-y-4 py-4">

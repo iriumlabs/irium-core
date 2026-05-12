@@ -1,6 +1,6 @@
 import { safeInvoke } from './invoke';
 import type {
-  NodeStatus, NodeStartResult, BinaryCheckResult, WalletBalance, AddressInfo,
+  NodeStatus, NodeMetrics, NodeStartResult, BinaryCheckResult, SystemInfo, WalletBalance, AddressInfo,
   SendResult, Transaction, Offer, CreateOfferParams, CreateOfferResult,
   OfferTakeResult, FeedEntry, FeedSyncResult, Agreement,
   CreateAgreementParams, AgreementResult, ReleaseResult,
@@ -34,6 +34,12 @@ export const node = {
   status: () =>
     safeInvoke<NodeStatus>('get_node_status'),
 
+  // Scrapes iriumd's /metrics for the two counters the Settings page needs
+  // (inbound_accepted_total, outbound_dial_success_total). Backend returns
+  // zeros if the endpoint fails — no special-casing needed at the call site.
+  getMetrics: () =>
+    safeInvoke<NodeMetrics>('get_node_metrics'),
+
   checkBinaries: () =>
     safeInvoke<BinaryCheckResult>('check_binaries'),
 
@@ -51,6 +57,9 @@ export const node = {
 
   getAppVersion: () =>
     safeInvoke<string>('get_app_version'),
+
+  getSystemInfo: () =>
+    safeInvoke<SystemInfo>('get_system_info'),
 
   saveDiscoveredPeers: (multiaddrs: string[]) =>
     safeInvoke<number>('save_discovered_peers', { multiaddrs }),
@@ -154,8 +163,11 @@ export const offers = {
   create: (params: CreateOfferParams) =>
     safeInvoke<CreateOfferResult>('offer_create', { params }),
 
-  take: (offerId: string) =>
-    safeInvoke<OfferTakeResult>('offer_take', { offerId }),
+  // buyerAddress: optional explicit buyer; falls back to the wallet's first
+  // derived address on the backend when omitted. Tauri converts buyerAddress
+  // → buyer_address.
+  take: (offerId: string, buyerAddress?: string) =>
+    safeInvoke<OfferTakeResult>('offer_take', { offerId, buyerAddress }),
 
   export: (offerId: string, outPath: string) =>
     safeInvoke<boolean>('offer_export', { offerId, outPath }),
@@ -202,11 +214,14 @@ export const agreements = {
   unpack: (filePath: string) =>
     safeInvoke<Agreement>('agreement_unpack', { filePath }),
 
-  release: (agreementId: string) =>
-    safeInvoke<ReleaseResult>('agreement_release', { agreementId }),
+  // secret: HTLC preimage hex — required when releasing an agreement the
+  // wallet did not fund itself. broadcast: default true; pass false to
+  // build the tx without transmitting (useful for offline review).
+  release: (agreementId: string, secret?: string, broadcast?: boolean) =>
+    safeInvoke<ReleaseResult>('agreement_release', { agreementId, secret, broadcast }),
 
-  refund: (agreementId: string) =>
-    safeInvoke<ReleaseResult>('agreement_refund', { agreementId }),
+  refund: (agreementId: string, broadcast?: boolean) =>
+    safeInvoke<ReleaseResult>('agreement_refund', { agreementId, broadcast }),
 };
 
 // ── PROOFS ────────────────────────────────────────────────────
@@ -219,6 +234,27 @@ export const proofs = {
 
   submit: (agreementId: string, proofFile: string) =>
     safeInvoke<ProofSubmitResult>('proof_submit', { agreementId, proofFile }),
+
+  // End-to-end: create a signed proof JSON from form fields, broadcast it,
+  // and clean up the temp file. The user never sees the .json. Mirrors the
+  // two-step `agreement-proof-create` + `agreement-proof-submit` CLI flow
+  // documented in SETTLEMENT-DEV.md §"Step 5".
+  createAndSubmit: (params: {
+    agreementHash: string;
+    proofType: string;
+    attestedBy: string;
+    address: string;
+    evidenceSummary?: string;
+    evidenceHash?: string;
+  }) =>
+    safeInvoke<ProofSubmitResult>('proof_create_and_submit', {
+      agreementHash: params.agreementHash,
+      proofType: params.proofType,
+      attestedBy: params.attestedBy,
+      address: params.address,
+      evidenceSummary: params.evidenceSummary,
+      evidenceHash: params.evidenceHash,
+    }),
 };
 
 // ── REPUTATION ────────────────────────────────────────────────

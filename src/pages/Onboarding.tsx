@@ -153,7 +153,10 @@ export function Splash({ onDone }: { onDone: () => void }) {
     return () => clearInterval(id);
   }, []);
 
-  const titleLetters = 'IRIUM CORE';
+  // Title rendered as two flex-grouped words so the inter-word gap is
+  // controlled by the outer flex `gap`, not by a space character that would
+  // pick up letter-spacing 2× and look like an oversized chasm.
+  const titleWords: ReadonlyArray<string> = ['IRIUM', 'CORE'];
 
   return (
     <motion.div
@@ -175,22 +178,6 @@ export function Splash({ onDone }: { onDone: () => void }) {
       />
 
       <ParticleField />
-
-      {/* Scan bar */}
-      <div
-        className="absolute inset-0 pointer-events-none overflow-hidden"
-        style={{ opacity: 0.04 }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            top: 0, left: 0, right: 0, height: '100%',
-            background: 'linear-gradient(180deg, transparent 0%, rgba(110,198,255,0.8) 50%, transparent 100%)',
-            width: '40%',
-            animation: 'scan-bar 5s ease-in-out infinite',
-          }}
-        />
-      </div>
 
       {/* Center: orbital rings + logo. Container has explicit height so the
           absolute-positioned rings (190px diameter) don't overflow into the
@@ -270,27 +257,32 @@ export function Splash({ onDone }: { onDone: () => void }) {
       </div>
 
       {/* Title — letter stagger */}
-      <div className="flex items-center" style={{ gap: 1 }}>
-        {titleLetters.split('').map((char, i) => (
-          <motion.span
-            key={i}
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.28 + i * 0.045, duration: 0.38, ease: 'easeOut' }}
-            className="font-display font-bold"
-            style={{
-              fontSize: 34,
-              letterSpacing: '0.18em',
-              background: char !== ' '
-                ? 'linear-gradient(135deg, #d4eeff 0%, #6ec6ff 50%, #a78bfa 100%)'
-                : undefined,
-              WebkitBackgroundClip: char !== ' ' ? 'text' : undefined,
-              WebkitTextFillColor: char !== ' ' ? 'transparent' : undefined,
-            }}
-          >
-            {char === ' ' ? '  ' : char}
-          </motion.span>
-        ))}
+      <div className="flex items-center" style={{ gap: '0.4em' }}>
+        {titleWords.map((word, wordIdx) => {
+          const before = wordIdx === 0 ? 0 : titleWords[0].length;
+          return (
+            <div key={word} className="flex items-center" style={{ gap: 1 }}>
+              {word.split('').map((char, i) => (
+                <motion.span
+                  key={i}
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.28 + (before + i) * 0.045, duration: 0.38, ease: 'easeOut' }}
+                  className="font-display font-bold"
+                  style={{
+                    fontSize: 34,
+                    letterSpacing: '0.18em',
+                    background: 'linear-gradient(135deg, #d4eeff 0%, #6ec6ff 50%, #a78bfa 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}
+                >
+                  {char}
+                </motion.span>
+              ))}
+            </div>
+          );
+        })}
       </div>
 
       {/* Subtitle */}

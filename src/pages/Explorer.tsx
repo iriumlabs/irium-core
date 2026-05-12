@@ -417,14 +417,31 @@ export default function Explorer() {
     }
   }, [blockCursor, loadingMore]);
 
+  // Synchronous re-entrancy guard. The disabled={refreshing} prop on the
+  // button blocks RE-RENDERED clicks, but React batches state updates so
+  // a fast double-click within the same event-loop tick can land both
+  // calls before the disabled DOM attribute flips. This ref closes that
+  // race deterministically: the ms-1 click sets the flag, the ms-2 click
+  // reads it as true and bails. Without this, two concurrent handleRefresh
+  // invocations each fire 30 /rpc/block requests → 60+ overlapping calls
+  // saturate iriumd's RPC and time out the node-status poll, producing
+  // spurious "Node Disconnected" toasts.
+  const refreshingRef = useRef(false);
+
   const handleRefresh = async () => {
+    if (refreshingRef.current) return;
+    refreshingRef.current = true;
     setRefreshing(true);
-    await Promise.all([
-      fetchLatest(),
-      fetchHashrate(),
-      new Promise((r) => setTimeout(r, 600)),
-    ]);
-    setRefreshing(false);
+    try {
+      await Promise.all([
+        fetchLatest(),
+        fetchHashrate(),
+        new Promise((r) => setTimeout(r, 600)),
+      ]);
+    } finally {
+      refreshingRef.current = false;
+      setRefreshing(false);
+    }
   };
 
   // Initial load + auto-refresh every 30s (only merges; never clears existing blocks)

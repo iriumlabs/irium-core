@@ -4,13 +4,13 @@ import {
   Cpu, Play, Square, RefreshCw, ArrowRight,
   Monitor, Wifi, WifiOff, Activity, Zap,
   ChevronDown, Server, Hash, Clock, Target,
-  Thermometer, Fan, Gauge,
+  Thermometer, Fan, Gauge, Copy,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import toast from 'react-hot-toast';
 import { miner, gpuMiner, stratum } from '../lib/tauri';
-import type { MinerStatus, GpuDevice, GpuMinerStatus, StratumStatus } from '../lib/types';
+import { useStore } from '../lib/store';
 import type { LucideIcon } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -65,30 +65,32 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
 
 function CpuMinerTab() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState<MinerStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Status, history, and core count come from the global store so navigating
+  // away and back doesn't reset the hashrate chart or status badges. The
+  // 3-second poll lives in useNodePoller and runs regardless of which page
+  // is mounted.
+  const status = useStore((s) => s.minerStatus);
+  const history = useStore((s) => s.minerHistory);
+  const cpuCores = useStore((s) => s.cpuCores);
+  const resetMinerHistory = useStore((s) => s.resetMinerHistory);
+
   const [startLoading, setStartLoading] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [address, setAddress] = useState('');
-  const [threads, setThreads] = useState(2);
-  const [history, setHistory] = useState<{ t: number; khs: number }[]>([]);
-  const maxThreads = navigator.hardwareConcurrency ?? 8;
-
+  // Default threads to half of detected cores (rounded down, min 1) the first
+  // time we learn the core count. After that the user owns the slider value.
+  const maxThreads = cpuCores ?? navigator.hardwareConcurrency ?? 8;
+  const [threads, setThreads] = useState(() => Math.max(1, Math.floor(maxThreads / 2)));
+  const [threadsTouched, setThreadsTouched] = useState(false);
   useEffect(() => {
-    const load = async () => {
-      try {
-        const s = await miner.status();
-        setStatus(s);
-        if (s.running) {
-          setHistory(prev => [...prev, { t: Date.now(), khs: s.hashrate_khs + Math.random() * 20 - 10 }].slice(-40));
-        }
-      } catch { /* ignore */ }
-      setLoading(false);
-    };
-    load();
-    const id = setInterval(load, 3000);
-    return () => clearInterval(id);
-  }, []);
+    if (!threadsTouched && cpuCores) {
+      setThreads(Math.max(1, Math.floor(cpuCores / 2)));
+    }
+  }, [cpuCores, threadsTouched]);
+
+  // Loading is only true on the very first poll (status === null). Once a
+  // value lands in the store, subsequent visits get instant render.
+  const loading = status === null;
 
   const handleStart = async () => {
     if (!address.trim()) { toast.error('Mining address required'); return; }
@@ -96,7 +98,6 @@ function CpuMinerTab() {
     try {
       await miner.start(address.trim(), threads);
       toast.success('CPU miner started');
-      setStatus(await miner.status());
     } catch (e) { toast.error(String(e)); }
     finally { setStartLoading(false); }
   };
@@ -106,8 +107,7 @@ function CpuMinerTab() {
     try {
       await miner.stop();
       toast.success('Miner stopped');
-      setStatus(await miner.status());
-      setHistory([]);
+      resetMinerHistory();
     } catch (e) { toast.error(String(e)); }
   };
 
@@ -121,22 +121,82 @@ function CpuMinerTab() {
           }} />
         )}
         <div className="relative z-10">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2.5">
-              <span className={loading ? 'dot-offline' : status?.running ? 'dot-live' : 'dot-offline'} />
-              <span className="font-display font-semibold text-sm" style={{ color: status?.running ? '#34d399' : 'rgba(238,240,255,0.35)' }}>
-                {loading ? 'Loading…' : status?.running ? 'Mining Active' : 'CPU Idle'}
-              </span>
-              {status?.running && (
-                <span className="badge badge-irium">{status.hashrate_khs.toFixed(1)} KH/s</span>
-              )}
-            </div>
-            {status?.address && (
-              <span className="text-xs font-mono opacity-40 truncate max-w-[160px]" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
-                {status.address.slice(0, 12)}…
-              </span>
-            )}
-          </div>
+          {/* When the miner is running but hashrate is still 0, the sidecar
+              is in its blockchain-sync phase. Show a distinct "Syncing
+              blocks…" state so the user understands the 30–60 s delay
+              between Start and first rate update. The store's
+              minerStatus.sync_status carries the last [sync] line from
+              irium-miner's stdout (e.g. "[sync] Miner downloading blocks
+              1..21269 from node"); we surface that verbatim below. */}
+          {(() => {
+            const isSyncing = !!status?.running && status.hashrate_khs === 0;
+            return (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <span className={loading ? 'dot-offline' : status?.running ? 'dot-live' : 'dot-offline'} />
+                    <span className="font-display font-semibold text-sm" style={{ color: status?.running ? '#34d399' : 'rgba(238,240,255,0.35)' }}>
+                      {loading
+                        ? 'Loading…'
+                        : status?.running
+                          ? (isSyncing ? 'Mining Active — Syncing blocks…' : 'Mining Active')
+                          : 'CPU Idle'}
+                    </span>
+                    {status?.running && !isSyncing && (
+                      <span className="badge badge-irium">{status.hashrate_khs.toFixed(1)} KH/s</span>
+                    )}
+                    {isSyncing && (
+                      <span className="badge badge-warning text-[10px]">Syncing</span>
+                    )}
+                  </div>
+                </div>
+
+                {status?.address && (
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xs font-mono text-white/60 break-all" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
+                      {status.address}
+                    </span>
+                    <button
+                      onClick={() => {
+                        if (status?.address) {
+                          navigator.clipboard.writeText(status.address);
+                          toast.success('Address copied');
+                        }
+                      }}
+                      className="text-white/40 hover:text-white/85 transition-colors flex-shrink-0"
+                      title="Copy address"
+                    >
+                      <Copy size={12} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Sync detail strip — appears between the status header
+                    and the chart placeholder while the miner is still
+                    catching up. Disappears the moment the first rate
+                    update lands (sync_status is cleared by the backend). */}
+                {isSyncing && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-start gap-2 px-3 py-2 mb-4 rounded-lg"
+                    style={{ background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.18)' }}
+                  >
+                    <RefreshCw size={12} className="animate-spin flex-shrink-0 mt-0.5" style={{ color: '#fbbf24' }} />
+                    <div className="text-xs leading-relaxed">
+                      <p className="font-mono" style={{ color: 'rgba(238,240,255,0.65)' }}>
+                        {status?.sync_status ?? 'Initializing miner…'}
+                      </p>
+                      <p className="mt-0.5" style={{ color: 'rgba(238,240,255,0.35)' }}>
+                        This may take 1–2 minutes on first start. Hashrate appears once the miner reaches the chain tip.
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </>
+            );
+          })()}
 
           <AnimatePresence>
             {status?.running && history.length > 1 ? (
@@ -205,10 +265,29 @@ function CpuMinerTab() {
           <label className="label">Threads — {threads} of {maxThreads} cores</label>
           <input
             type="range" min={1} max={maxThreads} value={threads}
-            onChange={e => setThreads(parseInt(e.target.value))}
+            onChange={e => { setThreads(parseInt(e.target.value)); setThreadsTouched(true); }}
             className="w-full h-1.5 rounded-full appearance-none cursor-pointer mt-1"
             style={{ background: `linear-gradient(to right, #3b3bff 0%, #6ec6ff 50%, #a78bfa ${(threads / maxThreads) * 100}%, rgba(255,255,255,0.08) ${(threads / maxThreads) * 100}%, rgba(255,255,255,0.08) 100%)` }}
           />
+          {/* Per-core dot indicator: first `threads` cores filled green to
+              show what the miner will spin up; remaining cores stay dim.
+              Wraps automatically on small windows. */}
+          <div className="flex flex-wrap gap-1 mt-2.5">
+            {Array.from({ length: maxThreads }).map((_, i) => {
+              const active = i < threads;
+              return (
+                <span
+                  key={i}
+                  className="w-2 h-2 rounded-full transition-colors duration-200"
+                  style={{
+                    background: active ? '#34d399' : 'rgba(238,240,255,0.08)',
+                    boxShadow: active ? '0 0 6px rgba(52,211,153,0.55)' : 'none',
+                  }}
+                  title={active ? `Core ${i + 1} (active)` : `Core ${i + 1} (idle)`}
+                />
+              );
+            })}
+          </div>
         </div>
 
         <div className="flex items-center gap-3 pt-1">
@@ -248,32 +327,20 @@ function CpuMinerTab() {
 
 function GpuMinerTab() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState<GpuMinerStatus | null>(null);
-  const [devices, setDevices] = useState<GpuDevice[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Status / device list / history come from the global store via the
+  // useNodePoller poll — survives page navigation.
+  const status = useStore((s) => s.gpuMinerStatus);
+  const devices = useStore((s) => s.gpuDevices);
+  const history = useStore((s) => s.gpuMinerHistory);
+  const resetGpuMinerHistory = useStore((s) => s.resetGpuMinerHistory);
+
   const [startLoading, setStartLoading] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [address, setAddress] = useState('');
   const [deviceIndex, setDeviceIndex] = useState(0);
   const [intensity, setIntensity] = useState(80);
-  const [history, setHistory] = useState<{ t: number; khs: number }[]>([]);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [s, devs] = await Promise.all([gpuMiner.status(), gpuMiner.listDevices()]);
-        setStatus(s);
-        setDevices(devs);
-        if (s.running) {
-          setHistory(prev => [...prev, { t: Date.now(), khs: s.hashrate_khs + Math.random() * 50 - 25 }].slice(-40));
-        }
-      } catch { /* ignore */ }
-      setLoading(false);
-    };
-    load();
-    const id = setInterval(load, 3000);
-    return () => clearInterval(id);
-  }, []);
+  const loading = status === null;
 
   const handleStart = async () => {
     if (!address.trim()) { toast.error('Mining address required'); return; }
@@ -281,7 +348,6 @@ function GpuMinerTab() {
     try {
       await gpuMiner.start(address.trim(), deviceIndex, intensity);
       toast.success('GPU miner started');
-      setStatus(await gpuMiner.status());
     } catch (e) { toast.error(String(e)); }
     finally { setStartLoading(false); }
   };
@@ -291,8 +357,7 @@ function GpuMinerTab() {
     try {
       await gpuMiner.stop();
       toast.success('GPU miner stopped');
-      setStatus(await gpuMiner.status());
-      setHistory([]);
+      resetGpuMinerHistory();
     } catch (e) { toast.error(String(e)); }
   };
 
@@ -464,23 +529,16 @@ const PRESET_POOLS = [
 ];
 
 function StratumTab() {
-  const [status, setStatus] = useState<StratumStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Status comes from the global poll, so connection state survives nav.
+  const status = useStore((s) => s.stratumStatus);
+
   const [connectLoading, setConnectLoading] = useState(false);
   const [poolUrl, setPoolUrl] = useState('stratum+tcp://irium.f2pool.com:3333');
   const [worker, setWorker] = useState('');
   const [password, setPassword] = useState('x');
   const [selectedPreset, setSelectedPreset] = useState(0);
 
-  useEffect(() => {
-    const load = async () => {
-      try { setStatus(await stratum.status()); } catch { /* ignore */ }
-      setLoading(false);
-    };
-    load();
-    const id = setInterval(load, 5000);
-    return () => clearInterval(id);
-  }, []);
+  const loading = status === null;
 
   const handleConnect = async () => {
     if (!poolUrl.trim()) { toast.error('Pool URL required'); return; }
@@ -489,7 +547,6 @@ function StratumTab() {
     try {
       await stratum.connect(poolUrl.trim(), worker.trim(), password || 'x');
       toast.success('Connecting to pool…');
-      setTimeout(async () => { setStatus(await stratum.status()); }, 1500);
     } catch (e) { toast.error(String(e)); }
     finally { setConnectLoading(false); }
   };
@@ -498,7 +555,6 @@ function StratumTab() {
     try {
       await stratum.disconnect();
       toast.success('Disconnected from pool');
-      setStatus(await stratum.status());
     } catch (e) { toast.error(String(e)); }
   };
 

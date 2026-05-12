@@ -75,6 +75,32 @@ pub struct PeerInfo {
     pub dialable: Option<bool>,
 }
 
+// Parsed subset of GET /metrics. The endpoint returns Prometheus-style
+// text (`metric_name <value>` per line); we extract only the two
+// counters the GUI cares about. Other metrics are ignored.
+//
+// Frontend uses inbound_accepted_total to distinguish:
+//   - 0 + UPnP failed → port forwarding not working (or no peer has
+//     discovered us yet)
+//   - 0 + UPnP active → UPnP did its job; counter increments later as
+//     peers dial in
+//   - > 0 → inbound connections are arriving regardless of UPnP, which
+//     confirms manual port forwarding is working
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+pub struct NodeMetrics {
+    pub inbound_accepted_total: u64,
+    pub outbound_dial_success_total: u64,
+}
+
+// Returned by get_system_info() — small hardware snapshot the GUI fetches
+// once at startup. cpu_cores comes from std::thread::available_parallelism()
+// which is more accurate than navigator.hardwareConcurrency for container
+// and scheduler-constrained environments.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SystemInfo {
+    pub cpu_cores: usize,
+}
+
 // Matches GET /rpc/fee_estimate: {"min_fee_per_byte":1.0,"mempool_size":0}
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FeeEstimateResponse {
@@ -249,6 +275,9 @@ pub struct CreateOfferParams {
     pub payment_instructions: Option<String>,
     pub timeout_blocks: Option<u64>,
     pub offer_id: Option<String>,
+    // Optional explicit seller. Falls back to the wallet's first address
+    // when None — preserves the prior implicit behaviour.
+    pub seller_address: Option<String>,
 }
 
 // offer-create --json output (same fields as offer show, plus saved_path)
@@ -415,18 +444,41 @@ pub struct ProofSubmitResult {
 
 // ============================================================
 // REPUTATION TYPES
+//
+// Mirrors the exact JSON shape returned by
+//   `irium-wallet reputation-show <addr> --json`
+//
+// Note on field types: success_rate, completion_rate, dispute_rate and
+// recent.success_rate are returned as formatted *strings* ("83.3"), not
+// numbers, so they are deserialized as Option<String> and parsed on the
+// frontend with parseFloat() at render time.
 // ============================================================
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct ReputationRecent {
+    pub satisfied: Option<u64>,
+    pub defaults: Option<u64>,
+    pub success_rate: Option<String>,
+    pub risk: String,
+    pub window: Option<u64>,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Reputation {
-    pub pubkey: String,
-    pub address: Option<String>,
-    pub score: f64,
-    pub completed: u64,
-    pub failed: u64,
-    pub default_count: u64,
-    pub risk_signal: String,
-    pub total_volume: Option<u64>,
+    pub seller: String,
+    pub total_agreements: u64,
+    pub satisfied: Option<u64>,
+    pub defaults: Option<u64>,
+    pub success_rate: Option<String>,
+    pub completion_rate: Option<String>,
+    pub dispute_rate: Option<String>,
+    pub avg_proof_response_secs: Option<f64>,
+    pub disputes: Option<u64>,
+    pub self_trade_count: u64,
+    pub sybil_suppressed: bool,
+    pub summary: String,
+    pub risk: String,
+    pub recent: ReputationRecent,
 }
 
 // ============================================================
@@ -442,6 +494,12 @@ pub struct MinerStatus {
     pub difficulty: u64,
     pub threads: u32,
     pub address: Option<String>,
+    // Last sync-progress line captured from the miner sidecar's stdout.
+    // None once mining actually starts (a rate line clears it). Surfaced
+    // to the GUI so the user sees "Syncing blocks…" rather than 0 KH/s
+    // during the 30–60 s startup window where irium-miner is downloading
+    // chain state from iriumd before it begins hashing.
+    pub sync_status: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

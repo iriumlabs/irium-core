@@ -11,7 +11,6 @@ import {
   FileText,
   Package,
   Copy,
-  ExternalLink,
   CheckCircle2,
   Circle,
   Loader2,
@@ -492,6 +491,12 @@ export default function Dashboard() {
   const operation = useStore((s) => s.nodeOperation);
   const setOperation = useStore((s) => s.setNodeOperation);
   const balance = useStore((s) => s.balance);
+  // Per-address balance source — the Confirmed Balance StatCard mirrors the
+  // TopBar (and the Wallet page hero), all showing the selected address's
+  // balance. Falls back to balance.confirmed (wallet-wide) only when the
+  // addresses list hasn't loaded yet — same pattern as TopBar.
+  const addresses = useStore((s) => s.addresses);
+  const activeAddrIdx = useStore((s) => s.activeAddrIdx);
   const addNotification = useStore((s) => s.addNotification);
   const peerList = useStore((s) => s.peerList);
   const externalIp = useStore((s) => s.settings.external_ip);
@@ -502,7 +507,6 @@ export default function Dashboard() {
   const [peersExpanded, setPeersExpanded] = useState(false);
   const [recentTx, setRecentTx] = useState<Transaction[]>([]);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
-  const [activeAgreements, setActiveAgreements] = useState<Agreement[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastTip, setLastTip] = useState<string>('');
   const [tickerGlow, setTickerGlow] = useState(false);
@@ -513,14 +517,8 @@ export default function Dashboard() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [txs, agrs] = await Promise.allSettled([
-        wallet.transactions(10),
-        agreements.list(),
-      ]);
-      if (txs.status === 'fulfilled')
-        setRecentTx(txs.value.filter((tx) => Math.abs(tx.amount) > 0));
-      if (agrs.status === 'fulfilled')
-        setActiveAgreements(agrs.value.filter((a) => a.status === 'funded' || a.status === 'open'));
+      const txs = await wallet.transactions(10);
+      setRecentTx(txs.filter((tx) => Math.abs(tx.amount) > 0));
     } catch {}
     setLoading(false);
   }, []);
@@ -597,12 +595,16 @@ export default function Dashboard() {
 
   const height = nodeStatus?.height ?? 0;
   const peers = nodeStatus?.peers ?? 0;
-  const confirmedBalance = balance?.confirmed ?? 0;
+  // Match TopBar.tsx behaviour: use the selected address's balance once
+  // addresses have loaded; fall back to the wallet-wide confirmed total
+  // only during the brief pre-load window when addresses is still empty.
+  const confirmedBalance = addresses.length > 0
+    ? (addresses[activeAddrIdx]?.balance ?? 0)
+    : (balance?.confirmed ?? 0);
 
   const balanceCount = useCountUp(confirmedBalance, 1200, isInView);
   const heightCount = useCountUp(height, 1200, isInView);
   const peersCount = useCountUp(peers, 1200, isInView);
-  const agreementsCount = useCountUp(activeAgreements.length, 1200, isInView);
 
   return (
     <motion.div
@@ -884,10 +886,10 @@ export default function Dashboard() {
           </motion.div>
         </AnimatePresence>
 
-        <div ref={statsRef} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div ref={statsRef} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {loading ? (
             <>
-              {[0, 1, 2, 3].map((i) => (
+              {[0, 1, 2].map((i) => (
                 <div key={i} className="card p-4">
                   <div className="shimmer h-3 w-24 rounded mb-3" />
                   <div className="shimmer h-7 w-32 rounded mb-1" />
@@ -953,13 +955,6 @@ export default function Dashboard() {
                 }
                 icon={<Users size={18} />}
                 color="green"
-              />
-              <StatCard
-                title="Active Agreements"
-                value={String(agreementsCount)}
-                sub="Pending settlement"
-                icon={<ShieldCheck size={18} />}
-                color="amber"
               />
             </>
           )}
@@ -1036,12 +1031,14 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 card p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display font-semibold text-white/90">Recent Activity</h2>
-              {recentTx.length > 0 && <span className="badge badge-irium">Last 10 txs</span>}
-            </div>
+        {/* Recent Activity — was previously a 2/3-width tile next to an
+            Active Agreements card. With Agreements removed from this page,
+            the chart now spans full width. */}
+        <div className="card p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display font-semibold text-white/90">Recent Activity</h2>
+            {recentTx.length > 0 && <span className="badge badge-irium">Last 10 txs</span>}
+          </div>
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={180}>
                 <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
@@ -1082,44 +1079,6 @@ export default function Dashboard() {
             ) : (
               <EmptyState icon={<Activity />} text="No transaction history yet" />
             )}
-          </div>
-
-          <div className="card p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display font-semibold text-white/90">Active Agreements</h2>
-              <button onClick={() => navigate('/agreements')} className="text-xs text-irium-400 hover:text-irium-300 transition-colors">View all →</button>
-            </div>
-            {activeAgreements.length === 0 ? (
-              <EmptyState icon={<FileText />} text="No active agreements" />
-            ) : (
-              <motion.div
-                className="space-y-2"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-              >
-                {activeAgreements.slice(0, 4).map((a) => (
-                  <motion.div
-                    key={a.id}
-                    variants={itemVariants}
-                    onClick={() => navigate('/agreements', { state: { expandId: a.id } })}
-                    className={`flex items-center justify-between p-2 rounded-lg hover:bg-white/5 cursor-pointer border-l-2 pl-3 overflow-hidden ${agreementBorderColor(a.status)}`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="font-mono text-xs text-white/70 truncate" title={a.id}>
-                        {a.id}
-                      </div>
-                      <div className="text-xs text-white/40 mt-0.5">
-                        {formatIRM(a.amount)}
-                        {a.created_at ? ` · ${timeAgo(a.created_at)}` : ''}
-                      </div>
-                    </div>
-                    <span className="badge badge-info text-xs ml-2">{a.status}</span>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-          </div>
         </div>
 
         <div className="card p-4">
@@ -1222,14 +1181,15 @@ function StatCard({
 }
 
 function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
+  const navigate = useNavigate();
   const isSend = tx.direction === 'send';
   const isCoinbase = tx.is_coinbase === true;
   // Coinbase wins over send/receive direction — mining rewards are
   // semantically distinct from regular incoming txs. Matches the Wallet
   // page's TxRow triage so confs/labels stay consistent across pages.
   const accentBar = isCoinbase ? 'bg-green-500' : isSend ? 'bg-red-500' : 'bg-green-500';
-  const iconBg    = isCoinbase ? 'bg-green-500/10 text-green-400' : isSend ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400';
-  const amountColor = isCoinbase ? 'text-green-400' : isSend ? 'text-red-400' : 'text-green-400';
+  const typeBg    = isCoinbase ? 'bg-green-500/10' : isSend ? 'bg-red-500/10' : 'bg-green-500/10';
+  const typeColor = isCoinbase ? 'text-green-400' : isSend ? 'text-red-400' : 'text-green-400';
   const TypeIcon = isCoinbase ? Pickaxe : isSend ? ArrowUpRight : ArrowDownLeft;
   const typeLabel = isCoinbase ? 'Mining Reward' : isSend ? 'Sent' : 'Received';
 
@@ -1240,54 +1200,98 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
   const confirmations = tx.height
     ? computeConfirmations(tx.height, currentTip)
     : tx.confirmations;
+  const isConfirmed = confirmations > 0;
+
+  const goToBlock = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!tx.height) return;
+    navigate('/explorer', { state: { searchTab: 'block', searchQ: String(tx.height) } });
+  };
+  const copyTxid = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(tx.txid);
+    toast.success('TXID copied');
+  };
+
+  // Middle-truncate helper. Uses three literal dots (not ellipsis char) to
+  // match the spec format ("Q8Ni6T...vaLa", "6a133c3a...1c2b6").
+  const shortMid = (s: string, head: number, tail: number) =>
+    s.length <= head + tail + 3 ? s : `${s.slice(0, head)}...${s.slice(-tail)}`;
+
+  // Type-specific detail tail rendered after "Block #N" (or the full
+  // mempool string when the tx isn't yet in a block).
+  const detailTail = (() => {
+    if (!tx.height) return 'Mempool · awaiting confirmation';
+    const parts: string[] = [];
+    if (isCoinbase) {
+      if (tx.address) parts.push(`Miner: ${shortMid(tx.address, 6, 4)}`);
+    } else if (isSend) {
+      if (tx.fee != null && tx.fee > 0) parts.push(`Fee: ${tx.fee.toLocaleString()} sats`);
+      parts.push(`TXID: ${shortMid(tx.txid, 8, 5)}`);
+    } else {
+      parts.push(`TXID: ${shortMid(tx.txid, 8, 5)}`);
+    }
+    parts.push(`${confirmations} conf`);
+    return parts.join(' · ');
+  })();
 
   return (
     <motion.div
       variants={itemVariants}
       onClick={onClick}
-      className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-white/5 cursor-pointer group relative overflow-hidden"
+      className="p-2.5 pl-4 rounded-lg hover:bg-white/5 cursor-pointer relative overflow-hidden"
     >
       <div className={`absolute left-0 top-0 bottom-0 w-1 ${accentBar}`} />
-      <div className={`ml-2 mt-0.5 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${iconBg}`}>
-        <TypeIcon size={14} />
-      </div>
-      <div className="flex-1 min-w-0">
-        {/* Type label — small, dim, sits above the full TXID so the row
-            is identifiable at a glance even when the hash wraps. */}
-        <div className={`text-[11px] font-display font-semibold ${amountColor}`}>
-          {typeLabel}
+      {/* Row 1 — three flex children:
+          LEFT: icon + type label + clickable Block# + truncating detail tail,
+                content-sized so it doesn't leave empty space to the right.
+          MIDDLE: a dotted leader (`flex-1 border-b border-dotted`) that
+                  fills the visual gap between LEFT and RIGHT.
+          RIGHT: amount + status badge + confirmations, fixed cluster. */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${typeBg}`}>
+            <TypeIcon size={11} className={typeColor} />
+          </div>
+          <div className="flex items-baseline gap-1.5 min-w-0 whitespace-nowrap overflow-hidden">
+            <span className={`font-display font-semibold text-sm flex-shrink-0 ${typeColor}`}>{typeLabel}</span>
+            {tx.height && (
+              <>
+                <span className="text-white/20 flex-shrink-0">·</span>
+                <button
+                  onClick={goToBlock}
+                  className="text-xs hover:underline flex-shrink-0"
+                  style={{ color: '#6ec6ff' }}
+                  title="Open in Explorer"
+                >
+                  Block #{tx.height.toLocaleString()}
+                </button>
+              </>
+            )}
+            <span className="text-white/20 flex-shrink-0">·</span>
+            <span className="truncate text-xs text-white/50">{detailTail}</span>
+          </div>
         </div>
-        {/* Full TXID with break-all — no `...` truncation. Wraps to
-            multiple lines on narrow screens; full hash is always visible. */}
-        <div className="font-mono text-[10px] text-white/55 break-all leading-snug mt-0.5">
-          {tx.txid}
-        </div>
-        <div className="text-[10px] text-white/30 mt-0.5">
-          {confirmations} conf
-          {tx.timestamp ? ` · ${timeAgo(tx.timestamp)}` : ''}
+        <div className="flex-1 self-center border-b border-dotted border-white/15" aria-hidden="true" />
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <span className={`font-display font-semibold text-sm tabular-nums whitespace-nowrap ${typeColor}`}>
+            {isSend ? '−' : '+'}{formatIRM(Math.abs(tx.amount))}
+          </span>
+          <span className={`badge ${isConfirmed ? 'badge-success' : 'badge-warning'}`}>
+            {isConfirmed ? 'Confirmed' : 'Pending'}
+          </span>
+          <span className="font-mono text-xs text-white/45 tabular-nums">{confirmations}</span>
         </div>
       </div>
-      <div className={`font-display font-semibold text-sm flex-shrink-0 ${amountColor}`}>
-        {isSend ? '−' : '+'}
-        {formatIRM(Math.abs(tx.amount))}
-      </div>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+      {/* Row 2 — full TXID, break-all, dim, with copy button */}
+      <div className="mt-1.5 flex items-start gap-1.5 text-[10px] font-mono opacity-40 leading-snug" style={{ paddingLeft: 32 }}>
+        <span className="break-all min-w-0" title={tx.txid}>{tx.txid}</span>
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            navigator.clipboard.writeText(tx.txid).then(() => toast.success('TX ID copied'));
-          }}
-          className="p-1.5 rounded hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
-          title="Copy TX ID"
+          onClick={copyTxid}
+          className="text-white/30 hover:text-white/85 transition-colors flex-shrink-0 mt-0.5"
+          title="Copy TXID"
         >
-          <Copy size={12} />
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onClick(); }}
-          className="p-1.5 rounded hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
-          title="View transaction details"
-        >
-          <ExternalLink size={12} />
+          <Copy size={9} />
         </button>
       </div>
     </motion.div>

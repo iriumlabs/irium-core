@@ -10,3 +10,15 @@ src-tauri/binaries/*
 anchors.json
 irium-core-release.tar.gz
 release/
+
+# Local Claude Code state
+.claude/
+
+# Test screenshot artifacts and scratch scripts (root-level only — protects
+# src-tauri/icons/*.png and public/*.png which are legitimate assets)
+/*.png
+/screenshot*.mjs
+/nav-and-shoot.ps1
+/capture-window.ps1
+/COMMIT_MSG.txt
+/walk-console-errors.txt
