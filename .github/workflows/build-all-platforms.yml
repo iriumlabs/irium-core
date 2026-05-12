@@ -30,9 +30,9 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             label: macos-arm
-          - os: macos-13
-            target: x86_64-apple-darwin
-            label: macos-intel
+          # macOS Intel (macos-13) dropped: GitHub's last Intel runner is on
+          # its deprecation runway and queue times are now multi-hour. Intel
+          # Mac users can run the arm64 .dmg under Rosetta 2.
 
     runs-on: ${{ matrix.os }}
 

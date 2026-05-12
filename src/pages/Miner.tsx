@@ -239,7 +239,7 @@ function CpuMinerTab() {
                         {status?.sync_status ?? 'Initializing miner…'}
                       </p>
                       <p className="mt-0.5" style={{ color: 'rgba(238,240,255,0.35)' }}>
-                        This may take 1–2 minutes on first start. Hashrate appears once the miner reaches the chain tip.
+                        Downloading blockchain data for the first time. This takes a few minutes on first run only — subsequent starts will be instant as blocks are cached locally.
                       </p>
                     </div>
                   </motion.div>
