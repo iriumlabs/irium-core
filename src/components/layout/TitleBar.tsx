@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { appWindow } from '@tauri-apps/api/window';
 import { Minus, Square, X } from 'lucide-react';
+import { useStore } from '../../lib/store';
 
 // Trigger zone: only the very top edge of the screen (pixels)
 const TRIGGER_PX = 4;
@@ -11,6 +12,20 @@ export default function TitleBar() {
   const [visible, setVisible] = useState(false);
   // Ref mirrors state so the mousemove handler (closure) sees the current value
   const visibleRef = useRef(false);
+  // Subscribe to local miner state so the close button can warn the user
+  // before the window minimizes-to-tray while the miner is still active.
+  const minerRunning = useStore((s) => s.minerStatus?.running ?? false);
+
+  const handleClose = () => {
+    if (minerRunning) {
+      const ok = window.confirm(
+        'Mining is active. The miner will continue running in the background.\n\n' +
+        'Click OK to minimize to tray, or Cancel to keep the window open and stop mining first if you want to quit completely.'
+      );
+      if (!ok) return;
+    }
+    appWindow.close();
+  };
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -93,7 +108,7 @@ export default function TitleBar() {
             <Square size={10} />
           </button>
           <button
-            onClick={() => appWindow.close()}
+            onClick={handleClose}
             className="w-8 h-8 flex items-center justify-center rounded transition-colors duration-100"
             style={{ color: 'rgba(238,240,255,0.40)' }}
             onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.70)'; e.currentTarget.style.color = '#fff'; }}

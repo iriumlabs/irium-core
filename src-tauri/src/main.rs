@@ -2991,8 +2991,21 @@ async fn settlement_create_deposit(
 // MINER
 // ============================================================
 
+// Sets the system tray tooltip to reflect mining state. Exposed as a Tauri
+// command for frontend flexibility, but the canonical callers are
+// start_miner / stop_miner below — the tooltip updates the moment the local
+// process is spawned or killed, so the tray stays in sync with reality.
+#[tauri::command]
+fn update_tray_status(app: tauri::AppHandle, mining: bool) -> Result<(), String> {
+    let tooltip = if mining { "Irium Core - Mining Active" } else { "Irium Core" };
+    app.tray_handle()
+        .set_tooltip(tooltip)
+        .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 async fn start_miner(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     address: String,
     threads: Option<u32>,
@@ -3058,11 +3071,15 @@ async fn start_miner(
     *state.miner_start_time.lock().map_err(lock_err)? = Some(std::time::Instant::now());
     *state.miner_address.lock().map_err(lock_err)? = Some(address);
     *state.miner_threads.lock().map_err(lock_err)? = threads.unwrap_or(1);
+    // Update tray tooltip so users who minimize-to-tray can see at a glance
+    // that mining is still active. Non-fatal if the platform doesn't support
+    // tray tooltips.
+    let _ = app.tray_handle().set_tooltip("Irium Core - Mining Active");
     Ok(true)
 }
 
 #[tauri::command]
-async fn stop_miner(state: State<'_, AppState>) -> Result<bool, String> {
+async fn stop_miner(app: tauri::AppHandle, state: State<'_, AppState>) -> Result<bool, String> {
     let mut miner_lock = state.miner_process.lock().map_err(lock_err)?;
     if let Some(child) = miner_lock.take() {
         child.kill().map_err(|e| e.to_string())?;
@@ -3072,6 +3089,7 @@ async fn stop_miner(state: State<'_, AppState>) -> Result<bool, String> {
         *state.miner_threads.lock().map_err(lock_err)? = 0;
         *state.miner_hashrate.lock().map_err(lock_err)? = 0.0;
         *state.miner_sync_status.lock().map_err(lock_err)? = None;
+        let _ = app.tray_handle().set_tooltip("Irium Core");
         return Ok(true);
     }
     Ok(false)
@@ -3209,8 +3227,8 @@ async fn start_gpu_miner(
 }
 
 #[tauri::command]
-async fn stop_gpu_miner(state: State<'_, AppState>) -> Result<bool, String> {
-    stop_miner(state).await
+async fn stop_gpu_miner(app: tauri::AppHandle, state: State<'_, AppState>) -> Result<bool, String> {
+    stop_miner(app, state).await
 }
 
 #[tauri::command]
@@ -3287,9 +3305,9 @@ async fn stratum_connect(
 }
 
 #[tauri::command]
-async fn stratum_disconnect(state: State<'_, AppState>) -> Result<bool, String> {
+async fn stratum_disconnect(app: tauri::AppHandle, state: State<'_, AppState>) -> Result<bool, String> {
     *state.pool_url.lock().map_err(lock_err)? = None;
-    stop_miner(state).await
+    stop_miner(app, state).await
 }
 
 #[tauri::command]
@@ -5096,6 +5114,7 @@ fn main() {
             start_miner,
             stop_miner,
             get_miner_status,
+            update_tray_status,
             // Miner (GPU)
             list_gpu_devices,
             start_gpu_miner,
