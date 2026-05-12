@@ -25,6 +25,9 @@ import {
 } from "lucide-react";
 import { fetch as tauriFetch, ResponseType } from "@tauri-apps/api/http";
 import { open as openExternal } from "@tauri-apps/api/shell";
+import { checkUpdate, installUpdate, onUpdaterEvent } from "@tauri-apps/api/updater";
+import { relaunch } from "@tauri-apps/api/process";
+import { listen } from "@tauri-apps/api/event";
 import { useStore } from "../lib/store";
 import { rpc, diagnostics, update, nodeUpdate, node, config } from "../lib/tauri";
 import { DEFAULT_SETTINGS, type DiagnosticsResult, type NodeUpdateCheckResult, type Theme, timeAgo } from "../lib/types";
@@ -137,6 +140,14 @@ export default function Settings() {
   // App.tsx and refreshed when this Settings page mounts (covers users who
   // leave the app running for days without a restart).
   const updateInfo = useStore((s) => s.updateInfo);
+  // In-app updater state — separate from the GitHub-API check above. The
+  // GitHub check populates the banner; this drives the install button's
+  // progress UI once the user opts in.
+  const [installState, setInstallState] = useState<
+    'idle' | 'downloading' | 'installed' | 'error'
+  >('idle');
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [installError, setInstallError] = useState<string | null>(null);
   const [local, setLocal] = useState({ ...settings });
   const [dirty, setDirty] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
@@ -313,6 +324,70 @@ export default function Settings() {
     setTimeout(() => window.location.reload(), 600);
   };
 
+  // ── In-app updater install flow ────────────────────────────────────────────
+  // checkUpdate() hits the `endpoints` array in tauri.conf.json (which serves
+  // latest.json from GitHub Releases). installUpdate() then downloads the
+  // platform-appropriate signed installer, verifies its signature against the
+  // pubkey baked into the binary, and applies it. relaunch() restarts the
+  // app on the new version. Pre-v1.0.2 builds DO NOT have the updater client
+  // compiled in, so this code path only runs in v1.0.2+ releases.
+  const handleInstallUpdate = async () => {
+    setInstallState('downloading');
+    setInstallError(null);
+    setDownloadProgress(0);
+
+    // Listen to status events (PENDING / DOWNLOADED / DONE / ERROR / UPTODATE).
+    const unlistenStatus = await onUpdaterEvent(({ status, error }) => {
+      if (status === 'ERROR') {
+        setInstallError(error ?? 'Update failed');
+        setInstallState('error');
+      } else if (status === 'DONE') {
+        setInstallState('installed');
+      }
+    });
+    // Listen to byte-level download progress so we can show a real %.
+    let bytesDownloaded = 0;
+    let bytesTotal = 0;
+    const unlistenProgress = await listen<{ chunkLength: number; contentLength: number | null }>(
+      'tauri://update-download-progress',
+      ({ payload }) => {
+        if (payload.contentLength) bytesTotal = payload.contentLength;
+        bytesDownloaded += payload.chunkLength;
+        if (bytesTotal > 0) {
+          setDownloadProgress(Math.min(100, Math.round((bytesDownloaded / bytesTotal) * 100)));
+        }
+      },
+    );
+
+    try {
+      const result = await checkUpdate();
+      if (!result.shouldUpdate) {
+        toast.success('You are on the latest version');
+        setInstallState('idle');
+        unlistenStatus();
+        unlistenProgress();
+        return;
+      }
+      await installUpdate();
+      // installUpdate resolves once the installer has been downloaded and
+      // staged. The DONE status event flips us to 'installed'.
+    } catch (e) {
+      setInstallError(e instanceof Error ? e.message : String(e));
+      setInstallState('error');
+    } finally {
+      unlistenStatus();
+      unlistenProgress();
+    }
+  };
+
+  const handleRestart = async () => {
+    try {
+      await relaunch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not restart');
+    }
+  };
+
   const checkForUpdates = async () => {
     setCheckingUpdate(true);
     try {
@@ -442,46 +517,119 @@ export default function Settings() {
         </p>
       </div>
 
-      {/* Update-available banner — sits at the top of Settings whenever the
-          GitHub releases API reports a tag_name newer than CURRENT_VERSION.
-          Same updateInfo Zustand slice the top-of-app UpdateBanner reads; this
-          one is page-local and always visible (no dismiss state) so users who
-          dismissed the global banner still see it here. */}
+      {/* Update-available banner. Same updateInfo Zustand slice the top-of-app
+          UpdateBanner reads; this one is page-local, always visible (no dismiss
+          state), and drives the IN-APP install flow rather than opening a
+          browser. The four states are reflected in installState:
+            idle        - "Install Update" button shown
+            downloading - progress bar with %
+            installed   - "Restart now" button to relaunch on the new version
+            error       - error text + retry button + browser-fallback link  */}
       {updateInfo?.available && (
         <motion.div
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="card p-4 flex items-center justify-between gap-4"
+          className="card p-4 space-y-3"
           style={{
             background: 'linear-gradient(135deg, rgba(110,198,255,0.10) 0%, rgba(167,139,250,0.08) 100%)',
             border: '1px solid var(--brand-line-hi)',
           }}
         >
-          <div className="flex items-start gap-3 min-w-0">
-            <Download size={18} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--brand)' }} />
-            <div className="min-w-0">
-              <p className="text-sm font-semibold" style={{ color: 'var(--t1)' }}>
-                A new version of Irium Core is available: v{updateInfo.latest_version}
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--t3)' }}>
-                You're on v{updateInfo.current_version}. Download at github.com/iriumlabs/irium-core/releases
-              </p>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-start gap-3 min-w-0">
+              <Download size={18} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--brand)' }} />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold" style={{ color: 'var(--t1)' }}>
+                  {installState === 'installed'
+                    ? `Update installed - v${updateInfo.latest_version} ready`
+                    : `A new version of Irium Core is available: v${updateInfo.latest_version}`}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--t3)' }}>
+                  {installState === 'installed'
+                    ? 'Restart the app to start using the new version.'
+                    : installState === 'downloading'
+                    ? `Downloading update… ${downloadProgress}%`
+                    : `You're on v${updateInfo.current_version}.`}
+                </p>
+              </div>
             </div>
+
+            {installState === 'idle' && (
+              <button
+                onClick={handleInstallUpdate}
+                className="btn-primary px-4 py-2 text-xs flex items-center gap-1.5 flex-shrink-0"
+              >
+                <Download size={13} />
+                Install Update
+              </button>
+            )}
+            {installState === 'downloading' && (
+              <button
+                disabled
+                className="btn-primary px-4 py-2 text-xs flex items-center gap-1.5 flex-shrink-0 opacity-70"
+              >
+                <RefreshCw size={13} className="animate-spin" />
+                Downloading…
+              </button>
+            )}
+            {installState === 'installed' && (
+              <button
+                onClick={handleRestart}
+                className="btn-primary px-4 py-2 text-xs flex items-center gap-1.5 flex-shrink-0"
+              >
+                <RefreshCw size={13} />
+                Restart Now
+              </button>
+            )}
+            {installState === 'error' && (
+              <button
+                onClick={handleInstallUpdate}
+                className="btn-secondary px-4 py-2 text-xs flex items-center gap-1.5 flex-shrink-0"
+              >
+                <RefreshCw size={13} />
+                Retry
+              </button>
+            )}
           </div>
-          <button
-            onClick={() => {
-              const url = updateInfo.release_url
-                ?? 'https://github.com/iriumlabs/irium-core/releases/latest';
-              openExternal(url).catch(() => {
-                // Tauri shell.open failed — leave a toast hint
-                toast.error('Could not open browser');
-              });
-            }}
-            className="btn-primary px-4 py-2 text-xs flex items-center gap-1.5 flex-shrink-0"
-          >
-            <Download size={13} />
-            Download
-          </button>
+
+          {/* Progress bar — only while downloading */}
+          {installState === 'downloading' && (
+            <div
+              className="rounded-full overflow-hidden"
+              style={{ height: 6, background: 'rgba(0,0,0,0.40)' }}
+            >
+              <motion.div
+                animate={{ width: `${downloadProgress}%` }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+                style={{
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #3b3bff 0%, #6ec6ff 50%, #a78bfa 100%)',
+                  boxShadow: '0 0 10px rgba(110,198,255,0.55)',
+                }}
+              />
+            </div>
+          )}
+
+          {/* Error block + browser fallback */}
+          {installState === 'error' && installError && (
+            <div className="flex items-start gap-2 text-xs" style={{ color: '#fbbf24' }}>
+              <AlertTriangle size={12} className="mt-0.5 flex-shrink-0" />
+              <div>
+                <p>{installError}</p>
+                <button
+                  onClick={() => {
+                    const url = updateInfo.release_url
+                      ?? 'https://github.com/iriumlabs/irium-core/releases/latest';
+                    openExternal(url).catch(() => toast.error('Could not open browser'));
+                  }}
+                  className="mt-1 underline text-[11px]"
+                  style={{ color: 'rgba(238,240,255,0.55)' }}
+                >
+                  Open releases page in browser instead
+                </button>
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
 

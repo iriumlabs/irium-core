@@ -127,7 +127,10 @@
       "menuOnLeftClick": false
     },
     "updater": {
-      "active": false
+      "active": true,
+      "endpoints": ["https://github.com/iriumlabs/irium-core/releases/latest/download/latest.json"],
+      "dialog": false,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM1Q0FEMjM3MzY1NTY4Q0EKUldUS2FGVTJOOUxLeFkvbml4WnJzMkVsZ29IVTZ6S0k4YnFWUUQxNk1Tc2UwaHBiNEs3U0h6d2EK"
     },
     "windows": [
       {

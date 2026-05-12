@@ -127,6 +127,15 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signing secrets for the Tauri v1 in-app updater. Both are required:
+          # tauri-action signs every platform installer with the private key and
+          # auto-generates `latest.json` (manifest + signatures per platform) as a
+          # release asset, which is what the running client polls via the
+          # `endpoints` entry in tauri.conf.json. Missing either secret causes
+          # tauri-action to skip signing silently — users on installed builds
+          # will then see "signature verification failed" on every update.
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Irium Core ${{ github.ref_name }}'
