@@ -4,6 +4,7 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{Manager, SystemTray, SystemTrayMenu, SystemTrayMenuItem, CustomMenuItem, State};
@@ -197,6 +198,63 @@ async fn get_current_height(rpc_url: &str) -> u64 {
         .ok()
         .and_then(|i| i.height)
         .unwrap_or(0)
+}
+
+// ─── File staging for macOS TCC safety ──────────────────────────────────────
+//
+// macOS TCC permissions are scoped per-binary. When the user picks a file via
+// the native open/save dialog, the Tauri main process gets implicit read or
+// write access, but the spawned irium-wallet sidecar — a separate executable
+// with its own TCC profile — does NOT inherit that grant. Without staging,
+// every "pick a file → pass to sidecar" command fails on macOS with
+// EPERM/EACCES the moment the user's path is under ~/Downloads, ~/Documents,
+// ~/Desktop, or iCloud Drive (the TCC-gated directories).
+//
+// These helpers route all user-path I/O through the main process:
+//   - stage_input:    main reads user path  → writes staged copy under data_dir
+//                     → sidecar reads from staged path (always allowed)
+//   - stage_output:   sidecar writes to staged path under data_dir
+//                     → main copies staged file out to user destination
+//
+// The staging directory lives at <data_dir>/staging or ~/.irium/staging. The
+// sidecar has unrestricted access there because iriumd already writes to
+// data_dir continuously.
+
+fn staging_dir(data_dir: &Option<String>) -> PathBuf {
+    data_dir
+        .as_ref()
+        .map(|d| PathBuf::from(d).join("staging"))
+        .unwrap_or_else(|| dirs::home_dir().unwrap_or_default().join(".irium").join("staging"))
+}
+
+fn next_staged_path(prefix: &str, ext: &str, data_dir: &Option<String>) -> Result<PathBuf, String> {
+    let dir = staging_dir(data_dir);
+    std::fs::create_dir_all(&dir).map_err(|e| format!("create staging dir: {}", e))?;
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    Ok(dir.join(format!("{}-{}.{}", prefix, stamp, ext)))
+}
+
+fn stage_input(src: &str, prefix: &str, data_dir: &Option<String>) -> Result<PathBuf, String> {
+    let dest = next_staged_path(prefix, "bin", data_dir)?;
+    std::fs::copy(src, &dest).map_err(|e| format!(
+        "Could not read file at {}: {}. On macOS, grant Files & Folders access in \
+         System Settings > Privacy & Security > Files and Folders > Irium Core.",
+        src, e
+    ))?;
+    Ok(dest)
+}
+
+fn finalize_output(staged: &Path, dest: &str) -> Result<(), String> {
+    std::fs::copy(staged, dest).map_err(|e| format!(
+        "Could not write output to {}: {}. On macOS, grant Files & Folders access in \
+         System Settings > Privacy & Security > Files and Folders > Irium Core.",
+        dest, e
+    ))?;
+    let _ = std::fs::remove_file(staged);
+    Ok(())
 }
 
 async fn run_wallet_cmd(
@@ -2073,23 +2131,36 @@ async fn wallet_export_mnemonic(state: State<'_, AppState>) -> Result<String, St
 async fn wallet_backup(state: State<'_, AppState>, out_path: String) -> Result<String, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
-    run_wallet_cmd(
-        vec!["backup".to_string(), "--out".to_string(), out_path.clone()],
+    let staged = next_staged_path("backup", "bak", &data_dir)?;
+    let result = run_wallet_cmd(
+        vec!["backup".to_string(), "--out".to_string(), staged.to_string_lossy().to_string()],
         wallet_path,
         data_dir,
-    ).await?;
-    Ok(out_path)
+    ).await;
+    match result {
+        Ok(_) => {
+            finalize_output(&staged, &out_path)?;
+            Ok(out_path)
+        }
+        Err(e) => {
+            let _ = std::fs::remove_file(&staged);
+            Err(e)
+        }
+    }
 }
 
 #[tauri::command]
 async fn wallet_restore_backup(state: State<'_, AppState>, file_path: String) -> Result<String, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
-    run_wallet_cmd(
-        vec!["restore-backup".to_string(), file_path.clone(), "--force".to_string()],
+    let staged = stage_input(&file_path, "restore", &data_dir)?;
+    let result = run_wallet_cmd(
+        vec!["restore-backup".to_string(), staged.to_string_lossy().to_string(), "--force".to_string()],
         wallet_path,
         data_dir,
-    ).await?;
+    ).await;
+    let _ = std::fs::remove_file(&staged);
+    result?;
     Ok("Wallet restored successfully".to_string())
 }
 
@@ -2101,12 +2172,22 @@ async fn wallet_export_wif(
 ) -> Result<String, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
-    run_wallet_cmd(
-        vec!["export-wif".to_string(), address, "--out".to_string(), out_path.clone()],
+    let staged = next_staged_path("wif", "txt", &data_dir)?;
+    let result = run_wallet_cmd(
+        vec!["export-wif".to_string(), address, "--out".to_string(), staged.to_string_lossy().to_string()],
         wallet_path,
         data_dir,
-    ).await?;
-    Ok(out_path)
+    ).await;
+    match result {
+        Ok(_) => {
+            finalize_output(&staged, &out_path)?;
+            Ok(out_path)
+        }
+        Err(e) => {
+            let _ = std::fs::remove_file(&staged);
+            Err(e)
+        }
+    }
 }
 
 // wallet_read_wif: exports WIF to a temp file, reads it back, returns the WIF string.
@@ -2296,21 +2377,28 @@ async fn offer_export(
 ) -> Result<bool, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
-    run_wallet_cmd(
-        vec!["offer-export".to_string(), "--offer".to_string(), offer_id, "--out".to_string(), out_path],
+    let staged = next_staged_path("offer", "json", &data_dir)?;
+    let result = run_wallet_cmd(
+        vec!["offer-export".to_string(), "--offer".to_string(), offer_id, "--out".to_string(), staged.to_string_lossy().to_string()],
         wallet_path, data_dir,
-    ).await?;
-    Ok(true)
+    ).await;
+    match result {
+        Ok(_) => { finalize_output(&staged, &out_path)?; Ok(true) }
+        Err(e) => { let _ = std::fs::remove_file(&staged); Err(e) }
+    }
 }
 
 #[tauri::command]
 async fn offer_import(state: State<'_, AppState>, file_path: String) -> Result<bool, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
-    run_wallet_cmd(
-        vec!["offer-import".to_string(), "--file".to_string(), file_path],
+    let staged = stage_input(&file_path, "offer-import", &data_dir)?;
+    let result = run_wallet_cmd(
+        vec!["offer-import".to_string(), "--file".to_string(), staged.to_string_lossy().to_string()],
         wallet_path, data_dir,
-    ).await?;
+    ).await;
+    let _ = std::fs::remove_file(&staged);
+    result?;
     Ok(true)
 }
 
@@ -2528,22 +2616,29 @@ async fn agreement_pack(
 ) -> Result<bool, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
-    run_wallet_cmd(
-        vec!["agreement-pack".to_string(), "--agreement".to_string(), agreement_id, "--out".to_string(), out_path],
+    let staged = next_staged_path("agreement-pack", "bin", &data_dir)?;
+    let result = run_wallet_cmd(
+        vec!["agreement-pack".to_string(), "--agreement".to_string(), agreement_id, "--out".to_string(), staged.to_string_lossy().to_string()],
         wallet_path, data_dir,
-    ).await?;
-    Ok(true)
+    ).await;
+    match result {
+        Ok(_) => { finalize_output(&staged, &out_path)?; Ok(true) }
+        Err(e) => { let _ = std::fs::remove_file(&staged); Err(e) }
+    }
 }
 
 #[tauri::command]
 async fn agreement_unpack(state: State<'_, AppState>, file_path: String) -> Result<Agreement, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let staged = stage_input(&file_path, "agreement-unpack", &data_dir)?;
     // agreement-unpack --file <path> --json (not agreement-bundle-inspect)
-    let output = run_wallet_cmd(
-        vec!["agreement-unpack".to_string(), "--file".to_string(), file_path, "--json".to_string()],
+    let output_res = run_wallet_cmd(
+        vec!["agreement-unpack".to_string(), "--file".to_string(), staged.to_string_lossy().to_string(), "--json".to_string()],
         wallet_path, data_dir,
-    ).await?;
+    ).await;
+    let _ = std::fs::remove_file(&staged);
+    let output = output_res?;
     let raw: serde_json::Value = serde_json::from_str(&output)
         .map_err(|e| format!("Parse error: {}", e))?;
     Ok(Agreement {
@@ -2644,16 +2739,20 @@ async fn proof_sign(
 ) -> Result<bool, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
-    run_wallet_cmd(
+    let staged = next_staged_path("proof-sign", "json", &data_dir)?;
+    let result = run_wallet_cmd(
         vec![
             "proof-sign".to_string(),
             "--agreement".to_string(), agreement_id,
             "--message".to_string(), proof_data,
-            "--out".to_string(), out_path,
+            "--out".to_string(), staged.to_string_lossy().to_string(),
         ],
         wallet_path, data_dir,
-    ).await?;
-    Ok(true)
+    ).await;
+    match result {
+        Ok(_) => { finalize_output(&staged, &out_path)?; Ok(true) }
+        Err(e) => { let _ = std::fs::remove_file(&staged); Err(e) }
+    }
 }
 
 #[tauri::command]
@@ -2672,27 +2771,33 @@ async fn proof_submit(
     let mut proof_json: serde_json::Value = serde_json::from_str(&file_content)
         .map_err(|e| format!("Proof file is not valid JSON: {}", e))?;
 
-    let actual_path = if proof_json.get("proof_id").is_none() {
+    // Both branches now write to ~/.irium/staging/ so the sidecar can read
+    // the file regardless of which TCC-gated directory the user picked it
+    // from. The main process already has the file content in memory from the
+    // read above, so we just rewrite it (modified or verbatim) into staging.
+    let staged = next_staged_path("proof-submit", "json", &data_dir)?;
+    if proof_json.get("proof_id").is_none() {
         if let Some(obj) = proof_json.as_object_mut() {
             obj.insert("proof_id".to_string(), serde_json::Value::String(agreement_id.clone()));
         }
-        let id_slug: String = agreement_id.chars().take(16).filter(|c| c.is_alphanumeric() || *c == '-').collect();
-        let tmp_path = std::env::temp_dir().join(format!("irium_proof_{}.json", id_slug));
-        std::fs::write(&tmp_path, serde_json::to_string_pretty(&proof_json).unwrap_or(file_content))
-            .map_err(|e| format!("Cannot write temp proof file: {}", e))?;
-        tmp_path.to_string_lossy().to_string()
+        std::fs::write(&staged, serde_json::to_string_pretty(&proof_json).unwrap_or(file_content))
+            .map_err(|e| format!("Cannot write staged proof file: {}", e))?;
     } else {
-        proof_file
-    };
+        std::fs::write(&staged, &file_content)
+            .map_err(|e| format!("Cannot write staged proof file: {}", e))?;
+    }
+    let actual_path = staged.to_string_lossy().to_string();
 
-    let output = run_wallet_cmd_with_rpc(
+    let output_res = run_wallet_cmd_with_rpc(
         vec![
             "agreement-proof-submit".to_string(),
             "--proof".to_string(), actual_path,
             "--json".to_string(),
         ],
         wallet_path, data_dir, rpc_url,
-    ).await?;
+    ).await;
+    let _ = std::fs::remove_file(&staged);
+    let output = output_res?;
     serde_json::from_str::<ProofSubmitResult>(&output)
         .map_err(|e| format!("Parse error: {} | raw: {}", e, &output[..output.len().min(200)]))
 }

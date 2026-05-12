@@ -905,7 +905,17 @@ export default function WalletPage() {
             backingUp={backingUp}
             onImportBackupFile={async () => {
               try {
-                const selected = await openDialog({ title: 'Select Wallet Backup File', multiple: false, filters: [{ name: 'Wallet Backup', extensions: ['bak', 'dat', '*'] }] });
+                // Two-filter pattern so macOS users see both the preferred
+                // backup extensions AND can switch to "All Files" — CLI
+                // backups may carry .json, .tar.gz, or no extension at all.
+                const selected = await openDialog({
+                  title: 'Select Wallet Backup File',
+                  multiple: false,
+                  filters: [
+                    { name: 'Wallet Backup', extensions: ['bak', 'dat', 'json', 'tar', 'gz'] },
+                    { name: 'All Files',     extensions: ['*'] },
+                  ],
+                });
                 if (!selected) return;
                 setRestoreBackupPath(selected as string);
                 setShowRestoreBackupConfirm(true);
