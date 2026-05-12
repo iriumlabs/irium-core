@@ -98,11 +98,13 @@
         "binaries/irium-miner",
         "binaries/irium-explorer"
       ],
-      "longDescription": "Irium Core is the official full-node desktop wallet and miner for the Irium (IRM) blockchain — a proof-of-work, settlement-first chain for trustless commerce.",
+      "longDescription": "Irium Core is the official full-node desktop wallet and miner for the Irium (IRM) blockchain. It bundles an embedded full node (iriumd), a non-custodial BIP39 HD wallet, CPU and GPU mining, ASIC and Stratum pool support, an in-app block explorer, and a settlement UI in a single native window. Your keys never leave your machine; all node operations go through a locally-spawned iriumd on loopback RPC.",
       "shortDescription": "Full-node desktop wallet and miner for the Irium blockchain",
       "windows": {
         "wix": {
-          "language": "en-US"
+          "language": "en-US",
+          "bannerPath": "icons/installer-banner.bmp",
+          "dialogImagePath": "icons/installer-dialog.bmp"
         }
       },
       "macOS": {
