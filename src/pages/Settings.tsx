@@ -24,7 +24,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useStore } from "../lib/store";
-import { rpc, diagnostics, update, nodeUpdate, node } from "../lib/tauri";
+import { rpc, diagnostics, update, nodeUpdate, node, config } from "../lib/tauri";
 import { DEFAULT_SETTINGS, type DiagnosticsResult, type NodeUpdateCheckResult, timeAgo } from "../lib/types";
 import { ONBOARDING_KEY, FORCE_ONBOARDING_KEY } from "./Onboarding";
 
@@ -264,10 +264,24 @@ export default function Settings() {
     }
   };
 
-  const reset = () => {
-    setLocal({ ...DEFAULT_SETTINGS });
-    setDirty(true);
-    if (saveState === "saved") setSaveState("idle");
+  const reset = async () => {
+    // Factory reset: clears every irium-* localStorage key, resets settings
+    // both in-memory and Tauri-side, forces the onboarding wizard on next
+    // launch, and reloads the window. The reload is what lets the splash gate
+    // re-evaluate from a clean slate.
+    updateSettings({ ...DEFAULT_SETTINGS });
+    try {
+      await config.saveSettings(JSON.stringify(DEFAULT_SETTINGS));
+    } catch { /* Tauri IPC unavailable in browser preview — non-fatal */ }
+
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith('irium'))
+      .forEach((k) => localStorage.removeItem(k));
+
+    localStorage.setItem(FORCE_ONBOARDING_KEY, '1');
+
+    toast.success('Reset to defaults — reloading…');
+    setTimeout(() => window.location.reload(), 600);
   };
 
   const checkForUpdates = async () => {
