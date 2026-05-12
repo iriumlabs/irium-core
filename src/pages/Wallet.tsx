@@ -689,6 +689,11 @@ export default function WalletPage() {
               setShowCreateWallet(false);
               setCreateWalletLockImport(false);
               setCreateWalletHideImportTabs(false);
+              // Reset to the first address of whatever the newly-active wallet
+              // is. Without this, activeAddrIdx may still point at an index
+              // valid in the previous wallet, leaving the hero showing a stale
+              // selection (or no balance) until the user clicks an address.
+              setActiveAddrIdx(0);
               loadData();
               loadWalletFiles();
             }}
@@ -1555,7 +1560,16 @@ function CreateWalletModal({
         if (!wif.trim()) { toast.error("Enter a WIF key"); setImporting(false); return; }
         resolvedPath = await wallet.importWif(wif.trim());
       }
-      if (resolvedPath) updateSettings({ wallet_path: resolvedPath });
+      if (resolvedPath) {
+        updateSettings({ wallet_path: resolvedPath });
+        // Belt-and-suspenders: explicitly tell Rust about the new active
+        // wallet path. The App.tsx useEffect that mirrors settings.wallet_path
+        // to Rust runs AFTER React commits — but onSuccess() below kicks off
+        // loadData() which talks to Rust immediately, creating a race where
+        // loadData reads the OLD wallet. Awaiting setPath here closes that
+        // window so loadData always sees the freshly-imported wallet.
+        await wallet.setPath(resolvedPath);
+      }
       toast.success("Wallet imported successfully");
       onSuccess();
     } catch (e) {
@@ -1772,6 +1786,18 @@ function CreateWalletModal({
 
             {tab === 'import' && (
               <motion.div key="import" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.15 }} className="space-y-4">
+                {/* Non-destructive import notice — explains that the imported
+                    wallet lands in a new slot (wallet-N.json) and the user's
+                    current wallet stays intact. Without this banner, users
+                    feared imports would overwrite their active wallet (and
+                    in older builds they did — fixed in v1.0.5). */}
+                <div className="flex items-start gap-2 p-3 rounded-lg" style={{ background: 'rgba(110,198,255,0.06)', border: '1px solid rgba(110,198,255,0.18)' }}>
+                  <Shield size={13} className="mt-0.5 flex-shrink-0" style={{ color: '#6ec6ff' }} />
+                  <p className="text-xs leading-relaxed" style={{ color: 'rgba(238,240,255,0.65)' }}>
+                    This will import a new wallet. Your current wallet remains untouched and can be switched back from <span className="font-semibold">Manage Wallets</span>.
+                  </p>
+                </div>
+
                 {/* Method selector — hidden when restrictToImport && hideImportTabs
                     so callers that picked a specific import method (Restore Seed
                     Phrase, Restore WIF Key, etc.) open directly to that sub-form.

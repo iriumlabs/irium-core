@@ -2029,12 +2029,11 @@ async fn wallet_import_mnemonic(
 ) -> Result<String, String> {
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
 
-    let wallet_file = resolve_wallet_path();
-
-    if std::path::Path::new(&wallet_file).exists() {
-        std::fs::remove_file(&wallet_file)
-            .map_err(|e| format!("Failed to remove existing wallet: {}", e))?;
-    }
+    // Non-destructive: write the imported wallet to the next free slot
+    // (wallet.json, wallet-2.json, wallet-3.json, …). Previously this
+    // unconditionally deleted ~/.irium/wallet.json before importing, which
+    // could silently nuke an existing wallet the user thought was safe.
+    let wallet_file = find_unique_wallet_path();
 
     run_wallet_cmd(
         vec!["import-mnemonic".to_string(), words],
@@ -2055,7 +2054,9 @@ async fn wallet_import_wif(
     wif: String,
 ) -> Result<String, String> {
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
-    let wallet_file = resolve_wallet_path();
+    // Non-destructive: same rationale as wallet_import_mnemonic — write to
+    // the next free wallet slot rather than overwriting the default file.
+    let wallet_file = find_unique_wallet_path();
 
     run_wallet_cmd(
         vec!["import-wif".to_string(), wif],

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import toast from "react-hot-toast";
 import type { NodeStatus, NodeMetrics, WalletBalance, AppSettings, UpdateCheckResult, AddressInfo, MinerStatus, GpuMinerStatus, GpuDevice, StratumStatus } from "./types";
 import { DEFAULT_SETTINGS } from "./types";
 
@@ -234,15 +235,22 @@ export const useStore = create<AppStore>((set) => ({
     // Safety: if the filter would remove EVERY address from a non-empty
     // input, that's a bad-state localStorage (every wallet address ended
     // up in the hidden set somehow — corrupted entry, leftover from a
-    // different wallet, or simply a user who hid them all and now wonders
-    // why nothing shows). Showing the user a wallet with zero addresses
-    // while the binary reports several is the worst possible UX: balance
-    // appears as 0, the hero shows "—", and there's no obvious way to
-    // recover. Fall back to the unfiltered list so the user always sees
-    // their real wallet. They can re-hide whatever they want from the
-    // Manage drawer; the on-disk hidden set is NOT modified here.
+    // different wallet, or user who hid them all then wonders why nothing
+    // shows). Recovery: auto-unhide everything (in BOTH localStorage and
+    // the in-memory Set so subsequent reads agree) and notify via toast.
+    // Without clearing on-disk, the next refresh would just re-hide them.
+    let autoUnhid = false;
     if (filtered.length === 0 && inputAddresses.length > 0) {
       filtered = inputAddresses;
+      if (hiddenNormalized.size > 0) {
+        saveHiddenAddresses(new Set());
+        autoUnhid = true;
+        // Defer the toast off the setState cycle so we don't side-effect
+        // during the Zustand reducer.
+        setTimeout(() => {
+          toast('Hidden addresses were restored because all addresses were hidden.', { icon: 'ℹ️' });
+        }, 0);
+      }
     }
 
     // Order preservation — the critical bit.
@@ -324,7 +332,9 @@ export const useStore = create<AppStore>((set) => ({
     }
     if (nextIdx >= merged.length) nextIdx = 0;
 
-    return { addresses: merged, activeAddrIdx: nextIdx };
+    return autoUnhid
+      ? { addresses: merged, activeAddrIdx: nextIdx, hiddenAddresses: new Set<string>() }
+      : { addresses: merged, activeAddrIdx: nextIdx };
   }),
   activeAddrIdx: 0,
   setActiveAddrIdx: (activeAddrIdx) => set({ activeAddrIdx }),
