@@ -667,7 +667,7 @@ function StratumTab() {
         <div>
           <label className="label">Worker Name</label>
           <input value={worker} onChange={e => setWorker(e.target.value)} placeholder="walletAddress.workerName" className="input" />
-          <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Format: your_wallet_address.worker_id (e.g. Q8Ni6TJ…La.rig1)</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Format: your_wallet_address.worker_id (e.g. Pxxx…xxxx.rig1)</p>
         </div>
 
         {/* Password */}

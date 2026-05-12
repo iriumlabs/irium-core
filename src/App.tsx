@@ -27,7 +27,7 @@ const About        = lazy(() => import('./pages/About'));
 import Onboarding, { ONBOARDING_KEY, Splash } from './pages/Onboarding';
 import { useNodePoller } from './hooks/useNodePoller';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import { node, config, update } from './lib/tauri';
+import { node, config, update, wallet } from './lib/tauri';
 import { useStore } from './lib/store';
 import type { UpdateCheckResult } from './lib/types';
 
@@ -303,10 +303,29 @@ function OnboardingGate() {
     }).catch(() => {});
   }, []);
 
-  const handleSplashDone = () => {
+  const handleSplashDone = async () => {
     setSplashDone(true);
-    const done = localStorage.getItem(ONBOARDING_KEY);
-    setGateState(done ? 'app' : 'onboarding');
+    if (localStorage.getItem(ONBOARDING_KEY)) {
+      setGateState('app');
+      return;
+    }
+    // localStorage flag is absent — could be a genuine first run, or a
+    // returning user whose AppData was reset (Windows profile move, bundle
+    // identifier change, manual cleanup). Probe ~/.irium/ via the wallet.list
+    // IPC; if any wallet file exists, the user has already onboarded — heal
+    // the localStorage flag and skip the wizard.
+    try {
+      const files = await wallet.listFiles();
+      if (Array.isArray(files) && files.length > 0) {
+        localStorage.setItem(ONBOARDING_KEY, '1');
+        setGateState('app');
+        return;
+      }
+    } catch {
+      // Tauri IPC failed (e.g. running in a plain browser preview) — fall
+      // through to onboarding as the safe default.
+    }
+    setGateState('onboarding');
   };
 
   if (!splashDone) {

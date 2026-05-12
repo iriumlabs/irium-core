@@ -82,5 +82,3 @@ Installers land under `src-tauri/target/release/bundle/`.
 ## License
 
 Released under the [MIT License](./LICENSE).
-
-Copyright © 2026 Irium Labs.
