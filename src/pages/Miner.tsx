@@ -4,7 +4,7 @@ import {
   Cpu, Play, Square, RefreshCw, ArrowRight,
   Monitor, Wifi, WifiOff, Activity, Zap,
   ChevronDown, Server, Hash, Clock, Target,
-  Thermometer, Fan, Gauge, Copy,
+  Thermometer, Fan, Gauge, Copy, ExternalLink,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
@@ -416,7 +416,7 @@ function GpuMinerTab() {
                   <Monitor size={28} style={{ color: '#60a5fa' }} />
                 </div>
                 <p className="text-sm" style={{ color: 'rgba(238,240,255,0.35)' }}>
-                  {devices.length === 0 ? 'No compatible GPU detected' : 'Select a GPU device and start mining'}
+                  {devices.length === 0 ? 'No compatible GPU detected — see Configuration below' : 'Select a GPU device and start mining'}
                 </p>
               </motion.div>
             ) : null}
@@ -440,8 +440,29 @@ function GpuMinerTab() {
         <div>
           <label className="label">GPU Device</label>
           {devices.length === 0 ? (
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--t3)' }}>
-              <Monitor size={14} /> No GPU detected — requires OpenCL / CUDA driver
+            <div className="rounded-xl p-4 space-y-2.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}>
+              <div className="flex items-center gap-2">
+                <Monitor size={16} style={{ color: 'var(--t3)' }} />
+                <span className="text-sm font-display font-semibold" style={{ color: 'var(--t2)' }}>
+                  No compatible GPU detected
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--t3)' }}>
+                GPU mining requires an OpenCL runtime. Install your GPU vendor's drivers
+                (NVIDIA, AMD, or Intel OpenCL SDK) and restart the application.
+              </p>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--t3)' }}>
+                Once enabled, the GPU miner supports both pool (Stratum) and solo (direct node RPC) mining.
+              </p>
+              <a
+                href="https://github.com/iriumlabs/irium/blob/main/GPU-MINER.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs hover:underline"
+                style={{ color: '#6ec6ff' }}
+              >
+                Read the GPU Miner docs <ExternalLink size={11} />
+              </a>
             </div>
           ) : (
             <div className="relative">
