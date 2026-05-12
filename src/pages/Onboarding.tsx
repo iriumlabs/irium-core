@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import {
   CheckCircle2, XCircle, Loader2, ArrowRight,
   Eye, EyeOff, Copy, Shield, AlertTriangle,
-  Key, Lock, FileText, Wallet as WalletIcon,
+  Key, Lock, FileText, Wallet as WalletIcon, RefreshCw,
 } from 'lucide-react';
 import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { node, wallet } from '../lib/tauri';
@@ -668,12 +668,25 @@ function StepBootstrap({ onNext }: { onNext: () => void }) {
   );
 }
 
+// Mirrors irium-source/bootstrap/seedlist.txt — the official signed seeds the
+// embedded iriumd dials on startup. Kept inline (rather than fetched from disk)
+// so this screen can render diagnostic context even when iriumd hasn't reached
+// its own seedlist yet.
+const KNOWN_SEEDS = ['207.244.247.86', '157.173.116.134'];
+
 // ─── Step 3: Network Sync ─────────────────────────────────────────────────────
 function StepNetworkSync({ onNext }: { onNext: () => void }) {
   const rpcUrl = useStore((s) => s.settings.rpc_url) || 'http://127.0.0.1:38300';
   const [nodeStarted, setNodeStarted] = useState(false);
   const [startError, setStartError]   = useState<string | null>(null);
   const [status, setStatus]           = useState<NodeStatus | null>(null);
+  const [retrying, setRetrying]       = useState(false);
+  // Re-render every second while we're still waiting on peers so the 30-second
+  // "no peers" warning surfaces without needing another RPC poll to fire.
+  const [nowTick, setNowTick] = useState(0);
+  // Records when iriumd was first observed as started (after node.start
+  // resolves) — drives the 30-second timeout for the no-peers warning.
+  const startedAtRef = useRef<number | null>(null);
   const pollRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   const onNextRef = useRef(onNext);
   useEffect(() => { onNextRef.current = onNext; });
@@ -711,12 +724,50 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rpcUrl]);
 
+  // Stamp the moment we observed nodeStarted go true; reset on retry.
+  useEffect(() => {
+    if (nodeStarted && startedAtRef.current === null) {
+      startedAtRef.current = Date.now();
+    }
+  }, [nodeStarted]);
+
   const h       = status?.height      ?? 0;
   const tip     = status?.network_tip ?? 0;
   const pct     = tip > 0 ? Math.min(Math.round((h / tip) * 100), 100) : 0;
   const peers   = status?.peers   ?? 0;
   const synced  = status?.synced  ?? false;
   const running = status?.running ?? false;
+
+  // 1 Hz re-render while we're still at zero peers — needed so the 30-second
+  // "no peers" warning surfaces without waiting on the 2.5 s RPC poll. Stops
+  // ticking the moment peers > 0 so we don't burn cycles forever.
+  useEffect(() => {
+    if (peers > 0) return;
+    const id = setInterval(() => setNowTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [peers]);
+  void nowTick;
+
+  const secondsSinceStart = startedAtRef.current
+    ? Math.floor((Date.now() - startedAtRef.current) / 1000)
+    : 0;
+  const showNoPeersWarning = nodeStarted && peers === 0 && secondsSinceStart >= 30;
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    setStartError(null);
+    try {
+      await node.stop().catch(() => {});            // tolerate "not running"
+      await new Promise((r) => setTimeout(r, 600)); // let the OS release ports
+      startedAtRef.current = null;                  // reset the 30-s timer
+      setNodeStarted(false);
+      await node.start();
+    } catch (e) {
+      setStartError(String(e));
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   return (
     <motion.div key="sync" {...fadeIn}>
@@ -837,6 +888,43 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
           <AlertTriangle size={12} /> {startError}
         </div>
       )}
+
+      <AnimatePresence>
+        {showNoPeersWarning && (
+          <motion.div
+            key="no-peers-warning"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="rounded-lg p-3 mb-4"
+            style={{ background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.22)' }}
+          >
+            <div className="flex items-start gap-2">
+              <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" style={{ color: '#fbbf24' }} />
+              <div className="text-xs leading-relaxed flex-1">
+                <p className="font-semibold mb-1" style={{ color: '#fbbf24' }}>No peers found</p>
+                <p style={{ color: 'rgba(238,240,255,0.60)' }}>
+                  Check your internet connection or firewall. Port <span className="font-mono">38291</span> must be reachable outbound.
+                </p>
+                <p className="mt-2.5" style={{ color: 'rgba(238,240,255,0.40)' }}>
+                  The node tries to reach these official bootstrap seeds:
+                </p>
+                <div className="mt-1 font-mono text-[11px] space-y-0.5" style={{ color: 'rgba(238,240,255,0.55)' }}>
+                  {KNOWN_SEEDS.map((s) => <div key={s}>{s}</div>)}
+                </div>
+                <button
+                  onClick={handleRetry}
+                  disabled={retrying}
+                  className="btn-secondary mt-3 px-3 py-1.5 text-xs flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {retrying ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                  {retrying ? 'Restarting node…' : 'Retry connection'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex items-center gap-3">
         {synced ? (
