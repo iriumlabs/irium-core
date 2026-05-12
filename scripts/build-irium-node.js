@@ -23,7 +23,12 @@ const os    = require('os');
 const ROOT         = path.resolve(__dirname, '..');
 const SOURCE_DIR   = path.join(ROOT, 'irium-source');
 const BINARIES_DIR = path.join(ROOT, 'src-tauri', 'binaries');
-const BINARIES     = ['iriumd', 'irium-wallet', 'irium-miner'];
+// Order matters only for log readability — these all build in parallel. The
+// fourth entry (irium-explorer) was missing originally, which made
+// `tauri build --target X` fail in CI because tauri.conf.json declares
+// `binaries/irium-explorer` in externalBin but the script never produced
+// the corresponding sidecar with the target-triple suffix.
+const BINARIES     = ['iriumd', 'irium-wallet', 'irium-miner', 'irium-explorer'];
 // GPU miner needs the `gpu` cargo feature + an OpenCL ICD on the build host.
 // Built separately so a missing OpenCL.lib doesn't block the core binaries.
 const GPU_BINARY   = 'irium-miner-gpu';
