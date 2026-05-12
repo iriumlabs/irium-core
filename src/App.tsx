@@ -158,6 +158,13 @@ function AppLayout() {
     node.getAppVersion().then((v) => { if (v) setAppVersion(v); }).catch(() => {});
   }, [setAppVersion]);
 
+  // Mirror settings.theme onto <html data-theme="..."> so every CSS variable
+  // override in globals.css applies in one flip. Default "midnight" matches
+  // the :root tokens, so omitting the attribute is fine pre-mount.
+  useEffect(() => {
+    document.documentElement.dataset.theme = settings.theme;
+  }, [settings.theme]);
+
   useEffect(() => {
     config.setWalletConfig(
       settings.wallet_path ?? null,
@@ -197,9 +204,12 @@ function AppLayout() {
 
   return (
     <div className="relative flex h-screen overflow-hidden app-bg">
-      {/* Animated crypto-network background — sits behind all UI chrome */}
+      {/* Animated crypto-network background — sits behind all UI chrome.
+          key={theme} forces a clean remount when the user switches themes
+          so the canvas reinitializes its palette without leaking the old
+          colors through the in-flight aurora/star objects. */}
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-        <NetworkBackground />
+        <NetworkBackground key={settings.theme} />
       </div>
 
       <TitleBar />

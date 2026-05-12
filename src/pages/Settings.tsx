@@ -23,10 +23,23 @@ import {
   ExternalLink,
   Trash2,
 } from "lucide-react";
+import { fetch as tauriFetch, ResponseType } from "@tauri-apps/api/http";
 import { useStore } from "../lib/store";
 import { rpc, diagnostics, update, nodeUpdate, node, config } from "../lib/tauri";
-import { DEFAULT_SETTINGS, type DiagnosticsResult, type NodeUpdateCheckResult, timeAgo } from "../lib/types";
+import { DEFAULT_SETTINGS, type DiagnosticsResult, type NodeUpdateCheckResult, type Theme, timeAgo } from "../lib/types";
 import { ONBOARDING_KEY, FORCE_ONBOARDING_KEY } from "./Onboarding";
+
+// ─── Theme catalog ───────────────────────────────────────────────────────────
+// Preview gradient = same stops the theme uses for --grad-brand in globals.css.
+// Keeping it inline here means changes to the gradient there need a 1-line
+// update here too, but it's not worth pulling the gradient through CSS vars
+// just to dedupe four short strings.
+const THEMES: { id: Theme; label: string; preview: string }[] = [
+  { id: "midnight", label: "Midnight", preview: "linear-gradient(135deg, #3B3BFF 0%, #6EC6FF 50%, #A78BFA 100%)" },
+  { id: "obsidian", label: "Obsidian", preview: "linear-gradient(135deg, #6B7280 0%, #C8D0DB 50%, #FFFFFF 100%)" },
+  { id: "aurora",   label: "Aurora",   preview: "linear-gradient(135deg, #047857 0%, #10B981 50%, #5EEAD4 100%)" },
+  { id: "nebula",   label: "Nebula",   preview: "linear-gradient(135deg, #7E22CE 0%, #C084FC 50%, #F0ABFC 100%)" },
+];
 
 // ─── Stagger variants ────────────────────────────────────────────────────────
 const sectionsVariants: Variants = {
@@ -196,19 +209,20 @@ export default function Settings() {
     setRpcError(null);
     try {
       await rpc.setUrl(local.rpc_url);
-      const resp = await fetch(`${local.rpc_url}/status`, {
-        signal: AbortSignal.timeout(4000),
+      // Route through Tauri's HTTP API (allowlist.http) instead of the
+      // WebView's native fetch — the renderer CSP has no connect-src for
+      // 127.0.0.1:38300, and iriumd does not send CORS headers by default.
+      const resp = await tauriFetch<{ height?: number }>(`${local.rpc_url}/status`, {
+        method: "GET",
+        timeout: 4,
+        responseType: ResponseType.JSON,
       });
       if (resp.ok) {
         setRpcOk(true);
-        try {
-          const data = await resp.json() as { height?: number };
-          if (data.height !== undefined) {
-            toast.success(`Connected to node at height ${data.height.toLocaleString()}`);
-          } else {
-            toast.success('Connected to node successfully');
-          }
-        } catch {
+        const height = resp.data?.height;
+        if (typeof height === "number") {
+          toast.success(`Connected to node at height ${height.toLocaleString()}`);
+        } else {
           toast.success('Connected to node successfully');
         }
       } else {
@@ -564,6 +578,47 @@ export default function Settings() {
         {/* Display */}
         <motion.div variants={sectionVariants}>
           <Section title="Display" icon={Monitor}>
+            <FieldRow
+              label="Theme"
+              description="App color palette — applies instantly"
+            >
+              <div className="flex gap-3 flex-wrap">
+                {THEMES.map((t) => {
+                  const isActive = local.theme === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        // Apply immediately (live preview + persist via store).
+                        // Mirror in local so the swatch UI reflects selection
+                        // without waiting for the Save button.
+                        setLocal((prev) => ({ ...prev, theme: t.id }));
+                        updateSettings({ theme: t.id });
+                      }}
+                      title={t.label}
+                      className="rounded-xl p-2.5 flex flex-col items-center gap-2 transition-all"
+                      style={{
+                        background: isActive ? 'rgba(110,198,255,0.10)' : 'rgba(255,255,255,0.04)',
+                        border: `2px solid ${isActive ? 'var(--brand-line-hi)' : 'rgba(255,255,255,0.08)'}`,
+                        boxShadow: isActive ? '0 0 0 1px var(--brand-glow), 0 4px 16px rgba(0,0,0,0.25)' : 'none',
+                      }}
+                    >
+                      <div
+                        className="w-12 h-12 rounded-lg"
+                        style={{ background: t.preview, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.10)' }}
+                      />
+                      <span
+                        className="text-[10px] font-mono"
+                        style={{ color: isActive ? 'var(--brand)' : 'rgba(238,240,255,0.45)' }}
+                      >
+                        {t.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </FieldRow>
+
             <FieldRow
               label="Currency display"
               description="How to show Irium amounts throughout the app"

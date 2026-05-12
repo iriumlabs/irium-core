@@ -9,6 +9,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import toast from 'react-hot-toast';
+import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { miner, gpuMiner, stratum } from '../lib/tauri';
 import { useStore } from '../lib/store';
 import type { LucideIcon } from 'lucide-react';
@@ -19,6 +20,27 @@ function formatUptime(secs: number): string {
   if (secs < 3600) return `${Math.floor(secs / 60)}m ${secs % 60}s`;
   return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`;
 }
+
+function truncateHash(h: string): string {
+  return h.length > 16 ? `${h.slice(0, 8)}...${h.slice(-8)}` : h;
+}
+
+function formatBlockAge(secs: number): string {
+  if (secs < 60) return `${secs}s ago`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ${secs % 60}s ago`;
+  return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m ago`;
+}
+
+// Shape of iriumd's /network-status response. Verified against upstream
+// iriumlabs/irium main: height + tip_hash + difficulty + age in one call.
+// Older nodes (e.g. some seed VPS builds) lack this route — fetch errors are
+// swallowed by the poller so the rest of the page stays functional.
+type NetInfo = {
+  height: number;
+  tip_hash: string;
+  difficulty: number;
+  seconds_since_last_block: number | null;
+};
 
 function StatCard({ label, value, color, icon: Icon }: {
   label: string;
@@ -73,6 +95,12 @@ function CpuMinerTab() {
   const history = useStore((s) => s.minerHistory);
   const cpuCores = useStore((s) => s.cpuCores);
   const resetMinerHistory = useStore((s) => s.resetMinerHistory);
+  const rpcUrl = useStore((s) => s.settings.rpc_url);
+
+  // Network snapshot used by the block-info strip and the Difficulty stat.
+  // Cleared when mining stops so a stopped-then-restarted session never
+  // shows stale numbers from the previous run.
+  const [netInfo, setNetInfo] = useState<NetInfo | null>(null);
 
   const [startLoading, setStartLoading] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
@@ -87,6 +115,28 @@ function CpuMinerTab() {
       setThreads(Math.max(1, Math.floor(cpuCores / 2)));
     }
   }, [cpuCores, threadsTouched]);
+
+  // Poll iriumd /network-status every 3s while mining is active. Uses Tauri's
+  // HTTP API (allowlist.http scope) so the request bypasses the renderer CSP
+  // and iriumd's CORS-off default. Stops cleanly when mining stops or the
+  // component unmounts.
+  useEffect(() => {
+    if (!status?.running) { setNetInfo(null); return; }
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const r = await tauriFetch<NetInfo>(`${rpcUrl}/network-status`, {
+          method: 'GET',
+          timeout: 3,
+          responseType: ResponseType.JSON,
+        });
+        if (!cancelled && r.ok) setNetInfo(r.data);
+      } catch { /* tolerate transient RPC misses — keep last good value */ }
+    };
+    poll();
+    const id = setInterval(poll, 3000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [status?.running, rpcUrl]);
 
   // Loading is only true on the very first poll (status === null). Once a
   // value lands in the store, subsequent visits get instant render.
@@ -198,6 +248,83 @@ function CpuMinerTab() {
             );
           })()}
 
+          {/* Block-info strip — visible whenever mining is active and a
+              /network-status snapshot has landed. Independent of
+              `history.length` so it appears the moment the miner starts,
+              before the hashrate chart has any points.
+              Structure: prominent "Mining block #N" statement on top with a
+              hairline divider, then a 3-column grid of supporting stats. */}
+          {status?.running && netInfo && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 rounded-xl px-4 py-3"
+              style={{ background: 'rgba(110,198,255,0.04)', border: '1px solid rgba(110,198,255,0.12)' }}
+            >
+              {/* Top — single prominent statement */}
+              <div className="flex items-center gap-2 pb-3 mb-3 border-b border-white/5">
+                <Hash size={15} style={{ color: '#6ec6ff' }} className="opacity-80" />
+                <span
+                  className="font-mono font-bold text-base tracking-tight"
+                  style={{ color: '#6ec6ff', fontFamily: '"JetBrains Mono", monospace' }}
+                >
+                  Mining block #{(netInfo.height + 1).toLocaleString()}
+                </span>
+              </div>
+
+              {/* Bottom — 3-col supporting stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {/* Previous block — hash + copy + subtitle */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5">
+                    <Hash size={11} color="#A78BFA" className="opacity-50" />
+                    <span className="label mb-0 text-[10px]">Previous block</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono font-semibold text-sm" style={{ color: '#A78BFA', fontFamily: '"JetBrains Mono", monospace' }}>
+                      {truncateHash(netInfo.tip_hash)}
+                    </span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(netInfo.tip_hash);
+                        toast.success('Tip hash copied');
+                      }}
+                      className="text-white/40 hover:text-white/85 transition-colors flex-shrink-0"
+                      title="Copy full hash"
+                    >
+                      <Copy size={11} />
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-white/30">last confirmed block</span>
+                </div>
+
+                {/* Block time */}
+                {netInfo.seconds_since_last_block != null && (
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5">
+                      <Clock size={11} color="#34d399" className="opacity-50" />
+                      <span className="label mb-0 text-[10px]">Block time</span>
+                    </div>
+                    <span className="font-mono font-semibold text-base" style={{ color: '#34d399', fontFamily: '"JetBrains Mono", monospace' }}>
+                      {formatBlockAge(netInfo.seconds_since_last_block)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Network difficulty */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5">
+                    <Target size={11} color="#fbbf24" className="opacity-50" />
+                    <span className="label mb-0 text-[10px]">Network difficulty</span>
+                  </div>
+                  <span className="font-mono font-semibold text-base" style={{ color: '#fbbf24', fontFamily: '"JetBrains Mono", monospace' }}>
+                    {netInfo.difficulty.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           <AnimatePresence>
             {status?.running && history.length > 1 ? (
               <motion.div
@@ -246,7 +373,7 @@ function CpuMinerTab() {
         <StatCard label="Hashrate"     value={status?.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#A78BFA" icon={Activity} />
         <StatCard label="Blocks Found" value={String(status?.blocks_found ?? 0)} color="#34d399" icon={Hash} />
         <StatCard label="Uptime"       value={status?.uptime_secs ? formatUptime(status.uptime_secs) : '—'} color="#60a5fa" icon={Clock} />
-        <StatCard label="Difficulty"   value={(status?.difficulty ?? 0).toLocaleString()} color="#fbbf24" icon={Target} />
+        <StatCard label="Difficulty"   value={netInfo?.difficulty != null ? netInfo.difficulty.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'} color="#fbbf24" icon={Target} />
       </div>
 
       {/* Config */}
@@ -255,7 +382,12 @@ function CpuMinerTab() {
 
         <div>
           <label className="label">Mining Address</label>
-          <input value={address} onChange={e => setAddress(e.target.value)} placeholder="P…" className="input" />
+          <input
+            value={address}
+            onChange={e => setAddress(e.target.value)}
+            placeholder="Paste your Irium mining address (starts with P)"
+            className="input"
+          />
           <button onClick={() => navigate('/wallet')} className="mt-1.5 flex items-center gap-1 text-xs transition-colors" style={{ color: '#6ec6ff' }}>
             View wallet <ArrowRight size={11} />
           </button>

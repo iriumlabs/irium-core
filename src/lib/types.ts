@@ -772,6 +772,8 @@ export interface AgreementStoreListResult {
 // APP STATE
 // ============================================================
 
+export type Theme = "midnight" | "obsidian" | "aurora" | "nebula";
+
 export interface AppSettings {
   rpc_url: string;
   wallet_path?: string;
@@ -781,6 +783,7 @@ export interface AppSettings {
   currency_display: "IRM" | "sats";
   network: "mainnet";
   external_ip?: string;
+  theme: Theme;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -789,6 +792,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   minimize_to_tray: true,
   currency_display: "IRM",
   network: "mainnet",
+  theme: "midnight",
 };
 
 // ============================================================

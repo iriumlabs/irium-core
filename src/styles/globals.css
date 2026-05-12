@@ -6,8 +6,10 @@
 
 /* ── Design tokens ──────────────────────────────────────────────────────────── */
 :root {
-  /* Backgrounds — deep midnight, derived from the Explorer reference */
-  --bg:           #02050E;
+  /* Backgrounds — deep midnight navy. Lifted from #02050E so the page
+     gutters read as "dark premium" rather than "pure black"; cards stay
+     visibly elevated above this base via their --bg-elev-1 fill. */
+  --bg:           #0A1226;
   /* card surface — nearly opaque so the animated network bg never bleeds
      through panels/cards. Network only shows in atmospheric (page) space. */
   --bg-elev-1:    rgba(8,11,22,0.94);
@@ -68,6 +70,87 @@
   --statusbar-h:        26px;
   --page-pad-x:         32px;
   --page-pad-y:         24px;
+}
+
+/* ── Theme: Obsidian — silver / white on charcoal ───────────────────────────── */
+[data-theme="obsidian"] {
+  --bg:           #0A0A0F;
+  --bg-hover:     rgba(200,208,219,0.06);
+  --border:        rgba(200,208,219,0.10);
+  --border-mid:    rgba(200,208,219,0.18);
+  --border-accent: rgba(200,208,219,0.40);
+  --brand:         #C8D0DB;
+  --brand-soft:    rgba(200,208,219,0.55);
+  --brand-line:    rgba(200,208,219,0.14);
+  --brand-line-hi: rgba(200,208,219,0.30);
+  --brand-glow:    rgba(200,208,219,0.10);
+  --grad-brand:      linear-gradient(135deg, #6B7280 0%, #C8D0DB 50%, #FFFFFF 100%);
+  --grad-brand-soft: linear-gradient(135deg, rgba(107,114,128,0.18) 0%, rgba(200,208,219,0.12) 50%, rgba(255,255,255,0.10) 100%);
+  --grad-text:       linear-gradient(90deg, #FFFFFF 0%, #C8D0DB 55%, #8E97A3 100%);
+  --accent:      #C8D0DB;
+  --accent-2:    #8E97A3;
+  --accent-hi:   #FFFFFF;
+  --accent-glow: rgba(200,208,219,0.28);
+}
+[data-theme="obsidian"] .app-bg {
+  background-image:
+    radial-gradient(ellipse 65% 55% at 12% 18%, rgba(200,208,219,0.16) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 65% at 88% 78%, rgba(143,151,163,0.12) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 40% at 60% 40%, rgba(255,255,255,0.06)  0%, transparent 55%);
+}
+
+/* ── Theme: Aurora — emerald / teal on forest navy ──────────────────────────── */
+[data-theme="aurora"] {
+  --bg:           #061614;
+  --bg-hover:     rgba(16,185,129,0.06);
+  --border:        rgba(16,185,129,0.10);
+  --border-mid:    rgba(16,185,129,0.18);
+  --border-accent: rgba(16,185,129,0.40);
+  --brand:         #10B981;
+  --brand-soft:    rgba(16,185,129,0.55);
+  --brand-line:    rgba(16,185,129,0.14);
+  --brand-line-hi: rgba(16,185,129,0.30);
+  --brand-glow:    rgba(16,185,129,0.10);
+  --grad-brand:      linear-gradient(135deg, #047857 0%, #10B981 50%, #5EEAD4 100%);
+  --grad-brand-soft: linear-gradient(135deg, rgba(4,120,87,0.20) 0%, rgba(16,185,129,0.14) 50%, rgba(94,234,212,0.20) 100%);
+  --grad-text:       linear-gradient(90deg, #ECFDF5 0%, #10B981 55%, #5EEAD4 100%);
+  --accent:      #10B981;
+  --accent-2:    #5EEAD4;
+  --accent-hi:   #ECFDF5;
+  --accent-glow: rgba(16,185,129,0.28);
+}
+[data-theme="aurora"] .app-bg {
+  background-image:
+    radial-gradient(ellipse 65% 55% at 12% 18%, rgba(4,120,87,0.22)  0%, transparent 65%),
+    radial-gradient(ellipse 50% 65% at 88% 78%, rgba(94,234,212,0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 40% at 60% 40%, rgba(16,185,129,0.12) 0%, transparent 55%);
+}
+
+/* ── Theme: Nebula — violet / magenta on cosmic purple ──────────────────────── */
+[data-theme="nebula"] {
+  --bg:           #14082A;
+  --bg-hover:     rgba(192,132,252,0.06);
+  --border:        rgba(192,132,252,0.10);
+  --border-mid:    rgba(192,132,252,0.18);
+  --border-accent: rgba(192,132,252,0.40);
+  --brand:         #C084FC;
+  --brand-soft:    rgba(192,132,252,0.55);
+  --brand-line:    rgba(192,132,252,0.14);
+  --brand-line-hi: rgba(192,132,252,0.30);
+  --brand-glow:    rgba(192,132,252,0.10);
+  --grad-brand:      linear-gradient(135deg, #7E22CE 0%, #C084FC 50%, #F0ABFC 100%);
+  --grad-brand-soft: linear-gradient(135deg, rgba(126,34,206,0.20) 0%, rgba(192,132,252,0.14) 50%, rgba(240,171,252,0.20) 100%);
+  --grad-text:       linear-gradient(90deg, #FAE8FF 0%, #C084FC 55%, #F0ABFC 100%);
+  --accent:      #C084FC;
+  --accent-2:    #F0ABFC;
+  --accent-hi:   #FAE8FF;
+  --accent-glow: rgba(192,132,252,0.28);
+}
+[data-theme="nebula"] .app-bg {
+  background-image:
+    radial-gradient(ellipse 65% 55% at 12% 18%, rgba(126,34,206,0.22) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 65% at 88% 78%, rgba(240,171,252,0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 40% at 60% 40%, rgba(192,132,252,0.12) 0%, transparent 55%);
 }
 
 /* ── Reset ──────────────────────────────────────────────────────────────────── */
@@ -434,21 +517,39 @@ html, body, #root {
   /* ── Page heading helpers ────────────────────────────────────────────────── */
   .page-title {
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 24px;
+    font-size: 30px;                /* up from 24 — more presence */
     font-weight: 900;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.08em;         /* up from 0.04 — refined tracking */
     text-transform: uppercase;
     background: var(--grad-text);
+    background-size: 220% auto;     /* oversized so the shimmer has room to slide */
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    color: transparent;             /* fallback for non-WebKit */
     line-height: 1;
+    /* Soft cyan glow under the gradient text — luminous depth without losing
+       legibility. Drop-shadow on transparent-fill text respects the rendered
+       gradient pixels, so this glow follows the letter shapes. */
+    filter: drop-shadow(0 0 28px rgba(110,198,255,0.22));
+    /* Premium move: slow lateral shimmer across the gradient (≈10 s cycle).
+       Background-position animation re-paints in the GPU — no layout cost. */
+    animation: page-title-shimmer 10s ease-in-out infinite;
   }
   .page-subtitle {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: rgba(110,198,255,0.50);
-    margin-top: 4px;
+    font-size: 12px;                /* up from 11 — better readability */
+    letter-spacing: 0.06em;         /* added — refined mono look */
+    color: rgba(190,210,255,0.55);  /* softened from cyan-50 → near-white-cyan */
+    margin-top: 10px;               /* up from 4 — proper hierarchy gap */
+  }
+
+  @keyframes page-title-shimmer {
+    0%, 100% { background-position:   0% 50%; }
+    50%      { background-position: 100% 50%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .page-title { animation: none; }
   }
 
   /* ── Shimmer skeleton ────────────────────────────────────────────────────── */
@@ -466,9 +567,9 @@ html, body, #root {
   .app-bg {
     background-color: var(--bg);
     background-image:
-      radial-gradient(ellipse 65% 55% at 12% 18%, rgba(59,59,255,0.10) 0%, transparent 60%),
-      radial-gradient(ellipse 50% 65% at 88% 78%, rgba(167,139,250,0.08) 0%, transparent 60%),
-      radial-gradient(ellipse 40% 40% at 60% 40%, rgba(110,198,255,0.05) 0%, transparent 50%);
+      radial-gradient(ellipse 65% 55% at 12% 18%, rgba(59,59,255,0.22) 0%, transparent 65%),
+      radial-gradient(ellipse 50% 65% at 88% 78%, rgba(167,139,250,0.18) 0%, transparent 65%),
+      radial-gradient(ellipse 40% 40% at 60% 40%, rgba(110,198,255,0.12) 0%, transparent 55%);
   }
   .mesh-bg { @apply app-bg; }
 

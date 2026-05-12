@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
 import { settlement, rpc, agreements as agreementsApi } from '../lib/tauri';
 import { SATS_PER_IRM, formatIRM, truncateHash } from '../lib/types';
@@ -289,13 +290,15 @@ export default function SettlementPage() {
         setFeeRate(1);
       }
     }).catch(() => {});
-    // Also try fee_estimate endpoint indirectly
+    // Also try fee_estimate endpoint — routes through Tauri's HTTP API to
+    // bypass CSP/CORS (see Settings.tsx and Onboarding.tsx for the same swap).
     const fetchFee = async () => {
       try {
-        const resp = await fetch(`${rpcUrl}/rpc/fee_estimate`, { signal: AbortSignal.timeout(2000) });
-        if (resp.ok) {
-          const data = await resp.json() as { min_fee_per_byte?: number };
-          if (data.min_fee_per_byte) setFeeRate(data.min_fee_per_byte);
+        const resp = await tauriFetch<{ min_fee_per_byte?: number }>(`${rpcUrl}/rpc/fee_estimate`, {
+          method: 'GET', timeout: 2, responseType: ResponseType.JSON,
+        });
+        if (resp.ok && resp.data?.min_fee_per_byte) {
+          setFeeRate(resp.data.min_fee_per_byte);
         }
       } catch { /* offline */ }
     };

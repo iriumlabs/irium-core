@@ -7,6 +7,7 @@ import {
   Eye, EyeOff, Copy, Shield, AlertTriangle,
   Key, Lock, FileText, Wallet as WalletIcon,
 } from 'lucide-react';
+import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { node, wallet } from '../lib/tauri';
 import { useStore } from '../lib/store';
 import type { NodeStatus, WalletCreateResult, BinaryCheckResult } from '../lib/types';
@@ -14,29 +15,42 @@ import { truncateHash } from '../lib/types';
 import clsx from 'clsx';
 
 // ─── Direct RPC poll (bypasses Tauri/mock so real node data is always shown) ──
+// Routes through Tauri's HTTP API (allowlist.http scope) instead of native
+// fetch — the renderer CSP has no connect-src for 127.0.0.1:38300 and iriumd
+// does not send CORS headers by default. tauriFetch issues the request from
+// Rust so neither restriction applies.
+type StatusJson = {
+  height?: number;
+  best_header_tip?: { height?: number; hash?: string };
+  peer_count?: number;
+  anchor_loaded?: boolean;
+  network_era?: string;
+  version?: string;
+};
+type PeersJson = { peers?: unknown[]; peer_count?: number };
+
 async function fetchRpcStatus(rpcUrl: string): Promise<NodeStatus | null> {
   try {
-    const ctrl = new AbortController();
-    const tid   = setTimeout(() => ctrl.abort(), 2500);
     const [statusSettled, peersSettled] = await Promise.allSettled([
-      fetch(`${rpcUrl}/status`, { signal: ctrl.signal }),
-      fetch(`${rpcUrl}/peers`,  { signal: ctrl.signal }),
+      tauriFetch<StatusJson>(`${rpcUrl}/status`, {
+        method: 'GET', timeout: 3, responseType: ResponseType.JSON,
+      }),
+      tauriFetch<PeersJson>(`${rpcUrl}/peers`, {
+        method: 'GET', timeout: 3, responseType: ResponseType.JSON,
+      }),
     ]);
-    clearTimeout(tid);
 
     if (statusSettled.status !== 'fulfilled' || !statusSettled.value.ok) return null;
 
-    const d      = await statusSettled.value.json();
+    const d = statusSettled.value.data ?? {};
     const height = Number(d.height ?? 0);
     const tipH   = Number(d.best_header_tip?.height ?? 0);
     const tipHash: string = d.best_header_tip?.hash ?? '';
 
     let peers = Number(d.peer_count ?? 0);
     if (peersSettled.status === 'fulfilled' && peersSettled.value.ok) {
-      try {
-        const pd = await peersSettled.value.json();
-        peers = Array.isArray(pd.peers) ? pd.peers.length : (Number(pd.peer_count) || peers);
-      } catch { /* optional */ }
+      const pd = peersSettled.value.data ?? {};
+      peers = Array.isArray(pd.peers) ? pd.peers.length : (Number(pd.peer_count) || peers);
     }
 
     // Mirror Rust logic: synced only when anchor loaded, have peers, know the tip,
