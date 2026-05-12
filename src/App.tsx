@@ -24,7 +24,7 @@ const SellerWizard = lazy(() => import('./pages/SellerWizard'));
 const BuyerWizard  = lazy(() => import('./pages/BuyerWizard'));
 const Logs         = lazy(() => import('./pages/Logs'));
 const About        = lazy(() => import('./pages/About'));
-import Onboarding, { ONBOARDING_KEY, Splash } from './pages/Onboarding';
+import Onboarding, { ONBOARDING_KEY, FORCE_ONBOARDING_KEY, Splash } from './pages/Onboarding';
 import { useNodePoller } from './hooks/useNodePoller';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { node, config, update, wallet } from './lib/tauri';
@@ -305,6 +305,15 @@ function OnboardingGate() {
 
   const handleSplashDone = async () => {
     setSplashDone(true);
+    // An explicit user-triggered reset (via Settings -> Reset onboarding)
+    // takes precedence over everything else. One-shot: consume both flags so
+    // subsequent launches resume the normal flow.
+    if (localStorage.getItem(FORCE_ONBOARDING_KEY)) {
+      localStorage.removeItem(FORCE_ONBOARDING_KEY);
+      localStorage.removeItem(ONBOARDING_KEY);
+      setGateState('onboarding');
+      return;
+    }
     if (localStorage.getItem(ONBOARDING_KEY)) {
       setGateState('app');
       return;

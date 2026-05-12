@@ -62,6 +62,12 @@ async function fetchRpcStatus(rpcUrl: string): Promise<NodeStatus | null> {
 
 export const ONBOARDING_KEY = 'irium_onboarding_complete';
 
+// One-shot sentinel set by the "Reset onboarding" button in Settings. When
+// handleSplashDone sees this flag, it forces the wizard and clears the flag,
+// overriding the wallet-existence heal-fallback that would otherwise re-set
+// ONBOARDING_KEY for returning users who reset on purpose.
+export const FORCE_ONBOARDING_KEY = 'irium_force_onboarding';
+
 // ─── Shared animation variants ────────────────────────────────────────────────
 const fadeIn = {
   initial:    { opacity: 0, y: 16 },

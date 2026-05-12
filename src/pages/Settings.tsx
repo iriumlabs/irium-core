@@ -26,7 +26,7 @@ import {
 import { useStore } from "../lib/store";
 import { rpc, diagnostics, update, nodeUpdate, node } from "../lib/tauri";
 import { DEFAULT_SETTINGS, type DiagnosticsResult, type NodeUpdateCheckResult, timeAgo } from "../lib/types";
-import { ONBOARDING_KEY } from "./Onboarding";
+import { ONBOARDING_KEY, FORCE_ONBOARDING_KEY } from "./Onboarding";
 
 // ─── Stagger variants ────────────────────────────────────────────────────────
 const sectionsVariants: Variants = {
@@ -1104,7 +1104,12 @@ export default function Settings() {
             >
               <button
                 onClick={() => {
+                  // Clear the "completed" flag AND set the force-onboarding
+                  // sentinel so the heal-fallback in handleSplashDone (which
+                  // recovers from AppData wipes) doesn't immediately put the
+                  // user back into the app on the next launch.
                   localStorage.removeItem(ONBOARDING_KEY);
+                  localStorage.setItem(FORCE_ONBOARDING_KEY, '1');
                   toast.success('Onboarding reset — restart the app to see the wizard');
                 }}
                 className="btn-secondary px-4 py-2 text-sm"
