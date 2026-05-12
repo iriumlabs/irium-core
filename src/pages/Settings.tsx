@@ -24,6 +24,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { fetch as tauriFetch, ResponseType } from "@tauri-apps/api/http";
+import { open as openExternal } from "@tauri-apps/api/shell";
 import { useStore } from "../lib/store";
 import { rpc, diagnostics, update, nodeUpdate, node, config } from "../lib/tauri";
 import { DEFAULT_SETTINGS, type DiagnosticsResult, type NodeUpdateCheckResult, type Theme, timeAgo } from "../lib/types";
@@ -132,6 +133,10 @@ function Toggle({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Settings() {
   const { settings, updateSettings, setUpdateInfo, errorLog, clearErrorLog } = useStore();
+  // Banner-ready update info — populated by the silent startup check in
+  // App.tsx and refreshed when this Settings page mounts (covers users who
+  // leave the app running for days without a restart).
+  const updateInfo = useStore((s) => s.updateInfo);
   const [local, setLocal] = useState({ ...settings });
   const [dirty, setDirty] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
@@ -192,6 +197,16 @@ export default function Settings() {
       if (confirmClearTimerRef.current) clearTimeout(confirmClearTimerRef.current);
     };
   }, []);
+
+  // Refresh the update-availability check when the Settings page opens. The
+  // App-level silent check runs only at boot; this catches users who keep
+  // the app running for long periods. Failures are tolerated silently — the
+  // banner just won't appear.
+  useEffect(() => {
+    update.check().then((info) => {
+      if (info) setUpdateInfo(info);
+    }).catch(() => {});
+  }, [setUpdateInfo]);
 
   const patch = <K extends keyof typeof local>(key: K, value: (typeof local)[K]) => {
     setLocal((prev) => ({ ...prev, [key]: value }));
@@ -426,6 +441,49 @@ export default function Settings() {
           Configure your node connection, wallet paths, and display preferences.
         </p>
       </div>
+
+      {/* Update-available banner — sits at the top of Settings whenever the
+          GitHub releases API reports a tag_name newer than CURRENT_VERSION.
+          Same updateInfo Zustand slice the top-of-app UpdateBanner reads; this
+          one is page-local and always visible (no dismiss state) so users who
+          dismissed the global banner still see it here. */}
+      {updateInfo?.available && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card p-4 flex items-center justify-between gap-4"
+          style={{
+            background: 'linear-gradient(135deg, rgba(110,198,255,0.10) 0%, rgba(167,139,250,0.08) 100%)',
+            border: '1px solid var(--brand-line-hi)',
+          }}
+        >
+          <div className="flex items-start gap-3 min-w-0">
+            <Download size={18} className="mt-0.5 flex-shrink-0" style={{ color: 'var(--brand)' }} />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold" style={{ color: 'var(--t1)' }}>
+                A new version of Irium Core is available: v{updateInfo.latest_version}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--t3)' }}>
+                You're on v{updateInfo.current_version}. Download at github.com/iriumlabs/irium-core/releases
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const url = updateInfo.release_url
+                ?? 'https://github.com/iriumlabs/irium-core/releases/latest';
+              openExternal(url).catch(() => {
+                // Tauri shell.open failed — leave a toast hint
+                toast.error('Could not open browser');
+              });
+            }}
+            className="btn-primary px-4 py-2 text-xs flex items-center gap-1.5 flex-shrink-0"
+          >
+            <Download size={13} />
+            Download
+          </button>
+        </motion.div>
+      )}
 
       {/* Staggered sections */}
       <motion.div

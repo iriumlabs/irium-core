@@ -37,11 +37,49 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+      # MUST run before checkout — otherwise Windows runners' default
+      # core.autocrlf=true silently converts irium-source/bootstrap/seedlist.txt
+      # and its .sig from LF to CRLF on checkout. Those files get embedded
+      # into the iriumd binary via include_str! at compile time, so any CRLF
+      # corruption gets baked in and breaks signature verification at runtime
+      # on every Windows user's machine (root cause of v1.0.0 Windows users
+      # seeing "[warn] bootstrap signed seedlist signature invalid").
+      - name: Force LF line endings before checkout (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
       # Fetch irium-source submodule so node binaries can be built from source.
       - name: Checkout with submodules
         uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      # Belt-and-suspenders: strip any stray \r from the signed bootstrap files
+      # before cargo runs. include_str! reads file bytes verbatim, so even a
+      # single \r anywhere in these files breaks signature verification.
+      - name: Normalize bootstrap signed files (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          @(
+            'irium-source\bootstrap\seedlist.txt',
+            'irium-source\bootstrap\seedlist.txt.sig',
+            'irium-source\bootstrap\banned_peers.sample',
+            'irium-source\bootstrap\banned_peers.sample.sig',
+            'irium-source\bootstrap\trust\allowed_signers',
+            'irium-source\bootstrap\trust\allowed_anchor_signers',
+            'irium-source\bootstrap\trust\allowed_ban_signers'
+          ) | ForEach-Object {
+            if (Test-Path $_) {
+              $bytes    = [IO.File]::ReadAllBytes($_)
+              $stripped = [byte[]]($bytes | Where-Object { $_ -ne 13 })
+              [IO.File]::WriteAllBytes($_, $stripped)
+              Write-Host ("  normalized {0}: {1} -> {2} bytes" -f $_, $bytes.Length, $stripped.Length)
+            }
+          }
 
       - name: Install Node.js 20
         uses: actions/setup-node@v4

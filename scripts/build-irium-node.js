@@ -112,6 +112,40 @@ function isStale() {
   return false;
 }
 
+// ─── Bootstrap line-ending normalization ─────────────────────────────────────
+// On Windows, git's default core.autocrlf=true converts these files from LF
+// to CRLF on checkout. iriumd uses include_str! to embed the signed seedlist
+// (and signature) into the binary at compile time — include_str! reads bytes
+// verbatim, so any CRLF in these files gets baked in. The signature was made
+// over LF bytes, so the on-disk content at runtime won't verify and iriumd
+// falls back to "no signed seeds → 0 peers". Strip \r before cargo runs.
+
+const BOOTSTRAP_DIR = path.join(SOURCE_DIR, 'bootstrap');
+const BOOTSTRAP_FILES_TO_NORMALIZE = [
+  'seedlist.txt',
+  'seedlist.txt.sig',
+  'banned_peers.sample',
+  'banned_peers.sample.sig',
+  path.join('trust', 'allowed_signers'),
+  path.join('trust', 'allowed_anchor_signers'),
+  path.join('trust', 'allowed_ban_signers'),
+];
+
+function normalizeBootstrapLineEndings() {
+  if (os.platform() !== 'win32') return;   // only Windows checkouts get corrupted
+  if (!fs.existsSync(BOOTSTRAP_DIR)) return;
+  for (const rel of BOOTSTRAP_FILES_TO_NORMALIZE) {
+    const p = path.join(BOOTSTRAP_DIR, rel);
+    if (!fs.existsSync(p)) continue;
+    const buf = fs.readFileSync(p);
+    const stripped = Buffer.from(buf.filter((b) => b !== 0x0D));
+    if (stripped.length !== buf.length) {
+      fs.writeFileSync(p, stripped);
+      console.log(`  normalized bootstrap/${rel.replace(/\\/g, '/')}: ${buf.length} -> ${stripped.length} bytes`);
+    }
+  }
+}
+
 // ─── Build ────────────────────────────────────────────────────────────────────
 
 function build() {
@@ -119,6 +153,11 @@ function build() {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('  First build: 30–90 minutes  |  Incremental: 1–5 minutes');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+  // Normalize signed bootstrap files BEFORE cargo runs — include_str! bakes
+  // their byte content into the binary, and CRLF corruption breaks runtime
+  // signature verification.
+  normalizeBootstrapLineEndings();
 
   // Build all three core binaries. Works whether they share a workspace or are
   // separate crates — cargo resolves which packages define each binary name.
