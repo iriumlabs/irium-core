@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
+import NodeOfflineBanner from "../components/NodeOfflineBanner";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -423,6 +424,7 @@ export default function Reputation() {
       className="h-full overflow-y-auto"
     >
     <div className="w-full space-y-6 px-8 py-6">
+      <NodeOfflineBanner />
       {/* Header */}
       <div>
         <h1 className="page-title">Reputation</h1>

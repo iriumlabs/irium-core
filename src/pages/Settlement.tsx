@@ -11,6 +11,7 @@ import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
 import { settlement, rpc, agreements as agreementsApi, invoices, tradeStatus, reputationActions } from '../lib/tauri';
 import { useIriumEvents } from '../lib/hooks';
+import NodeOfflineBanner from '../components/NodeOfflineBanner';
 import { SATS_PER_IRM, formatIRM, truncateHash } from '../lib/types';
 import type { OtcParams, FreelanceParams, MilestoneParams, DepositParams, AgreementResult, Agreement, SellerStatus, BuyerStatus, Invoice, SelfTradeCheckResult } from '../lib/types';
 
@@ -33,7 +34,7 @@ const TEMPLATES: TemplateConfig[] = [
   {
     id: 'otc',
     name: 'OTC Trade',
-    desc: 'Peer-to-peer trade with escrow',
+    desc: 'Use this to buy or sell IRM peer-to-peer. The buyer locks IRM in escrow, makes an off-chain payment, and the seller confirms receipt to release funds.',
     Icon: ArrowLeftRight,
     glowBg: 'bg-irium-500',
     iconBg: 'bg-irium-500/20',
@@ -43,7 +44,7 @@ const TEMPLATES: TemplateConfig[] = [
   {
     id: 'freelance',
     name: 'Freelance',
-    desc: 'Contractor milestone payment',
+    desc: 'Use this for freelance work or services. The client locks payment in escrow upfront. Funds release when the contractor completes the work and submits proof.',
     Icon: Briefcase,
     glowBg: 'bg-blue-500',
     iconBg: 'bg-blue-500/20',
@@ -53,7 +54,7 @@ const TEMPLATES: TemplateConfig[] = [
   {
     id: 'milestone',
     name: 'Milestone',
-    desc: 'Multi-stage project payment',
+    desc: 'Use this for large projects split into stages. Each milestone has its own escrow and proof requirement. Partial releases happen as milestones complete.',
     Icon: Target,
     glowBg: 'bg-green-500',
     iconBg: 'bg-green-500/20',
@@ -63,7 +64,7 @@ const TEMPLATES: TemplateConfig[] = [
   {
     id: 'deposit',
     name: 'Deposit',
-    desc: 'Collateral deposit escrow',
+    desc: 'Use this for refundable deposits or collateral. Funds lock on-chain and return automatically if conditions are not met by the deadline.',
     Icon: Landmark,
     glowBg: 'bg-amber-500',
     iconBg: 'bg-amber-500/20',
@@ -737,6 +738,9 @@ export default function SettlementPage() {
       className="h-full overflow-y-auto"
     >
       <div className="w-full px-8 py-6">
+      <div className="mb-4">
+        <NodeOfflineBanner />
+      </div>
       {/* Header */}
       <div className="mb-6">
         <h1 className="page-title">Settlement Hub</h1>
@@ -867,7 +871,21 @@ export default function SettlementPage() {
             <SellerDashboardCard address={selectedAddress} />
             <BuyerDashboardCard address={selectedAddress} />
 
-            {/* Recent agreements */}
+            {/* Recent agreements — or empty-state CTA (Phase 8) when no
+                agreements exist yet. */}
+            {hubAgreements.length === 0 && !hubLoading && (
+              <div className="card p-6 text-center">
+                <div className="text-sm text-white/55 mb-3">
+                  You haven't created any agreements yet.
+                </div>
+                <button
+                  onClick={() => setView('grid')}
+                  className="btn-primary text-sm py-2 px-4 mx-auto"
+                >
+                  Create your first agreement →
+                </button>
+              </div>
+            )}
             {hubAgreements.length > 0 && (
               <div className="card p-5">
                 <div className="text-xs font-semibold text-white/35 uppercase tracking-wider mb-3">Recent Agreements</div>

@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../lib/store';
 import { offers, feeds, feedOps } from '../lib/tauri';
 import { useIriumEvents } from '../lib/hooks';
+import NodeOfflineBanner from '../components/NodeOfflineBanner';
 import { formatIRM, timeAgo, truncateAddr, SATS_PER_IRM } from '../lib/types';
 import type { Offer, FeedEntry } from '../lib/types';
 
@@ -698,6 +699,9 @@ export default function MarketplacePage() {
   };
 
   // ── Filtered offers ──────────────────────────────────────────
+  // Phase 8 — also match against the seller's full address so users can
+  // grep for a known counterparty. Existing matches (description /
+  // payment_method / id) are preserved.
   const filteredOffers = offerList
     .filter((o) => {
       if (searchQuery) {
@@ -705,7 +709,8 @@ export default function MarketplacePage() {
         return (
           o.description?.toLowerCase().includes(q) ||
           o.payment_method?.toLowerCase().includes(q) ||
-          o.id.toLowerCase().includes(q)
+          o.id.toLowerCase().includes(q) ||
+          (o.seller?.toLowerCase().includes(q) ?? false)
         );
       }
       return true;
@@ -725,6 +730,7 @@ export default function MarketplacePage() {
       className="h-full overflow-y-auto"
     >
       <div className="w-full space-y-5 px-8 py-6">
+      <NodeOfflineBanner />
       {/* Page header */}
       <div>
         <h1 className="page-title">Marketplace</h1>
@@ -915,8 +921,17 @@ export default function MarketplacePage() {
               ))}
             </div>
           ) : filteredOffers.length === 0 ? (
-            <div className="text-center py-20 text-white/30 text-sm">
-              No offers found.{filterSource === 'remote' && ' Try syncing your feeds first.'}
+            <div className="text-center py-20 text-white/40 text-sm flex flex-col items-center gap-3">
+              <div>
+                No offers found.
+                {filterSource === 'remote' && ' Try syncing your feeds first.'}
+              </div>
+              <button
+                onClick={() => setActiveTab('feeds')}
+                className="btn-primary text-sm py-2 px-4"
+              >
+                Add feeds to discover offers from other nodes →
+              </button>
             </div>
           ) : (
             <motion.div

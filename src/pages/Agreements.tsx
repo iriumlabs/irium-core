@@ -7,6 +7,7 @@ import { fetch as tauriFetch, Body, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
 import { agreements, proofs, agreementSpend, disputes, invoices, agreementStore } from '../lib/tauri';
 import { useIriumEvents } from '../lib/hooks';
+import NodeOfflineBanner from '../components/NodeOfflineBanner';
 import {
   formatIRM,
   timeAgo,
@@ -87,6 +88,9 @@ export default function AgreementsPage() {
   const selectedAddress = addresses[activeAddrIdx]?.address ?? '';
   const [pageView, setPageView] = useState<PageView>('agreements');
   const [filter, setFilter] = useState<StatusFilter>('all');
+  // Phase 8 — client-side search input. Matches against id, buyer,
+  // seller, and the user-defined label. Empty string = no filter.
+  const [searchQuery, setSearchQuery] = useState('');
   const [agreementList, setAgreementList] = useState<Agreement[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -233,8 +237,16 @@ export default function AgreementsPage() {
   };
 
   const filteredAgreements = agreementList.filter((a) => {
-    if (filter === 'all') return true;
-    return a.status === filter;
+    if (filter !== 'all' && a.status !== filter) return false;
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    const label = agreementLabels[a.id]?.toLowerCase() ?? '';
+    return (
+      a.id.toLowerCase().includes(q) ||
+      (a.buyer?.toLowerCase().includes(q) ?? false) ||
+      (a.seller?.toLowerCase().includes(q) ?? false) ||
+      label.includes(q)
+    );
   });
 
   return (
@@ -245,6 +257,7 @@ export default function AgreementsPage() {
       className="h-full overflow-y-auto"
     >
       <div className="w-full space-y-5 px-8 py-6">
+      <NodeOfflineBanner />
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
@@ -299,6 +312,27 @@ export default function AgreementsPage() {
 
       {pageView === 'agreements' && (
       <>
+      {/* Phase 8 — agreement search. Filters the already-loaded list by
+          id, buyer/seller address, or user-defined label. Client-side
+          only — no RPC. */}
+      <div className="relative max-w-md">
+        <input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search by ID, buyer/seller address, or label…"
+          className="input pr-8 py-1.5 text-xs w-full"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70"
+            title="Clear search"
+          >
+            <X size={12} />
+          </button>
+        )}
+      </div>
+
       {/* Status filter tabs */}
       <div className="flex border-b border-white/[0.06] mb-5">
         {STATUS_FILTERS.map((f) => (
@@ -328,15 +362,31 @@ export default function AgreementsPage() {
           ))}
         </div>
       ) : filteredAgreements.length === 0 ? (
-        <div className="text-center py-20 text-white/30 text-sm">
-          No agreements found
-          {filter !== 'all' && (
-            <span>
-              {' '}
-              with status <strong>{filter}</strong>
-            </span>
+        <div className="text-center py-20 text-white/40 text-sm flex flex-col items-center gap-3">
+          <div>
+            No agreements found
+            {filter !== 'all' && (
+              <span>
+                {' '}
+                with status <strong>{filter}</strong>
+              </span>
+            )}
+            {searchQuery && (
+              <span>
+                {' '}
+                matching <strong>"{searchQuery}"</strong>
+              </span>
+            )}
+            .
+          </div>
+          {agreementList.length === 0 && (
+            <button
+              onClick={() => navigate('/settlement')}
+              className="btn-primary text-sm py-2 px-4 mt-1"
+            >
+              Go to Settlement to create your first agreement →
+            </button>
           )}
-          .
         </div>
       ) : (
         <motion.div
@@ -795,6 +845,14 @@ function AgreementCard({
             <span className={`badge ${statusColor(a.status)}`}>{a.status}</span>
             {a.template && (
               <span className="badge badge-irium">{a.template}</span>
+            )}
+            {/* Phase 8 — role badge derived from the currently-selected
+                wallet address. Hidden when the user isn't a party. */}
+            {selectedAddress && a.buyer === selectedAddress && (
+              <span className="badge badge-info" title="Your selected wallet address is this agreement's buyer">You are: Buyer</span>
+            )}
+            {selectedAddress && a.seller === selectedAddress && (
+              <span className="badge badge-irium" title="Your selected wallet address is this agreement's seller">You are: Seller</span>
             )}
           </div>
 
