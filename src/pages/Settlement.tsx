@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeftRight, Briefcase, Target, Landmark,
@@ -301,6 +301,55 @@ export default function SettlementPage() {
   const [hubLoading, setHubLoading] = useState(false);
   // Drives the Generate Payment Invoice modal on the success card.
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  // Toggles the JSON payload preview on the Review step of the wizard.
+  const [showPayloadPreview, setShowPayloadPreview] = useState(false);
+
+  // Live JSON preview of the params that will be sent to the
+  // settlement.{template} Tauri command on Confirm & Create. Recomputed
+  // whenever the selected template or form values change. NOT the
+  // on-chain agreement hash — the backend generates secret_hash /
+  // refund_timeout / document_hash itself, so a client-side hash would
+  // never match the final one. Showing the input payload is the honest
+  // version of "verify before submitting".
+  const payloadPreview = useMemo(() => {
+    if (!selectedTemplate) return '';
+    const amountSats = Math.round((parseFloat(form.amountIrm) || 0) * SATS_PER_IRM);
+    let params: Record<string, unknown> = {};
+    if (selectedTemplate === 'otc') {
+      params = {
+        buyer: form.partyA,
+        seller: form.partyB,
+        amount_sats: amountSats,
+        deadline_hours: parseInt(form.deadlineHours) || 48,
+        memo: form.memo || undefined,
+        asset_reference: form.assetReference || undefined,
+        payment_method: form.paymentMethod || undefined,
+      };
+    } else if (selectedTemplate === 'freelance') {
+      params = {
+        client: form.partyA,
+        contractor: form.partyB,
+        amount_sats: amountSats,
+        deadline_hours: parseInt(form.deadlineHours) || 48,
+        scope: form.scope || undefined,
+      };
+    } else if (selectedTemplate === 'milestone') {
+      params = {
+        payer: form.partyA,
+        payee: form.partyB,
+        amount_sats: amountSats,
+        milestone_count: parseInt(form.milestoneCount) || 3,
+      };
+    } else if (selectedTemplate === 'deposit') {
+      params = {
+        depositor: form.partyA,
+        recipient: form.partyB,
+        amount_sats: amountSats,
+        deadline_hours: parseInt(form.deadlineHours) || 48,
+      };
+    }
+    return JSON.stringify({ template: selectedTemplate, params }, null, 2);
+  }, [selectedTemplate, form]);
 
   const steps = ['Details', 'Review & Confirm'];
 
@@ -951,6 +1000,37 @@ export default function SettlementPage() {
                       <div className="flex justify-between items-center text-sm border-t border-white/5 pt-3">
                         <span className="text-white/40 flex items-center gap-1"><Zap size={11} />Est. fee rate</span>
                         <span className="font-mono text-white/50">{feeRate} sat/b</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Payload preview — shows the JSON params that will be
+                      sent to the settlement.{template} Tauri command. Lets
+                      the user verify the inputs without claiming any
+                      precision about the on-chain hash. */}
+                  <div>
+                    <button
+                      onClick={() => setShowPayloadPreview((v) => !v)}
+                      className="text-xs text-irium-400 hover:text-irium-300"
+                    >
+                      {showPayloadPreview ? 'Hide' : 'Preview'} payload JSON
+                    </button>
+                    {showPayloadPreview && payloadPreview && (
+                      <div className="glass rounded-lg p-3 mt-2">
+                        <div className="flex justify-end mb-2">
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(payloadPreview);
+                              toast.success('Payload copied');
+                            }}
+                            className="text-xs text-irium-400 hover:text-irium-300 flex items-center gap-1"
+                          >
+                            <Copy size={11} /> Copy
+                          </button>
+                        </div>
+                        <pre className="text-[10px] font-mono text-white/60 overflow-x-auto max-h-64 overflow-y-auto whitespace-pre-wrap break-all">
+                          {payloadPreview}
+                        </pre>
                       </div>
                     )}
                   </div>

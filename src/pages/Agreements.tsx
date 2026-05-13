@@ -101,6 +101,30 @@ export default function AgreementsPage() {
   // record is being viewed. The modal also needs the hash for the RPC
   // call; we look it up from agreementList by id.
   const [auditAgreementId, setAuditAgreementId] = useState<string | null>(null);
+  // Friendly labels per agreement, persisted to localStorage. Mirrors the
+  // address-labels pattern in store.ts but kept local to this page since
+  // labels only appear on the Agreements UI.
+  const [agreementLabels, setAgreementLabels] = useState<Record<string, string>>(() => {
+    try {
+      const raw = localStorage.getItem('irium_agreement_labels');
+      if (raw) {
+        const obj = JSON.parse(raw);
+        if (obj && typeof obj === 'object' && !Array.isArray(obj)) return obj as Record<string, string>;
+      }
+    } catch {}
+    return {};
+  });
+
+  const saveAgreementLabel = (id: string, label: string) => {
+    setAgreementLabels((prev) => {
+      const next = { ...prev };
+      const trimmed = label.trim();
+      if (trimmed) next[id] = trimmed;
+      else delete next[id];
+      try { localStorage.setItem('irium_agreement_labels', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
 
   useEffect(() => {
     loadData();
@@ -272,6 +296,8 @@ export default function AgreementsPage() {
                 onRefund={() => handleRefund(a.id)}
                 onDispute={() => setDisputeAgreementId(a.id)}
                 onViewAudit={() => setAuditAgreementId(a.id)}
+                label={agreementLabels[a.id]}
+                onSaveLabel={(l) => saveAgreementLabel(a.id, l)}
                 actionLoading={actionLoading}
                 isOnline={!!nodeStatus?.running}
                 refundElig={refundEligByAgreement[a.id]}
@@ -477,6 +503,8 @@ interface AgreementCardProps {
   onRefund: () => void;
   onDispute: () => void;
   onViewAudit: () => void;
+  label?: string;
+  onSaveLabel: (label: string) => void;
   actionLoading: boolean;
   isOnline: boolean;
   // Populated on expand by AgreementsPage's eligibility/status useEffect.
@@ -576,12 +604,25 @@ function AgreementCard({
   onRefund,
   onDispute,
   onViewAudit,
+  label,
+  onSaveLabel,
   actionLoading,
   isOnline,
   refundElig,
   releaseElig,
   statusInfo,
 }: AgreementCardProps) {
+  // Local label-input state — synced with the prop so external updates
+  // (e.g. saving from another card with the same agreement, hypothetical)
+  // flow back in without losing the user's mid-edit text.
+  const [labelDraft, setLabelDraft] = useState(label ?? '');
+  useEffect(() => { setLabelDraft(label ?? ''); }, [label]);
+
+  const handleSaveLabel = (e: React.MouseEvent | React.KeyboardEvent) => {
+    e.stopPropagation();
+    onSaveLabel(labelDraft);
+    toast.success('Label saved');
+  };
   // Refund eligibility: when the RPC has come back and says ineligible,
   // we disable the button and show the binary's reason in the tooltip.
   // Undefined (RPC not yet returned, or failed) → fall back to permissive
@@ -646,6 +687,16 @@ function AgreementCard({
               {formatIRM(a.amount)}
             </span>
           </div>
+
+          {/* Friendly label — Phase 4 addition. Subtle italic accent line so
+              the at-a-glance scan picks up the user's name for this
+              agreement (e.g. "Laptop purchase from John") without
+              competing with the structural data above. */}
+          {label && (
+            <div className="text-xs text-irium-300 italic mt-1 truncate" title={label}>
+              {label}
+            </div>
+          )}
         </div>
 
         {/* Right: chevron */}
@@ -912,10 +963,12 @@ function AgreementCard({
                   </>
                 )}
 
-                {/* Common footer — View Audit is always available so users
-                    can inspect on-chain history at any lifecycle stage.
-                    Disabled when the hash hasn't been computed yet (rare;
-                    only happens for very-early-state local drafts). */}
+                {/* Common footer — View Audit + Share Text are always
+                    available so users can inspect on-chain history and
+                    share a quick plain-text summary at any lifecycle stage.
+                    View Audit is disabled when the hash hasn't been
+                    computed yet (rare; only happens for very-early-state
+                    local drafts). */}
                 <button
                   onClick={onViewAudit}
                   disabled={!a.hash}
@@ -923,6 +976,50 @@ function AgreementCard({
                   className="btn-ghost text-xs py-1.5 px-3 text-irium-400 hover:text-irium-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
                 >
                   <FileText size={12} /> View Audit
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const lines = [
+                      'Irium Agreement',
+                      `ID:       ${a.id}`,
+                      `Hash:     ${a.hash ?? '—'}`,
+                      `Amount:   ${formatIRM(a.amount)}`,
+                      `Buyer:    ${a.buyer ?? '—'}`,
+                      `Seller:   ${a.seller ?? '—'}`,
+                      `Status:   ${a.status}`,
+                      `Template: ${a.template ?? '—'}`,
+                    ];
+                    navigator.clipboard.writeText(lines.join('\n'));
+                    toast.success('Copied');
+                  }}
+                  title="Copy a plain-text summary of this agreement to clipboard"
+                  className="btn-ghost text-xs py-1.5 px-3 text-irium-400 hover:text-irium-300 flex items-center gap-1"
+                >
+                  <Copy size={12} /> Share Text
+                </button>
+              </div>
+
+              {/* Friendly label editor — saved to localStorage under
+                  irium_agreement_labels, displayed in the collapsed card
+                  header. onClick=stopPropagation prevents the input from
+                  collapsing the card when focused. */}
+              <div className="flex items-center gap-2 pt-3 border-t border-white/[0.05]">
+                <input
+                  type="text"
+                  placeholder='Friendly name (e.g. "Laptop from John")'
+                  value={labelDraft}
+                  onChange={(e) => setLabelDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSaveLabel(e); }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="input text-xs flex-1"
+                />
+                <button
+                  onClick={handleSaveLabel}
+                  className="btn-secondary text-xs py-1.5 px-3 flex-shrink-0"
+                  title="Save a friendly name for this agreement (stored locally)"
+                >
+                  Save Label
                 </button>
               </div>
             </div>

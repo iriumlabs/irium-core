@@ -186,6 +186,107 @@ function StatCard({
   );
 }
 
+// ─── SellerProfileBlock ───────────────────────────────────────────────────────
+// Extracted profile card + stats grid so the same rendering can be used
+// for both the single-lookup view and the side-by-side compare mode.
+// Single-mode-only elements (Record Outcome CTA, Recent Window) stay in
+// the parent component since they don't make sense when comparing two
+// sellers head-to-head.
+function SellerProfileBlock({ data, resultVisible }: { data: ReputationData; resultVisible: boolean }) {
+  const risk = RISK_CONFIG[data.risk] ?? RISK_CONFIG.unknown;
+  const hasData = data.total_agreements > 0;
+  const successPct = data.success_rate ? parseFloat(data.success_rate) : 0;
+  const copyAddr = () => { navigator.clipboard.writeText(data.seller); };
+
+  return (
+    <div className="space-y-4">
+      {/* Profile card */}
+      <div className="card p-6">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+          <div className="flex flex-col items-center gap-2">
+            <ScoreRing score={successPct} active={resultVisible} hasData={hasData} />
+            {data.risk === "high" ? (
+              <motion.div
+                animate={{ opacity: [1, 0.6, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-medium ${risk.bg} ${risk.color}`}
+              >
+                <risk.icon size={13} />
+                {risk.label}
+              </motion.div>
+            ) : (
+              <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-medium ${risk.bg} ${risk.color}`}>
+                <risk.icon size={13} />
+                {risk.label}
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0 space-y-3">
+            <div>
+              <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Address</p>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-sm text-white break-all">{data.seller}</span>
+                <button onClick={copyAddr} className="text-white/40 hover:text-white shrink-0">
+                  <Copy size={14} />
+                </button>
+              </div>
+            </div>
+            <p className="text-sm text-white/55">{data.summary}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {data.sybil_suppressed && (
+                <span
+                  className="badge badge-warning text-xs px-2 py-0.5 inline-flex items-center gap-1"
+                  title="Seller has fewer than 3 completed agreements — their score is provisional and they could be a new identity created to inflate reputation."
+                >
+                  <AlertTriangle size={11} /> Sybil-suppressed
+                </span>
+              )}
+              {data.self_trade_count > 0 && (
+                <span
+                  className="badge badge-warning text-xs px-2 py-0.5"
+                  title="Detected agreements where buyer and seller appear to share a key derivation root. Inflated counts here may indicate fake reputation building."
+                >
+                  Self-trades: {data.self_trade_count}
+                </span>
+              )}
+              {data.dispute_rate && parseFloat(data.dispute_rate) >= 10 && (
+                <span
+                  className="badge badge-warning text-xs px-2 py-0.5"
+                  title="More than 10% of this seller's agreements ended in dispute. Inspect their dispute history before trading."
+                >
+                  High disputes: {data.dispute_rate}%
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats grid */}
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+      >
+        <motion.div variants={itemVariants}>
+          <StatCard label="Total Agreements" rawValue={data.total_agreements} icon={Hash} active={resultVisible} />
+        </motion.div>
+        <motion.div variants={itemVariants}>
+          <StatCard label="Satisfied Trades" rawValue={data.satisfied ?? 0} sub="Released successfully" icon={CheckCircle} active={resultVisible} />
+        </motion.div>
+        <motion.div variants={itemVariants}>
+          <StatCard label="Defaults" rawValue={data.defaults ?? 0} sub="Failed obligations" icon={XCircle} active={resultVisible} />
+        </motion.div>
+        <motion.div variants={itemVariants}>
+          <StatCard label="Success Rate" value={data.success_rate ? `${data.success_rate}%` : "—"} sub="Lifetime" icon={Activity} active={resultVisible} />
+        </motion.div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function Reputation() {
   const location = useLocation();
@@ -197,6 +298,37 @@ export default function Reputation() {
   const [resultVisible, setResultVisible] = useState(false);
   const [showOutcomeModal, setShowOutcomeModal] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Recent lookups — last 5 queried addresses, persisted to localStorage so
+  // they survive page reloads. Surfaced as clickable chips below the
+  // search bar(s) for quick re-query.
+  const [recentLookups, setRecentLookups] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('irium_reputation_recent_lookups');
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) return arr.filter((x) => typeof x === 'string').slice(0, 5);
+      }
+    } catch {}
+    return [];
+  });
+  // Compare-mode state — second seller's lookup runs in parallel to the
+  // first. Each slot mirrors the single-mode state so the existing
+  // single-lookup logic stays unchanged.
+  const [compareMode, setCompareMode] = useState(false);
+  const [secondQuery, setSecondQuery] = useState("");
+  const [secondData, setSecondData] = useState<ReputationData | null>(null);
+  const [secondLoading, setSecondLoading] = useState(false);
+  const [secondShimmer, setSecondShimmer] = useState(false);
+  const [secondError, setSecondError] = useState<string | null>(null);
+  const [secondResultVisible, setSecondResultVisible] = useState(false);
+
+  const pushRecentLookup = (addr: string) => {
+    setRecentLookups((prev) => {
+      const next = [addr, ...prev.filter((x) => x !== addr)].slice(0, 5);
+      try { localStorage.setItem('irium_reputation_recent_lookups', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
 
   useEffect(() => {
     const incoming = (location.state as { prefillAddress?: string } | null)?.prefillAddress;
@@ -227,10 +359,36 @@ export default function Reputation() {
       const result = await reputation.show(q);
       setData(result);
       setResultVisible(true);
+      pushRecentLookup(q);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Second-slot lookup for compare mode. Mirrors the shape of `lookup`
+  // exactly — same shimmer cadence, same error/result state transitions —
+  // just writing into the second-slot state slots.
+  const lookupSecond = async (overrideQuery?: string) => {
+    const q = (overrideQuery ?? secondQuery).trim();
+    if (!q) return;
+    setSecondResultVisible(false);
+    setSecondData(null);
+    setSecondError(null);
+    setSecondLoading(true);
+    setSecondShimmer(true);
+    await new Promise((r) => setTimeout(r, 600));
+    setSecondShimmer(false);
+    try {
+      const result = await reputation.show(q);
+      setSecondData(result);
+      setSecondResultVisible(true);
+      pushRecentLookup(q);
+    } catch (e: unknown) {
+      setSecondError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSecondLoading(false);
     }
   };
 
@@ -273,7 +431,7 @@ export default function Reputation() {
         </p>
       </div>
 
-      {/* Search bar */}
+      {/* Search bar (first seller) */}
       <div className="card p-4 flex gap-3">
         <div className="flex-1 relative">
           <Search
@@ -300,8 +458,102 @@ export default function Reputation() {
         >
           {loading ? "Looking up…" : "Look Up"}
         </button>
+        <button
+          onClick={() => setCompareMode((v) => !v)}
+          title="Compare two sellers side by side"
+          className={`btn-secondary px-4 py-2 text-sm shrink-0 ${compareMode ? 'bg-irium-500/30 border-irium-500/40 text-irium-200' : ''}`}
+        >
+          Compare
+        </button>
       </div>
 
+      {/* Second search bar — only in compare mode */}
+      {compareMode && (
+        <div className="card p-4 flex gap-3">
+          <div className="flex-1 relative">
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"
+            />
+            <input
+              type="text"
+              value={secondQuery}
+              onChange={(e) => setSecondQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') lookupSecond(); }}
+              placeholder="Second seller's Q-prefix address or 64-hex pubkey…"
+              disabled={secondLoading}
+              className={`input pl-9 w-full font-mono text-sm disabled:opacity-60 disabled:cursor-not-allowed transition-opacity ${
+                secondShimmer ? "shimmer" : ""
+              }`}
+            />
+          </div>
+          <button
+            onClick={() => lookupSecond()}
+            disabled={!secondQuery.trim() || secondLoading}
+            className="btn-primary px-5 py-2 text-sm disabled:opacity-50 shrink-0"
+          >
+            {secondLoading ? "Looking up…" : "Look Up"}
+          </button>
+        </div>
+      )}
+
+      {/* Recent lookups — clickable chips, click pre-fills and submits. */}
+      {recentLookups.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap text-xs">
+          <span className="text-white/40 uppercase tracking-wider">Recent lookups</span>
+          {recentLookups.map((addr) => (
+            <button
+              key={addr}
+              onClick={() => {
+                if (compareMode && data) {
+                  setSecondQuery(addr);
+                  lookupSecond(addr);
+                } else {
+                  setQuery(addr);
+                  lookup(addr);
+                }
+              }}
+              className="px-2 py-1 rounded-full bg-surface-600 hover:bg-irium-500/20 font-mono text-white/60 hover:text-white"
+              title={addr}
+            >
+              {addr.length > 14 ? `${addr.slice(0, 8)}…${addr.slice(-4)}` : addr}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Compare-mode result area — 2-column grid, each slot showing its
+          own loading / error / result / empty state independently. Uses the
+          extracted SellerProfileBlock so we don't duplicate ~120 lines of
+          JSX. Single mode (below) keeps its existing AnimatePresence
+          rendering unchanged. */}
+      {compareMode ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="space-y-4">
+            {loading ? (
+              <div className="card p-6 text-center text-white/30 text-sm">Loading…</div>
+            ) : error ? (
+              <div className="card border-rose-500/30 bg-rose-500/5 p-4 text-rose-400 text-sm">{error}</div>
+            ) : resultVisible && data ? (
+              <SellerProfileBlock data={data} resultVisible={resultVisible} />
+            ) : (
+              <div className="card p-6 text-center text-white/30 text-sm">Search for a seller above</div>
+            )}
+          </div>
+          <div className="space-y-4">
+            {secondLoading ? (
+              <div className="card p-6 text-center text-white/30 text-sm">Loading…</div>
+            ) : secondError ? (
+              <div className="card border-rose-500/30 bg-rose-500/5 p-4 text-rose-400 text-sm">{secondError}</div>
+            ) : secondResultVisible && secondData ? (
+              <SellerProfileBlock data={secondData} resultVisible={secondResultVisible} />
+            ) : (
+              <div className="card p-6 text-center text-white/30 text-sm">Search for a second seller to compare</div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Error */}
       <AnimatePresence>
         {error && (
@@ -532,6 +784,8 @@ export default function Reputation() {
           </motion.div>
         )}
       </AnimatePresence>
+        </>
+      )}
 
       {/* Outcome recording modal */}
       <AnimatePresence>

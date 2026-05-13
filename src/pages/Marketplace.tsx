@@ -1193,6 +1193,7 @@ function OfferDetailModal({
   onTake: () => void;
   isOnline: boolean;
 }) {
+  const navigate = useNavigate();
   const score = offer.reputation?.score ?? 0;
   const riskClass =
     offer.risk_signal === 'low'
@@ -1361,6 +1362,19 @@ function OfferDetailModal({
                 )}
                 {offer.risk_signal && (
                   <p className="text-[11px] text-white/45 pt-1 border-t border-white/5">{riskExplanation}</p>
+                )}
+                {offer.seller && (
+                  <div className="pt-2 border-t border-white/5">
+                    <button
+                      onClick={() => {
+                        onClose();
+                        navigate('/reputation', { state: { prefillAddress: offer.seller } });
+                      }}
+                      className="text-xs text-irium-400 hover:text-irium-300 flex items-center gap-1"
+                    >
+                      <Star size={11} /> View full reputation →
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
