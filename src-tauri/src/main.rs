@@ -913,25 +913,25 @@ async fn stop_node(state: State<'_, AppState>) -> Result<bool, String> {
     #[cfg(target_os = "windows")]
     {
         let _ = std::process::Command::new("taskkill")
-            .args(["/F", "/IM", "iriumd-x86_64-pc-windows-msvc.exe"])
+            .args(["/F", "/T", "/IM", "iriumd-x86_64-pc-windows-msvc.exe"])
             .output();
         let _ = std::process::Command::new("taskkill")
-            .args(["/F", "/IM", "iriumd.exe"])
+            .args(["/F", "/T", "/IM", "iriumd.exe"])
             .output();
         let _ = std::process::Command::new("taskkill")
-            .args(["/F", "/IM", "irium-explorer-x86_64-pc-windows-msvc.exe"])
+            .args(["/F", "/T", "/IM", "irium-explorer-x86_64-pc-windows-msvc.exe"])
             .output();
         let _ = std::process::Command::new("taskkill")
-            .args(["/F", "/IM", "irium-explorer.exe"])
+            .args(["/F", "/T", "/IM", "irium-explorer.exe"])
             .output();
     }
     #[cfg(not(target_os = "windows"))]
     {
         let _ = std::process::Command::new("pkill")
-            .args(["-f", "iriumd"])
+            .args(["-9", "-f", "iriumd"])
             .output();
         let _ = std::process::Command::new("pkill")
-            .args(["-f", "irium-explorer"])
+            .args(["-9", "-f", "irium-explorer"])
             .output();
     }
     Ok(true)
@@ -951,15 +951,15 @@ async fn clear_node_state(state: State<'_, AppState>) -> Result<bool, String> {
     #[cfg(target_os = "windows")]
     {
         let _ = std::process::Command::new("taskkill")
-            .args(["/F", "/IM", "iriumd-x86_64-pc-windows-msvc.exe"])
+            .args(["/F", "/T", "/IM", "iriumd-x86_64-pc-windows-msvc.exe"])
             .output();
         let _ = std::process::Command::new("taskkill")
-            .args(["/F", "/IM", "iriumd.exe"])
+            .args(["/F", "/T", "/IM", "iriumd.exe"])
             .output();
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let _ = std::process::Command::new("pkill").args(["-f", "iriumd"]).output();
+        let _ = std::process::Command::new("pkill").args(["-9", "-f", "iriumd"]).output();
     }
 
     // Give the process a moment to fully exit before we delete files it may have open.
