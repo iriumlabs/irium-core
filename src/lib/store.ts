@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import toast from "react-hot-toast";
 import { invoke } from '@tauri-apps/api/tauri';
-import type { NodeStatus, NodeMetrics, WalletBalance, AppSettings, UpdateCheckResult, AddressInfo, MinerStatus, GpuMinerStatus, GpuDevice, StratumStatus } from "./types";
+import type { NodeStatus, NodeMetrics, WalletBalance, AppSettings, UpdateCheckResult, AddressInfo, MinerStatus, GpuMinerStatus, GpuDevice, GpuPlatform, StratumStatus } from "./types";
 import { DEFAULT_SETTINGS } from "./types";
 
 // Sample window for the hashrate spark-chart on the Miner page. 40 points at
@@ -112,6 +112,9 @@ interface AppStore {
   setGpuMinerStatus: (s: GpuMinerStatus | null) => void;
   gpuDevices: GpuDevice[];
   setGpuDevices: (d: GpuDevice[]) => void;
+  // null = never detected yet; [] = detected, no OpenCL platforms found
+  gpuPlatforms: GpuPlatform[] | null;
+  setGpuPlatforms: (p: GpuPlatform[] | null) => void;
   gpuMinerHistory: { t: number; khs: number }[];
   appendGpuMinerHistory: (point: { t: number; khs: number }) => void;
   resetGpuMinerHistory: () => void;
@@ -410,6 +413,8 @@ export const useStore = create<AppStore>((set) => ({
   setGpuMinerStatus: (gpuMinerStatus) => set({ gpuMinerStatus }),
   gpuDevices: [],
   setGpuDevices: (gpuDevices) => set({ gpuDevices }),
+  gpuPlatforms: null,
+  setGpuPlatforms: (gpuPlatforms) => set({ gpuPlatforms }),
   gpuMinerHistory: [],
   appendGpuMinerHistory: (point) => set((state) => ({
     gpuMinerHistory: [...state.gpuMinerHistory, point].slice(-GPU_HISTORY_MAX),

@@ -5,7 +5,7 @@ import type {
   OfferTakeResult, FeedEntry, FeedSyncResult, Agreement,
   CreateAgreementParams, AgreementResult, ReleaseResult,
   Proof, ProofSubmitResult, Reputation, MinerStatus, FoundBlock,
-  GpuDevice, GpuMinerStatus, StratumStatus,
+  GpuDevice, GpuPlatform, GpuMinerStatus, StratumStatus,
   OtcParams, FreelanceParams, MilestoneParams, DepositParams,
   PeerInfo, MempoolInfo, DiagnosticsResult, UpdateCheckResult,
   NodeUpdateCheckResult, NodeUpdatePullResult,
@@ -304,8 +304,11 @@ export const gpuMiner = {
   listDevices: () =>
     safeInvoke<GpuDevice[]>('list_gpu_devices'),
 
-  start: (address: string, deviceIndex: number, intensity: number) =>
-    safeInvoke<boolean>('start_gpu_miner', { address, deviceIndex, intensity }),
+  listPlatforms: () =>
+    safeInvoke<GpuPlatform[]>('list_gpu_platforms'),
+
+  start: (address: string, platformSel: string | undefined, deviceIndices: number[]) =>
+    safeInvoke<boolean>('start_gpu_miner', { address, platformSel, deviceIndices }),
 
   stop: () =>
     safeInvoke<boolean>('stop_gpu_miner'),

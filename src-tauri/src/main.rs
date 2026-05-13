@@ -3617,11 +3617,67 @@ async fn list_gpu_devices() -> Result<Vec<GpuDevice>, String> {
 }
 
 #[tauri::command]
+async fn list_gpu_platforms() -> Result<Vec<GpuPlatform>, String> {
+    let cmd = match Command::new_sidecar("irium-miner-gpu") {
+        Ok(c) => c,
+        Err(_) => return Ok(Vec::new()),
+    };
+    let (mut rx, _child) = cmd
+        .args(&["--list-platforms"])
+        .spawn()
+        .map_err(|e| format!("Failed to probe GPUs: {}", e))?;
+
+    let mut output = String::new();
+    while let Some(event) = rx.recv().await {
+        match event {
+            CommandEvent::Stdout(l) | CommandEvent::Stderr(l) => {
+                output.push_str(&l);
+                output.push('\n');
+            }
+            CommandEvent::Terminated(_) => break,
+            _ => {}
+        }
+    }
+
+    if output.contains("No OpenCL platforms found") {
+        return Ok(Vec::new());
+    }
+
+    let mut platforms: Vec<GpuPlatform> = Vec::new();
+    for line in output.lines() {
+        let trimmed = line.trim();
+        if let Some(rest) = trimmed.strip_prefix("Platform ") {
+            // "Platform 0: NVIDIA CUDA (1 device(s))"
+            if let Some(colon) = rest.find(": ") {
+                if let Ok(idx) = rest[..colon].parse::<u32>() {
+                    let after = &rest[colon + 2..];
+                    let name = after.split(" (").next().unwrap_or(after).to_string();
+                    let lo = name.to_lowercase();
+                    let is_discrete = lo.contains("nvidia") || lo.contains("amd") || lo.contains("advanced micro");
+                    platforms.push(GpuPlatform { index: idx, name, devices: Vec::new(), is_discrete });
+                }
+            }
+        } else if let Some(rest) = trimmed.strip_prefix("Device ") {
+            // "Device 0: NVIDIA GeForce RTX 4070 SUPER"
+            if let Some(colon) = rest.find(": ") {
+                if let Ok(dev_idx) = rest[..colon].parse::<u32>() {
+                    let dev_name = rest[colon + 2..].to_string();
+                    if let Some(platform) = platforms.last_mut() {
+                        platform.devices.push(GpuPlatformDevice { index: dev_idx, name: dev_name });
+                    }
+                }
+            }
+        }
+    }
+    Ok(platforms)
+}
+
+#[tauri::command]
 async fn start_gpu_miner(
     state: State<'_, AppState>,
     address: String,
-    device_index: u32,
-    _intensity: u32,
+    platform_sel: Option<String>,
+    device_indices: Vec<u32>,
 ) -> Result<bool, String> {
     let mut miner_lock = state.miner_process.lock().map_err(lock_err)?;
     if miner_lock.is_some() {
@@ -3631,10 +3687,30 @@ async fn start_gpu_miner(
     let home_dir = dirs::home_dir().unwrap_or_default();
     let irium_dir = home_dir.join(".irium");
 
-    let device_str = device_index.to_string();
+    let mut args: Vec<String> = vec![
+        "--wallet".into(), address.clone(),
+        "--rpc".into(), rpc_url.clone(),
+    ];
+    if let Some(sel) = platform_sel {
+        args.push("--platform".into());
+        args.push(sel);
+    }
+    match device_indices.len() {
+        0 => {}
+        1 => {
+            args.push("--device".into());
+            args.push(device_indices[0].to_string());
+        }
+        _ => {
+            let joined = device_indices.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(",");
+            args.push("--devices".into());
+            args.push(joined);
+        }
+    }
+
     let (mut rx, child) = Command::new_sidecar("irium-miner-gpu")
         .map_err(|e| format!("irium-miner-gpu not bundled: {}", e))?
-        .args(&["--wallet", &address, "--rpc", &rpc_url, "--device", &device_str])
+        .args(&args)
         .current_dir(irium_dir)
         .spawn()
         .map_err(|e| format!("Failed to start GPU miner: {}", e))?;
@@ -5661,6 +5737,7 @@ fn main() {
             update_tray_status,
             // Miner (GPU)
             list_gpu_devices,
+            list_gpu_platforms,
             start_gpu_miner,
             stop_gpu_miner,
             get_gpu_miner_status,

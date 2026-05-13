@@ -517,6 +517,20 @@ pub struct GpuDevice {
     pub vram_mb: u64,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GpuPlatformDevice {
+    pub index: u32,
+    pub name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GpuPlatform {
+    pub index: u32,
+    pub name: String,
+    pub devices: Vec<GpuPlatformDevice>,
+    pub is_discrete: bool,
+}
+
 // ============================================================
 // EXPLORER (irium-explorer sidecar on localhost:38310)
 // ============================================================

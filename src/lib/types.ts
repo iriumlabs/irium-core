@@ -400,6 +400,18 @@ export interface GpuDevice {
   vendor: string;
 }
 
+export interface GpuPlatformDevice {
+  index: number;
+  name: string;
+}
+
+export interface GpuPlatform {
+  index: number;
+  name: string;
+  devices: GpuPlatformDevice[];
+  is_discrete: boolean;
+}
+
 export interface GpuMinerStatus {
   running: boolean;
   hashrate_khs: number;

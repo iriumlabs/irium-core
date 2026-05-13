@@ -13,7 +13,7 @@ import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { miner, gpuMiner, stratum } from '../lib/tauri';
 import { useStore } from '../lib/store';
 import type { LucideIcon } from 'lucide-react';
-import type { FoundBlock } from '../lib/types';
+import type { FoundBlock, GpuPlatform } from '../lib/types';
 import NodeOfflineBanner from '../components/NodeOfflineBanner';
 import clsx from 'clsx';
 
@@ -551,26 +551,65 @@ function CpuMinerTab() {
 
 function GpuMinerTab() {
   const navigate = useNavigate();
-  // Status / device list / history come from the global store via the
-  // useNodePoller poll — survives page navigation.
-  const status = useStore((s) => s.gpuMinerStatus);
-  const devices = useStore((s) => s.gpuDevices);
-  const history = useStore((s) => s.gpuMinerHistory);
+  const status              = useStore((s) => s.gpuMinerStatus);
+  const history             = useStore((s) => s.gpuMinerHistory);
   const resetGpuMinerHistory = useStore((s) => s.resetGpuMinerHistory);
+  const gpuPlatforms        = useStore((s) => s.gpuPlatforms);
+  const setGpuPlatforms     = useStore((s) => s.setGpuPlatforms);
 
-  const [startLoading, setStartLoading] = useState(false);
+  const [detecting, setDetecting]           = useState(false);
+  const [showModal, setShowModal]           = useState(false);
+  const [startLoading, setStartLoading]     = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
-  const [address, setAddress] = useState('');
-  const [deviceIndex, setDeviceIndex] = useState(0);
-  const [intensity, setIntensity] = useState(80);
+  const [address, setAddress]               = useState('');
+  const [selectedPlatformIdx, setSelectedPlatformIdx] = useState(0);
+  const [selectedDeviceIdxs, setSelectedDeviceIdxs]   = useState<number[]>([]);
+  const [intensity, setIntensity]           = useState(80);
 
   const loading = status === null;
+
+  const handleDetect = async (openModal: boolean) => {
+    setDetecting(true);
+    try {
+      const platforms = await gpuMiner.listPlatforms();
+      setGpuPlatforms(platforms ?? []);
+      if (openModal) setShowModal(true);
+    } catch {
+      setGpuPlatforms([]);
+      if (openModal) toast.error('Failed to detect GPUs');
+    } finally {
+      setDetecting(false);
+    }
+  };
+
+  // Scan once on mount if never detected.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (gpuPlatforms === null) handleDetect(false); }, []);
+
+  // When platforms first load, auto-select the first discrete GPU platform.
+  useEffect(() => {
+    if (!gpuPlatforms || gpuPlatforms.length === 0) return;
+    const discrete = gpuPlatforms.find((p) => p.is_discrete && p.devices.length > 0);
+    const first    = gpuPlatforms.find((p) => p.devices.length > 0);
+    const auto     = (discrete ?? first)?.index ?? 0;
+    setSelectedPlatformIdx(auto);
+  }, [gpuPlatforms]);
+
+  // When platform changes, default all devices on that platform to selected.
+  useEffect(() => {
+    if (!gpuPlatforms) return;
+    const plat = gpuPlatforms.find((p) => p.index === selectedPlatformIdx);
+    setSelectedDeviceIdxs(plat ? plat.devices.map((d) => d.index) : []);
+  }, [selectedPlatformIdx, gpuPlatforms]);
 
   const handleStart = async () => {
     if (!address.trim()) { toast.error('Mining address required'); return; }
     setStartLoading(true);
     try {
-      await gpuMiner.start(address.trim(), deviceIndex, intensity);
+      const platformSel = (gpuPlatforms && gpuPlatforms.length > 0)
+        ? String(selectedPlatformIdx)
+        : undefined;
+      await gpuMiner.start(address.trim(), platformSel, selectedDeviceIdxs);
       toast.success('GPU miner started');
     } catch (e) { toast.error(String(e)); }
     finally { setStartLoading(false); }
@@ -585,7 +624,21 @@ function GpuMinerTab() {
     } catch (e) { toast.error(String(e)); }
   };
 
-  const selectedDevice = devices[deviceIndex];
+  const toggleDevice = (idx: number) =>
+    setSelectedDeviceIdxs((prev) =>
+      prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]
+    );
+
+  const selectedPlatform = gpuPlatforms?.find((p) => p.index === selectedPlatformIdx);
+  const noGpuFound       = gpuPlatforms !== null && gpuPlatforms.length === 0;
+  const hasPlatforms     = gpuPlatforms !== null && gpuPlatforms.length > 0;
+
+  // Idle hero message: mirrors old behaviour — uses platform info when available.
+  const idleMessage = gpuPlatforms === null
+    ? 'Scanning for OpenCL devices…'
+    : noGpuFound
+    ? 'No compatible GPU detected — see Configuration below'
+    : 'Select a platform and start mining';
 
   return (
     <div className="space-y-4">
@@ -639,9 +692,7 @@ function GpuMinerTab() {
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.20)' }}>
                   <Monitor size={28} style={{ color: '#60a5fa' }} />
                 </div>
-                <p className="text-sm" style={{ color: 'rgba(238,240,255,0.35)' }}>
-                  {devices.length === 0 ? 'No compatible GPU detected — see Configuration below' : 'Select a GPU device and start mining'}
-                </p>
+                <p className="text-sm" style={{ color: 'rgba(238,240,255,0.35)' }}>{idleMessage}</p>
               </motion.div>
             ) : null}
           </AnimatePresence>
@@ -650,72 +701,143 @@ function GpuMinerTab() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Hashrate"      value={status?.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#60a5fa" icon={Activity} />
-        <StatCard label="Temperature"   value={status?.running && status.temperature_c ? `${status.temperature_c}°C` : '—'} color={status?.running && (status.temperature_c ?? 0) > 80 ? '#f87171' : '#fbbf24'} icon={Thermometer} />
-        <StatCard label="Power"         value={status?.running && status.power_w ? `${status.power_w}W` : '—'} color="#a78bfa" icon={Zap} />
-        <StatCard label="Blocks Found"  value={String(status?.blocks_found ?? 0)} color="#34d399" icon={Hash} />
+        <StatCard label="Hashrate"     value={status?.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#60a5fa" icon={Activity} />
+        <StatCard label="Temperature"  value={status?.running && status.temperature_c ? `${status.temperature_c}°C` : '—'} color={status?.running && (status.temperature_c ?? 0) > 80 ? '#f87171' : '#fbbf24'} icon={Thermometer} />
+        <StatCard label="Power"        value={status?.running && status.power_w ? `${status.power_w}W` : '—'} color="#a78bfa" icon={Zap} />
+        <StatCard label="Blocks Found" value={String(status?.blocks_found ?? 0)} color="#34d399" icon={Hash} />
       </div>
 
-      {/* Found Blocks list (Bug 1) */}
+      {/* Found Blocks list */}
       <FoundBlocksList />
 
       {/* Config */}
       <div className="card p-5 space-y-4">
-        <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>Configuration</h3>
-
-        {/* GPU selector */}
-        <div>
-          <label className="label">GPU Device</label>
-          {devices.length === 0 ? (
-            <div className="rounded-xl p-4 space-y-2.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}>
-              <div className="flex items-center gap-2">
-                <Monitor size={16} style={{ color: 'var(--t3)' }} />
-                <span className="text-sm font-display font-semibold" style={{ color: 'var(--t2)' }}>
-                  No compatible GPU detected
-                </span>
-              </div>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--t3)' }}>
-                GPU mining requires an OpenCL runtime. Install your GPU vendor's drivers
-                (NVIDIA, AMD, or Intel OpenCL SDK) and restart the application.
-              </p>
-              <p className="text-xs leading-relaxed" style={{ color: 'var(--t3)' }}>
-                Once enabled, the GPU miner supports both pool (Stratum) and solo (direct node RPC) mining.
-              </p>
-              <a
-                href="https://github.com/iriumlabs/irium/blob/main/GPU-MINER.md"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs hover:underline"
-                style={{ color: '#6ec6ff' }}
-              >
-                Read the GPU Miner docs <ExternalLink size={11} />
-              </a>
-            </div>
-          ) : (
-            <div className="relative">
-              <select
-                value={deviceIndex}
-                onChange={e => setDeviceIndex(parseInt(e.target.value))}
-                className="input appearance-none pr-8 cursor-pointer"
-              >
-                {devices.map(d => (
-                  <option key={d.index} value={d.index}>{d.name} ({(d.vram_mb / 1024).toFixed(0)} GB VRAM)</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--t3)' }} />
-            </div>
-          )}
-          {selectedDevice && (
-            <p className="text-xs mt-1" style={{ fontFamily: '"JetBrains Mono", monospace', color: 'var(--t3)' }}>
-              {selectedDevice.vendor} · {(selectedDevice.vram_mb / 1024).toFixed(0)} GB VRAM
-            </p>
-          )}
+        {/* Header row with Detect button */}
+        <div className="flex items-center justify-between">
+          <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>Configuration</h3>
+          <button
+            onClick={() => handleDetect(true)}
+            disabled={detecting}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+            style={{ background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.25)', color: '#60a5fa' }}
+          >
+            {detecting
+              ? <><RefreshCw size={12} className="animate-spin" /> Scanning…</>
+              : <><Monitor size={12} /> Detect GPUs</>}
+          </button>
         </div>
 
-        {/* Address */}
+        {/* Platform / device section */}
+        {gpuPlatforms === null ? (
+          <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--t3)' }}>
+            <RefreshCw size={11} className="animate-spin" /> Scanning for OpenCL devices…
+          </div>
+        ) : noGpuFound ? (
+          /* ── Empty state ── */
+          <div className="rounded-xl p-4 space-y-2.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}>
+            <div className="flex items-center gap-2">
+              <Monitor size={16} style={{ color: 'var(--t3)' }} />
+              <span className="text-sm font-display font-semibold" style={{ color: 'var(--t2)' }}>No compatible GPU detected</span>
+            </div>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--t3)' }}>
+              GPU mining requires an OpenCL runtime. Install your GPU vendor's drivers
+              (NVIDIA, AMD, or Intel OpenCL SDK) and click <strong>Detect GPUs</strong>.
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--t3)' }}>
+              Once enabled, the GPU miner supports both pool (Stratum) and solo (direct node RPC) mining.
+            </p>
+            <a
+              href="https://github.com/iriumlabs/irium/blob/main/GPU-MINER.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs hover:underline"
+              style={{ color: '#6ec6ff' }}
+            >
+              Read the GPU Miner docs <ExternalLink size={11} />
+            </a>
+          </div>
+        ) : (
+          <>
+            {/* ── Platform dropdown ── */}
+            <div>
+              <label className="label">OpenCL Platform</label>
+              <div className="relative">
+                <select
+                  value={selectedPlatformIdx}
+                  onChange={(e) => setSelectedPlatformIdx(parseInt(e.target.value))}
+                  className="input appearance-none pr-8 cursor-pointer"
+                >
+                  {gpuPlatforms.map((p) => (
+                    <option key={p.index} value={p.index}>
+                      {p.index}: {p.name}{p.is_discrete ? ' ★' : ''} ({p.devices.length} device{p.devices.length !== 1 ? 's' : ''})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--t3)' }} />
+              </div>
+              {selectedPlatform?.is_discrete && (
+                <p className="text-xs mt-1" style={{ color: '#34d399' }}>
+                  ★ Discrete GPU — auto-selected
+                </p>
+              )}
+            </div>
+
+            {/* ── Device selection ── */}
+            {selectedPlatform && selectedPlatform.devices.length > 1 ? (
+              /* Multi-GPU: checkboxes */
+              <div>
+                <label className="label">Devices (multi-GPU)</label>
+                <div className="space-y-2">
+                  {selectedPlatform.devices.map((d) => {
+                    const checked = selectedDeviceIdxs.includes(d.index);
+                    return (
+                      <label
+                        key={d.index}
+                        className="flex items-center gap-2.5 cursor-pointer rounded-lg px-3 py-2 transition-colors"
+                        style={{
+                          background: checked ? 'rgba(59,130,246,0.08)' : 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${checked ? 'rgba(59,130,246,0.30)' : 'rgba(255,255,255,0.07)'}`,
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleDevice(d.index)}
+                          className="w-4 h-4 flex-shrink-0"
+                          style={{ accentColor: '#3B82F6' }}
+                        />
+                        <span className="font-mono text-xs flex-shrink-0" style={{ color: 'var(--t3)' }}>#{d.index}</span>
+                        <span className="text-sm" style={{ color: 'var(--t2)' }}>{d.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-xs mt-1.5" style={{ color: 'var(--t3)' }}>
+                  {selectedDeviceIdxs.length === 0
+                    ? 'No devices selected — miner will auto-select'
+                    : `${selectedDeviceIdxs.length} of ${selectedPlatform.devices.length} device${selectedDeviceIdxs.length > 1 ? 's' : ''} selected`}
+                </p>
+              </div>
+            ) : selectedPlatform?.devices.length === 1 ? (
+              /* Single device: just show the name */
+              <div>
+                <label className="label">Device</label>
+                <div
+                  className="flex items-center gap-2 rounded-lg px-3 py-2"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  <span className="font-mono text-xs" style={{ color: 'var(--t3)' }}>#0</span>
+                  <span className="text-sm" style={{ color: 'var(--t2)' }}>{selectedPlatform.devices[0].name}</span>
+                </div>
+              </div>
+            ) : null}
+          </>
+        )}
+
+        {/* Mining address */}
         <div>
           <label className="label">Mining Address</label>
-          <input value={address} onChange={e => setAddress(e.target.value)} placeholder="P…" className="input" />
+          <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="P…" className="input" />
           <button onClick={() => navigate('/wallet')} className="mt-1.5 flex items-center gap-1 text-xs transition-colors" style={{ color: '#6ec6ff' }}>
             View wallet <ArrowRight size={11} />
           </button>
@@ -726,17 +848,22 @@ function GpuMinerTab() {
           <label className="label">Intensity — {intensity}%</label>
           <input
             type="range" min={10} max={100} step={5} value={intensity}
-            onChange={e => setIntensity(parseInt(e.target.value))}
+            onChange={(e) => setIntensity(parseInt(e.target.value))}
             className="w-full h-1.5 rounded-full appearance-none cursor-pointer mt-1"
             style={{ background: `linear-gradient(to right, #3B82F6 0%, #06B6D4 ${intensity}%, rgba(255,255,255,0.08) ${intensity}%, rgba(255,255,255,0.08) 100%)` }}
           />
           <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Higher intensity = more hashrate, more power usage</p>
         </div>
 
+        {/* Start / Stop */}
         <div className="flex items-center gap-3 pt-1">
           {!status?.running ? (
-            <button onClick={handleStart} disabled={startLoading || !address.trim() || devices.length === 0} className="btn-primary"
-              style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)', boxShadow: '0 4px 16px rgba(59,130,246,0.35)' }}>
+            <button
+              onClick={handleStart}
+              disabled={startLoading || !address.trim() || noGpuFound || gpuPlatforms === null}
+              className="btn-primary"
+              style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)', boxShadow: '0 4px 16px rgba(59,130,246,0.35)' }}
+            >
               {startLoading ? <RefreshCw size={13} className="animate-spin" /> : <Play size={13} fill="currentColor" />}
               {startLoading ? 'Starting…' : 'Start GPU Mining'}
             </button>
@@ -763,6 +890,87 @@ function GpuMinerTab() {
           )}
         </div>
       </div>
+
+      {/* Detect GPUs modal */}
+      <AnimatePresence>
+        {showModal && gpuPlatforms && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(2,5,14,0.82)' }}
+            onClick={() => setShowModal(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+          >
+            <motion.div
+              className="card p-6 w-full max-w-md"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ scale: 0.95, opacity: 0, y: 8 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 8 }}
+              transition={{ duration: 0.18 }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-display font-bold text-base" style={{ color: 'var(--t1)' }}>
+                  OpenCL Hardware Detected
+                </h3>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="btn-ghost text-xs py-1 px-2"
+                  style={{ color: 'var(--t3)' }}
+                >
+                  ✕ Close
+                </button>
+              </div>
+
+              {gpuPlatforms.length === 0 ? (
+                <div className="text-sm space-y-2" style={{ color: 'var(--t3)' }}>
+                  <p>No OpenCL platforms found.</p>
+                  <p className="text-xs">Install your GPU driver and the ICD loader, then click <strong>Detect GPUs</strong> again.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {gpuPlatforms.map((p) => (
+                    <div
+                      key={p.index}
+                      className="rounded-xl p-3 space-y-2"
+                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                    >
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.07)', color: 'var(--t3)' }}>
+                          Platform {p.index}
+                        </span>
+                        <span className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>{p.name}</span>
+                        {p.is_discrete && (
+                          <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(52,211,153,0.14)', color: '#34d399', border: '1px solid rgba(52,211,153,0.28)' }}>
+                            discrete GPU
+                          </span>
+                        )}
+                      </div>
+                      <div className="pl-2 space-y-1 border-l" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                        {p.devices.map((d) => (
+                          <div key={d.index} className="flex items-center gap-2 text-xs">
+                            <span className="font-mono" style={{ color: 'var(--t3)' }}>Device {d.index}</span>
+                            <span style={{ color: 'var(--t2)' }}>{d.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                className="btn-primary mt-5 w-full"
+                onClick={() => setShowModal(false)}
+              >
+                Done
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
