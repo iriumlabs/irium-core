@@ -89,7 +89,11 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
 // Polls the Rust shell every 10s for the list of blocks this app
 // session's CPU/GPU miner has had accepted. Newest first. Empty until
 // the parser in main.rs records a [✅] Block accepted... line.
+// Rows are clickable: a row click navigates to /explorer with
+// location.state.openBlockHeight, which opens BlockDetailModal on the
+// Explorer page (see Explorer.tsx Option C deep-link useEffect).
 function FoundBlocksList() {
+  const navigate = useNavigate();
   const [blocks, setBlocks] = useState<FoundBlock[]>([]);
 
   useEffect(() => {
@@ -122,8 +126,10 @@ function FoundBlocksList() {
             return (
               <div
                 key={`${b.height}-${i}`}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs"
+                onClick={() => navigate('/explorer', { state: { openBlockHeight: b.height } })}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs cursor-pointer hover:bg-white/5 transition-colors"
                 style={{ background: 'rgba(110,198,255,0.04)', border: '1px solid rgba(110,198,255,0.10)' }}
+                title="Open this block in the Explorer"
               >
                 <span
                   className="font-mono font-semibold flex-shrink-0"
@@ -152,6 +158,11 @@ function FoundBlocksList() {
                 >
                   {reward}
                 </span>
+                <ExternalLink
+                  size={11}
+                  className="flex-shrink-0"
+                  style={{ color: 'rgba(110,198,255,0.45)' }}
+                />
               </div>
             );
           })}

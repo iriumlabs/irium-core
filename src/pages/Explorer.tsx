@@ -362,7 +362,15 @@ export default function Explorer() {
   const [selectedBlock, setSelectedBlock] = useState<ExplorerBlock | null>(null);
 
   // Search state — pre-filled from navigation state (e.g. from Wallet tx modal)
-  const navState = location.state as { searchTab?: SearchTab; searchQ?: string } | null;
+  const navState = location.state as {
+    searchTab?: SearchTab;
+    searchQ?: string;
+    // openBlockHeight: deep-link from the Miner page's Found Blocks list.
+    // When present, mount-effect below fetches the block via rpc.block(...)
+    // and opens BlockDetailModal directly, then clears history state so a
+    // back-then-forward navigation doesn't re-open the modal.
+    openBlockHeight?: number;
+  } | null;
   const [searchTab,    setSearchTab]    = useState<SearchTab>(navState?.searchTab ?? 'block');
   const [searchQ,      setSearchQ]      = useState(navState?.searchQ ?? '');
   const [searching,    setSearching]    = useState(false);
@@ -376,6 +384,47 @@ export default function Explorer() {
     const t = setTimeout(() => setInitialLoaded(true), 10_000);
     return () => clearTimeout(t);
   }, [initialLoaded]);
+
+  // Option C deep-link — when arriving via navigate('/explorer', { state:
+  // { openBlockHeight: N } }) (used by Miner.tsx's Found Blocks list),
+  // fetch the block from iriumd and open BlockDetailModal directly. The
+  // consumed ref guards against StrictMode's intentional double-invoke
+  // and against location.state lingering across history navigation; we
+  // also call window.history.replaceState({}, '') to drop the state so a
+  // browser back/forward doesn't re-trigger the modal.
+  const deepLinkConsumedRef = useRef(false);
+  useEffect(() => {
+    if (deepLinkConsumedRef.current) return;
+    const h = navState?.openBlockHeight;
+    if (h == null) return;
+    deepLinkConsumedRef.current = true;
+    (async () => {
+      try {
+        const raw = (await rpc.block(String(h))) as Record<string, unknown>;
+        if (!raw || Object.keys(raw).length === 0) return;
+        const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+        const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v) || 0);
+        const txArr = Array.isArray(raw.tx) ? (raw.tx as unknown[]) : null;
+        const block: ExplorerBlock = {
+          height: num(raw.height) || h,
+          hash: str(raw.hash),
+          prev_hash:
+            str(raw.prev_hash) ||
+            str(raw.previousblockhash) ||
+            str(raw.previous_block_hash),
+          merkle_root: str(raw.merkle_root) || str(raw.merkleroot),
+          time: num(raw.time),
+          tx_count: num(raw.tx_count) || num(raw.n_tx) || (txArr ? txArr.length : 0),
+          bits: str(raw.bits),
+          nonce: typeof raw.nonce === 'number' ? raw.nonce : undefined,
+          miner_address: str(raw.miner_address) || str(raw.miner),
+        };
+        setSelectedBlock(block);
+      } catch { /* block not found / node offline — silent */ }
+    })();
+    window.history.replaceState({}, '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const running   = nodeStatus?.running  ?? false;
   const height    = nodeStatus?.height   ?? 0;
