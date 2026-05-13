@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import toast from "react-hot-toast";
+import { invoke } from '@tauri-apps/api/tauri';
 import type { NodeStatus, NodeMetrics, WalletBalance, AppSettings, UpdateCheckResult, AddressInfo, MinerStatus, GpuMinerStatus, GpuDevice, StratumStatus } from "./types";
 import { DEFAULT_SETTINGS } from "./types";
 
@@ -490,3 +491,12 @@ function saveAddressLabels(labels: Record<string, string>) {
     localStorage.setItem(ADDR_LABEL_KEY, JSON.stringify(labels));
   } catch {}
 }
+
+// Fetch CARGO_PKG_VERSION at module load time so the Splash screen renders the
+// real version string on its very first paint. get_app_version is a synchronous
+// Rust function (env!("CARGO_PKG_VERSION") — no I/O); the IPC round-trip
+// resolves in ~5ms, well before the browser's first 16ms paint frame. This
+// eliminates the 'v...' fallback flash that a post-mount useEffect produced.
+invoke<string>('get_app_version')
+  .then((v) => { if (v) useStore.setState({ appVersion: v }); })
+  .catch(() => { /* non-Tauri context (tests, browser preview) — leave default '' */ });

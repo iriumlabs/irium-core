@@ -148,15 +148,10 @@ function AppLayout() {
   const location = useLocation();
   const settings = useStore((s) => s.settings);
   const setUpdateInfo = useStore((s) => s.setUpdateInfo);
-  const setAppVersion = useStore((s) => s.setAppVersion);
   const nodeStatus = useStore((s) => s.nodeStatus);
   const setNodeStarting = useStore((s) => s.setNodeStarting);
   const setNodeOperation = useStore((s) => s.setNodeOperation);
   const autoStartFired = useRef(false);
-
-  useEffect(() => {
-    node.getAppVersion().then((v) => { if (v) setAppVersion(v); }).catch(() => {});
-  }, [setAppVersion]);
 
   // Mirror settings.theme onto <html data-theme="..."> so every CSS variable
   // override in globals.css applies in one flip. Default "midnight" matches
