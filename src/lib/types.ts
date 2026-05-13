@@ -84,6 +84,12 @@ export interface BinaryCheckResult {
   irium_miner: boolean;
 }
 
+export interface SeedCheckResult {
+  addr: string;
+  reachable: boolean;
+  latency_ms?: number;
+}
+
 export interface PeerInfo {
   multiaddr: string;
   agent?: string;

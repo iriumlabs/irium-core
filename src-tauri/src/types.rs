@@ -18,6 +18,13 @@ pub struct BinaryCheckResult {
     pub irium_miner: bool,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SeedCheckResult {
+    pub addr: String,
+    pub reachable: bool,
+    pub latency_ms: Option<u64>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeStatus {
     pub running: bool,

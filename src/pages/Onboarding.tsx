@@ -11,7 +11,7 @@ import { fetch as tauriFetch, Body, ResponseType } from '@tauri-apps/api/http';
 import { node, wallet } from '../lib/tauri';
 import { startAggressivePoll } from '../hooks/useNodePoller';
 import { useStore } from '../lib/store';
-import type { NodeStatus, WalletCreateResult, BinaryCheckResult } from '../lib/types';
+import type { NodeStatus, WalletCreateResult, BinaryCheckResult, SeedCheckResult } from '../lib/types';
 import { truncateHash } from '../lib/types';
 import clsx from 'clsx';
 
@@ -729,6 +729,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
   const [startError, setStartError]   = useState<string | null>(null);
   const [status, setStatus]           = useState<NodeStatus | null>(null);
   const [retrying, setRetrying]       = useState(false);
+  const [seedResults, setSeedResults] = useState<SeedCheckResult[] | null>(null);
   const [manualPeer, setManualPeer]   = useState('');
   const [addPeerStatus, setAddPeerStatus] = useState<
     | { kind: 'idle' }
@@ -749,16 +750,29 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
   useEffect(() => {
     let mounted = true;
 
-    node.start()
-      .then(() => { startAggressivePoll(); if (mounted) setNodeStarted(true); })
-      .catch((e) => {
-        if (!mounted) return;
-        setNodeStarted(true);
-        // Only swallow the literal "node already running" success path;
-        // every other failure (incl. port-in-use) goes through
-        // humanizeStartError so the user sees an actionable message.
-        if (!isAlreadyRunning(String(e))) setStartError(humanizeStartError(String(e)));
-      });
+    // TCP pre-check (≤3 s, both seeds in parallel) fires before node.start so
+    // we can show "port blocked" immediately instead of waiting 15 s.
+    // Poll starts immediately alongside the check — it returns nothing until
+    // iriumd binds its RPC port, which is fine.
+    (async () => {
+      try {
+        const results = await node.checkSeedConnectivity();
+        if (mounted) setSeedResults(results);
+      } catch { /* non-Tauri context — skip check, proceed to start */ }
+
+      if (!mounted) return;
+
+      node.start()
+        .then(() => { startAggressivePoll(); if (mounted) setNodeStarted(true); })
+        .catch((e) => {
+          if (!mounted) return;
+          setNodeStarted(true);
+          // Only swallow the literal "node already running" success path;
+          // every other failure (incl. port-in-use) goes through
+          // humanizeStartError so the user sees an actionable message.
+          if (!isAlreadyRunning(String(e))) setStartError(humanizeStartError(String(e)));
+        });
+    })();
 
     const poll = async () => {
       const direct = await fetchRpcStatus(rpcUrl);
@@ -809,16 +823,22 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
   const secondsSinceStart = startedAtRef.current
     ? Math.floor((Date.now() - startedAtRef.current) / 1000)
     : 0;
-  const showNoPeersWarning = nodeStarted && peers === 0 && secondsSinceStart >= 30;
+  const allSeedsUnreachable = seedResults !== null && seedResults.every((r) => !r.reachable);
+  const showNoPeersWarning = nodeStarted && peers === 0 && secondsSinceStart >= 15 && !allSeedsUnreachable;
 
   const handleRetry = async () => {
     setRetrying(true);
     setStartError(null);
+    setSeedResults(null);
     try {
       await node.stop().catch(() => {});            // tolerate "not running"
       await new Promise((r) => setTimeout(r, 600)); // let the OS release ports
-      startedAtRef.current = null;                  // reset the 30-s timer
+      startedAtRef.current = null;                  // reset the 15-s timer
       setNodeStarted(false);
+      try {
+        const results = await node.checkSeedConnectivity();
+        setSeedResults(results);
+      } catch { /* ignore — non-Tauri context */ }
       await node.start();
       startAggressivePoll();
     } catch (e) {
@@ -973,6 +993,41 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
         </div>
       )}
 
+      {/* Immediate port-blocked warning — shows as soon as the TCP pre-check
+          confirms both seeds are unreachable, without waiting for any timer. */}
+      <AnimatePresence>
+        {allSeedsUnreachable && (
+          <motion.div
+            key="port-blocked-warning"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="rounded-lg p-3 mb-4"
+            style={{ background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.22)' }}
+          >
+            <div className="flex items-start gap-2">
+              <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" style={{ color: '#fbbf24' }} />
+              <div className="text-xs leading-relaxed">
+                <p className="font-semibold mb-1" style={{ color: '#fbbf24' }}>Port 38291 appears to be blocked outbound</p>
+                <p style={{ color: 'rgba(238,240,255,0.60)' }}>
+                  Neither bootstrap seed is reachable. Check your router or firewall — port{' '}
+                  <span className="font-mono">38291</span> must be open for outbound TCP connections to join the Irium network.
+                </p>
+                <div className="mt-2 font-mono text-[11px] space-y-1">
+                  {seedResults!.map((r) => (
+                    <div key={r.addr} className="flex items-center gap-1.5">
+                      <XCircle size={11} style={{ color: '#f87171' }} />
+                      <span style={{ color: 'rgba(238,240,255,0.45)' }}>{r.addr}:38291</span>
+                      <span style={{ color: '#f87171' }}>unreachable</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {showNoPeersWarning && (
           <motion.div
@@ -993,8 +1048,20 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
                 <p className="mt-2.5" style={{ color: 'rgba(238,240,255,0.40)' }}>
                   The node tries to reach these official bootstrap seeds:
                 </p>
-                <div className="mt-1 font-mono text-[11px] space-y-0.5" style={{ color: 'rgba(238,240,255,0.55)' }}>
-                  {KNOWN_SEEDS.map((s) => <div key={s}>{s}</div>)}
+                <div className="mt-1 font-mono text-[11px] space-y-0.5">
+                  {seedResults !== null ? seedResults.map((r) => (
+                    <div key={r.addr} className="flex items-center gap-1.5">
+                      {r.reachable
+                        ? <CheckCircle2 size={11} style={{ color: '#34d399' }} />
+                        : <XCircle size={11} style={{ color: '#f87171' }} />}
+                      <span style={{ color: 'rgba(238,240,255,0.55)' }}>{r.addr}</span>
+                      {r.reachable && r.latency_ms !== undefined && (
+                        <span style={{ color: '#34d399' }}>{r.latency_ms}ms</span>
+                      )}
+                    </div>
+                  )) : KNOWN_SEEDS.map((s) => (
+                    <div key={s} style={{ color: 'rgba(238,240,255,0.55)' }}>{s}</div>
+                  ))}
                 </div>
                 <button
                   onClick={handleRetry}

@@ -148,6 +148,50 @@ fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
+/// Probe both official bootstrap seeds over raw TCP (3-second timeout each,
+/// run in parallel). Called from the Onboarding Network Sync step before
+/// iriumd starts so we can show an immediate "port blocked" message instead
+/// of making the user wait 15 s for the no-peers warning.
+#[tauri::command]
+async fn check_seed_connectivity() -> Vec<SeedCheckResult> {
+    let timeout_dur = std::time::Duration::from_secs(3);
+
+    let (r1, r2) = tokio::join!(
+        async {
+            let start = std::time::Instant::now();
+            let reachable = tokio::time::timeout(
+                timeout_dur,
+                tokio::net::TcpStream::connect("207.244.247.86:38291"),
+            )
+            .await
+            .map(|r| r.is_ok())
+            .unwrap_or(false);
+            SeedCheckResult {
+                addr: "207.244.247.86".to_string(),
+                reachable,
+                latency_ms: if reachable { Some(start.elapsed().as_millis() as u64) } else { None },
+            }
+        },
+        async {
+            let start = std::time::Instant::now();
+            let reachable = tokio::time::timeout(
+                timeout_dur,
+                tokio::net::TcpStream::connect("157.173.116.134:38291"),
+            )
+            .await
+            .map(|r| r.is_ok())
+            .unwrap_or(false);
+            SeedCheckResult {
+                addr: "157.173.116.134".to_string(),
+                reachable,
+                latency_ms: if reachable { Some(start.elapsed().as_millis() as u64) } else { None },
+            }
+        }
+    );
+
+    vec![r1, r2]
+}
+
 // Returns hardware info the GUI needs at startup. cpu_cores is what
 // std::thread::available_parallelism() reports — accounts for cgroup limits,
 // container CPU shares, Windows scheduling masks, etc, which the browser
@@ -858,6 +902,11 @@ async fn start_node(
 
     // Sync cooldown between block-range requests per peer (default 2 s → 1 s).
     node_env.insert("IRIUM_P2P_SYNC_COOLDOWN_SECS".to_string(), "1".to_string());
+
+    // Per-peer outbound TCP connect timeout (p2p.rs:2782 IRIUM_P2P_CONNECT_TIMEOUT_SECS,
+    // default 8 s, clamped [2, 30]). Tightened to 5 s so a blocked/dead seed
+    // fails faster, reducing time-to-retry on the next dial cycle.
+    node_env.insert("IRIUM_P2P_CONNECT_TIMEOUT_SECS".to_string(), "5".to_string());
 
     // Announce the node's public IP so seeds correctly register this node as
     // dialable and share the address via PEX to other nodes. Without this,
@@ -5543,6 +5592,7 @@ fn main() {
             check_binaries,
             try_upnp_port_map,
             get_app_version,
+            check_seed_connectivity,
             get_system_info,
             // Wallet
             wallet_get_balance,
