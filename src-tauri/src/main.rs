@@ -3224,6 +3224,81 @@ fn record_found_block(
     }
 }
 
+// Fetch the coinbase reward for a freshly-mined block from iriumd. The
+// real endpoint is /rpc/block?height=N (verified in rpc_get_block at
+// :3610). The response shape isn't documented; we try a handful of
+// likely top-level reward fields first, then fall back to summing the
+// first tx's outputs (the coinbase by convention). Returns None on any
+// failure — caller should leave reward_sats at 0 in that case.
+async fn fetch_block_reward(rpc_url: &str, height: u64) -> Option<u64> {
+    let client = reqwest::Client::new();
+    let url = format!("{}/rpc/block?height={}", rpc_url.trim_end_matches('/'), height);
+    let resp = client
+        .get(&url)
+        .timeout(Duration::from_secs(5))
+        .send()
+        .await
+        .ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+    let json: serde_json::Value = resp.json().await.ok()?;
+
+    // Direct reward fields — first match wins.
+    for field in &[
+        "reward",
+        "block_reward",
+        "subsidy",
+        "coinbase_reward",
+        "coinbase_value",
+        "miner_reward",
+    ] {
+        if let Some(v) = json.get(field).and_then(|x| x.as_u64()) {
+            return Some(v);
+        }
+    }
+
+    // Fall back to summing the first tx's outputs (coinbase by convention).
+    let txs = json
+        .get("tx")
+        .or_else(|| json.get("txs"))
+        .or_else(|| json.get("transactions"))?;
+    let coinbase = txs.as_array()?.first()?;
+    let outputs = coinbase
+        .get("vout")
+        .or_else(|| coinbase.get("outputs"))?;
+    let total: u64 = outputs
+        .as_array()?
+        .iter()
+        .filter_map(|o| {
+            o.get("value_sats")
+                .or_else(|| o.get("value"))
+                .or_else(|| o.get("amount"))
+                .and_then(|v| v.as_u64())
+        })
+        .sum();
+    if total > 0 {
+        Some(total)
+    } else {
+        None
+    }
+}
+
+// Patch the reward field of the most-recent matching entry. We scan from
+// newest-to-oldest so simultaneous block-found events at different
+// heights don't trample each other.
+fn update_block_reward(
+    found_blocks: &Arc<Mutex<Vec<FoundBlock>>>,
+    height: u64,
+    reward: u64,
+) {
+    if let Ok(mut list) = found_blocks.lock() {
+        if let Some(b) = list.iter_mut().rev().find(|b| b.height == height) {
+            b.reward_sats = reward;
+        }
+    }
+}
+
 #[tauri::command]
 async fn start_miner(
     app: tauri::AppHandle,
@@ -3251,7 +3326,7 @@ async fn start_miner(
     let mut miner_env = HashMap::new();
     miner_env.insert("IRIUM_MINER_ADDRESS".to_string(), address.clone());
     miner_env.insert("IRIUM_RPC_URL".to_string(), rpc_url.clone());
-    miner_env.insert("IRIUM_NODE_RPC".to_string(), rpc_url);
+    miner_env.insert("IRIUM_NODE_RPC".to_string(), rpc_url.clone());
 
     let cmd = Command::new_sidecar("irium-miner")
         .map_err(|e| format!("irium-miner not found: {}", e))?
@@ -3264,6 +3339,7 @@ async fn start_miner(
     let sync_ref = Arc::clone(&state.miner_sync_status);
     let blocks_found_ref = Arc::clone(&state.blocks_found);
     let found_blocks_ref = Arc::clone(&state.found_blocks);
+    let rpc_url_for_reward = rpc_url.clone();
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
             let line = match event {
@@ -3271,16 +3347,23 @@ async fn start_miner(
                 CommandEvent::Stderr(l) => { tracing::warn!("[irium-miner stderr] {}", l); l }
                 _ => break,
             };
-            // TEMPORARY diagnostic: surface every miner line to the dev
-            // terminal so we can see whether output reaches Rust at all and
-            // at what cadence. Remove once the pipeline is trusted.
-            eprintln!("[miner-rx] (parsed={:?}) {}", parse_hashrate_khs(&line), line.trim_end());
 
             // Bug 1 fix — record block-found events before the other
             // pattern checks. A block-found line never matches the
             // hashrate regex, so the order doesn't shadow either signal.
             if let Some((height, hash)) = parse_block_found(&line) {
                 record_found_block(&blocks_found_ref, &found_blocks_ref, height, hash);
+                // Fire-and-forget reward fetch — fills the reward_sats
+                // field of the entry we just pushed. If the RPC fails or
+                // the response shape is unrecognized, reward stays at 0
+                // and the UI shows "—".
+                let fb_for_reward = Arc::clone(&found_blocks_ref);
+                let rpc_for_reward = rpc_url_for_reward.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Some(reward) = fetch_block_reward(&rpc_for_reward, height).await {
+                        update_block_reward(&fb_for_reward, height, reward);
+                    }
+                });
                 continue;
             }
 
@@ -3442,6 +3525,7 @@ async fn start_gpu_miner(
     let hashrate_ref = Arc::clone(&state.miner_hashrate);
     let blocks_found_ref = Arc::clone(&state.blocks_found);
     let found_blocks_ref = Arc::clone(&state.found_blocks);
+    let rpc_url_for_reward = rpc_url.clone();
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
             let line = match event {
@@ -3451,6 +3535,13 @@ async fn start_gpu_miner(
             };
             if let Some((height, hash)) = parse_block_found(&line) {
                 record_found_block(&blocks_found_ref, &found_blocks_ref, height, hash);
+                let fb_for_reward = Arc::clone(&found_blocks_ref);
+                let rpc_for_reward = rpc_url_for_reward.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Some(reward) = fetch_block_reward(&rpc_for_reward, height).await {
+                        update_block_reward(&fb_for_reward, height, reward);
+                    }
+                });
                 continue;
             }
             if let Some(khs) = parse_hashrate_khs(&line) {

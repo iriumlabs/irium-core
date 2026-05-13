@@ -14,6 +14,7 @@ import { miner, gpuMiner, stratum } from '../lib/tauri';
 import { useStore } from '../lib/store';
 import type { LucideIcon } from 'lucide-react';
 import type { FoundBlock } from '../lib/types';
+import NodeOfflineBanner from '../components/NodeOfflineBanner';
 import clsx from 'clsx';
 
 function formatUptime(secs: number): string {
@@ -465,7 +466,7 @@ function CpuMinerTab() {
           <input
             value={address}
             onChange={e => setAddress(e.target.value)}
-            placeholder="Paste your Irium mining address (starts with P)"
+            placeholder="Paste your Irium mining address (Q... or P...)"
             className="input"
           />
           <button onClick={() => navigate('/wallet')} className="mt-1.5 flex items-center gap-1 text-xs transition-colors" style={{ color: '#6ec6ff' }}>
@@ -773,6 +774,9 @@ function StratumTab() {
   const [worker, setWorker] = useState('');
   const [password, setPassword] = useState('x');
   const [selectedPreset, setSelectedPreset] = useState(0);
+  // Confirm flyout for Disconnect — mirrors the Stop Mining pattern on
+  // the CPU/GPU tabs so dropping in-progress shares isn't a single click.
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
 
   const loading = status === null;
 
@@ -788,6 +792,7 @@ function StratumTab() {
   };
 
   const handleDisconnect = async () => {
+    setShowDisconnectConfirm(false);
     try {
       await stratum.disconnect();
       toast.success('Disconnected from pool');
@@ -921,11 +926,30 @@ function StratumTab() {
               {connectLoading ? 'Connecting…' : 'Connect to Pool'}
             </button>
           ) : (
-            <button onClick={handleDisconnect}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-display font-semibold transition-all"
-              style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.22)', color: '#f87171' }}>
-              <WifiOff size={13} /> Disconnect
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowDisconnectConfirm(true)}
+                disabled={showDisconnectConfirm}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-display font-semibold transition-all"
+                style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.22)', color: '#f87171' }}
+              >
+                <WifiOff size={13} /> Disconnect
+              </button>
+              <AnimatePresence>
+                {showDisconnectConfirm && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -8 }}
+                    className="flex items-center gap-1.5"
+                  >
+                    <span className="text-xs" style={{ color: 'var(--t3)' }}>Confirm disconnect?</span>
+                    <button onClick={handleDisconnect} className="btn-ghost text-xs py-1 px-2" style={{ color: '#f87171' }}>Yes</button>
+                    <button onClick={() => setShowDisconnectConfirm(false)} className="btn-ghost text-xs py-1 px-2">No</button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           )}
         </div>
       </div>
@@ -963,6 +987,7 @@ export default function Miner() {
       className="h-full overflow-y-auto"
     >
       <div className="w-full space-y-5 px-8 py-6">
+      <NodeOfflineBanner />
       {/* Header */}
       <div>
         <h1 className="page-title">Miner</h1>
