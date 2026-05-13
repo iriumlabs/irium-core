@@ -23,7 +23,7 @@ const itemVariants = {
 type Tab = 'browse' | 'my-offers' | 'feeds';
 
 // ─── Offer Card ────────────────────────────────────────────────
-function OfferCard({ offer, onTake, isOnline }: { offer: Offer; onTake: () => void; isOnline: boolean }) {
+function OfferCard({ offer, onTake, onOpenDetail, isOnline }: { offer: Offer; onTake: () => void; onOpenDetail: () => void; isOnline: boolean }) {
   const navigate = useNavigate();
   const score = offer.reputation?.score ?? 0;
   const riskBadge =
@@ -36,7 +36,8 @@ function OfferCard({ offer, onTake, isOnline }: { offer: Offer; onTake: () => vo
   return (
     <motion.div
       variants={itemVariants}
-      className="card-interactive flex items-center gap-4 px-4 py-3.5"
+      onClick={onOpenDetail}
+      className="card-interactive flex items-center gap-4 px-4 py-3.5 cursor-pointer"
     >
       {/* Left: id, seller, optional description — flexes to fill */}
       <div className="flex-1 min-w-0">
@@ -447,7 +448,7 @@ function CreateOfferModal({
                 ) : (
                   <Plus size={14} className="mr-1" />
                 )}
-                Lock &amp; List
+                Create Offer
               </button>
             </div>
           </div>
@@ -477,16 +478,35 @@ export default function MarketplacePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showTakeModal, setShowTakeModal] = useState<Offer | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState<Offer | null>(null);
   const [addFeedUrl, setAddFeedUrl] = useState('');
   const [showAddFeed, setShowAddFeed] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [removingFeed, setRemovingFeed] = useState<string | null>(null);
+  // Server-side filter params for offers.list. Min/Max are IRM strings
+  // (kept as strings so the inputs allow partial values like "1."); the
+  // backend offer_list command accepts f64 IRM directly — see main.rs:2262
+  // L2267-2280, which forwards values verbatim as `--min-amount` /
+  // `--max-amount` to the wallet CLI. Payment is a freeform string filter.
+  const [filterMinIrm, setFilterMinIrm] = useState('');
+  const [filterMaxIrm, setFilterMaxIrm] = useState('');
+  const [filterPayment, setFilterPayment] = useState<string>('');
 
   // ── Data loaders ─────────────────────────────────────────────
   const loadOffers = async () => {
     setLoading(true);
     try {
-      const data = await offers.list({ source: filterSource, sort: filterSort, limit: 50 });
+      // Parse min/max IRM inputs. parseFloat('') is NaN → undefined.
+      const minIrm = filterMinIrm.trim() ? parseFloat(filterMinIrm) : undefined;
+      const maxIrm = filterMaxIrm.trim() ? parseFloat(filterMaxIrm) : undefined;
+      const data = await offers.list({
+        source: filterSource,
+        sort: filterSort,
+        limit: 50,
+        minAmount: Number.isFinite(minIrm) ? minIrm : undefined,
+        maxAmount: Number.isFinite(maxIrm) ? maxIrm : undefined,
+        payment: filterPayment.trim() ? filterPayment.trim() : undefined,
+      });
       setOfferList(data);
     } catch (e) {
       // Suppress toast when offline — empty state communicates the problem.
@@ -529,12 +549,18 @@ export default function MarketplacePage() {
   // Single effect handles initial load + tab changes + filter changes.
   // Merging prevents the second useEffect([filterSource, filterSort]) from
   // firing a redundant loadOffers() on mount, which caused 4 toast errors.
+  // Browse-mode is debounced 400ms so per-keystroke min/max amount edits
+  // don't fire an RPC per character; tab changes get the same 400ms but it
+  // is barely perceptible.
   useEffect(() => {
-    if (activeTab === 'browse') loadOffers();
-    else if (activeTab === 'my-offers') loadMyOffers();
-    else if (activeTab === 'feeds') loadFeeds();
+    if (activeTab === 'browse') {
+      const t = setTimeout(loadOffers, 400);
+      return () => clearTimeout(t);
+    }
+    if (activeTab === 'my-offers') loadMyOffers();
+    if (activeTab === 'feeds') loadFeeds();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, filterSource, filterSort]);
+  }, [activeTab, filterSource, filterSort, filterMinIrm, filterMaxIrm, filterPayment]);
 
   // ── Feed actions ─────────────────────────────────────────────
   const handleAddFeed = async () => {
@@ -684,6 +710,106 @@ export default function MarketplacePage() {
             </div>
           </motion.div>
 
+          {/* Secondary filter row — min/max amount + payment method. Server-
+              side filters wired into offers.list(). Debounced via the
+              loadOffers useEffect above so per-keystroke edits don't spam
+              the backend. */}
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: 0.05 }}
+            className="flex flex-wrap gap-3 items-center mb-5"
+          >
+            <input
+              type="number"
+              min="0"
+              step="0.0001"
+              value={filterMinIrm}
+              onChange={(e) => setFilterMinIrm(e.target.value)}
+              placeholder="Min IRM"
+              className="input py-1.5 text-xs w-28"
+              title="Filter offers with amount at least this many IRM"
+            />
+            <input
+              type="number"
+              min="0"
+              step="0.0001"
+              value={filterMaxIrm}
+              onChange={(e) => setFilterMaxIrm(e.target.value)}
+              placeholder="Max IRM"
+              className="input py-1.5 text-xs w-28"
+              title="Filter offers with amount at most this many IRM"
+            />
+            {/* Payment method filter — pill group matching the Source and
+                Sort pills above. Top 5 methods by frequency are surfaced as
+                pills; anything beyond that goes into an overflow dropdown so
+                the filter row doesn't blow up when many methods are
+                advertised. */}
+            {(() => {
+              const counts = new Map<string, number>();
+              for (const o of offerList) {
+                if (o.payment_method) {
+                  counts.set(o.payment_method, (counts.get(o.payment_method) ?? 0) + 1);
+                }
+              }
+              const ranked = Array.from(counts.entries())
+                .sort((a, b) => b[1] - a[1])
+                .map(([pm]) => pm);
+              const topFive = ranked.slice(0, 5);
+              const overflow = ranked.slice(5);
+              return (
+                <>
+                  <button
+                    onClick={() => setFilterPayment('')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-display font-semibold transition-all ${
+                      filterPayment === ''
+                        ? 'bg-irium-500 text-white'
+                        : 'bg-surface-600 text-white/50 hover:text-white/80'
+                    }`}
+                    title="Show offers for any payment method"
+                  >
+                    All
+                  </button>
+                  {topFive.map((pm) => (
+                    <button
+                      key={pm}
+                      onClick={() => setFilterPayment(pm)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-display font-semibold transition-all ${
+                        filterPayment === pm
+                          ? 'bg-irium-500 text-white'
+                          : 'bg-surface-600 text-white/50 hover:text-white/80'
+                      }`}
+                      title={`Filter to "${pm}" payment method`}
+                    >
+                      {pm}
+                    </button>
+                  ))}
+                  {overflow.length > 0 && (
+                    <select
+                      value={overflow.includes(filterPayment) ? filterPayment : ''}
+                      onChange={(e) => setFilterPayment(e.target.value)}
+                      className="input py-1.5 text-xs pr-3 appearance-none cursor-pointer"
+                      title={`${overflow.length} more payment methods`}
+                    >
+                      <option value="" style={{ background: '#0f0f23', color: '#eef0ff' }}>More ({overflow.length})…</option>
+                      {overflow.map((pm) => (
+                        <option key={pm} value={pm} style={{ background: '#0f0f23', color: '#eef0ff' }}>{pm}</option>
+                      ))}
+                    </select>
+                  )}
+                </>
+              );
+            })()}
+            {(filterMinIrm || filterMaxIrm || filterPayment) && (
+              <button
+                onClick={() => { setFilterMinIrm(''); setFilterMaxIrm(''); setFilterPayment(''); }}
+                className="text-xs text-white/40 hover:text-white/70 underline underline-offset-2"
+              >
+                Clear filters
+              </button>
+            )}
+          </motion.div>
+
           {/* Offer grid */}
           {loading ? (
             <div className="space-y-2">
@@ -709,6 +835,7 @@ export default function MarketplacePage() {
                   key={offer.id}
                   offer={offer}
                   onTake={() => setShowTakeModal(offer)}
+                  onOpenDetail={() => setShowDetailModal(offer)}
                   isOnline={!!nodeStatus?.running}
                 />
               ))}
@@ -755,6 +882,7 @@ export default function MarketplacePage() {
                   key={offer.id}
                   offer={offer}
                   onTake={() => setShowTakeModal(offer)}
+                  onOpenDetail={() => setShowDetailModal(offer)}
                   isOnline={!!nodeStatus?.running}
                 />
               ))}
@@ -938,7 +1066,231 @@ export default function MarketplacePage() {
           }}
         />
       )}
+
+      {showDetailModal && (
+        <OfferDetailModal
+          offer={showDetailModal}
+          onClose={() => setShowDetailModal(null)}
+          onTake={() => {
+            // Hand off to TakeOfferModal — closes detail first to avoid
+            // stacked modal overlap.
+            const o = showDetailModal;
+            setShowDetailModal(null);
+            setShowTakeModal(o);
+          }}
+          isOnline={!!nodeStatus?.running}
+        />
+      )}
       </div>
     </motion.div>
+  );
+}
+
+// ─── Offer Detail Modal ────────────────────────────────────────
+// Opens when a user clicks an offer card body (the Take Offer button
+// stops propagation and bypasses this modal). Shows the full offer
+// data — untruncated seller address, full description, timeout height,
+// reputation breakdown — and a Take Offer CTA that hands off to the
+// existing TakeOfferModal.
+function OfferDetailModal({
+  offer,
+  onClose,
+  onTake,
+  isOnline,
+}: {
+  offer: Offer;
+  onClose: () => void;
+  onTake: () => void;
+  isOnline: boolean;
+}) {
+  const score = offer.reputation?.score ?? 0;
+  const riskClass =
+    offer.risk_signal === 'low'
+      ? 'badge-success'
+      : offer.risk_signal === 'medium'
+      ? 'badge-warning'
+      : offer.risk_signal === 'high'
+      ? 'badge-error'
+      : 'badge-info';
+  const riskExplanation =
+    offer.risk_signal === 'low'
+      ? 'Seller has a clean recent record — no sybil suppression, no disputes ≥10%.'
+      : offer.risk_signal === 'medium'
+      ? 'Seller has limited history or some warning signals. Inspect before trading.'
+      : offer.risk_signal === 'high'
+      ? 'Seller is sybil-suppressed, self-trading, or has ≥10% disputes. Trade with caution.'
+      : 'Risk level not classified yet.';
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        key="detail-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+        onClick={onClose}
+      >
+        <motion.div
+          key="detail-modal"
+          initial={{ opacity: 0, scale: 0.95, y: 16 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 8 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="card w-full max-w-lg p-6 rounded-2xl overflow-y-auto max-h-[90vh]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-display font-bold text-lg text-white">Offer Details</h2>
+              <p className="font-mono text-[10px] text-white/40 mt-0.5">{offer.id}</p>
+            </div>
+            <button onClick={onClose} className="btn-ghost text-white/40 p-1">
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* How this works — plain-English flow for first-time users.
+              Matches the cyan-tinted info pattern used by the Settlement
+              wizard's escrow notice. */}
+          <div
+            className="flex items-start gap-2 px-3 py-2.5 rounded-xl mb-5 text-xs"
+            style={{
+              background: 'rgba(110,198,255,0.08)',
+              border: '1px solid rgba(110,198,255,0.20)',
+              color: 'rgba(238,240,255,0.65)',
+            }}
+          >
+            <span style={{ color: '#6ec6ff', flexShrink: 0, fontSize: 14 }}>ℹ</span>
+            <span>
+              <strong style={{ color: 'rgba(238,240,255,0.85)' }}>How this works:</strong>{' '}
+              Take this offer to lock IRM in escrow. Make your payment to the seller using the method below. Submit payment proof in the Agreements page. Once verified, IRM is released automatically.
+            </span>
+          </div>
+
+          {/* Amount — gradient hero */}
+          <div className="mb-5 text-center">
+            <div
+              className="font-display font-bold text-4xl tabular-nums"
+              style={{
+                background: 'linear-gradient(90deg, #d4eeff 0%, #6ec6ff 55%, #a78bfa 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              {formatIRM(offer.amount)}
+            </div>
+            <div className="text-xs text-white/40 mt-1 font-mono">
+              {offer.amount.toLocaleString()} sats
+            </div>
+          </div>
+
+          {/* Seller — full address, no truncation */}
+          {offer.seller && (
+            <div className="mb-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Seller Address</p>
+              <p className="font-mono text-xs text-white/80 break-all">{offer.seller}</p>
+            </div>
+          )}
+
+          {/* Meta grid */}
+          <div className="grid grid-cols-2 gap-3 mb-4 text-xs">
+            {offer.payment_method && (
+              <div>
+                <p className="text-white/40 uppercase tracking-wider mb-1">Payment Method</p>
+                <span className="badge badge-info text-[10px]">{offer.payment_method}</span>
+              </div>
+            )}
+            {offer.timeout_height != null && (
+              <div>
+                <p className="text-white/40 uppercase tracking-wider mb-1">Timeout Height</p>
+                <p className="font-mono text-white/80">#{offer.timeout_height.toLocaleString()}</p>
+              </div>
+            )}
+            {offer.created_at && (
+              <div>
+                <p className="text-white/40 uppercase tracking-wider mb-1">Created</p>
+                <p className="font-mono text-white/80">{timeAgo(offer.created_at)}</p>
+              </div>
+            )}
+            {offer.status && (
+              <div>
+                <p className="text-white/40 uppercase tracking-wider mb-1">Status</p>
+                <span className="badge badge-info text-[10px] capitalize">{offer.status}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Full description */}
+          {offer.description && (
+            <div className="mb-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Description</p>
+              <p className="text-sm text-white/70 whitespace-pre-wrap">{offer.description}</p>
+            </div>
+          )}
+
+          {/* Reputation */}
+          {(offer.reputation || offer.risk_signal || offer.ranking_score !== undefined) && (
+            <div className="mb-5 glass rounded-lg p-3">
+              <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Seller Reputation</p>
+              <div className="space-y-2 text-xs">
+                {offer.reputation?.score !== undefined && (
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.40)' }}>
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${score}%`,
+                            background: score > 80 ? '#22c55e' : score > 60 ? '#f59e0b' : '#ef4444',
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <span className="font-mono text-white/70 flex-shrink-0">{score}/100</span>
+                  </div>
+                )}
+                {offer.reputation?.completed !== undefined && (
+                  <div className="flex justify-between">
+                    <span className="text-white/40">Completed trades</span>
+                    <span className="font-mono text-white/70">{offer.reputation.completed}</span>
+                  </div>
+                )}
+                {offer.ranking_score !== undefined && (
+                  <div className="flex justify-between">
+                    <span className="text-white/40">Ranking score</span>
+                    <span className="font-mono text-white/70">{offer.ranking_score}</span>
+                  </div>
+                )}
+                {offer.risk_signal && (
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-white/40">Risk signal</span>
+                    <span className={`badge ${riskClass} text-[10px] capitalize`}>{offer.risk_signal}</span>
+                  </div>
+                )}
+                {offer.risk_signal && (
+                  <p className="text-[11px] text-white/45 pt-1 border-t border-white/5">{riskExplanation}</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button onClick={onClose} className="btn-secondary flex-1 justify-center">
+              Close
+            </button>
+            <button
+              onClick={onTake}
+              disabled={!isOnline}
+              title={!isOnline ? 'Node must be online to take offers' : undefined}
+              className="btn-primary flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Take Offer
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }

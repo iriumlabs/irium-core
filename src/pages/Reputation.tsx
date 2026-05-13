@@ -14,8 +14,9 @@ import {
   User,
   Copy,
 } from "lucide-react";
-import { reputation } from "../lib/tauri";
-import type { Reputation as ReputationData } from "../lib/types";
+import { reputation, reputationActions } from "../lib/tauri";
+import type { Reputation as ReputationData, ReputationOutcome } from "../lib/types";
+import toast from "react-hot-toast";
 
 // ─── useCountUp hook ─────────────────────────────────────────────────────────
 function useCountUp(target: number, duration: number, active: boolean): number {
@@ -194,6 +195,7 @@ export default function Reputation() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ReputationData | null>(null);
   const [resultVisible, setResultVisible] = useState(false);
+  const [showOutcomeModal, setShowOutcomeModal] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -331,8 +333,7 @@ export default function Reputation() {
             <div>
               <p className="text-white font-semibold">No address queried yet</p>
               <p className="text-sm text-white/40 mt-1">
-                Enter a Q-prefix address or public key above to look up their on-chain
-                reputation score and agreement history.
+                Enter a seller's Q-prefix address or public key to check their trade history, completion rate, and risk level before you trade with them.
               </p>
             </div>
           </motion.div>
@@ -472,6 +473,24 @@ export default function Reputation() {
               </motion.div>
             </motion.div>
 
+            {/* Record outcome CTA — visible whenever a seller has been
+                looked up. Opens the OutcomeModal which writes to the local
+                reputation DB via reputation_record_outcome. */}
+            <div className="card p-4 flex items-center justify-between gap-3">
+              <div className="text-xs">
+                <p className="text-white font-semibold">Just traded with this seller?</p>
+                <p className="text-white/40 mt-0.5">
+                  Record the outcome to your local reputation database. Future lookups will reflect it.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowOutcomeModal(true)}
+                className="btn-secondary text-xs py-1.5 px-3 flex-shrink-0"
+              >
+                Record Outcome
+              </button>
+            </div>
+
             {/* Recent window — short rolling summary from data.recent.
                 Only shown when the binary has something to display, otherwise
                 a tiny "no recent activity" placeholder. */}
@@ -513,7 +532,164 @@ export default function Reputation() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Outcome recording modal */}
+      <AnimatePresence>
+        {showOutcomeModal && data && (
+          <OutcomeModal
+            seller={data.seller}
+            onClose={() => setShowOutcomeModal(false)}
+            onSuccess={() => {
+              setShowOutcomeModal(false);
+              // Re-lookup so the new outcome reflects in the displayed stats.
+              lookup(data.seller);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
+    </motion.div>
+  );
+}
+
+// ─── Outcome recording modal ─────────────────────────────────────────────────
+// Writes a trade outcome to the local reputation database via
+// reputation_record_outcome. Local-only — sellers cannot see what individual
+// buyers record about them (per WHITEPAPER §10 L645-660: "no central
+// reputation server, no shared reputation ledger").
+
+const OUTCOMES: { value: ReputationOutcome; label: string; color: string; sub: string }[] = [
+  { value: 'satisfied', label: 'Satisfied', color: '#10b981', sub: 'Trade completed successfully' },
+  { value: 'failed',    label: 'Failed',    color: '#f43f5e', sub: 'Counterparty did not perform'    },
+  { value: 'disputed',  label: 'Disputed',  color: '#f59e0b', sub: 'Required a resolver attestation'  },
+  { value: 'timeout',   label: 'Timeout',   color: '#a78bfa', sub: 'Deadline passed without resolution' },
+];
+
+function OutcomeModal({
+  seller,
+  onClose,
+  onSuccess,
+}: {
+  seller: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [choice, setChoice] = useState<ReputationOutcome | null>(null);
+  const [proofResponseSecs, setProofResponseSecs] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleConfirm = async () => {
+    if (!choice) return;
+    setSubmitting(true);
+    try {
+      const secs = proofResponseSecs.trim() ? parseInt(proofResponseSecs, 10) : undefined;
+      const result = await reputationActions.recordOutcome(
+        seller,
+        choice,
+        Number.isFinite(secs) ? secs : undefined,
+      );
+      if (result.success) {
+        toast.success(`Recorded "${choice}" for this seller`);
+        onSuccess();
+      } else {
+        toast.error(result.message ?? 'Failed to record outcome');
+      }
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const truncated = seller.length > 16 ? `${seller.slice(0, 8)}…${seller.slice(-6)}` : seller;
+
+  return (
+    <motion.div
+      key="outcome-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 16 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 8 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="card w-full max-w-md p-6 rounded-2xl"
+      >
+        <div className="mb-2">
+          <h2 className="font-display font-bold text-lg text-white">Record Outcome</h2>
+          <p className="text-xs text-white/40 mt-0.5">
+            with <span className="font-mono text-white/60">{truncated}</span>
+          </p>
+        </div>
+
+        <p className="text-xs text-white/50 mb-4">
+          This adds to your <strong className="text-white/70">local</strong> reputation database. Only you see it. Sellers can request a signed export later if both parties agree.
+        </p>
+
+        <div className="space-y-2 mb-4">
+          {OUTCOMES.map((o) => {
+            const selected = choice === o.value;
+            return (
+              <button
+                key={o.value}
+                onClick={() => setChoice(o.value)}
+                className={`w-full text-left px-3 py-2.5 rounded-lg border transition-colors flex items-center gap-3 ${
+                  selected
+                    ? 'bg-white/5'
+                    : 'border-white/5 hover:bg-white/[0.03]'
+                }`}
+                style={{
+                  borderColor: selected ? o.color : undefined,
+                  background: selected ? `${o.color}14` : undefined,
+                }}
+              >
+                <span
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ background: selected ? o.color : `${o.color}55` }}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-display font-semibold" style={{ color: selected ? o.color : 'rgba(238,240,255,0.8)' }}>
+                    {o.label}
+                  </div>
+                  <div className="text-[11px] text-white/40">{o.sub}</div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mb-5">
+          <label className="label">Proof response time (optional, seconds)</label>
+          <input
+            type="number"
+            min="0"
+            value={proofResponseSecs}
+            onChange={(e) => setProofResponseSecs(e.target.value)}
+            placeholder="e.g. 3600 for 1 hour"
+            className="input text-xs"
+          />
+          <p className="text-[11px] text-white/30 mt-1">
+            How long from funding to proof submission. Used for the avg_proof_response_secs reputation signal.
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="btn-secondary flex-1 justify-center">
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={!choice || submitting}
+            className="btn-primary flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {submitting ? 'Recording…' : 'Record Outcome'}
+          </button>
+        </div>
+      </motion.div>
     </motion.div>
   );
 }

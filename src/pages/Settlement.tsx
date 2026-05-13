@@ -548,11 +548,45 @@ export default function SettlementPage() {
               </motion.button>
             </div>
 
-            {/* Create directly */}
+            {/* How it works — three-step explainer for first-time users.
+                Sits between the big I'm Selling / I'm Buying cards and the
+                advanced "Create Agreement Directly" button so the
+                educational content is hit before users dive into the
+                template grid. */}
+            <div className="card p-5">
+              <div className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-4">
+                How it works
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  'Create or find an agreement',
+                  'Lock IRM in escrow on-chain',
+                  'Submit proof — funds release automatically',
+                ].map((step, i) => (
+                  <div key={i} className="flex flex-col items-start gap-2">
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center font-display font-bold text-xs flex-shrink-0"
+                      style={{
+                        background: 'linear-gradient(135deg, #6ec6ff 0%, #a78bfa 100%)',
+                        color: 'white',
+                      }}
+                    >
+                      {i + 1}
+                    </div>
+                    <p className="text-xs text-white/65 leading-snug">{step}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Create directly — promoted from a faint underlined link to a
+                proper secondary button so sellers can find it without
+                squinting. Still positioned below the two big buyer/seller
+                cards so it reads as the "third option". */}
             <div className="text-center">
               <button
                 onClick={() => setView('grid')}
-                className="text-sm text-white/35 hover:text-white/65 transition-colors underline underline-offset-2"
+                className="btn-secondary text-sm py-2 px-4"
               >
                 Create Agreement Directly (advanced)
               </button>

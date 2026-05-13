@@ -198,6 +198,10 @@ export interface Offer {
   ranking_score?: number;
   reputation?: OfferReputation;
   risk_signal?: string;
+  // Block height at which the offer expires. Returned by /offers/feed per
+  // API.md §Marketplace L612. Optional because not every offer source
+  // (e.g. an offer authored in an older binary) includes it.
+  timeout_height?: number;
 }
 
 export interface CreateOfferParams {
@@ -251,7 +255,9 @@ export type AgreementStatus =
   | "pending"   // created locally, awaiting agreement-fund broadcast
   | "funded"
   | "released"
-  | "refunded";
+  | "refunded"
+  | "expired"   // deadline passed without proof or release
+  | "disputed_metadata_only";  // dispute raised, awaiting resolver attestation
 
 export type ProofStatus =
   | "none"

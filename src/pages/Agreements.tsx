@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen, Fi
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useStore } from '../lib/store';
-import { agreements, proofs, agreementSpend } from '../lib/tauri';
+import { agreements, proofs, agreementSpend, disputes } from '../lib/tauri';
 import {
   formatIRM,
   timeAgo,
@@ -93,6 +93,9 @@ export default function AgreementsPage() {
   const [refundEligByAgreement, setRefundEligByAgreement] = useState<Record<string, SpendEligibilityResult>>({});
   const [releaseEligByAgreement, setReleaseEligByAgreement] = useState<Record<string, SpendEligibilityResult>>({});
   const [statusByAgreement, setStatusByAgreement] = useState<Record<string, AgreementStatusResult>>({});
+  // Drives the Open Dispute confirmation modal — id of the agreement being
+  // disputed, or null when the modal is closed.
+  const [disputeAgreementId, setDisputeAgreementId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -262,6 +265,7 @@ export default function AgreementsPage() {
                   if (a.release_eligible) setShowReleaseModal(a.id);
                 }}
                 onRefund={() => handleRefund(a.id)}
+                onDispute={() => setDisputeAgreementId(a.id)}
                 actionLoading={actionLoading}
                 isOnline={!!nodeStatus?.running}
                 refundElig={refundEligByAgreement[a.id]}
@@ -344,8 +348,98 @@ export default function AgreementsPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Open Dispute Modal */}
+      <AnimatePresence>
+        {disputeAgreementId !== null && (
+          <DisputeModal
+            agreement={agreementList.find((a) => a.id === disputeAgreementId)!}
+            onClose={() => setDisputeAgreementId(null)}
+            onSuccess={() => {
+              setDisputeAgreementId(null);
+              loadData();
+            }}
+            isOnline={!!nodeStatus?.running}
+          />
+        )}
+      </AnimatePresence>
       </div>
     </motion.div>
+  );
+}
+
+// ── Agreement lifecycle timeline ──────────────────────────────
+// Visualises where the agreement is in its on-chain lifecycle:
+// Created → Funded → Proof Submitted → Released / Refunded.
+// The active step is the first non-done step; refund flow swaps
+// the last label when status === 'refunded'.
+function AgreementTimeline({
+  status,
+  proofStatus,
+  hasProofs,
+}: {
+  status: Agreement['status'];
+  proofStatus?: string;
+  hasProofs: boolean;
+}) {
+  const isRefunded = status === 'refunded';
+  const steps = [
+    { label: 'Created', done: true },
+    {
+      label: 'Funded',
+      done: status === 'funded' || status === 'released' || status === 'refunded',
+    },
+    {
+      label: 'Proof Submitted',
+      done: hasProofs || (proofStatus !== undefined && proofStatus !== 'none'),
+    },
+    {
+      label: isRefunded ? 'Refunded' : 'Released',
+      done: status === 'released' || status === 'refunded',
+    },
+  ];
+  const activeIdx = steps.findIndex((s) => !s.done);
+
+  return (
+    <div className="flex items-start gap-1 mb-1">
+      {steps.map((step, i) => {
+        const isDone = step.done;
+        const isActive = i === activeIdx;
+        const dotClass = isDone
+          ? 'bg-irium-500 border-irium-500'
+          : isActive
+          ? 'border-irium-300 bg-transparent'
+          : 'border-white/10 bg-transparent';
+        return (
+          <React.Fragment key={step.label}>
+            <div className="flex flex-col items-center gap-1 flex-shrink-0">
+              <div
+                className={`w-3.5 h-3.5 rounded-full border-2 ${dotClass} ${isActive ? 'animate-pulse' : ''}`}
+              />
+              <span
+                className={`text-[10px] whitespace-nowrap ${
+                  isDone
+                    ? 'text-white/70'
+                    : isActive
+                    ? 'text-irium-300'
+                    : 'text-white/25'
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div
+                className={`h-0.5 flex-1 mt-[7px] ${
+                  isDone && steps[i + 1].done ? 'bg-irium-500' : 'bg-white/10'
+                }`}
+                style={{ minWidth: 24 }}
+              />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
   );
 }
 
@@ -360,6 +454,7 @@ interface AgreementCardProps {
   onSubmitProof: () => void;
   onRelease: () => void;
   onRefund: () => void;
+  onDispute: () => void;
   actionLoading: boolean;
   isOnline: boolean;
   // Populated on expand by AgreementsPage's eligibility/status useEffect.
@@ -457,6 +552,7 @@ function AgreementCard({
   onSubmitProof,
   onRelease,
   onRefund,
+  onDispute,
   actionLoading,
   isOnline,
   refundElig,
@@ -557,6 +653,13 @@ function AgreementCard({
             className="overflow-hidden"
           >
             <div className="p-4 border-t border-white/[0.05] space-y-4">
+              {/* Lifecycle timeline — Created → Funded → Proof → Released/Refunded */}
+              <AgreementTimeline
+                status={a.status}
+                proofStatus={a.proof_status}
+                hasProofs={(agreementProofs?.length ?? 0) > 0}
+              />
+
               {/* Detail grid */}
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <Detail label="Hash" value={a.hash ? truncateHash(a.hash) : '—'} />
@@ -658,7 +761,15 @@ function AgreementCard({
                 </div>
               )}
 
-              {/* Action buttons */}
+              {/* Action buttons — context-aware. Each lifecycle stage
+                  surfaces only the actions that are valid for that stage:
+                    open/pending → just Fund Escrow (no point submitting a
+                                   proof on an unfunded HTLC)
+                    funded       → Release (when eligible, prominent),
+                                   Submit Proof, Open Dispute, Refund (off
+                                   until timeout), Export Pack
+                    released/
+                    refunded     → only Export Pack — terminal states. */}
               <div className="flex gap-2 pt-2 flex-wrap">
                 {isUnfunded && (
                   <button
@@ -670,44 +781,90 @@ function AgreementCard({
                     Fund Escrow
                   </button>
                 )}
-                <button
-                  onClick={onSubmitProof}
-                  className="btn-secondary text-xs py-1.5 px-3"
-                  title="Submit your proof of delivery"
-                >
-                  Submit Proof
-                </button>
-                <button
-                  onClick={onRelease}
-                  disabled={!a.release_eligible || actionLoading || !isOnline}
-                  title={
-                    !isOnline
-                      ? 'Node must be online to release funds'
-                      : !a.release_eligible
-                      ? 'Release not eligible — proof conditions not yet satisfied'
-                      : 'Release funds to counterparty'
-                  }
-                  className={`btn-primary text-xs py-1.5 px-3 ${
-                    !a.release_eligible || !isOnline ? 'opacity-40 cursor-not-allowed' : ''
-                  }`}
-                >
-                  Release to Counterparty
-                </button>
-                <button
-                  onClick={onRefund}
-                  disabled={actionLoading || !isOnline || refundBlocked}
-                  title={
-                    !isOnline
-                      ? 'Node must be online to refund'
-                      : refundBlocked
-                      ? (refundElig?.reason ?? 'Timeout not yet reached')
-                      : undefined
-                  }
-                  className="btn-ghost text-xs py-1.5 px-3 text-red-400 hover:text-red-300 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Refund
-                </button>
-                <ExportPackRow agreementId={a.id} />
+
+                {a.status === 'funded' && (
+                  <>
+                    {a.release_eligible && (
+                      <button
+                        onClick={onRelease}
+                        disabled={actionLoading || !isOnline}
+                        title={!isOnline ? 'Node must be online to release funds' : 'Release funds to counterparty'}
+                        className="btn-primary text-xs py-1.5 px-3 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Release to Counterparty
+                      </button>
+                    )}
+                    <button
+                      onClick={onSubmitProof}
+                      className="btn-secondary text-xs py-1.5 px-3"
+                      title="Submit your proof of delivery"
+                    >
+                      Submit Proof
+                    </button>
+                    <button
+                      onClick={onDispute}
+                      disabled={actionLoading || !isOnline}
+                      title={!isOnline ? 'Node must be online to open a dispute' : 'Mark this agreement as disputed — requires a resolver attestation to settle'}
+                      className="btn-ghost text-xs py-1.5 px-3 text-amber-400 hover:text-amber-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                    >
+                      <AlertCircle size={12} /> Open Dispute
+                    </button>
+                    <button
+                      onClick={onRefund}
+                      disabled={actionLoading || !isOnline || refundBlocked}
+                      title={
+                        !isOnline
+                          ? 'Node must be online to refund'
+                          : refundBlocked
+                          ? (refundElig?.reason ?? 'Timeout not yet reached')
+                          : undefined
+                      }
+                      className="btn-ghost text-xs py-1.5 px-3 text-red-400 hover:text-red-300 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Refund
+                    </button>
+                    <ExportPackRow agreementId={a.id} />
+                  </>
+                )}
+
+                {(a.status === 'released' || a.status === 'refunded') && (
+                  <ExportPackRow agreementId={a.id} />
+                )}
+
+                {/* disputed_metadata_only — agreement is locked pending a
+                    resolver attestation per WHITEPAPER §8. No release / no
+                    refund is permitted until the resolver acts; surface a
+                    clear non-actionable button so the user knows they're
+                    waiting on someone else, plus Export Pack so they can
+                    share evidence. */}
+                {a.status === 'disputed_metadata_only' && (
+                  <>
+                    <button
+                      disabled
+                      title="A resolver attestation is required to settle this dispute. Contact your designated resolver."
+                      className="btn-ghost text-xs py-1.5 px-3 text-white/40 cursor-not-allowed flex items-center gap-1"
+                    >
+                      <AlertCircle size={12} /> Awaiting Resolver
+                    </button>
+                    <ExportPackRow agreementId={a.id} />
+                  </>
+                )}
+
+                {/* expired — deadline passed without proof or release.
+                    Terminal state for practical purposes; only auditing
+                    actions remain. */}
+                {a.status === 'expired' && (
+                  <>
+                    <button
+                      disabled
+                      title="This agreement's deadline has passed without resolution."
+                      className="btn-ghost text-xs py-1.5 px-3 text-white/40 cursor-not-allowed"
+                    >
+                      Agreement Expired
+                    </button>
+                    <ExportPackRow agreementId={a.id} />
+                  </>
+                )}
               </div>
             </div>
           </motion.div>
@@ -1399,6 +1556,129 @@ function ImportPackModal({ onClose, onSuccess }: ImportPackModalProps) {
             className="btn-primary flex-1 justify-center"
           >
             {importing ? <RefreshCw size={14} className="animate-spin" /> : 'Import Pack'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Open Dispute Modal ────────────────────────────────────────
+// Marks a funded agreement as disputed_metadata_only. The settlement
+// engine then requires the designated resolver to submit an attestation
+// before release becomes eligible. See WHITEPAPER §8 for the dispute
+// workflow and SETTLEMENT-DEV.md for the on-chain semantics.
+
+interface DisputeModalProps {
+  agreement: Agreement;
+  onClose: () => void;
+  onSuccess: () => void;
+  isOnline: boolean;
+}
+
+function DisputeModal({ agreement, onClose, onSuccess, isOnline }: DisputeModalProps) {
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleConfirm = async () => {
+    setSubmitting(true);
+    try {
+      const trimmed = reason.trim();
+      const result = await disputes.open(agreement.id, trimmed.length > 0 ? trimmed : undefined);
+      if (result.success) {
+        toast.success('Dispute opened');
+        onSuccess();
+      } else {
+        toast.error(result.message ?? 'Failed to open dispute');
+      }
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <motion.div
+      key="dispute-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="glass-heavy w-full max-w-md rounded-2xl p-6"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-display font-bold text-xl text-white">Open Dispute?</h2>
+          <button onClick={onClose} className="btn-ghost text-white/40">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Agreement summary */}
+        <div className="glass rounded-lg p-3 mb-4 text-xs space-y-1">
+          <div className="flex justify-between">
+            <span className="text-white/40">Agreement</span>
+            <span className="font-mono text-white/70">{agreement.id.slice(0, 18)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-white/40">Amount</span>
+            <span className="font-display font-semibold gradient-text">
+              {formatIRM(agreement.amount)}
+            </span>
+          </div>
+        </div>
+
+        {/* Plain-English warning */}
+        <div
+          className="flex items-start gap-2 rounded-lg p-3 mb-4 text-xs"
+          style={{
+            background: 'rgba(239,68,68,0.07)',
+            border: '1px solid rgba(239,68,68,0.25)',
+            color: 'rgba(248,113,113,0.85)',
+          }}
+        >
+          <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+          <span>
+            Opening a dispute means the agreement needs a resolver to review the evidence from both sides. Make sure you have a good reason and supporting proof before proceeding. This action cannot be undone.
+          </span>
+        </div>
+
+        {/* Optional reason */}
+        <div className="mb-5 text-left">
+          <label htmlFor="dispute-reason" className="label">Reason (optional)</label>
+          <textarea
+            id="dispute-reason"
+            className="input resize-none"
+            rows={3}
+            placeholder="Describe what went wrong — this is shared with the resolver."
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="btn-secondary flex-1 justify-center">
+            Cancel
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={submitting || !isOnline}
+            title={!isOnline ? 'Node must be online to open a dispute' : undefined}
+            className="btn-primary flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: '#ef4444' }}
+          >
+            {submitting ? (
+              <RefreshCw size={14} className="animate-spin" />
+            ) : (
+              'Confirm Open Dispute'
+            )}
           </button>
         </div>
       </motion.div>
