@@ -12,7 +12,7 @@ import {
   truncateHash,
   statusColor,
 } from '../lib/types';
-import type { Agreement, Proof } from '../lib/types';
+import type { Agreement, Proof, SpendEligibilityResult, AgreementStatusResult } from '../lib/types';
 
 // ── Animation variants ────────────────────────────────────────
 
@@ -29,10 +29,12 @@ const itemVariants = {
 // ── Types & constants ─────────────────────────────────────────
 
 // StatusFilter uses real binary status values: open / funded / released / refunded
-type StatusFilter = 'all' | 'open' | 'funded' | 'released' | 'refunded';
+// Pending = agreement created but funding tx not yet confirmed on-chain.
+type StatusFilter = 'all' | 'pending' | 'open' | 'funded' | 'released' | 'refunded';
 
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
   { key: 'all',      label: 'All'      },
+  { key: 'pending',  label: 'Pending'  },
   { key: 'open',     label: 'Open'     },
   { key: 'funded',   label: 'Funded'   },
   { key: 'released', label: 'Released' },
@@ -85,6 +87,12 @@ export default function AgreementsPage() {
   const [fundingId, setFundingId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [proofFilePath, setProofFilePath] = useState('');
+  // Per-agreement on-expand RPC caches — populate when the card expands,
+  // and pass into AgreementCard so it can disable refund / surface release
+  // reason / render the proof-finality warning.
+  const [refundEligByAgreement, setRefundEligByAgreement] = useState<Record<string, SpendEligibilityResult>>({});
+  const [releaseEligByAgreement, setReleaseEligByAgreement] = useState<Record<string, SpendEligibilityResult>>({});
+  const [statusByAgreement, setStatusByAgreement] = useState<Record<string, AgreementStatusResult>>({});
 
   useEffect(() => {
     loadData();
@@ -105,6 +113,30 @@ export default function AgreementsPage() {
       .then((ps) => setProofsByAgreement((prev) => ({ ...prev, [expandedId]: ps })))
       .catch(() => {});
   }, [expandedId, proofsByAgreement]);
+
+  // Load release / refund eligibility + full status on expand. Each call is
+  // independent and silently swallowed on failure — when undefined, the
+  // card falls back to the agreement.release_eligible boolean from the
+  // list response and shows no proof-finality warning.
+  useEffect(() => {
+    if (!expandedId) return;
+    const id = expandedId;
+    if (refundEligByAgreement[id] === undefined) {
+      agreementSpend.refundEligibility(id)
+        .then((r) => setRefundEligByAgreement((prev) => ({ ...prev, [id]: r })))
+        .catch(() => {});
+    }
+    if (releaseEligByAgreement[id] === undefined) {
+      agreementSpend.releaseEligibility(id)
+        .then((r) => setReleaseEligByAgreement((prev) => ({ ...prev, [id]: r })))
+        .catch(() => {});
+    }
+    if (statusByAgreement[id] === undefined) {
+      agreementSpend.status(id)
+        .then((s) => setStatusByAgreement((prev) => ({ ...prev, [id]: s })))
+        .catch(() => {});
+    }
+  }, [expandedId, refundEligByAgreement, releaseEligByAgreement, statusByAgreement]);
 
   const loadData = async () => {
     setLoading(true);
@@ -232,6 +264,9 @@ export default function AgreementsPage() {
                 onRefund={() => handleRefund(a.id)}
                 actionLoading={actionLoading}
                 isOnline={!!nodeStatus?.running}
+                refundElig={refundEligByAgreement[a.id]}
+                releaseElig={releaseEligByAgreement[a.id]}
+                statusInfo={statusByAgreement[a.id]}
               />
             </motion.div>
           ))}
@@ -327,6 +362,11 @@ interface AgreementCardProps {
   onRefund: () => void;
   actionLoading: boolean;
   isOnline: boolean;
+  // Populated on expand by AgreementsPage's eligibility/status useEffect.
+  // Undefined while the call is in flight or if the RPC failed.
+  refundElig?: SpendEligibilityResult;
+  releaseElig?: SpendEligibilityResult;
+  statusInfo?: AgreementStatusResult;
 }
 
 function ExportPackRow({ agreementId }: { agreementId: string }) {
@@ -419,7 +459,24 @@ function AgreementCard({
   onRefund,
   actionLoading,
   isOnline,
+  refundElig,
+  releaseElig,
+  statusInfo,
 }: AgreementCardProps) {
+  // Refund eligibility: when the RPC has come back and says ineligible,
+  // we disable the button and show the binary's reason in the tooltip.
+  // Undefined (RPC not yet returned, or failed) → fall back to permissive
+  // behaviour so a working refund path isn't blocked by a slow RPC.
+  const refundBlocked = refundElig !== undefined && !refundElig.eligible;
+  // Proof-finality warning: only meaningful once the backend has told us
+  // release is eligible AND we know proof_final/proof_depth. If either is
+  // unknown, we don't warn — UX is honest about its uncertainty.
+  const finalityDepth = 6; // matches IRIUM_PROOF_FINALITY_DEPTH default
+  const showFinalityWarning =
+    !!a.release_eligible &&
+    statusInfo !== undefined &&
+    (statusInfo.proof_final === false ||
+      (statusInfo.proof_depth != null && statusInfo.proof_depth < finalityDepth));
   // Fund button only meaningful before the agreement has been funded.
   // Once status moves to 'funded'/'released'/'refunded' the HTLC is on-chain
   // and re-funding is invalid.
@@ -519,6 +576,42 @@ function AgreementCard({
                 />
               </div>
 
+              {/* Release eligibility reason — surfaced inline when the
+                  binary returns a human-readable reason for the current
+                  eligibility state. Per SETTLEMENT-DEV.md error table:
+                  "Refund timeout not reached. Current height: ... " etc. */}
+              {releaseElig?.reason && (
+                <div className="text-xs text-white/50">
+                  <span className="text-white/30">Release reason: </span>
+                  <span className="font-mono">{releaseElig.reason}</span>
+                </div>
+              )}
+
+              {/* Proof-finality warning — release_eligible became true but
+                  the proof block isn't yet 6 deep. Per SETTLEMENT-DEV.md
+                  §"Proof Finality and Reorg Protection": "Do not act on
+                  proof_final: false as the proof may be rolled back by a
+                  chain reorg." */}
+              {showFinalityWarning && (
+                <div
+                  className="flex items-start gap-2 rounded-lg p-3 text-xs"
+                  style={{
+                    background: 'rgba(251,191,36,0.08)',
+                    border: '1px solid rgba(251,191,36,0.30)',
+                    color: 'rgba(251,191,36,0.85)',
+                  }}
+                >
+                  <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Proof not yet final</strong>
+                    {statusInfo?.proof_depth != null && (
+                      <span> (depth: {statusInfo.proof_depth}/{finalityDepth})</span>
+                    )}
+                    . Wait for more block confirmations before releasing — a chain reorg could roll the proof back.
+                  </span>
+                </div>
+              )}
+
               {/* Policy */}
               {a.policy && (
                 <div className="glass rounded-lg p-3 text-xs space-y-1">
@@ -602,8 +695,14 @@ function AgreementCard({
                 </button>
                 <button
                   onClick={onRefund}
-                  disabled={actionLoading || !isOnline}
-                  title={!isOnline ? 'Node must be online to refund' : undefined}
+                  disabled={actionLoading || !isOnline || refundBlocked}
+                  title={
+                    !isOnline
+                      ? 'Node must be online to refund'
+                      : refundBlocked
+                      ? (refundElig?.reason ?? 'Timeout not yet reached')
+                      : undefined
+                  }
                   className="btn-ghost text-xs py-1.5 px-3 text-red-400 hover:text-red-300 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Refund
@@ -795,13 +894,16 @@ function ProofModal({
               key={m}
               type="button"
               onClick={() => { setProofMode(m); setCreateError(null); }}
-              className={`flex-1 px-3 py-1.5 rounded-md text-xs font-display font-semibold transition-colors ${
+              className={`flex-1 px-3 py-2 rounded-md text-xs font-display font-semibold transition-colors ${
                 proofMode === m
                   ? 'bg-irium-500 text-white'
                   : 'text-white/40 hover:text-white/70'
               }`}
             >
-              {m === 'create' ? 'Create from Evidence' : 'Upload File'}
+              <div>{m === 'create' ? 'Create from Evidence' : 'Upload File'}</div>
+              <div className="text-[10px] font-normal opacity-70 mt-0.5">
+                {m === 'create' ? 'Build in-app' : 'Use existing file'}
+              </div>
             </button>
           ))}
         </div>
@@ -944,9 +1046,11 @@ function ProofModal({
             >
               <span style={{ color: '#60a5fa', flexShrink: 0 }}>ℹ</span>
               <span style={{ color: 'rgba(238,240,255,0.50)' }}>
-                The proof file must be a signed JSON document produced by{' '}
-                <span className="font-mono text-white/70">irium-wallet proof-sign</span>.
-                Only <span className="font-mono text-white/70">.json</span> files are accepted.
+                Use this tab only if you already have a proof file — for example, one a counterparty or attestor signed for you, or one you produced via{' '}
+                <span className="font-mono text-white/70">irium-wallet agreement-proof-create</span>.
+                {' '}If you are submitting your own proof, use the{' '}
+                <strong className="text-white/80">Create from Evidence</strong>
+                {' '}tab above — it builds and submits the proof without leaving the app.
               </span>
             </div>
 

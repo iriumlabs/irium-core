@@ -245,11 +245,11 @@ function AppLayout() {
                         The page lazy imports above are intentionally kept
                         so re-enabling is a one-line swap of <Navigate>
                         back to the original element. */}
-                    <Route path="/settlement"  element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/marketplace" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/agreements"  element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/agreements/:id" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/reputation"  element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/settlement"     element={<Settlement />} />
+                    <Route path="/marketplace"    element={<Marketplace />} />
+                    <Route path="/agreements"     element={<Agreements />} />
+                    <Route path="/agreements/:id" element={<Agreements />} />
+                    <Route path="/reputation"     element={<Reputation />} />
                     <Route path="/miner"       element={<Miner />}       />
                     <Route path="/settings"    element={<Settings />}    />
                     <Route path="/logs"        element={<Logs />}        />

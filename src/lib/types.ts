@@ -580,6 +580,11 @@ export interface AgreementStatusResult {
   refund_eligible?: boolean;
   current_height?: number;
   proof_status?: string;
+  // Per SETTLEMENT-DEV.md §"Proof Finality" — iriumd returns these alongside
+  // release_eligible. Optional here because the Tauri shell may not yet
+  // forward them; UI gracefully degrades when undefined.
+  proof_depth?: number | null;
+  proof_final?: boolean;
 }
 
 // ============================================================
@@ -788,7 +793,7 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   rpc_url: "http://127.0.0.1:38300",
-  auto_start_node: false,
+  auto_start_node: true,
   minimize_to_tray: true,
   currency_display: "IRM",
   network: "mainnet",

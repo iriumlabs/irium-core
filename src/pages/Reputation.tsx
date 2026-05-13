@@ -69,6 +69,19 @@ const RISK_CONFIG: Record<
   },
 };
 
+// Approximate block-window → wall-clock conversion. Irium block time is
+// nominally 600s but the user-facing UI treats it as ~2 minutes for now;
+// adjust the constant when the displayed approximation needs revision.
+const APPROX_MINUTES_PER_BLOCK = 2;
+function blocksToReadable(blocks: number): string {
+  const minutes = blocks * APPROX_MINUTES_PER_BLOCK;
+  if (minutes < 120) return `~${Math.round(minutes)} minutes`;
+  const hours = minutes / 60;
+  if (hours < 48) return `~${Math.round(hours)} hours`;
+  const days = hours / 24;
+  return `~${Math.round(days)} days`;
+}
+
 // ─── Animation variants ───────────────────────────────────────────────────────
 const containerVariants = {
   hidden: {},
@@ -386,17 +399,26 @@ export default function Reputation() {
                       fields the binary returns (no `flags` array exists). */}
                   <div className="flex flex-wrap gap-1.5">
                     {data.sybil_suppressed && (
-                      <span className="badge badge-warning text-xs px-2 py-0.5 inline-flex items-center gap-1">
+                      <span
+                        className="badge badge-warning text-xs px-2 py-0.5 inline-flex items-center gap-1"
+                        title="Seller has fewer than 3 completed agreements — their score is provisional and they could be a new identity created to inflate reputation."
+                      >
                         <AlertTriangle size={11} /> Sybil-suppressed
                       </span>
                     )}
                     {data.self_trade_count > 0 && (
-                      <span className="badge badge-warning text-xs px-2 py-0.5">
+                      <span
+                        className="badge badge-warning text-xs px-2 py-0.5"
+                        title="Detected agreements where buyer and seller appear to share a key derivation root. Inflated counts here may indicate fake reputation building."
+                      >
                         Self-trades: {data.self_trade_count}
                       </span>
                     )}
                     {data.dispute_rate && parseFloat(data.dispute_rate) >= 10 && (
-                      <span className="badge badge-warning text-xs px-2 py-0.5">
+                      <span
+                        className="badge badge-warning text-xs px-2 py-0.5"
+                        title="More than 10% of this seller's agreements ended in dispute. Inspect their dispute history before trading."
+                      >
                         High disputes: {data.dispute_rate}%
                       </span>
                     )}
@@ -459,7 +481,7 @@ export default function Reputation() {
                   Recent Window
                   {data.recent.window != null && (
                     <span className="ml-1 text-white/30 normal-case tracking-normal">
-                      · last {data.recent.window.toLocaleString()} blocks
+                      · last {data.recent.window.toLocaleString()} blocks ({blocksToReadable(data.recent.window)})
                     </span>
                   )}
                 </p>

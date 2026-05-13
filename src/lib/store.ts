@@ -419,11 +419,20 @@ export const useStore = create<AppStore>((set) => ({
 }));
 
 const SETTINGS_KEY = "irium_core_settings";
+const SETTINGS_MIGRATION_KEY = "irium_core_settings_migrated_v1";
 
 function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    if (raw) {
+      const merged: AppSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+      if (!localStorage.getItem(SETTINGS_MIGRATION_KEY)) {
+        merged.auto_start_node = true;
+        saveSettings(merged);
+        localStorage.setItem(SETTINGS_MIGRATION_KEY, "1");
+      }
+      return merged;
+    }
   } catch {}
   return DEFAULT_SETTINGS;
 }

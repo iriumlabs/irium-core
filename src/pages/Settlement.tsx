@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeftRight, Briefcase, Target, Landmark,
   ArrowLeft, Copy, Loader2, AlertCircle, CheckCircle2,
-  Zap,
+  Zap, Hourglass, Hammer,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -68,6 +68,25 @@ const TEMPLATES: TemplateConfig[] = [
     iconBg: 'bg-amber-500/20',
     iconColor: 'text-amber-400',
     borderColor: 'border-amber-500/40',
+  },
+];
+
+// Templates that exist on-chain (irium-source/src/settlement.rs:24-33
+// `MerchantDelayedSettlement` and `ContractorMilestone`) but do not have
+// Tauri IPC bindings yet. Rendered as disabled cards in the grid so users
+// can see they exist; backend wiring is a follow-up.
+const COMING_SOON: { id: string; name: string; desc: string; Icon: React.ElementType }[] = [
+  {
+    id: 'merchant_delayed',
+    name: 'Merchant Delayed',
+    desc: 'Merchant sale with built-in cool-down window before payment settles',
+    Icon: Hourglass,
+  },
+  {
+    id: 'contractor',
+    name: 'Contractor Milestones',
+    desc: 'Contractor work split across milestones with per-milestone attestor proof',
+    Icon: Hammer,
   },
 ];
 
@@ -603,6 +622,32 @@ export default function SettlementPage() {
                   </div>
                 </motion.div>
               ))}
+              {/* Coming-soon cards — surface the on-chain templates that
+                  exist in irium-source but have no Tauri IPC binding yet. */}
+              {COMING_SOON.map((template) => (
+                <motion.div
+                  key={template.id}
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 0.55, y: 0, transition: { duration: 0.35, ease: 'easeOut' } }}
+                  onClick={() => toast('This template exists on-chain but is not yet wired to the desktop UI. Coming soon.', { icon: '⏳' })}
+                  className="card p-7 cursor-not-allowed flex flex-col items-center text-center gap-4 relative overflow-hidden"
+                  title="Coming soon — backend wiring pending"
+                >
+                  <div
+                    className="absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-display font-bold"
+                    style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(238,240,255,0.55)' }}
+                  >
+                    Coming Soon
+                  </div>
+                  <div className="relative z-10 p-5 rounded-2xl bg-white/5">
+                    <template.Icon size={32} className="text-white/40" />
+                  </div>
+                  <div className="relative z-10">
+                    <div className="font-display font-bold text-xl text-white/60">{template.name}</div>
+                    <div className="text-white/40 text-sm mt-1.5">{template.desc}</div>
+                  </div>
+                </motion.div>
+              ))}
             </div>
           </motion.div>
         )}
@@ -660,12 +705,29 @@ export default function SettlementPage() {
                       </p>
                     </div>
 
+                    {/* HTLC escrow notice — same pattern as the Marketplace
+                        Create-Offer modal. Surfaces the on-chain mechanic so
+                        the user knows what "create agreement" actually does. */}
+                    <div
+                      className="flex items-start gap-2 px-3 py-2.5 rounded-xl text-xs"
+                      style={{
+                        background: 'rgba(110,198,255,0.08)',
+                        border: '1px solid rgba(110,198,255,0.20)',
+                        color: 'rgba(238,240,255,0.55)',
+                      }}
+                    >
+                      <span style={{ color: '#A78BFA', flexShrink: 0, fontSize: 14 }}>🔒</span>
+                      <span>
+                        The IRM amount will be <strong style={{ color: 'rgba(238,240,255,0.8)' }}>locked in an on-chain HTLC escrow</strong>. It can only be released when proof conditions are met, or refunded after the timeout height.
+                      </span>
+                    </div>
+
                     {/* Party A */}
                     <ShakeField error={errors.partyA}>
                       <label className="label">{getLabels(selectedTemplate).partyA}</label>
                       <input
                         className={`input ${errors.partyA ? 'border-red-500/50' : ''}`}
-                        placeholder="irm1..."
+                        placeholder="Q... or P..."
                         value={form.partyA}
                         onChange={setField('partyA')}
                       />
@@ -681,7 +743,7 @@ export default function SettlementPage() {
                       <label className="label">{getLabels(selectedTemplate).partyB}</label>
                       <input
                         className={`input ${errors.partyB ? 'border-red-500/50' : ''}`}
-                        placeholder="irm1..."
+                        placeholder="Q... or P..."
                         value={form.partyB}
                         onChange={setField('partyB')}
                       />
@@ -956,6 +1018,24 @@ export default function SettlementPage() {
                     </span>
                   </div>
                 </div>
+              </div>
+
+              {/* What happens next — guides the user from creation into the
+                  funding/proof flow. The agreement exists but the HTLC isn't
+                  funded until someone calls agreement-fund on the Agreements
+                  page. */}
+              <div
+                className="flex items-start gap-2 mb-6 px-3 py-3 rounded-xl text-xs text-left"
+                style={{
+                  background: 'rgba(167,139,250,0.06)',
+                  border: '1px solid rgba(167,139,250,0.22)',
+                  color: 'rgba(238,240,255,0.65)',
+                }}
+              >
+                <span style={{ color: '#a78bfa', flexShrink: 0, fontSize: 14 }}>👉</span>
+                <span>
+                  <strong style={{ color: '#a78bfa' }}>What happens next:</strong> share this agreement pack with your counterparty. They must fund the escrow on the <span className="font-mono">Agreements</span> page before any proof can be submitted. The agreement hash above is the trade identifier — copy it now.
+                </span>
               </div>
 
               <div className="flex gap-3 justify-center">

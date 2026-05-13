@@ -16,6 +16,10 @@ const NAV = [
   { to: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard'   },
   { to: '/explorer',    icon: Globe,           label: 'Explorer'    },
   { to: '/wallet',      icon: Wallet,          label: 'Wallet'      },
+  { to: '/settlement',  icon: ShieldCheck,     label: 'Settlement'  },
+  { to: '/marketplace', icon: ShoppingBag,     label: 'Marketplace' },
+  { to: '/agreements',  icon: FileText,        label: 'Agreements'  },
+  { to: '/reputation',  icon: Star,            label: 'Reputation'  },
   { to: '/miner',       icon: Cpu,             label: 'Miner'       },
   { to: '/logs',        icon: Terminal,        label: 'Logs'        },
 ];

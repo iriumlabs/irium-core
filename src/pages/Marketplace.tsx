@@ -4,7 +4,7 @@ import { Plus, RefreshCw, Search, Globe, X, Rss, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../lib/store';
-import { offers, feeds } from '../lib/tauri';
+import { offers, feeds, feedOps } from '../lib/tauri';
 import { formatIRM, timeAgo, truncateAddr, SATS_PER_IRM } from '../lib/types';
 import type { Offer, FeedEntry } from '../lib/types';
 
@@ -46,7 +46,18 @@ function OfferCard({ offer, onTake, isOnline }: { offer: Offer; onTake: () => vo
             <span className="badge badge-info text-[9px]">{offer.payment_method}</span>
           )}
           {offer.risk_signal && (
-            <span className={`badge ${riskBadge} text-[9px]`}>{offer.risk_signal}</span>
+            <span
+              className={`badge ${riskBadge} text-[9px]`}
+              title={
+                offer.risk_signal === 'low'
+                  ? 'Low risk — seller has a clean recent record (no sybil suppression, no disputes ≥10%).'
+                  : offer.risk_signal === 'medium'
+                  ? 'Medium risk — limited reputation history or some warning signals. Inspect the seller before trading.'
+                  : 'High risk — sybil-suppressed, self-trading, or disputes ≥10%. Trade with caution.'
+              }
+            >
+              {offer.risk_signal}
+            </span>
           )}
           {offer.ranking_score !== undefined && (
             <span className="badge badge-irium text-[9px]">⭐ {offer.ranking_score}</span>
@@ -133,6 +144,7 @@ function TakeOfferModal({
   onSuccess: () => void;
   isOnline: boolean;
 }) {
+  const navigate = useNavigate();
   const [takingOffer, setTakingOffer] = useState(false);
   // Buyer-address override. Pre-filled with the currently selected wallet
   // address; user can clear it (backend then falls back to the wallet's
@@ -144,7 +156,31 @@ function TakeOfferModal({
     try {
       const trimmed = buyerAddress.trim();
       const result = await offers.take(offer.id, trimmed.length > 0 ? trimmed : undefined);
-      toast.success('Offer taken! Agreement: ' + result.agreement_id);
+      // Surface the next step explicitly — the agreement exists but the
+      // escrow is not yet funded, and that has to happen on the Agreements
+      // page before any proof can be submitted.
+      toast.success(
+        (t) => (
+          <div className="flex flex-col gap-2">
+            <span>
+              Offer taken. Agreement <span className="font-mono text-[10px] opacity-70">{result.agreement_id}</span> created.
+            </span>
+            <span className="text-xs opacity-80">
+              Go to Agreements to fund the escrow and complete the trade.
+            </span>
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                navigate('/agreements', { state: { expandId: result.agreement_id } });
+              }}
+              className="self-start text-xs px-3 py-1 rounded-md bg-irium-500 text-white hover:opacity-90"
+            >
+              Open Agreements →
+            </button>
+          </div>
+        ),
+        { duration: 12_000 },
+      );
       onSuccess();
     } catch (e) {
       toast.error(String(e));
@@ -788,9 +824,27 @@ export default function MarketplacePage() {
               ))}
             </div>
           ) : feedList.length === 0 ? (
-            <div className="text-center py-20 text-white/30 text-sm">
-              <Rss size={32} className="mx-auto mb-3 opacity-30" />
-              No feeds registered. Add a seller feed URL to discover their offers.
+            <div className="text-center py-20 text-white/30 text-sm flex flex-col items-center gap-4">
+              <Rss size={32} className="mx-auto opacity-30" />
+              <div>
+                No feeds registered. Add a seller feed URL to discover their offers,
+                <br />
+                or use the bundled default feeds to get started fast.
+              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    await feedOps.bootstrap();
+                    toast.success('Default feeds added');
+                    await loadFeeds();
+                  } catch (e) {
+                    toast.error('Failed to add default feeds: ' + String(e));
+                  }
+                }}
+                className="btn-primary text-xs py-1.5 px-4 flex items-center gap-1.5"
+              >
+                <Plus size={13} /> Use Default Feeds
+              </button>
             </div>
           ) : (
             <motion.div
