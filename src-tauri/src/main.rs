@@ -40,6 +40,13 @@ struct AppState {
     pool_url: Arc<Mutex<Option<String>>>,
     upnp_external_ip: Arc<Mutex<Option<String>>>,
     node_logs: Arc<Mutex<Vec<String>>>,
+    // Bug 1 fix — cumulative blocks-found counter and the most-recent
+    // entries list, populated by the miner spawn loops as they parse
+    // block-accept / block-mined lines from the sidecar's stdout. Both
+    // accumulate across miner stop/start within a single GUI session;
+    // they reset only when the app restarts.
+    blocks_found: Arc<Mutex<u64>>,
+    found_blocks: Arc<Mutex<Vec<FoundBlock>>>,
 }
 
 impl AppState {
@@ -66,6 +73,8 @@ impl AppState {
             pool_url: Arc::new(Mutex::new(None)),
             upnp_external_ip: Arc::new(Mutex::new(None)),
             node_logs: Arc::new(Mutex::new(Vec::new())),
+            blocks_found: Arc::new(Mutex::new(0)),
+            found_blocks: Arc::new(Mutex::new(Vec::new())),
         }
     }
 }
@@ -2067,18 +2076,31 @@ async fn wallet_import_mnemonic(
     Ok(wallet_file)
 }
 
-// wallet_import_wif: adds a WIF private key to the wallet (creates wallet if none exists).
-// Unlike import-mnemonic, this ADDS to an existing wallet — does not replace it.
-// Returns the resolved wallet file path so the frontend can persist it.
+// wallet_import_wif: adds a WIF private key to the currently-active wallet
+// so the user keeps their existing addresses and gains the new WIF address
+// alongside them. If no wallet is currently active, falls back to the
+// resolved default path. Returns the wallet file path the WIF was written
+// to so the frontend can persist the active selection.
+//
+// Bug 3 fix — previous implementation called find_unique_wallet_path()
+// which created an isolated single-key wallet file each time, so the user
+// ended up with a wallet containing only the imported WIF address and
+// could no longer see their other addresses. Honoring the function's own
+// header comment ("ADDS to an existing wallet — does not replace it") by
+// targeting the active wallet path instead.
 #[tauri::command]
 async fn wallet_import_wif(
     state: State<'_, AppState>,
     wif: String,
 ) -> Result<String, String> {
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
-    // Non-destructive: same rationale as wallet_import_mnemonic — write to
-    // the next free wallet slot rather than overwriting the default file.
-    let wallet_file = find_unique_wallet_path();
+    let wallet_file = {
+        let active = state.wallet_path.lock().map_err(lock_err)?.clone();
+        match active {
+            Some(ref p) if !p.is_empty() => p.clone(),
+            _ => resolve_wallet_path(),
+        }
+    };
 
     run_wallet_cmd(
         vec!["import-wif".to_string(), wif],
@@ -3131,6 +3153,77 @@ fn update_tray_status(app: tauri::AppHandle, mining: bool) -> Result<(), String>
         .map_err(|e| e.to_string())
 }
 
+// Bug 1 fix — recognise the miner sidecar's block-found stdout lines so
+// the GUI can display real block counts and a Found Blocks list.
+//
+// CPU miner (irium-miner.rs):
+//   text  : `[✅] Block accepted by node at height N`
+//   json  : `{"event":"submit_block","height":N,"status":"accepted"}`
+// GPU miner (irium-miner-gpu.rs):
+//   text  : `[GPU] ✅ Mined block at height N!`
+//   json  : `{"event":"mined_block","height":N,"hash":"<hex>",...}`
+//
+// Returns (height, optional hash). The hash is only available when the
+// sidecar is in json-log mode (the text-mode GPU output prints the hash
+// on a separate following line, which we skip for simplicity here).
+fn parse_block_found(line: &str) -> Option<(u64, Option<String>)> {
+    let trimmed = line.trim();
+    if trimmed.starts_with('{') {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(trimmed) {
+            let event = v.get("event").and_then(|e| e.as_str()).unwrap_or("");
+            let is_accepted_submit = event == "submit_block"
+                && v.get("status").and_then(|s| s.as_str()) == Some("accepted");
+            if is_accepted_submit || event == "mined_block" {
+                let height = v.get("height").and_then(|h| h.as_u64())?;
+                let hash = v.get("hash").and_then(|h| h.as_str()).map(String::from);
+                return Some((height, hash));
+            }
+        }
+        return None;
+    }
+    for marker in &["Block accepted by node at height ", "Mined block at height "] {
+        if let Some(idx) = line.find(marker) {
+            let tail = &line[idx + marker.len()..];
+            let num: String = tail.chars().take_while(|c| c.is_ascii_digit()).collect();
+            if let Ok(h) = num.parse::<u64>() {
+                return Some((h, None));
+            }
+        }
+    }
+    None
+}
+
+// Record a block-found event into AppState. Capped at 100 entries (oldest
+// drained first) so a long mining session doesn't accumulate unbounded
+// memory in the shell. Hash falls back to "" when not yet known.
+fn record_found_block(
+    blocks_found: &Arc<Mutex<u64>>,
+    found_blocks: &Arc<Mutex<Vec<FoundBlock>>>,
+    height: u64,
+    hash: Option<String>,
+) {
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let entry = FoundBlock {
+        height,
+        hash: hash.unwrap_or_default(),
+        timestamp: ts,
+        reward_sats: 0,
+    };
+    if let Ok(mut counter) = blocks_found.lock() {
+        *counter += 1;
+    }
+    if let Ok(mut list) = found_blocks.lock() {
+        list.push(entry);
+        if list.len() > 100 {
+            let excess = list.len() - 100;
+            list.drain(0..excess);
+        }
+    }
+}
+
 #[tauri::command]
 async fn start_miner(
     app: tauri::AppHandle,
@@ -3169,6 +3262,8 @@ async fn start_miner(
     let (mut rx, child) = cmd.spawn().map_err(|e| format!("Failed to start miner: {}", e))?;
     let hashrate_ref = Arc::clone(&state.miner_hashrate);
     let sync_ref = Arc::clone(&state.miner_sync_status);
+    let blocks_found_ref = Arc::clone(&state.blocks_found);
+    let found_blocks_ref = Arc::clone(&state.found_blocks);
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
             let line = match event {
@@ -3180,6 +3275,14 @@ async fn start_miner(
             // terminal so we can see whether output reaches Rust at all and
             // at what cadence. Remove once the pipeline is trusted.
             eprintln!("[miner-rx] (parsed={:?}) {}", parse_hashrate_khs(&line), line.trim_end());
+
+            // Bug 1 fix — record block-found events before the other
+            // pattern checks. A block-found line never matches the
+            // hashrate regex, so the order doesn't shadow either signal.
+            if let Some((height, hash)) = parse_block_found(&line) {
+                record_found_block(&blocks_found_ref, &found_blocks_ref, height, hash);
+                continue;
+            }
 
             if let Some(khs) = parse_hashrate_khs(&line) {
                 if let Ok(mut h) = hashrate_ref.lock() { *h = khs; }
@@ -3235,11 +3338,12 @@ async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, Str
 
     let hashrate_khs = *state.miner_hashrate.lock().map_err(lock_err)?;
     let sync_status = state.miner_sync_status.lock().map_err(lock_err)?.clone();
+    let blocks_found = *state.blocks_found.lock().map_err(lock_err)?;
 
     Ok(MinerStatus {
         running,
         hashrate_khs,
-        blocks_found: 0,
+        blocks_found,
         uptime_secs,
         difficulty: 0,
         threads,
@@ -3336,6 +3440,8 @@ async fn start_gpu_miner(
         .map_err(|e| format!("Failed to start GPU miner: {}", e))?;
 
     let hashrate_ref = Arc::clone(&state.miner_hashrate);
+    let blocks_found_ref = Arc::clone(&state.blocks_found);
+    let found_blocks_ref = Arc::clone(&state.found_blocks);
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
             let line = match event {
@@ -3343,6 +3449,10 @@ async fn start_gpu_miner(
                 CommandEvent::Stderr(l) => l,
                 _ => break,
             };
+            if let Some((height, hash)) = parse_block_found(&line) {
+                record_found_block(&blocks_found_ref, &found_blocks_ref, height, hash);
+                continue;
+            }
             if let Some(khs) = parse_hashrate_khs(&line) {
                 if let Ok(mut h) = hashrate_ref.lock() { *h = khs; }
             }
@@ -3363,7 +3473,16 @@ async fn stop_gpu_miner(app: tauri::AppHandle, state: State<'_, AppState>) -> Re
 async fn get_gpu_miner_status(state: State<'_, AppState>) -> Result<GpuMinerStatus, String> {
     let running = state.miner_process.lock().map_err(lock_err)?.is_some();
     let hashrate_khs = *state.miner_hashrate.lock().map_err(lock_err)?;
-    Ok(GpuMinerStatus { running, hashrate_khs, blocks_found: 0, device_name: None, temperature_c: None, power_w: None })
+    let blocks_found = *state.blocks_found.lock().map_err(lock_err)?;
+    Ok(GpuMinerStatus { running, hashrate_khs, blocks_found, device_name: None, temperature_c: None, power_w: None })
+}
+
+// Returns the list of blocks the CPU or GPU miner has found during this
+// app session. Capped server-side at 100 entries (oldest dropped first).
+#[tauri::command]
+async fn get_found_blocks(state: State<'_, AppState>) -> Result<Vec<FoundBlock>, String> {
+    let list = state.found_blocks.lock().map_err(lock_err)?.clone();
+    Ok(list)
 }
 
 // ============================================================
@@ -5336,6 +5455,8 @@ fn main() {
             start_gpu_miner,
             stop_gpu_miner,
             get_gpu_miner_status,
+            // Miner — block history
+            get_found_blocks,
             // Stratum pool
             stratum_connect,
             stratum_disconnect,

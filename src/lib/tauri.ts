@@ -4,7 +4,7 @@ import type {
   SendResult, Transaction, Offer, CreateOfferParams, CreateOfferResult,
   OfferTakeResult, FeedEntry, FeedSyncResult, Agreement,
   CreateAgreementParams, AgreementResult, ReleaseResult,
-  Proof, ProofSubmitResult, Reputation, MinerStatus,
+  Proof, ProofSubmitResult, Reputation, MinerStatus, FoundBlock,
   GpuDevice, GpuMinerStatus, StratumStatus,
   OtcParams, FreelanceParams, MilestoneParams, DepositParams,
   PeerInfo, MempoolInfo, DiagnosticsResult, UpdateCheckResult,
@@ -288,6 +288,12 @@ export const miner = {
 
   status: () =>
     safeInvoke<MinerStatus>('get_miner_status'),
+
+  // Phase / Bug 1 — list of blocks the CPU or GPU miner has found during
+  // this app session (capped server-side at 100 entries). Shared with the
+  // GPU miner since both populate the same AppState list.
+  getFoundBlocks: () =>
+    safeInvoke<FoundBlock[]>('get_found_blocks'),
 };
 
 // ── GPU MINER ─────────────────────────────────────────────────

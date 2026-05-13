@@ -13,6 +13,7 @@ import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { miner, gpuMiner, stratum } from '../lib/tauri';
 import { useStore } from '../lib/store';
 import type { LucideIcon } from 'lucide-react';
+import type { FoundBlock } from '../lib/types';
 import clsx from 'clsx';
 
 function formatUptime(secs: number): string {
@@ -79,6 +80,82 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
       fontFamily: '"JetBrains Mono", monospace',
     }}>
       {payload[0].value.toFixed(1)} KH/s
+    </div>
+  );
+}
+
+// ── Found Blocks list (Bug 1) ─────────────────────────────────
+// Polls the Rust shell every 10s for the list of blocks this app
+// session's CPU/GPU miner has had accepted. Newest first. Empty until
+// the parser in main.rs records a [✅] Block accepted... line.
+function FoundBlocksList() {
+  const [blocks, setBlocks] = useState<FoundBlock[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const r = await miner.getFoundBlocks();
+        if (mounted) setBlocks(r.slice().reverse());
+      } catch { /* tolerate offline backend — keep last view */ }
+    };
+    load();
+    const id = setInterval(load, 10_000);
+    return () => { mounted = false; clearInterval(id); };
+  }, []);
+
+  return (
+    <div className="card p-5">
+      <h3 className="font-display font-semibold text-sm mb-3" style={{ color: 'var(--t1)' }}>
+        Found Blocks
+      </h3>
+      {blocks.length === 0 ? (
+        <p className="text-xs py-2" style={{ color: 'rgba(238,240,255,0.40)' }}>
+          No blocks found yet in this session.
+        </p>
+      ) : (
+        <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+          {blocks.map((b, i) => {
+            const ageSecs = Math.max(0, Math.floor(Date.now() / 1000) - b.timestamp);
+            const reward = b.reward_sats > 0 ? `${(b.reward_sats / 100_000_000).toFixed(4)} IRM` : '—';
+            return (
+              <div
+                key={`${b.height}-${i}`}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs"
+                style={{ background: 'rgba(110,198,255,0.04)', border: '1px solid rgba(110,198,255,0.10)' }}
+              >
+                <span
+                  className="font-mono font-semibold flex-shrink-0"
+                  style={{ color: '#34d399', fontFamily: '"JetBrains Mono", monospace' }}
+                  title={`Block height ${b.height}`}
+                >
+                  #{b.height.toLocaleString()}
+                </span>
+                <span
+                  className="font-mono truncate flex-1"
+                  style={{ color: 'rgba(238,240,255,0.55)', fontFamily: '"JetBrains Mono", monospace' }}
+                  title={b.hash || 'hash unavailable from this miner build'}
+                >
+                  {b.hash ? truncateHash(b.hash) : '—'}
+                </span>
+                <span
+                  className="font-mono flex-shrink-0"
+                  style={{ color: 'rgba(238,240,255,0.40)', fontFamily: '"JetBrains Mono", monospace' }}
+                >
+                  {formatBlockAge(ageSecs)}
+                </span>
+                <span
+                  className="font-mono flex-shrink-0"
+                  style={{ color: 'rgba(238,240,255,0.55)', fontFamily: '"JetBrains Mono", monospace' }}
+                  title={b.reward_sats > 0 ? undefined : 'Reward unknown — miner stdout does not report it'}
+                >
+                  {reward}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -376,6 +453,9 @@ function CpuMinerTab() {
         <StatCard label="Difficulty"   value={netInfo?.difficulty != null ? netInfo.difficulty.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'} color="#fbbf24" icon={Target} />
       </div>
 
+      {/* Found Blocks list (Bug 1) */}
+      <FoundBlocksList />
+
       {/* Config */}
       <div className="card p-5 space-y-4">
         <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>Configuration</h3>
@@ -563,6 +643,9 @@ function GpuMinerTab() {
         <StatCard label="Power"         value={status?.running && status.power_w ? `${status.power_w}W` : '—'} color="#a78bfa" icon={Zap} />
         <StatCard label="Blocks Found"  value={String(status?.blocks_found ?? 0)} color="#34d399" icon={Hash} />
       </div>
+
+      {/* Found Blocks list (Bug 1) */}
+      <FoundBlocksList />
 
       {/* Config */}
       <div className="card p-5 space-y-4">

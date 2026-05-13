@@ -389,7 +389,11 @@ export const useStore = create<AppStore>((set) => ({
   heightLastChanged: null,
   setHeightLastChanged: (heightLastChanged) => set({ heightLastChanged }),
 
-  appVersion: '1.0.0',
+  // Empty default — Splash and other consumers fall back to '...' until
+  // App.tsx fetches the real CARGO_PKG_VERSION via get_app_version. The
+  // previous '1.0.0' default caused a brief misleading flash before the
+  // async fetch landed.
+  appVersion: '',
   setAppVersion: (appVersion) => set({ appVersion }),
 
   // Miner — see interface comments above for cadence/persistence rationale.

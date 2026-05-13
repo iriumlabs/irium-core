@@ -338,7 +338,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
           letterSpacing: '0.1em',
         }}
       >
-        v{appVersion}
+        v{appVersion || '...'}
       </motion.div>
 
       {/* Status message */}

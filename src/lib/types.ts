@@ -408,6 +408,17 @@ export interface GpuMinerStatus {
   address?: string;
 }
 
+// A block found by the CPU or GPU miner. Mirrors the Rust FoundBlock
+// struct in src-tauri/src/types.rs. Hash is "" when the miner sidecar
+// hasn't surfaced one yet (text-mode CPU output, for instance). Reward
+// is 0 until we wire the coinbase RPC lookup.
+export interface FoundBlock {
+  height: number;
+  hash: string;
+  timestamp: number;
+  reward_sats: number;
+}
+
 export interface StratumStatus {
   connected: boolean;
   pool_url?: string;
