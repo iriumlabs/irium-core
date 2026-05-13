@@ -674,6 +674,39 @@ function StepBootstrap({ onNext }: { onNext: () => void }) {
 // its own seedlist yet.
 const KNOWN_SEEDS = ['207.244.247.86', '157.173.116.134'];
 
+// Tight match for ONLY the literal "node already running" success path. An
+// earlier version used `.includes('already')`, which accidentally also matched
+// "address already in use" / "Only one usage of each socket address" port-bind
+// errors — silently swallowing them so the user saw "Connecting…" forever
+// instead of a real diagnostic.
+function isAlreadyRunning(msg: string): boolean {
+  return /node is already running/i.test(msg);
+}
+
+// Map known port-in-use error strings from our Rust pre-flight, std::io,
+// and iriumd's own startup to a single user-actionable message. Falls
+// through to the raw error if no pattern matches — better to show
+// something verbatim than to hide a real problem behind a generic message.
+function humanizeStartError(raw: string): string {
+  const lower = raw.toLowerCase();
+  if (
+    lower.includes('port 38291 is already in use') ||         // our backend pre-flight
+    lower.includes('address already in use') ||               // *nix std::io
+    lower.includes('only one usage of each socket address') || // Windows std::io
+    lower.includes('os error 10048') ||                       // Windows numeric
+    lower.includes('os error 48') ||                          // macOS numeric
+    lower.includes('os error 98')                             // Linux numeric
+  ) {
+    return (
+      'Port 38291 is already in use. Another Irium node may be running in ' +
+      'the background. Check your system tray for an existing Irium Core ' +
+      'instance, or open Task Manager and end any iriumd.exe processes, ' +
+      'then restart the app.'
+    );
+  }
+  return raw;
+}
+
 // ─── Step 3: Network Sync ─────────────────────────────────────────────────────
 function StepNetworkSync({ onNext }: { onNext: () => void }) {
   const rpcUrl = useStore((s) => s.settings.rpc_url) || 'http://127.0.0.1:38300';
@@ -699,7 +732,10 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
       .catch((e) => {
         if (!mounted) return;
         setNodeStarted(true);
-        if (!String(e).toLowerCase().includes('already')) setStartError(String(e));
+        // Only swallow the literal "node already running" success path;
+        // every other failure (incl. port-in-use) goes through
+        // humanizeStartError so the user sees an actionable message.
+        if (!isAlreadyRunning(String(e))) setStartError(humanizeStartError(String(e)));
       });
 
     const poll = async () => {
@@ -763,7 +799,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
       setNodeStarted(false);
       await node.start();
     } catch (e) {
-      setStartError(String(e));
+      setStartError(humanizeStartError(String(e)));
     } finally {
       setRetrying(false);
     }

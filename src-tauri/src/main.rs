@@ -619,6 +619,28 @@ async fn start_node(
         }
     }
 
+    // Pre-flight: with RPC unreachable AND no GUI-managed child handle, port
+    // 38291 should be free. If it isn't, something else holds it — a stale
+    // iriumd from a previous session that survived an unclean shutdown,
+    // another Irium Core instance, or an unrelated application. Spawning
+    // iriumd here would just see it immediately exit with an EADDRINUSE
+    // error that lands in the log buffer with no UI surfacing. Surface a
+    // specific structured error so the frontend can render an actionable
+    // message. We deliberately do NOT auto-kill the holding process —
+    // it might be a legitimate second instance, or an unrelated app that
+    // happens to share the port; the user should decide what to stop.
+    //
+    // The TcpListener is dropped at end-of-statement, releasing the port
+    // before we proceed to spawn iriumd below.
+    if std::net::TcpListener::bind("0.0.0.0:38291").is_err() {
+        return Err(
+            "Port 38291 is already in use by another process. Stop any \
+             running iriumd from the system tray or Task Manager, then try \
+             again."
+                .to_string(),
+        );
+    }
+
     // Refresh bootstrap / seed files before starting.
     let _ = setup_data_dir().await;
 
