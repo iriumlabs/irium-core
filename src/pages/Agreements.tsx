@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { fetch as tauriFetch, Body, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
 import { agreements, proofs, agreementSpend, disputes } from '../lib/tauri';
+import { useIriumEvents } from '../lib/hooks';
 import {
   formatIRM,
   timeAgo,
@@ -129,6 +130,21 @@ export default function AgreementsPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Phase 5: real-time refresh on agreement.* events from the Rust WS bridge.
+  // Polling stays as a fallback when the WS connection is down.
+  useIriumEvents((event) => {
+    if (
+      event.type === 'agreement.funded' ||
+      event.type === 'agreement.proof_submitted' ||
+      event.type === 'agreement.satisfied' ||
+      event.type === 'agreement.timeout' ||
+      event.type === 'agreement.disputed' ||
+      event.type === 'agreement.proof_reorged'
+    ) {
+      loadData();
+    }
+  });
 
   useEffect(() => {
     const incoming = (location.state as { expandId?: string } | null)?.expandId;

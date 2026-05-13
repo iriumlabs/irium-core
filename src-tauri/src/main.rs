@@ -5113,6 +5113,60 @@ async fn get_node_logs(state: State<'_, AppState>, lines: Option<usize>) -> Resu
 }
 
 // ============================================================
+// WEBSOCKET → TAURI EVENT BRIDGE
+// ============================================================
+// Subscribes to iriumd's /ws endpoint, listens for agreement.* and offer.*
+// events, and re-emits each event to the renderer as a Tauri `irium-event`.
+// Reconnects every 5s if iriumd is down or the connection drops, so it works
+// correctly even when iriumd starts after the GUI or restarts while the GUI
+// stays alive. Connection target is hardcoded to ws://127.0.0.1:38300/ws to
+// match the default iriumd HTTP port.
+
+async fn ws_bridge_connect_and_run(app_handle: &tauri::AppHandle) -> Result<(), String> {
+    use tokio_tungstenite::{connect_async, tungstenite::Message};
+    use futures_util::{StreamExt, SinkExt};
+
+    let url = "ws://127.0.0.1:38300/ws";
+    let (ws_stream, _resp) = connect_async(url).await.map_err(|e| e.to_string())?;
+    let (mut write, mut read) = ws_stream.split();
+
+    let sub = serde_json::json!({
+        "action": "subscribe",
+        "events": ["agreement.*", "offer.*"]
+    });
+    write.send(Message::Text(sub.to_string())).await.map_err(|e| e.to_string())?;
+
+    while let Some(msg) = read.next().await {
+        let msg = msg.map_err(|e| e.to_string())?;
+        match msg {
+            Message::Text(text) => {
+                if let Ok(payload) = serde_json::from_str::<serde_json::Value>(&text) {
+                    if payload.get("type").and_then(|t| t.as_str()) == Some("subscribed") {
+                        continue;
+                    }
+                    let _ = app_handle.emit_all("irium-event", &payload);
+                }
+            }
+            Message::Close(_) => return Ok(()),
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+fn spawn_ws_bridge(app_handle: tauri::AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        loop {
+            match ws_bridge_connect_and_run(&app_handle).await {
+                Ok(_) => tracing::info!("[ws-bridge] connection closed, reconnecting in 5s"),
+                Err(e) => tracing::warn!("[ws-bridge] error: {} — reconnecting in 5s", e),
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        }
+    });
+}
+
+// ============================================================
 // MAIN
 // ============================================================
 
@@ -5140,6 +5194,9 @@ fn main() {
                     }
                 }
             });
+            // Phase 5: spawn the WebSocket → Tauri event bridge. Reconnects
+            // forever; harmless when iriumd is not running.
+            spawn_ws_bridge(app.handle());
             Ok(())
         })
         .system_tray(system_tray)

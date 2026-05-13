@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../lib/store';
 import { offers, feeds, feedOps } from '../lib/tauri';
+import { useIriumEvents } from '../lib/hooks';
 import { formatIRM, timeAgo, truncateAddr, SATS_PER_IRM } from '../lib/types';
 import type { Offer, FeedEntry } from '../lib/types';
 
@@ -613,6 +614,15 @@ export default function MarketplacePage() {
     if (activeTab === 'feeds') loadFeeds();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, filterSource, filterSort, filterMinIrm, filterMaxIrm, filterPayment]);
+
+  // Phase 5: real-time refresh on offer.* events from the Rust WS bridge.
+  // Polling stays as a fallback when the WS connection is down.
+  useIriumEvents((event) => {
+    if (event.type === 'offer.created' || event.type === 'offer.taken') {
+      if (activeTab === 'browse') loadOffers();
+      else if (activeTab === 'my-offers') loadMyOffers();
+    }
+  });
 
   // ── Feed actions ─────────────────────────────────────────────
   const handleAddFeed = async () => {
