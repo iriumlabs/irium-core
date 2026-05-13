@@ -272,7 +272,7 @@ function NodeOperationBanner({ type }: { type: OperationType }) {
               className="text-[11px] mt-3 leading-relaxed"
               style={{ color: 'rgba(238,240,255,0.45)' }}
             >
-              This may take a moment if no peers are immediately available.
+              This may take a moment if no peers are immediately available. The node is actively trying to reach the bootstrap seeds shown below.
             </motion.p>
           )}
         </AnimatePresence>

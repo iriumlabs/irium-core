@@ -742,7 +742,8 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
   const [nowTick, setNowTick] = useState(0);
   // Records when iriumd was first observed as started (after node.start
   // resolves) — drives the 30-second timeout for the no-peers warning.
-  const startedAtRef = useRef<number | null>(null);
+  const startedAtRef    = useRef<number | null>(null);
+  const seedsInjectedRef = useRef(false);
   const pollRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   const onNextRef = useRef(onNext);
   useEffect(() => { onNextRef.current = onNext; });
@@ -778,7 +779,22 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
       const direct = await fetchRpcStatus(rpcUrl);
       if (direct) {
         if (mounted) setStatus(direct);
-        if (direct.running && mounted) setNodeStarted(true);
+        if (direct.running && mounted) {
+          setNodeStarted(true);
+          // Bypass iriumd's periodic seed-dial timer (~30-60 s) by pushing the
+          // known seeds into the dial queue the moment RPC is available.
+          if (!seedsInjectedRef.current) {
+            seedsInjectedRef.current = true;
+            for (const ip of KNOWN_SEEDS) {
+              tauriFetch<{ added?: boolean }>(`${rpcUrl}/admin/add-seed`, {
+                method: 'POST',
+                timeout: 5,
+                responseType: ResponseType.JSON,
+                body: Body.json({ addr: `${ip}:38291` }),
+              }).catch(() => {});
+            }
+          }
+        }
         return;
       }
       try {
@@ -834,6 +850,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
       await node.stop().catch(() => {});            // tolerate "not running"
       await new Promise((r) => setTimeout(r, 600)); // let the OS release ports
       startedAtRef.current = null;                  // reset the 15-s timer
+      seedsInjectedRef.current = false;              // allow re-inject on next successful poll
       setNodeStarted(false);
       try {
         const results = await node.checkSeedConnectivity();
