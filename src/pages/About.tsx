@@ -59,6 +59,8 @@ const LINKS = [
 ];
 
 // ── FAQ data ───────────────────────────────────────────────────
+// NOTE: seed IPs in the "My node is not connecting" answer below must match
+// the seed nodes configured in src-tauri/src/main.rs.
 const FAQS = [
   {
     q: "Does Irium Core collect any data?",
@@ -307,7 +309,7 @@ export default function AboutPage() {
           <SectionHeader icon={Server} title="Node Information" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {[
-              { label: "iriumd version",  value: nodeStatus?.version ?? "v1.9.4" },
+              { label: "iriumd version",  value: nodeStatus?.version ?? appVersion },
               { label: "Data directory",  value: dataDir },
               { label: "RPC endpoint",    value: rpcUrl },
               { label: "Block height",    value: nodeStatus?.running ? `#${(nodeStatus.height ?? 0).toLocaleString('en-US')}` : "—" },

@@ -508,6 +508,7 @@ export default function Dashboard() {
   const [recentTx, setRecentTx] = useState<Transaction[]>([]);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(true);
+  const [txLoadError, setTxLoadError] = useState(false);
   const [lastTip, setLastTip] = useState<string>('');
   const [tickerGlow, setTickerGlow] = useState(false);
 
@@ -519,7 +520,10 @@ export default function Dashboard() {
     try {
       const txs = await wallet.transactions(10);
       setRecentTx(txs.filter((tx) => Math.abs(tx.amount) > 0));
-    } catch {}
+      setTxLoadError(false);
+    } catch {
+      setTxLoadError(true);
+    }
     setLoading(false);
   }, []);
 
@@ -1085,7 +1089,9 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display font-semibold text-white/90">Recent Transactions</h2>
           </div>
-          {recentTx.length === 0 ? (
+          {txLoadError ? (
+            <p className="text-xs text-rose-400/70 py-2">Could not load recent transactions</p>
+          ) : recentTx.length === 0 ? (
             <EmptyState icon={<Package />} text="No transactions yet" />
           ) : (
             <motion.div

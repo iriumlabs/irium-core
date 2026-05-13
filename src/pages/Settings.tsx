@@ -217,7 +217,10 @@ export default function Settings() {
   useEffect(() => {
     update.check().then((info) => {
       if (info) setUpdateInfo(info);
-    }).catch(() => {});
+    }).catch((e) => {
+      console.warn('Update check failed:', e);
+      toast('Could not check for updates. Check your internet connection.');
+    });
   }, [setUpdateInfo]);
 
   const patch = <K extends keyof typeof local>(key: K, value: (typeof local)[K]) => {

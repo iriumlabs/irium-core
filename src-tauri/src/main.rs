@@ -5640,8 +5640,8 @@ fn main() {
                 SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
                     "show" => {
                         if let Some(window) = app.get_window("main") {
-                            window.show().unwrap();
-                            window.set_focus().unwrap();
+                            let _ = window.show();
+                            let _ = window.set_focus();
                         }
                     }
                     "quit" => std::process::exit(0),
@@ -5652,7 +5652,7 @@ fn main() {
         })
         .on_window_event(|event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event.event() {
-                event.window().hide().unwrap();
+                let _ = event.window().hide();
                 api.prevent_close();
             }
         })
