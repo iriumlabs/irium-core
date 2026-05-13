@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, RefreshCw, Search, Globe, X, Rss, Star, Download, Upload } from 'lucide-react';
+import { Plus, RefreshCw, Search, Globe, X, Rss, Star, Download, Upload, Compass } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../lib/store';
@@ -536,6 +536,8 @@ export default function MarketplacePage() {
   const [showAddFeed, setShowAddFeed] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [removingFeed, setRemovingFeed] = useState<string | null>(null);
+  // Phase 7 — Discover Feeds modal state.
+  const [showDiscoverModal, setShowDiscoverModal] = useState(false);
   // Server-side filter params for offers.list. Min/Max are IRM strings
   // (kept as strings so the inputs allow partial values like "1."); the
   // backend offer_list command accepts f64 IRM directly — see main.rs:2262
@@ -1009,6 +1011,14 @@ export default function MarketplacePage() {
                 <Plus size={14} className="mr-1" />
                 Add Feed
               </button>
+              <button
+                onClick={() => setShowDiscoverModal(true)}
+                className="btn-secondary"
+                title="Ask the wallet binary to discover seller feeds on the network"
+              >
+                <Compass size={14} className="mr-1" />
+                Discover Feeds
+              </button>
               <button onClick={handleSyncAll} disabled={syncing} className="btn-primary">
                 <RefreshCw size={14} className={syncing ? 'animate-spin mr-1' : 'mr-1'} />
                 Sync All
@@ -1179,6 +1189,14 @@ export default function MarketplacePage() {
             setShowTakeModal(o);
           }}
           isOnline={!!nodeStatus?.running}
+        />
+      )}
+
+      {showDiscoverModal && (
+        <DiscoverFeedsModal
+          existingUrls={new Set(feedList.map((f) => f.url))}
+          onClose={() => setShowDiscoverModal(false)}
+          onAfterAdd={() => loadFeeds()}
         />
       )}
       </div>
@@ -1408,3 +1426,132 @@ function OfferDetailModal({
     </AnimatePresence>
   );
 }
+
+// ─── Discover Feeds Modal (Phase 7) ────────────────────────────
+// Calls feedOps.discover() on mount. Renders the returned list of feed
+// URLs; each row offers an Add button unless the URL is already in the
+// user's feed registry. Stays open across adds so the user can grab
+// multiple. Refreshes the parent feed list whenever an add succeeds.
+
+function DiscoverFeedsModal({
+  existingUrls,
+  onClose,
+  onAfterAdd,
+}: {
+  existingUrls: Set<string>;
+  onClose: () => void;
+  onAfterAdd: () => void;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [discovered, setDiscovered] = useState<string[]>([]);
+  const [addedLocally, setAddedLocally] = useState<Set<string>>(new Set());
+  const [addingUrl, setAddingUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const r = await feedOps.discover();
+        if (!mounted) return;
+        setDiscovered(Array.isArray(r.discovered) ? r.discovered : []);
+      } catch (e) {
+        if (mounted) setError(String(e));
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  const handleAdd = async (url: string) => {
+    setAddingUrl(url);
+    try {
+      await feeds.add(url);
+      setAddedLocally((prev) => { const n = new Set(prev); n.add(url); return n; });
+      toast.success('Feed added');
+      onAfterAdd();
+    } catch (e) {
+      toast.error('Failed to add: ' + String(e));
+    } finally {
+      setAddingUrl(null);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        key="discover-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+        onClick={onClose}
+      >
+        <motion.div
+          key="discover-modal"
+          initial={{ opacity: 0, scale: 0.95, y: 16 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 8 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="card w-full max-w-lg p-6 rounded-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-display font-bold text-lg text-white flex items-center gap-2">
+              <Compass size={16} className="text-irium-400" /> Discover Feeds
+            </h2>
+            <button onClick={onClose} className="btn-ghost text-white/40 p-1">
+              <X size={16} />
+            </button>
+          </div>
+
+          <p className="text-xs text-white/45 mb-4">
+            The wallet binary scans the network for seller feed URLs and lists them below.
+            Add the ones you want to follow — each Add registers the feed with your local registry.
+          </p>
+
+          {loading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="shimmer h-12 rounded-lg" />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="text-center py-8 text-red-300 text-sm">{error}</div>
+          ) : discovered.length === 0 ? (
+            <div className="text-center py-8 text-white/40 text-sm">No feeds discovered yet.</div>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+              {discovered.map((url) => {
+                const isExisting = existingUrls.has(url) || addedLocally.has(url);
+                return (
+                  <div key={url} className="glass rounded-lg p-3 flex items-center gap-3">
+                    <Globe size={14} className="text-irium-400 flex-shrink-0" />
+                    <div className="flex-1 min-w-0 font-mono text-xs text-white/70 truncate" title={url}>{url}</div>
+                    {isExisting ? (
+                      <span className="badge badge-success text-[10px]">Already added</span>
+                    ) : (
+                      <button
+                        onClick={() => handleAdd(url)}
+                        disabled={addingUrl === url}
+                        className="btn-primary text-xs py-1 px-3 flex-shrink-0 disabled:opacity-40"
+                      >
+                        {addingUrl === url ? <RefreshCw size={11} className="animate-spin" /> : 'Add'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="flex justify-end mt-5">
+            <button onClick={onClose} className="btn-secondary">Done</button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+

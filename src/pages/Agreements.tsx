@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen, FileJson, AlertCircle, Copy, FileText, Receipt } from 'lucide-react';
+import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen, FileJson, AlertCircle, Copy, FileText, Receipt, PenLine, ShieldCheck, Gavel, CheckCircle2, XCircle } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetch as tauriFetch, Body, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
-import { agreements, proofs, agreementSpend, disputes, invoices } from '../lib/tauri';
+import { agreements, proofs, agreementSpend, disputes, invoices, agreementStore } from '../lib/tauri';
 import { useIriumEvents } from '../lib/hooks';
 import {
   formatIRM,
@@ -14,7 +14,7 @@ import {
   truncateHash,
   statusColor,
 } from '../lib/types';
-import type { Agreement, Proof, SpendEligibilityResult, AgreementStatusResult, Invoice } from '../lib/types';
+import type { Agreement, Proof, SpendEligibilityResult, AgreementStatusResult, Invoice, DisputeEntry } from '../lib/types';
 
 // ── Animation variants ────────────────────────────────────────
 
@@ -73,10 +73,19 @@ function borderColorForStatus(status: Agreement['status']): string {
 
 // ── Main page ─────────────────────────────────────────────────
 
+// Top-level Agreements page view — agreements list or disputes view.
+// Phase 7 adds a top-level Disputes view that lists DisputeEntry items
+// returned by the wallet's agreement-dispute-list command.
+type PageView = 'agreements' | 'disputes';
+
 export default function AgreementsPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const nodeStatus = useStore((s) => s.nodeStatus);
+  const addresses = useStore((s) => s.addresses);
+  const activeAddrIdx = useStore((s) => s.activeAddrIdx);
+  const selectedAddress = addresses[activeAddrIdx]?.address ?? '';
+  const [pageView, setPageView] = useState<PageView>('agreements');
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [agreementList, setAgreementList] = useState<Agreement[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -86,6 +95,9 @@ export default function AgreementsPage() {
   const [showReleaseModal, setShowReleaseModal] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showImportInvoiceModal, setShowImportInvoiceModal] = useState(false);
+  // Phase 7 — Sign Agreement modal. Holds the id of the agreement being
+  // signed. Surface when the user clicks the Sign CTA on a card.
+  const [signingId, setSigningId] = useState<string | null>(null);
   // Holds the agreement id currently being funded — drives the Fund modal.
   // Null when the modal is closed.
   const [fundingId, setFundingId] = useState<string | null>(null);
@@ -261,6 +273,32 @@ export default function AgreementsPage() {
         </div>
       </div>
 
+      {/* Page-view tabs — Agreements list vs Disputes list (Phase 7).
+          Disputes view comes from agreement-dispute-list and has its own
+          shape, so it gets a separate top-level view rather than a status
+          filter on the agreements list. */}
+      <div className="flex border-b border-white/[0.06] mb-3">
+        {(['agreements', 'disputes'] as PageView[]).map((v) => (
+          <button
+            key={v}
+            onClick={() => setPageView(v)}
+            className={`relative px-5 py-3 text-sm font-display font-medium capitalize transition-colors ${
+              pageView === v ? 'text-white' : 'text-white/40 hover:text-white/70'
+            }`}
+          >
+            {v === 'agreements' ? 'Agreements' : 'Disputes'}
+            {pageView === v && (
+              <motion.div
+                layoutId="agr-pageview"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-irium-500"
+              />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {pageView === 'agreements' && (
+      <>
       {/* Status filter tabs */}
       <div className="flex border-b border-white/[0.06] mb-5">
         {STATUS_FILTERS.map((f) => (
@@ -322,10 +360,12 @@ export default function AgreementsPage() {
                 onRefund={() => handleRefund(a.id)}
                 onDispute={() => setDisputeAgreementId(a.id)}
                 onViewAudit={() => setAuditAgreementId(a.id)}
+                onSign={() => setSigningId(a.id)}
                 label={agreementLabels[a.id]}
                 onSaveLabel={(l) => saveAgreementLabel(a.id, l)}
                 actionLoading={actionLoading}
                 isOnline={!!nodeStatus?.running}
+                selectedAddress={selectedAddress}
                 refundElig={refundEligByAgreement[a.id]}
                 releaseElig={releaseEligByAgreement[a.id]}
                 statusInfo={statusByAgreement[a.id]}
@@ -333,6 +373,19 @@ export default function AgreementsPage() {
             </motion.div>
           ))}
         </motion.div>
+      )}
+      </>
+      )}
+
+      {pageView === 'disputes' && (
+        <DisputesView
+          agreementsById={Object.fromEntries(agreementList.map((a) => [a.id, a]))}
+          onOpenAgreement={(id) => {
+            setPageView('agreements');
+            setExpandedId(id);
+          }}
+          isOnline={!!nodeStatus?.running}
+        />
       )}
 
       {/* Submit Proof Modal */}
@@ -415,6 +468,22 @@ export default function AgreementsPage() {
             onUseInvoice={(inv) => {
               setShowImportInvoiceModal(false);
               navigate('/settlement', { state: { prefillInvoice: inv } });
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sign Agreement Modal (Phase 7) */}
+      <AnimatePresence>
+        {signingId !== null && (
+          <SignAgreementModal
+            agreement={agreementList.find((a) => a.id === signingId)!}
+            walletAddresses={addresses.map((a) => a.address)}
+            preferredAddress={selectedAddress}
+            onClose={() => setSigningId(null)}
+            onSuccess={() => {
+              setSigningId(null);
+              loadData();
             }}
           />
         )}
@@ -542,10 +611,15 @@ interface AgreementCardProps {
   onRefund: () => void;
   onDispute: () => void;
   onViewAudit: () => void;
+  // Phase 7 — open the SignAgreementModal for this agreement.
+  onSign: () => void;
   label?: string;
   onSaveLabel: (label: string) => void;
   actionLoading: boolean;
   isOnline: boolean;
+  // Currently-selected wallet address. Used to decide whether the user is
+  // a party to the agreement and should see the Sign CTA.
+  selectedAddress: string;
   // Populated on expand by AgreementsPage's eligibility/status useEffect.
   // Undefined while the call is in flight or if the RPC failed.
   refundElig?: SpendEligibilityResult;
@@ -643,14 +717,26 @@ function AgreementCard({
   onRefund,
   onDispute,
   onViewAudit,
+  onSign,
   label,
   onSaveLabel,
   actionLoading,
   isOnline,
+  selectedAddress,
   refundElig,
   releaseElig,
   statusInfo,
 }: AgreementCardProps) {
+  // Phase 7 — surface a prominent "Sign Agreement" CTA before funding when
+  // the currently-selected wallet address matches one of the parties.
+  // Without a way to introspect existing signatures from the local store
+  // (AgreementStoreEntry doesn't expose them), we always show the CTA on
+  // open/pending agreements and let the user decide; if they sign twice,
+  // the wallet binary handles idempotency.
+  const isParty =
+    !!selectedAddress &&
+    (a.buyer === selectedAddress || a.seller === selectedAddress);
+  const signNeeded = isParty && (a.status === 'open' || a.status === 'pending');
   // Local label-input state — synced with the prop so external updates
   // (e.g. saving from another card with the same agreement, hypothetical)
   // flow back in without losing the user's mid-edit text.
@@ -897,6 +983,28 @@ function AgreementCard({
                 </div>
               )}
 
+              {/* Phase 7 — Sign Agreement CTA. Promoted above the regular
+                  action row with a pulsing amber border when signing is
+                  required so a first-time user knows what to do next.
+                  Pulse uses Tailwind's animate-pulse on a ring wrapper. */}
+              {signNeeded && (
+                <div className="pt-2">
+                  <div className="rounded-lg ring-2 ring-amber-400/60 animate-pulse">
+                    <button
+                      onClick={onSign}
+                      disabled={actionLoading || !isOnline}
+                      title={!isOnline ? 'Node must be online to sign' : 'Sign this agreement to confirm your participation'}
+                      className="w-full btn-primary py-2 px-4 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed bg-amber-500 hover:bg-amber-400 border-amber-300/40"
+                    >
+                      <PenLine size={14} /> Action required: Sign Agreement
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-amber-300/70 mt-1.5 ml-1">
+                    Signing confirms your participation. Both parties must sign before funding.
+                  </p>
+                </div>
+              )}
+
               {/* Action buttons — context-aware. Each lifecycle stage
                   surfaces only the actions that are valid for that stage:
                     open/pending → just Fund Escrow (no point submitting a
@@ -1038,6 +1146,14 @@ function AgreementCard({
                   <Copy size={12} /> Share Text
                 </button>
               </div>
+
+              {/* Phase 7 — Verify Signatures. The local store doesn't
+                  expose per-party signature paths (AgreementStoreEntry only
+                  has agreement_id/agreement_hash/path), so this is a
+                  file-picker driven flow: the user picks a signature file,
+                  we run verifySignature(path, agreement.id), and surface
+                  the parsed result inline. Repeat for each party. */}
+              <VerifySignaturesRow agreementId={a.id} />
 
               {/* Friendly label editor — saved to localStorage under
                   irium_agreement_labels, displayed in the collapsed card
@@ -2321,6 +2437,325 @@ function AuditModal({ agreementId, agreementHash, onClose }: AuditModalProps) {
           <button onClick={onClose} className="btn-secondary">Close</button>
         </div>
       </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Verify Signatures Row (Phase 7) ────────────────────────────
+// File-picker driven verification. The local agreement store doesn't
+// expose per-party signature paths, so the user picks a signature file
+// (.sig or .json) and we run agreementStore.verifySignature(path, id).
+// Results accumulate inline so the user can verify both buyer and seller
+// signatures in one session without losing the previous result.
+
+function VerifySignaturesRow({ agreementId }: { agreementId: string }) {
+  const [results, setResults] = useState<Array<{ filename: string; valid: boolean; signer?: string; message?: string }>>([]);
+  const [verifying, setVerifying] = useState(false);
+
+  const handleVerify = async () => {
+    const path = await openFilePicker({
+      extensions: ['sig', 'json'],
+      title: 'Select Signature File',
+    });
+    if (!path) return;
+    setVerifying(true);
+    try {
+      const r = await agreementStore.verifySignature(path, agreementId);
+      const filename = path.split(/[\\/]/).pop() ?? path;
+      setResults((prev) => [{ filename, valid: r.valid, signer: r.signer, message: r.message }, ...prev]);
+      if (r.valid) toast.success(`Signature valid (signer ${r.signer ? r.signer.slice(0, 10) + '…' : 'unknown'})`);
+      else toast.error('Signature invalid: ' + (r.message ?? 'rejected'));
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  return (
+    <div className="pt-3 border-t border-white/[0.05]">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs font-semibold text-white/35 uppercase tracking-wider flex items-center gap-1.5">
+          <ShieldCheck size={12} /> Signatures
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); handleVerify(); }}
+          disabled={verifying}
+          className="btn-ghost text-xs py-1 px-2 text-irium-400 hover:text-irium-300 flex items-center gap-1"
+          title="Verify a signature file (.sig or .json) against this agreement"
+        >
+          {verifying ? <RefreshCw size={11} className="animate-spin" /> : <PenLine size={11} />}
+          Verify a Signature File…
+        </button>
+      </div>
+      {results.length === 0 ? (
+        <p className="text-[11px] text-white/40">No signatures verified yet. Use the button above to verify one.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {results.map((r, i) => (
+            <div
+              key={i}
+              className={`glass rounded-lg p-2 flex items-center gap-2 text-xs ${
+                r.valid ? 'border border-green-500/30' : 'border border-red-500/30'
+              }`}
+            >
+              {r.valid ? (
+                <CheckCircle2 size={14} className="text-green-400 flex-shrink-0" />
+              ) : (
+                <XCircle size={14} className="text-red-400 flex-shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="font-mono text-white/70 truncate">{r.filename}</div>
+                {r.signer && (
+                  <div className="font-mono text-[10px] text-white/40 truncate">signer {r.signer}</div>
+                )}
+                {!r.valid && r.message && (
+                  <div className="text-[10px] text-red-300/80 truncate">{r.message}</div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Sign Agreement Modal (Phase 7) ─────────────────────────────
+// Calls agreementStore.sign(agreementId, signerAddr, role) where role
+// auto-derives from whether the signer matches buyer or seller. If the
+// preferred (currently-selected) wallet address isn't a party, the user
+// can pick another wallet address from a dropdown. outPath is omitted
+// so the wallet binary writes to its default signature location.
+
+interface SignAgreementModalProps {
+  agreement: Agreement;
+  walletAddresses: string[];
+  preferredAddress: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function SignAgreementModal({ agreement, walletAddresses, preferredAddress, onClose, onSuccess }: SignAgreementModalProps) {
+  const initialAddr = (() => {
+    if (preferredAddress && (preferredAddress === agreement.buyer || preferredAddress === agreement.seller)) {
+      return preferredAddress;
+    }
+    // Fall back to whichever wallet address matches a party, else first wallet.
+    return walletAddresses.find((a) => a === agreement.buyer || a === agreement.seller) ?? walletAddresses[0] ?? '';
+  })();
+
+  const [signerAddr, setSignerAddr] = useState(initialAddr);
+  const [submitting, setSubmitting] = useState(false);
+
+  const derivedRole =
+    signerAddr === agreement.buyer ? 'buyer' :
+    signerAddr === agreement.seller ? 'seller' :
+    '';
+
+  const handleSign = async () => {
+    if (!signerAddr) return;
+    setSubmitting(true);
+    try {
+      const r = await agreementStore.sign(agreement.id, signerAddr, derivedRole || undefined);
+      if (r.success) {
+        toast.success(
+          <div className="flex flex-col gap-1">
+            <span>Agreement signed.</span>
+            {r.signature_path && (
+              <span className="text-[10px] font-mono opacity-70 break-all">{r.signature_path}</span>
+            )}
+          </div>,
+          { duration: 8000 },
+        );
+        onSuccess();
+      } else {
+        toast.error('Sign failed');
+      }
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <motion.div
+      key="sign-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="glass-heavy w-full max-w-md rounded-2xl p-6"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-display font-bold text-lg text-white flex items-center gap-2">
+            <PenLine size={16} className="text-amber-400" /> Sign Agreement
+          </h2>
+          <button onClick={onClose} className="btn-ghost text-white/40">
+            <X size={16} />
+          </button>
+        </div>
+
+        <p className="text-xs text-white/55 mb-4 leading-relaxed">
+          Signing this agreement with your wallet key confirms your participation.
+          Both parties must sign before funding.
+        </p>
+
+        <div className="glass rounded-lg p-3 mb-4 space-y-1.5 text-xs">
+          <div className="flex justify-between gap-3">
+            <span className="text-white/40 flex-shrink-0">Agreement</span>
+            <span className="font-mono text-white/70 text-right break-all">{agreement.id}</span>
+          </div>
+          <div className="flex justify-between gap-3">
+            <span className="text-white/40 flex-shrink-0">Buyer</span>
+            <span className="font-mono text-white/70 text-right break-all">{agreement.buyer ?? '—'}</span>
+          </div>
+          <div className="flex justify-between gap-3">
+            <span className="text-white/40 flex-shrink-0">Seller</span>
+            <span className="font-mono text-white/70 text-right break-all">{agreement.seller ?? '—'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-white/40">Amount</span>
+            <span className="font-mono text-white/70">{formatIRM(agreement.amount)} IRM</span>
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="label">Signer wallet address</label>
+          <select
+            value={signerAddr}
+            onChange={(e) => setSignerAddr(e.target.value)}
+            className="input text-xs"
+            style={{ fontFamily: '"JetBrains Mono", monospace' }}
+          >
+            {walletAddresses.length === 0 && <option value="">No wallet addresses</option>}
+            {walletAddresses.map((a) => (
+              <option key={a} value={a} style={{ background: '#0f0f23', color: '#eef0ff' }}>
+                {a} {a === agreement.buyer ? '(buyer)' : a === agreement.seller ? '(seller)' : ''}
+              </option>
+            ))}
+          </select>
+          {derivedRole ? (
+            <p className="text-[11px] text-irium-300 mt-1.5">Role: <strong>{derivedRole}</strong></p>
+          ) : (
+            <p className="text-[11px] text-amber-400 mt-1.5">
+              This address is not the buyer or seller — signing will be recorded without a party role.
+            </p>
+          )}
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="btn-secondary flex-1 justify-center">Cancel</button>
+          <button
+            onClick={handleSign}
+            disabled={submitting || !signerAddr}
+            className="btn-primary flex-1 justify-center disabled:opacity-40"
+          >
+            {submitting ? <RefreshCw size={14} className="animate-spin" /> : <><PenLine size={13} /> Sign</>}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Disputes View (Phase 7) ────────────────────────────────────
+// Top-level alternate view for the Agreements page. Lists DisputeEntry
+// records returned by the wallet's agreement-dispute-list command. Each
+// row links back to the underlying agreement in the agreements view.
+
+interface DisputesViewProps {
+  agreementsById: Record<string, Agreement>;
+  onOpenAgreement: (id: string) => void;
+  isOnline: boolean;
+}
+
+function DisputesView({ agreementsById, onOpenAgreement, isOnline }: DisputesViewProps) {
+  const [list, setList] = useState<DisputeEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = React.useCallback(async () => {
+    try {
+      const data = await disputes.list();
+      setList(data);
+    } catch {
+      // Suppress when offline — empty state communicates.
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { setLoading(true); refresh(); }, [refresh]);
+
+  // Real-time refresh on dispute lifecycle events.
+  useIriumEvents((event) => {
+    if (event.type === 'agreement.disputed' || event.type === 'agreement.satisfied') {
+      refresh();
+    }
+  });
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="card p-4 h-20 shimmer rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+
+  if (list.length === 0) {
+    return (
+      <div className="text-center py-20 text-white/30 text-sm flex flex-col items-center gap-3">
+        <Gavel size={32} className="opacity-30" />
+        <div>No disputes.{!isOnline && ' (Node is offline — dispute list may be unavailable.)'}</div>
+      </div>
+    );
+  }
+
+  return (
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-3">
+      {list.map((d) => (
+        <motion.div key={d.id} variants={itemVariants} className="card p-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            <Gavel size={14} className="text-amber-400 flex-shrink-0" />
+            <span className="font-mono text-xs text-white/70">{d.id.slice(0, 14)}</span>
+            <span className={`badge ${d.status === 'open' || d.status === 'pending' ? 'badge-warning' : 'badge-info'}`}>
+              {d.status}
+            </span>
+            <div className="ml-auto flex items-center gap-2 text-[11px] text-white/40">
+              {d.opened_at != null && <span>opened {timeAgo(d.opened_at)}</span>}
+              {d.resolved_at != null && <span>· resolved {timeAgo(d.resolved_at)}</span>}
+            </div>
+          </div>
+          <div className="mt-2 grid grid-cols-1 gap-1 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-white/40">Agreement</span>
+              <button
+                onClick={() => onOpenAgreement(d.agreement_id)}
+                className="font-mono text-irium-400 hover:text-irium-300 underline underline-offset-2"
+                title={agreementsById[d.agreement_id] ? 'Open this agreement' : 'Agreement not in current list — try refreshing the Agreements view'}
+              >
+                {truncateHash(d.agreement_id, 10)}
+              </button>
+            </div>
+            {d.reason && (
+              <div className="text-white/55 mt-1">
+                <span className="text-white/40">Reason: </span>
+                {d.reason}
+              </div>
+            )}
+          </div>
+        </motion.div>
+      ))}
     </motion.div>
   );
 }

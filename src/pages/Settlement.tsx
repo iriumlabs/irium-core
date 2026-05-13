@@ -9,10 +9,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
-import { settlement, rpc, agreements as agreementsApi, invoices, tradeStatus } from '../lib/tauri';
+import { settlement, rpc, agreements as agreementsApi, invoices, tradeStatus, reputationActions } from '../lib/tauri';
 import { useIriumEvents } from '../lib/hooks';
 import { SATS_PER_IRM, formatIRM, truncateHash } from '../lib/types';
-import type { OtcParams, FreelanceParams, MilestoneParams, DepositParams, AgreementResult, Agreement, SellerStatus, BuyerStatus, Invoice } from '../lib/types';
+import type { OtcParams, FreelanceParams, MilestoneParams, DepositParams, AgreementResult, Agreement, SellerStatus, BuyerStatus, Invoice, SelfTradeCheckResult } from '../lib/types';
 
 // ── Template definitions ─────────────────────────────────────────
 
@@ -470,6 +470,11 @@ export default function SettlementPage() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   // Toggles the JSON payload preview on the Review step of the wizard.
   const [showPayloadPreview, setShowPayloadPreview] = useState(false);
+  // Phase 7 — self-trade check fired when the user enters the Review step.
+  // Surfaces a red warning band above Confirm when the wallet's
+  // reputation engine flags partyA / partyB as sharing a derivation root.
+  const [selfTradeCheck, setSelfTradeCheck] = useState<SelfTradeCheckResult | null>(null);
+  const [selfTradeChecking, setSelfTradeChecking] = useState(false);
 
   // Live JSON preview of the params that will be sent to the
   // settlement.{template} Tauri command on Confirm & Create. Recomputed
@@ -577,6 +582,27 @@ export default function SettlementPage() {
     navigate('/settlement', { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
+
+  // Phase 7 — Self-trade check fired when the user enters the Review step.
+  // Single RPC per Review entry (not per keystroke). partyA is the
+  // payer/buyer in every template; partyB is the receiver/seller.
+  // reputationActions.selfTradeCheck signature is (seller, buyer).
+  useEffect(() => {
+    if (view !== 'wizard' || wizardStep !== 1) {
+      setSelfTradeCheck(null);
+      return;
+    }
+    const seller = form.partyB.trim();
+    const buyer = form.partyA.trim();
+    if (!seller || !buyer) return;
+    setSelfTradeChecking(true);
+    reputationActions
+      .selfTradeCheck(seller, buyer)
+      .then((r) => setSelfTradeCheck(r))
+      .catch(() => setSelfTradeCheck(null))
+      .finally(() => setSelfTradeChecking(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, wizardStep, form.partyA, form.partyB]);
 
   const setField = useCallback((key: keyof FormState) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -1232,6 +1258,28 @@ export default function SettlementPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Self-trade warning (Phase 7). Informational only —
+                      doesn't block submission. Fires when the wallet's
+                      reputation engine flags the two addresses as sharing
+                      a key derivation root. */}
+                  {selfTradeChecking && (
+                    <div className="text-xs text-white/40 flex items-center gap-2 px-1">
+                      <Loader2 size={11} className="animate-spin" /> Checking for self-trade…
+                    </div>
+                  )}
+                  {selfTradeCheck?.is_self_trade && (
+                    <div className="rounded-lg p-3 text-xs border border-red-500/40 bg-red-500/10 text-red-200 flex items-start gap-2">
+                      <AlertCircle size={14} className="text-red-400 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="text-red-300">Warning:</strong> These two addresses appear to share a key derivation root.
+                        Creating this agreement may be flagged as a self-trade and could affect reputation scores.
+                        {selfTradeCheck.message && (
+                          <div className="mt-1 text-red-200/80">{selfTradeCheck.message}</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <button
                     onClick={handleSubmit}
