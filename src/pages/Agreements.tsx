@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen, FileJson, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen, FileJson, AlertCircle, Copy, FileText } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { fetch as tauriFetch, Body, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
 import { agreements, proofs, agreementSpend, disputes } from '../lib/tauri';
 import {
@@ -96,6 +97,10 @@ export default function AgreementsPage() {
   // Drives the Open Dispute confirmation modal — id of the agreement being
   // disputed, or null when the modal is closed.
   const [disputeAgreementId, setDisputeAgreementId] = useState<string | null>(null);
+  // Drives the Agreement Audit modal — id of the agreement whose audit
+  // record is being viewed. The modal also needs the hash for the RPC
+  // call; we look it up from agreementList by id.
+  const [auditAgreementId, setAuditAgreementId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -266,6 +271,7 @@ export default function AgreementsPage() {
                 }}
                 onRefund={() => handleRefund(a.id)}
                 onDispute={() => setDisputeAgreementId(a.id)}
+                onViewAudit={() => setAuditAgreementId(a.id)}
                 actionLoading={actionLoading}
                 isOnline={!!nodeStatus?.running}
                 refundElig={refundEligByAgreement[a.id]}
@@ -363,6 +369,21 @@ export default function AgreementsPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Audit Modal */}
+      <AnimatePresence>
+        {auditAgreementId !== null && (() => {
+          const a = agreementList.find((x) => x.id === auditAgreementId);
+          if (!a || !a.hash) return null;
+          return (
+            <AuditModal
+              agreementId={a.id}
+              agreementHash={a.hash}
+              onClose={() => setAuditAgreementId(null)}
+            />
+          );
+        })()}
+      </AnimatePresence>
       </div>
     </motion.div>
   );
@@ -455,6 +476,7 @@ interface AgreementCardProps {
   onRelease: () => void;
   onRefund: () => void;
   onDispute: () => void;
+  onViewAudit: () => void;
   actionLoading: boolean;
   isOnline: boolean;
   // Populated on expand by AgreementsPage's eligibility/status useEffect.
@@ -553,6 +575,7 @@ function AgreementCard({
   onRelease,
   onRefund,
   onDispute,
+  onViewAudit,
   actionLoading,
   isOnline,
   refundElig,
@@ -662,7 +685,30 @@ function AgreementCard({
 
               {/* Detail grid */}
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <Detail label="Hash" value={a.hash ? truncateHash(a.hash) : '—'} />
+                {/* Hash row — replaces the plain Detail with a clickable
+                    copy affordance. truncated for readability; full hash
+                    goes to clipboard on click. */}
+                <div>
+                  <span className="text-white/30">Hash: </span>
+                  {a.hash ? (
+                    <>
+                      <span className="font-mono text-white/70">{truncateHash(a.hash)}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(a.hash!);
+                          toast.success('Copied');
+                        }}
+                        title="Copy full agreement hash"
+                        className="ml-1.5 text-white/30 hover:text-white/70 align-middle"
+                      >
+                        <Copy size={11} />
+                      </button>
+                    </>
+                  ) : (
+                    <span className="font-mono text-white/70">—</span>
+                  )}
+                </div>
                 <Detail label="Template" value={a.template ?? '—'} />
                 <Detail
                   label="Created"
@@ -865,6 +911,19 @@ function AgreementCard({
                     <ExportPackRow agreementId={a.id} />
                   </>
                 )}
+
+                {/* Common footer — View Audit is always available so users
+                    can inspect on-chain history at any lifecycle stage.
+                    Disabled when the hash hasn't been computed yet (rare;
+                    only happens for very-early-state local drafts). */}
+                <button
+                  onClick={onViewAudit}
+                  disabled={!a.hash}
+                  title={a.hash ? 'View full on-chain audit record' : 'Agreement hash not available yet'}
+                  className="btn-ghost text-xs py-1.5 px-3 text-irium-400 hover:text-irium-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                >
+                  <FileText size={12} /> View Audit
+                </button>
               </div>
             </div>
           </motion.div>
@@ -1680,6 +1739,275 @@ function DisputeModal({ agreement, onClose, onSuccess, isOnline }: DisputeModalP
               'Confirm Open Dispute'
             )}
           </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Audit Modal ───────────────────────────────────────────────
+// Fetches a full audit record from iriumd's POST /rpc/agreementaudit and
+// renders it with structured sections + a raw-JSON fallback. The exact
+// response shape is undocumented in API.md beyond "full audit record
+// including all on-chain events, proofs, and policy evaluations" — so we
+// extract fields defensively (optional chaining + unknown casts) and
+// always include the raw JSON so nothing is hidden.
+
+interface AuditModalProps {
+  agreementId: string;
+  agreementHash: string;
+  onClose: () => void;
+}
+
+function AuditModal({ agreementId, agreementHash, onClose }: AuditModalProps) {
+  const rpcUrl = useStore((s) => s.settings.rpc_url) || 'http://127.0.0.1:38300';
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<Record<string, unknown> | null>(null);
+  const [showRaw, setShowRaw] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await tauriFetch<Record<string, unknown>>(
+          `${rpcUrl}/rpc/agreementaudit`,
+          {
+            method: 'POST',
+            timeout: 10,
+            responseType: ResponseType.JSON,
+            body: Body.json({ agreement_hash: agreementHash }),
+          },
+        );
+        if (!mounted) return;
+        if (res.ok && res.data) {
+          setData(res.data);
+        } else {
+          setError(`Audit RPC returned HTTP ${res.status}`);
+        }
+      } catch (e) {
+        if (mounted) setError(String(e));
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [agreementHash, rpcUrl]);
+
+  // Defensive field extraction. Any missing key collapses to null and the
+  // corresponding section just doesn't render.
+  const agreement = (data?.agreement ?? null) as Record<string, unknown> | null;
+  const parties = (agreement?.parties ?? null) as unknown[] | null;
+  const fundingLegs = (data?.funding_legs ?? null) as unknown[] | null;
+  const linkedTxs = (data?.linked_transactions ?? null) as unknown[] | null;
+  const events = ((data?.events ?? data?.timeline ?? null)) as unknown[] | null;
+  const auditProofs = (data?.proofs ?? null) as unknown[] | null;
+  const policy = (data?.policy ?? data?.policy_evaluation ?? null) as Record<string, unknown> | null;
+  const rawJson = data ? JSON.stringify(data, null, 2) : '';
+
+  return (
+    <motion.div
+      key="audit-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="glass-heavy w-full max-w-2xl rounded-2xl p-6 overflow-y-auto max-h-[90vh]"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="font-display font-bold text-lg text-white">Agreement Audit</h2>
+            <p className="font-mono text-[10px] text-white/40 mt-0.5">{agreementId}</p>
+          </div>
+          <button onClick={onClose} className="btn-ghost text-white/40">
+            <X size={16} />
+          </button>
+        </div>
+
+        {loading && (
+          <div className="flex items-center gap-2 py-8 justify-center text-white/40 text-sm">
+            <RefreshCw size={14} className="animate-spin" /> Fetching audit record…
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-lg p-3 text-xs text-red-400 border border-red-500/30 bg-red-500/10">
+            {error}
+          </div>
+        )}
+
+        {data && (
+          <div className="space-y-4">
+            {/* Agreement summary */}
+            {agreement && (
+              <div className="glass rounded-lg p-3 text-xs space-y-1.5">
+                <div className="font-display font-semibold text-white/70 mb-2">Agreement</div>
+                {parties && (
+                  <Detail label="Parties" value={`${parties.length} ${parties.length === 1 ? 'party' : 'parties'}`} />
+                )}
+                {agreement.template_type != null && (
+                  <Detail label="Template" value={String(agreement.template_type)} />
+                )}
+                {typeof agreement.total_amount === 'number' && (
+                  <Detail label="Amount" value={formatIRM(agreement.total_amount as number)} />
+                )}
+                {agreement.payer != null && (
+                  <Detail label="Payer" value={truncateAddr(String(agreement.payer), 8, 6)} />
+                )}
+                {agreement.payee != null && (
+                  <Detail label="Payee" value={truncateAddr(String(agreement.payee), 8, 6)} />
+                )}
+              </div>
+            )}
+
+            {/* Events / timeline */}
+            {(events?.length ?? 0) > 0 && (
+              <div>
+                <div className="font-display font-semibold text-white/70 text-xs mb-2">
+                  Timeline ({events!.length} event{events!.length !== 1 ? 's' : ''})
+                </div>
+                <div className="space-y-1.5">
+                  {events!.map((e, i) => {
+                    const ev = e as Record<string, unknown>;
+                    const kind = ev.kind ?? ev.event_type ?? ev.type ?? 'event';
+                    return (
+                      <div key={i} className="glass rounded-lg p-2.5 text-xs flex items-center justify-between">
+                        <span className="font-mono text-white/70">{String(kind)}</span>
+                        {ev.height != null && (
+                          <span className="font-mono text-white/40">#{Number(ev.height).toLocaleString()}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Proofs */}
+            {(auditProofs?.length ?? 0) > 0 && (
+              <div>
+                <div className="font-display font-semibold text-white/70 text-xs mb-2">
+                  Proofs ({auditProofs!.length})
+                </div>
+                <div className="space-y-1.5">
+                  {auditProofs!.map((p, i) => {
+                    const pr = p as Record<string, unknown>;
+                    const id = String(pr.proof_id ?? pr.id ?? `proof-${i}`);
+                    const status = pr.status ?? pr.state;
+                    return (
+                      <div key={i} className="glass rounded-lg p-2.5 text-xs flex items-center justify-between">
+                        <span className="font-mono text-white/50">{id.slice(0, 24)}</span>
+                        {status != null && <span className="badge badge-info text-[10px]">{String(status)}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Funding legs */}
+            {(fundingLegs?.length ?? 0) > 0 && (
+              <div>
+                <div className="font-display font-semibold text-white/70 text-xs mb-2">
+                  Funding ({fundingLegs!.length} leg{fundingLegs!.length !== 1 ? 's' : ''})
+                </div>
+                <div className="space-y-1.5">
+                  {fundingLegs!.map((l, i) => {
+                    const leg = l as Record<string, unknown>;
+                    const txid = String(leg.txid ?? leg.funding_txid ?? '');
+                    return (
+                      <div key={i} className="glass rounded-lg p-2.5 text-xs space-y-1">
+                        {txid && (
+                          <div className="flex justify-between">
+                            <span className="text-white/40">Txid</span>
+                            <span className="font-mono text-white/70">{truncateHash(txid)}</span>
+                          </div>
+                        )}
+                        {leg.value != null && (
+                          <div className="flex justify-between">
+                            <span className="text-white/40">Value</span>
+                            <span className="font-mono text-white/70">{formatIRM(Number(leg.value))}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Linked transactions */}
+            {(linkedTxs?.length ?? 0) > 0 && (
+              <div>
+                <div className="font-display font-semibold text-white/70 text-xs mb-2">
+                  Linked Transactions ({linkedTxs!.length})
+                </div>
+                <div className="space-y-1.5">
+                  {linkedTxs!.map((t, i) => {
+                    const tx = t as Record<string, unknown>;
+                    const txid = String(tx.txid ?? '');
+                    return (
+                      <div key={i} className="glass rounded-lg p-2.5 text-xs flex items-center justify-between">
+                        <span className="font-mono text-white/70">{txid ? truncateHash(txid) : '—'}</span>
+                        {tx.role != null && <span className="badge badge-info text-[10px]">{String(tx.role)}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Policy evaluation */}
+            {policy && (
+              <div className="glass rounded-lg p-3 text-xs space-y-1.5">
+                <div className="font-display font-semibold text-white/70 mb-2">Policy</div>
+                {policy.outcome != null && <Detail label="Outcome" value={String(policy.outcome)} />}
+                {policy.satisfied != null && <Detail label="Satisfied" value={policy.satisfied ? 'Yes' : 'No'} />}
+                {policy.reason != null && <Detail label="Reason" value={String(policy.reason)} />}
+                {policy.kind != null && <Detail label="Kind" value={String(policy.kind)} />}
+              </div>
+            )}
+
+            {/* Raw JSON disclosure */}
+            <div>
+              <button
+                onClick={() => setShowRaw((v) => !v)}
+                className="text-xs text-irium-400 hover:text-irium-300"
+              >
+                {showRaw ? 'Hide raw JSON' : 'Show raw JSON'}
+              </button>
+              {showRaw && (
+                <div className="mt-2 glass rounded-lg p-3">
+                  <div className="flex justify-end mb-2">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(rawJson);
+                        toast.success('Copied');
+                      }}
+                      className="text-xs text-irium-400 hover:text-irium-300 flex items-center gap-1"
+                    >
+                      <Copy size={11} /> Copy
+                    </button>
+                  </div>
+                  <pre className="text-[10px] font-mono text-white/60 overflow-x-auto max-h-96 overflow-y-auto whitespace-pre-wrap break-all">
+                    {rawJson}
+                  </pre>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end mt-5">
+          <button onClick={onClose} className="btn-secondary">Close</button>
         </div>
       </motion.div>
     </motion.div>

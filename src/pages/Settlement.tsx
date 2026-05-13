@@ -3,13 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeftRight, Briefcase, Target, Landmark,
   ArrowLeft, Copy, Loader2, AlertCircle, CheckCircle2,
-  Zap, Hourglass, Hammer,
+  Zap, Hourglass, Hammer, X,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
-import { settlement, rpc, agreements as agreementsApi } from '../lib/tauri';
+import { settlement, rpc, agreements as agreementsApi, invoices } from '../lib/tauri';
 import { SATS_PER_IRM, formatIRM, truncateHash } from '../lib/types';
 import type { OtcParams, FreelanceParams, MilestoneParams, DepositParams, AgreementResult, Agreement } from '../lib/types';
 
@@ -299,6 +299,8 @@ export default function SettlementPage() {
   const [hubAgreements, setHubAgreements] = useState<Agreement[]>([]);
   const [allAgreements, setAllAgreements] = useState<Agreement[]>([]);
   const [hubLoading, setHubLoading] = useState(false);
+  // Drives the Generate Payment Invoice modal on the success card.
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   const steps = ['Details', 'Review & Confirm'];
 
@@ -977,6 +979,20 @@ export default function SettlementPage() {
           </motion.div>
         )}
 
+        {/* Invoice modal — rendered as a sibling of the AnimatePresence
+            views so it can overlay the success card without interfering
+            with the page transitions. */}
+        <AnimatePresence>
+          {showInvoiceModal && result && (
+            <InvoiceModal
+              recipient={form.partyB}
+              amountIrm={parseFloat(form.amountIrm) || 0}
+              reference={result.agreement_id}
+              onClose={() => setShowInvoiceModal(false)}
+            />
+          )}
+        </AnimatePresence>
+
         {/* ── SUCCESS VIEW ──────────────────────────────────────── */}
         {view === 'success' && result && (
           <motion.div
@@ -1054,6 +1070,26 @@ export default function SettlementPage() {
                 </div>
               </div>
 
+              {/* Wallet-backup warning — the HTLC release preimage that
+                  unlocks the escrow is stored locally in the wallet file.
+                  If the user loses the wallet, the preimage is gone and
+                  release is no longer possible (refund still works after
+                  timeout). Render BEFORE the "what happens next" box so it
+                  is hit first in the success scan path. */}
+              <div
+                className="flex items-start gap-2 mb-3 px-3 py-3 rounded-xl text-xs text-left"
+                style={{
+                  background: 'rgba(251,191,36,0.08)',
+                  border: '1px solid rgba(251,191,36,0.30)',
+                  color: 'rgba(251,191,36,0.85)',
+                }}
+              >
+                <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+                <span>
+                  <strong>Important:</strong> Your secret preimage is stored locally in your wallet file. Back up your wallet file now to ensure you can always release these funds. If you lose your wallet file, you cannot release the escrow.
+                </span>
+              </div>
+
               {/* What happens next — guides the user from creation into the
                   funding/proof flow. The agreement exists but the HTLC isn't
                   funded until someone calls agreement-fund on the Agreements
@@ -1072,9 +1108,12 @@ export default function SettlementPage() {
                 </span>
               </div>
 
-              <div className="flex gap-3 justify-center">
+              <div className="flex gap-3 justify-center flex-wrap">
                 <button onClick={copySummary} className="btn-secondary">
                   <Copy size={13} /> Copy Summary
+                </button>
+                <button onClick={() => setShowInvoiceModal(true)} className="btn-secondary">
+                  Generate Payment Invoice
                 </button>
                 <button onClick={() => navigate('/agreements')} className="btn-secondary">
                   View Agreements
@@ -1088,6 +1127,171 @@ export default function SettlementPage() {
         )}
       </AnimatePresence>
       </div>
+    </motion.div>
+  );
+}
+
+// ── Invoice Modal ────────────────────────────────────────────────
+// Generates a payment-request JSON via the wallet's invoice-generate
+// command (recipient = the agreement's payee, amount + reference taken
+// from the just-created agreement). The user can either copy the JSON or
+// save it to a file via Tauri's save dialog. Re-generating with an
+// outPath produces a fresh invoice — accepted trade-off since the
+// material fields (recipient/amount/reference) do not change.
+
+interface InvoiceModalProps {
+  recipient: string;
+  amountIrm: number;
+  reference: string;
+  onClose: () => void;
+}
+
+function InvoiceModal({ recipient, amountIrm, reference, onClose }: InvoiceModalProps) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [invoice, setInvoice] = useState<Record<string, unknown> | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const result = await invoices.generate(recipient, amountIrm, reference);
+        if (!mounted) return;
+        // Cast for defensive rendering — we display whatever fields the
+        // backend returns rather than depending on a specific shape.
+        setInvoice(result as unknown as Record<string, unknown>);
+      } catch (e) {
+        if (mounted) setError(String(e));
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [recipient, amountIrm, reference]);
+
+  const invoiceJson = invoice ? JSON.stringify(invoice, null, 2) : '';
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(invoiceJson);
+    toast.success('Invoice JSON copied');
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { save } = await import('@tauri-apps/api/dialog');
+      const path = await save({
+        defaultPath: `invoice-${Date.now()}.json`,
+        filters: [{ name: 'JSON', extensions: ['json'] }],
+      });
+      if (!path) { setSaving(false); return; }
+      // Re-generate with outPath so the backend writes the file directly.
+      // The renderer's fs scope is restrictive; this bypasses it cleanly.
+      await invoices.generate(recipient, amountIrm, reference, undefined, path);
+      toast.success('Invoice saved to ' + path);
+    } catch (e) {
+      toast.error('Save failed: ' + String(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <motion.div
+      key="invoice-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="card w-full max-w-lg rounded-2xl p-6 overflow-y-auto max-h-[90vh]"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-display font-bold text-lg text-white">Payment Invoice</h2>
+          <button onClick={onClose} className="btn-ghost text-white/40 p-1">
+            <X size={16} />
+          </button>
+        </div>
+
+        <p className="text-xs text-white/50 mb-4">
+          Share this invoice with the buyer so they know exactly how much to send and what reference to include.
+        </p>
+
+        {loading && (
+          <div className="flex items-center gap-2 py-8 justify-center text-white/40 text-sm">
+            <Loader2 size={14} className="animate-spin" /> Generating invoice…
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-lg p-3 text-xs text-red-400 border border-red-500/30 bg-red-500/10 mb-4">
+            {error}
+          </div>
+        )}
+
+        {invoice && (
+          <>
+            {/* Structured rows — only renders fields actually present. */}
+            <div className="glass rounded-lg p-3 mb-4 space-y-1.5 text-xs">
+              {invoice.recipient != null && (
+                <div className="flex justify-between gap-3">
+                  <span className="text-white/40 flex-shrink-0">Recipient</span>
+                  <span className="font-mono text-white/70 text-right break-all">{String(invoice.recipient)}</span>
+                </div>
+              )}
+              {invoice.amount_irm != null && (
+                <div className="flex justify-between">
+                  <span className="text-white/40">Amount</span>
+                  <span className="font-mono text-white/70">{String(invoice.amount_irm)} IRM</span>
+                </div>
+              )}
+              {invoice.reference != null && (
+                <div className="flex justify-between gap-3">
+                  <span className="text-white/40 flex-shrink-0">Reference</span>
+                  <span className="font-mono text-white/70 text-right break-all">{String(invoice.reference)}</span>
+                </div>
+              )}
+              {invoice.expires_height != null && (
+                <div className="flex justify-between">
+                  <span className="text-white/40">Expires (height)</span>
+                  <span className="font-mono text-white/70">#{Number(invoice.expires_height).toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Raw JSON */}
+            <div className="mb-4">
+              <p className="text-xs text-white/40 uppercase tracking-wider mb-1.5">Raw JSON</p>
+              <pre className="text-[10px] font-mono text-white/60 bg-black/40 border border-white/5 rounded-lg p-3 overflow-x-auto max-h-64 overflow-y-auto whitespace-pre-wrap break-all">
+                {invoiceJson}
+              </pre>
+            </div>
+
+            <div className="flex gap-3 flex-wrap">
+              <button onClick={onClose} className="btn-secondary flex-1 justify-center">
+                Close
+              </button>
+              <button onClick={handleCopy} className="btn-secondary flex-1 justify-center">
+                <Copy size={13} /> Copy JSON
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="btn-primary flex-1 justify-center disabled:opacity-40"
+              >
+                {saving ? <Loader2 size={14} className="animate-spin" /> : 'Save to File'}
+              </button>
+            </div>
+          </>
+        )}
+      </motion.div>
     </motion.div>
   );
 }

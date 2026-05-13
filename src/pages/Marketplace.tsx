@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, RefreshCw, Search, Globe, X, Rss, Star } from 'lucide-react';
+import { Plus, RefreshCw, Search, Globe, X, Rss, Star, Download, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../lib/store';
@@ -22,8 +22,48 @@ const itemVariants = {
 // ─── Types ─────────────────────────────────────────────────────
 type Tab = 'browse' | 'my-offers' | 'feeds';
 
+// ─── File-picker helpers ────────────────────────────────────────
+// Mirrors the same-named helpers in Agreements.tsx — kept local rather
+// than extracted to a shared util so Phase 3 stays scoped to the three
+// page files. A future refactor could lift these into src/lib/file-picker.ts.
+const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
+
+async function openFilePicker(opts: { extensions: string[]; title: string }): Promise<string | null> {
+  if (isTauri) {
+    try {
+      const { open } = await import('@tauri-apps/api/dialog');
+      const result = await open({
+        multiple: false,
+        title: opts.title,
+        filters: [{ name: opts.extensions.map(e => `.${e}`).join(' / '), extensions: opts.extensions }],
+      });
+      return typeof result === 'string' ? result : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+async function openSavePicker(opts: { defaultName: string; extensions: string[]; title: string }): Promise<string | null> {
+  if (isTauri) {
+    try {
+      const { save } = await import('@tauri-apps/api/dialog');
+      const result = await save({
+        title: opts.title,
+        defaultPath: opts.defaultName,
+        filters: [{ name: opts.extensions.map(e => `.${e}`).join(' / '), extensions: opts.extensions }],
+      });
+      return result ?? null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 // ─── Offer Card ────────────────────────────────────────────────
-function OfferCard({ offer, onTake, onOpenDetail, isOnline }: { offer: Offer; onTake: () => void; onOpenDetail: () => void; isOnline: boolean }) {
+function OfferCard({ offer, onTake, onOpenDetail, onExport, isOnline }: { offer: Offer; onTake: () => void; onOpenDetail: () => void; onExport?: () => void; isOnline: boolean }) {
   const navigate = useNavigate();
   const score = offer.reputation?.score ?? 0;
   const riskBadge =
@@ -115,7 +155,19 @@ function OfferCard({ offer, onTake, onOpenDetail, isOnline }: { offer: Offer; on
         {formatIRM(offer.amount)}
       </div>
 
-      {/* Right: Take Offer button */}
+      {/* Right: Export (My Offers only) + Take Offer */}
+      {onExport && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onExport();
+          }}
+          title="Export this offer as JSON to share with a buyer"
+          className="btn-ghost text-xs p-1.5 flex-shrink-0 text-irium-400 hover:text-irium-300"
+        >
+          <Download size={13} />
+        </button>
+      )}
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -587,6 +639,37 @@ export default function MarketplacePage() {
     }
   };
 
+  // ── Export / Import single offers ────────────────────────────
+  const handleExportOffer = async (offerId: string) => {
+    const path = await openSavePicker({
+      defaultName: `offer-${offerId.slice(0, 16)}.json`,
+      extensions: ['json'],
+      title: 'Save Offer',
+    });
+    if (!path) return;
+    try {
+      await offers.export(offerId, path);
+      toast.success('Offer exported to ' + path);
+    } catch (e) {
+      toast.error('Export failed: ' + String(e));
+    }
+  };
+
+  const handleImportOffer = async () => {
+    const path = await openFilePicker({
+      extensions: ['json'],
+      title: 'Select Offer JSON',
+    });
+    if (!path) return;
+    try {
+      await offers.import(path);
+      toast.success('Offer imported');
+      await loadMyOffers();
+    } catch (e) {
+      toast.error('Import failed: ' + String(e));
+    }
+  };
+
   const handleSyncAll = async () => {
     setSyncing(true);
     try {
@@ -852,10 +935,16 @@ export default function MarketplacePage() {
               <h2 className="font-display font-semibold text-white/90">Your active offers</h2>
               <p className="text-white/30 text-xs mt-0.5">Offers you have listed on the marketplace</p>
             </div>
-            <button onClick={() => setShowCreateModal(true)} className="btn-primary">
-              <Plus size={14} className="mr-1" />
-              Create Offer
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={handleImportOffer} className="btn-secondary">
+                <Upload size={14} className="mr-1" />
+                Import Offer
+              </button>
+              <button onClick={() => setShowCreateModal(true)} className="btn-primary">
+                <Plus size={14} className="mr-1" />
+                Create Offer
+              </button>
+            </div>
           </div>
 
           {loading ? (
@@ -883,6 +972,7 @@ export default function MarketplacePage() {
                   offer={offer}
                   onTake={() => setShowTakeModal(offer)}
                   onOpenDetail={() => setShowDetailModal(offer)}
+                  onExport={() => handleExportOffer(offer.id)}
                   isOnline={!!nodeStatus?.running}
                 />
               ))}
