@@ -1762,7 +1762,7 @@ function StepBackupSecure({
   useEffect(() => {
     let cancelled = false;
     setWifLoading(true);
-    wallet.readWif(walletData.address)
+    wallet.readWif(walletData.address, walletData.wallet_path)
       .then((value) => { if (!cancelled) setWif(value ?? ''); })
       .catch(() => { if (!cancelled) setWif(''); })
       .finally(() => { if (!cancelled) setWifLoading(false); });
