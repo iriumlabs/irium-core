@@ -137,8 +137,8 @@ jobs:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Irium Core ${{ github.ref_name }}'
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          releaseName: ${{ github.ref_type == 'tag' && format('Irium Core {0}', github.ref_name) || '' }}
           releaseBody: |
             Initial public release of Irium Core, the official full-node desktop wallet and miner for the Irium (IRM) blockchain.
 
