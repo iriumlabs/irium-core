@@ -7,7 +7,7 @@ import {
   Eye, EyeOff, Copy, Shield, AlertTriangle,
   Key, Lock, FileText, Wallet as WalletIcon, RefreshCw,
 } from 'lucide-react';
-import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
+import { fetch as tauriFetch, Body, ResponseType } from '@tauri-apps/api/http';
 import { node, wallet } from '../lib/tauri';
 import { useStore } from '../lib/store';
 import type { NodeStatus, WalletCreateResult, BinaryCheckResult } from '../lib/types';
@@ -707,6 +707,20 @@ function humanizeStartError(raw: string): string {
   return raw;
 }
 
+// Validate IPv4:port for the manual peer input. iriumd's /admin/add-seed
+// returns {added:true} even for unparseable addresses (the background dial
+// silently no-ops), so we validate client-side — otherwise a typo would look
+// like success while doing nothing.
+function isValidIpPort(input: string): boolean {
+  const m = input.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3}):(\d{1,5})$/);
+  if (!m) return false;
+  for (let i = 1; i <= 4; i++) {
+    if (Number(m[i]) > 255) return false;
+  }
+  const port = Number(m[5]);
+  return port >= 1 && port <= 65535;
+}
+
 // ─── Step 3: Network Sync ─────────────────────────────────────────────────────
 function StepNetworkSync({ onNext }: { onNext: () => void }) {
   const rpcUrl = useStore((s) => s.settings.rpc_url) || 'http://127.0.0.1:38300';
@@ -714,6 +728,13 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
   const [startError, setStartError]   = useState<string | null>(null);
   const [status, setStatus]           = useState<NodeStatus | null>(null);
   const [retrying, setRetrying]       = useState(false);
+  const [manualPeer, setManualPeer]   = useState('');
+  const [addPeerStatus, setAddPeerStatus] = useState<
+    | { kind: 'idle' }
+    | { kind: 'pending' }
+    | { kind: 'ok'; addr: string }
+    | { kind: 'err'; message: string }
+  >({ kind: 'idle' });
   // Re-render every second while we're still waiting on peers so the 30-second
   // "no peers" warning surfaces without needing another RPC poll to fire.
   const [nowTick, setNowTick] = useState(0);
@@ -802,6 +823,31 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
       setStartError(humanizeStartError(String(e)));
     } finally {
       setRetrying(false);
+    }
+  };
+
+  const handleAddPeer = async () => {
+    const addr = manualPeer.trim();
+    if (!isValidIpPort(addr)) {
+      setAddPeerStatus({ kind: 'err', message: 'Use IP:PORT (e.g. 207.244.247.86:38291)' });
+      return;
+    }
+    setAddPeerStatus({ kind: 'pending' });
+    try {
+      const res = await tauriFetch<{ added?: boolean }>(`${rpcUrl}/admin/add-seed`, {
+        method: 'POST',
+        timeout: 5,
+        responseType: ResponseType.JSON,
+        body: Body.json({ addr }),
+      });
+      if (res.ok && res.data?.added === true) {
+        setAddPeerStatus({ kind: 'ok', addr });
+        setManualPeer('');
+      } else {
+        setAddPeerStatus({ kind: 'err', message: `Node rejected the address (HTTP ${res.status})` });
+      }
+    } catch (e) {
+      setAddPeerStatus({ kind: 'err', message: `Could not reach node: ${String(e)}` });
     }
   };
 
@@ -956,6 +1002,48 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
                   {retrying ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
                   {retrying ? 'Restarting node…' : 'Retry connection'}
                 </button>
+
+                <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(251,191,36,0.18)' }}>
+                  <p className="text-[11px] mb-1.5" style={{ color: 'rgba(238,240,255,0.55)' }}>
+                    Add a peer manually
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={manualPeer}
+                      onChange={(e) => {
+                        setManualPeer(e.target.value);
+                        if (addPeerStatus.kind === 'ok' || addPeerStatus.kind === 'err') {
+                          setAddPeerStatus({ kind: 'idle' });
+                        }
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleAddPeer(); }}
+                      placeholder="207.244.247.86:38291"
+                      disabled={addPeerStatus.kind === 'pending'}
+                      className="input flex-1 text-xs"
+                      style={{ fontFamily: '"JetBrains Mono", monospace', padding: '6px 10px' }}
+                    />
+                    <button
+                      onClick={handleAddPeer}
+                      disabled={addPeerStatus.kind === 'pending' || !manualPeer.trim()}
+                      className="btn-secondary text-xs flex items-center gap-1.5 disabled:opacity-50"
+                      style={{ padding: '6px 12px' }}
+                    >
+                      {addPeerStatus.kind === 'pending' && <Loader2 size={12} className="animate-spin" />}
+                      Add Peer
+                    </button>
+                  </div>
+                  {addPeerStatus.kind === 'ok' && (
+                    <p className="mt-1.5 text-[11px] font-mono" style={{ color: '#34d399' }}>
+                      ✓ added {addPeerStatus.addr}
+                    </p>
+                  )}
+                  {addPeerStatus.kind === 'err' && (
+                    <p className="mt-1.5 text-[11px]" style={{ color: '#fbbf24' }}>
+                      ✗ {addPeerStatus.message}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>
