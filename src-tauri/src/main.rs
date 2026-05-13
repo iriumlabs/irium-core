@@ -4215,14 +4215,45 @@ async fn invoice_import(
 ) -> Result<InvoiceImportResult, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let path_for_read = file_path.clone();
     let output = run_wallet_cmd(
         vec!["invoice-import".to_string(), "--file".to_string(), file_path, "--json".to_string()],
         wallet_path, data_dir,
     ).await?;
     let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+
+    // Also parse the on-disk JSON so the renderer can prefill a new
+    // agreement form. Field-name variants mirror invoice_generate's parser
+    // above (amount may be sats `amount` or IRM `amount_irm`). Parse failure
+    // is silent — the renderer just shows no prefill data.
+    let parsed_invoice: Option<Invoice> = std::fs::read_to_string(&path_for_read)
+        .ok()
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+        .map(|v| Invoice {
+            id: v["invoice_id"]
+                .as_str()
+                .or_else(|| v["id"].as_str())
+                .unwrap_or("")
+                .to_string(),
+            recipient: v["recipient"].as_str().unwrap_or("").to_string(),
+            amount: v["amount"].as_u64().unwrap_or_else(|| {
+                v["amount_irm"]
+                    .as_f64()
+                    .map(|irm| (irm * 100_000_000.0) as u64)
+                    .unwrap_or(0)
+            }),
+            reference: v["reference"].as_str().unwrap_or("").to_string(),
+            expires_height: v["expires_height"]
+                .as_u64()
+                .or_else(|| v["expires_at_height"].as_u64()),
+            created_at: v["created_at"].as_i64(),
+            status: v["status"].as_str().map(String::from),
+        });
+
     Ok(InvoiceImportResult {
         success: true,
         invoice_id: raw["invoice_id"].as_str().map(String::from),
+        invoice: parsed_invoice,
         message: None,
     })
 }

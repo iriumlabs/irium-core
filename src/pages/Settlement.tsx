@@ -5,13 +5,14 @@ import {
   ArrowLeft, Copy, Loader2, AlertCircle, CheckCircle2,
   Zap, Hourglass, Hammer, X,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
-import { settlement, rpc, agreements as agreementsApi, invoices } from '../lib/tauri';
+import { settlement, rpc, agreements as agreementsApi, invoices, tradeStatus } from '../lib/tauri';
+import { useIriumEvents } from '../lib/hooks';
 import { SATS_PER_IRM, formatIRM, truncateHash } from '../lib/types';
-import type { OtcParams, FreelanceParams, MilestoneParams, DepositParams, AgreementResult, Agreement } from '../lib/types';
+import type { OtcParams, FreelanceParams, MilestoneParams, DepositParams, AgreementResult, Agreement, SellerStatus, BuyerStatus, Invoice } from '../lib/types';
 
 // ── Template definitions ─────────────────────────────────────────
 
@@ -282,12 +283,178 @@ function ShakeField({ error, children }: { error?: string; children: React.React
   return <div ref={ref}>{children}</div>;
 }
 
+// ── Seller / Buyer dashboard cards ───────────────────────────────
+// Wired to the wallet's seller-status / buyer-status commands via the
+// tradeStatus.* helpers in tauri.ts. Both cards auto-refresh on Phase 5
+// WebSocket events that move the underlying counts (agreement / offer
+// state transitions). Score is displayed as 0/100 — multiplied by 100
+// when the backend returns a 0-1 normalized score.
+
+function fmtReputationPct(score?: number): string {
+  if (score == null) return '—';
+  const pct = score <= 1 ? score * 100 : score;
+  return `${Math.round(pct)}/100`;
+}
+
+function StatTile({ label, value, hint }: { label: string; value: React.ReactNode; hint?: string }) {
+  return (
+    <div className="glass rounded-lg p-3" title={hint}>
+      <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1">{label}</div>
+      <div className="font-display font-semibold text-white text-lg">{value}</div>
+    </div>
+  );
+}
+
+function SellerDashboardCard({ address }: { address: string }) {
+  const [data, setData] = useState<SellerStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+
+  const refresh = React.useCallback(async () => {
+    if (!address) return;
+    try {
+      setErr(null);
+      const r = await tradeStatus.seller(address);
+      setData(r);
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [address]);
+
+  useEffect(() => { setLoading(true); refresh(); }, [refresh]);
+
+  // Refresh on relevant Phase 5 events. WS bridge → useIriumEvents.
+  useIriumEvents((event) => {
+    if (
+      event.type === 'offer.created' ||
+      event.type === 'offer.taken' ||
+      event.type.startsWith('agreement.')
+    ) {
+      refresh();
+    }
+  });
+
+  return (
+    <div className="card p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-xs font-semibold text-white/35 uppercase tracking-wider">Seller Dashboard</div>
+        {address && <div className="font-mono text-[10px] text-white/30">{address.slice(0, 8)}…{address.slice(-6)}</div>}
+      </div>
+      {!address ? (
+        <div className="text-center py-6 text-white/30 text-sm">Select a wallet address to view seller stats.</div>
+      ) : loading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="shimmer h-16 rounded-lg" />
+          ))}
+        </div>
+      ) : err ? (
+        <div className="text-center py-6 text-white/30 text-sm">Seller status unavailable.</div>
+      ) : data ? (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            <StatTile label="Active offers" value={data.active_offers ?? 0} />
+            <StatTile label="Open agreements" value={data.open_agreements ?? 0} />
+            <StatTile label="Completed" value={data.completed_agreements ?? 0} />
+            <StatTile
+              label="Total received"
+              value={data.total_volume != null ? `${formatIRM(data.total_volume)} IRM` : '—'}
+              hint="Lifetime volume of released agreements where you were the seller (sats → IRM)"
+            />
+            <StatTile label="Reputation" value={fmtReputationPct(data.reputation_score)} />
+          </div>
+          {data.restrictions && data.restrictions.length > 0 && (
+            <div className="mt-3 rounded-lg p-3 text-xs text-amber-300 border border-amber-500/30 bg-amber-500/10">
+              <strong className="text-amber-200">Restrictions: </strong>
+              {data.restrictions.join(', ')}
+            </div>
+          )}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function BuyerDashboardCard({ address }: { address: string }) {
+  const [data, setData] = useState<BuyerStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+
+  const refresh = React.useCallback(async () => {
+    if (!address) return;
+    try {
+      setErr(null);
+      const r = await tradeStatus.buyer(address);
+      setData(r);
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [address]);
+
+  useEffect(() => { setLoading(true); refresh(); }, [refresh]);
+
+  useIriumEvents((event) => {
+    if (event.type.startsWith('agreement.') || event.type === 'offer.taken') {
+      refresh();
+    }
+  });
+
+  return (
+    <div className="card p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-xs font-semibold text-white/35 uppercase tracking-wider">Buyer Dashboard</div>
+        {address && <div className="font-mono text-[10px] text-white/30">{address.slice(0, 8)}…{address.slice(-6)}</div>}
+      </div>
+      {!address ? (
+        <div className="text-center py-6 text-white/30 text-sm">Select a wallet address to view buyer stats.</div>
+      ) : loading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="shimmer h-16 rounded-lg" />
+          ))}
+        </div>
+      ) : err ? (
+        <div className="text-center py-6 text-white/30 text-sm">Buyer status unavailable.</div>
+      ) : data ? (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <StatTile label="Active purchases" value={data.active_agreements ?? 0} />
+            <StatTile label="Completed" value={data.completed_agreements ?? 0} />
+            <StatTile
+              label="Total spent"
+              value={data.total_spent != null ? `${formatIRM(data.total_spent)} IRM` : '—'}
+              hint="Lifetime volume of released agreements where you were the buyer (sats → IRM)"
+            />
+            <StatTile label="Reputation" value={fmtReputationPct(data.reputation_score)} />
+          </div>
+          {data.restrictions && data.restrictions.length > 0 && (
+            <div className="mt-3 rounded-lg p-3 text-xs text-amber-300 border border-amber-500/30 bg-amber-500/10">
+              <strong className="text-amber-200">Restrictions: </strong>
+              {data.restrictions.join(', ')}
+            </div>
+          )}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 // ── Main component ───────────────────────────────────────────────
 
 export default function SettlementPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const nodeStatus = useStore((s) => s.nodeStatus);
   const rpcUrl = useStore((s) => s.settings.rpc_url);
+  // Currently-selected wallet address — used to scope the seller / buyer
+  // dashboards on the hub view.
+  const addresses = useStore((s) => s.addresses);
+  const activeAddrIdx = useStore((s) => s.activeAddrIdx);
+  const selectedAddress = addresses[activeAddrIdx]?.address ?? '';
   const [view, setView] = useState<View>('hub');
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateId | null>(null);
   const [wizardStep, setWizardStep] = useState(0);
@@ -384,6 +551,32 @@ export default function SettlementPage() {
       setHubAgreements(all.slice(-5).reverse());
     }).catch(() => {}).finally(() => setHubLoading(false));
   }, [view]);
+
+  // Phase 6: accept a prefilled invoice from the Agreements page → Import
+  // Invoice flow. The Agreements page navigates here with
+  // `location.state.prefillInvoice = Invoice`. We default the template to
+  // OTC (invoices don't carry a template; OTC is the most common form for
+  // a billed payment), seed partyB / amount / assetReference, and jump
+  // straight to the wizard's first step. We then clear the navigation
+  // state so a manual refresh doesn't re-prefill.
+  useEffect(() => {
+    const prefill = (location.state as { prefillInvoice?: Invoice } | null)?.prefillInvoice;
+    if (!prefill) return;
+    setSelectedTemplate('otc');
+    setForm({
+      ...DEFAULT_FORM,
+      partyB: prefill.recipient ?? '',
+      amountIrm: prefill.amount != null ? (prefill.amount / SATS_PER_IRM).toString() : '',
+      assetReference: prefill.reference ?? '',
+    });
+    setView('wizard');
+    setWizardStep(0);
+    setErrors({});
+    toast.success('Invoice loaded — review and confirm');
+    // Replace history entry so refresh doesn't re-fire this effect.
+    navigate('/settlement', { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const setField = useCallback((key: keyof FormState) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -642,6 +835,11 @@ export default function SettlementPage() {
                 Create Agreement Directly (advanced)
               </button>
             </div>
+
+            {/* Seller / Buyer dashboards (Phase 6). Always shown — both
+                cards self-handle the "no address selected" empty state. */}
+            <SellerDashboardCard address={selectedAddress} />
+            <BuyerDashboardCard address={selectedAddress} />
 
             {/* Recent agreements */}
             {hubAgreements.length > 0 && (

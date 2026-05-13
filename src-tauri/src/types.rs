@@ -694,6 +694,7 @@ pub struct Invoice {
 pub struct InvoiceImportResult {
     pub success: bool,
     pub invoice_id: Option<String>,
+    pub invoice: Option<Invoice>,
     pub message: Option<String>,
 }
 

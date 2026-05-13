@@ -543,6 +543,7 @@ export interface Invoice {
 export interface InvoiceImportResult {
   success: boolean;
   invoice_id?: string;
+  invoice?: Invoice;
   message?: string;
 }
 

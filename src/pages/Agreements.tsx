@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen, FileJson, AlertCircle, Copy, FileText } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen, FileJson, AlertCircle, Copy, FileText, Receipt } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetch as tauriFetch, Body, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
-import { agreements, proofs, agreementSpend, disputes } from '../lib/tauri';
+import { agreements, proofs, agreementSpend, disputes, invoices } from '../lib/tauri';
 import { useIriumEvents } from '../lib/hooks';
 import {
   formatIRM,
@@ -14,7 +14,7 @@ import {
   truncateHash,
   statusColor,
 } from '../lib/types';
-import type { Agreement, Proof, SpendEligibilityResult, AgreementStatusResult } from '../lib/types';
+import type { Agreement, Proof, SpendEligibilityResult, AgreementStatusResult, Invoice } from '../lib/types';
 
 // ── Animation variants ────────────────────────────────────────
 
@@ -75,6 +75,7 @@ function borderColorForStatus(status: Agreement['status']): string {
 
 export default function AgreementsPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const nodeStatus = useStore((s) => s.nodeStatus);
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [agreementList, setAgreementList] = useState<Agreement[]>([]);
@@ -84,6 +85,7 @@ export default function AgreementsPage() {
   const [showProofModal, setShowProofModal] = useState<string | null>(null);
   const [showReleaseModal, setShowReleaseModal] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showImportInvoiceModal, setShowImportInvoiceModal] = useState(false);
   // Holds the agreement id currently being funded — drives the Fund modal.
   // Null when the modal is closed.
   const [fundingId, setFundingId] = useState<string | null>(null);
@@ -239,6 +241,14 @@ export default function AgreementsPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setShowImportInvoiceModal(true)}
+            className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
+            title="Import a payment invoice JSON and create an agreement from it"
+          >
+            <Receipt size={13} />
+            Import Invoice
+          </button>
+          <button
             onClick={() => setShowImportModal(true)}
             className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
           >
@@ -392,6 +402,19 @@ export default function AgreementsPage() {
             onSuccess={() => {
               setShowImportModal(false);
               loadData();
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Import Invoice Modal (Phase 6) */}
+      <AnimatePresence>
+        {showImportInvoiceModal && (
+          <ImportInvoiceModal
+            onClose={() => setShowImportInvoiceModal(false)}
+            onUseInvoice={(inv) => {
+              setShowImportInvoiceModal(false);
+              navigate('/settlement', { state: { prefillInvoice: inv } });
             }}
           />
         )}
@@ -1730,6 +1753,181 @@ function ImportPackModal({ onClose, onSuccess }: ImportPackModalProps) {
             {importing ? <RefreshCw size={14} className="animate-spin" /> : 'Import Pack'}
           </button>
         </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Import Invoice Modal (Phase 6) ────────────────────────────
+// Two-step flow: user picks an invoice JSON → backend imports it via
+// `invoice-import` and parses the on-disk file to return the structured
+// fields → modal shows the parsed invoice → "Use This Invoice" hands
+// off to Settlement.tsx with prefillInvoice in router state. The wallet
+// CLI registers the invoice for record-keeping; the renderer's prefill
+// is what actually drives the new-agreement flow.
+
+interface ImportInvoiceModalProps {
+  onClose: () => void;
+  onUseInvoice: (invoice: Invoice) => void;
+}
+
+function ImportInvoiceModal({ onClose, onUseInvoice }: ImportInvoiceModalProps) {
+  const [filePath, setFilePath] = useState('');
+  const [browsing, setBrowsing] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [parsed, setParsed] = useState<Invoice | null>(null);
+
+  const handleBrowse = async () => {
+    setBrowsing(true);
+    const path = await openFilePicker({
+      extensions: ['json'],
+      title: 'Select Invoice JSON',
+    });
+    if (path) setFilePath(path);
+    setBrowsing(false);
+  };
+
+  const handleImport = async () => {
+    if (!filePath.trim()) return;
+    setImporting(true);
+    try {
+      const result = await invoices.import(filePath.trim());
+      if (!result.invoice) {
+        toast.error('Imported, but could not parse invoice fields for prefill');
+        onClose();
+        return;
+      }
+      setParsed(result.invoice);
+      toast.success('Invoice imported');
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  return (
+    <motion.div
+      key="import-invoice-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className="glass-heavy w-full max-w-lg rounded-2xl p-6"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="font-display font-bold text-lg text-white">Import Invoice</h2>
+            <p className="text-white/40 text-xs mt-0.5">
+              Pick an invoice JSON to pre-fill a new agreement on the Settlement page.
+            </p>
+          </div>
+          <button onClick={onClose} className="btn-ghost text-white/40">
+            <X size={16} />
+          </button>
+        </div>
+
+        {!parsed ? (
+          <>
+            <div
+              className="rounded-xl p-5 mb-4 mt-2"
+              style={{
+                background: 'rgba(110,198,255,0.04)',
+                border: '1px dashed rgba(110,198,255,0.25)',
+              }}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <Receipt size={18} style={{ color: '#a78bfa' }} className="flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-display font-semibold text-white mb-0.5">Invoice File</div>
+                  <div className="text-xs" style={{ color: 'rgba(238,240,255,0.35)' }}>
+                    {filePath ? filePath.split(/[\\/]/).pop() : 'No file selected'}
+                  </div>
+                </div>
+                <button
+                  onClick={handleBrowse}
+                  disabled={browsing}
+                  className="btn-secondary text-xs py-1.5 px-3 flex-shrink-0"
+                >
+                  {browsing
+                    ? <RefreshCw size={12} className="animate-spin" />
+                    : <><PackageOpen size={12} /> Browse</>
+                  }
+                </button>
+              </div>
+              <input
+                autoFocus
+                value={filePath}
+                onChange={(e) => setFilePath(e.target.value)}
+                placeholder="/path/to/invoice.json"
+                className="input text-xs w-full"
+                style={{ fontFamily: '"JetBrains Mono", monospace' }}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleImport(); }}
+              />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={onClose} className="btn-secondary flex-1 justify-center">Cancel</button>
+              <button
+                onClick={handleImport}
+                disabled={!filePath.trim() || importing}
+                className="btn-primary flex-1 justify-center"
+              >
+                {importing ? <RefreshCw size={14} className="animate-spin" /> : 'Import'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="glass rounded-lg p-3 mb-4 mt-2 space-y-1.5 text-xs">
+              {parsed.id && (
+                <div className="flex justify-between gap-3">
+                  <span className="text-white/40 flex-shrink-0">Invoice ID</span>
+                  <span className="font-mono text-white/70 text-right break-all">{parsed.id}</span>
+                </div>
+              )}
+              <div className="flex justify-between gap-3">
+                <span className="text-white/40 flex-shrink-0">Recipient</span>
+                <span className="font-mono text-white/70 text-right break-all">{parsed.recipient || '—'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/40">Amount</span>
+                <span className="font-mono text-white/70">{formatIRM(parsed.amount)} IRM</span>
+              </div>
+              {parsed.reference && (
+                <div className="flex justify-between gap-3">
+                  <span className="text-white/40 flex-shrink-0">Reference</span>
+                  <span className="font-mono text-white/70 text-right break-all">{parsed.reference}</span>
+                </div>
+              )}
+              {parsed.expires_height != null && (
+                <div className="flex justify-between">
+                  <span className="text-white/40">Expires (height)</span>
+                  <span className="font-mono text-white/70">#{parsed.expires_height.toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+            <p className="text-[11px] text-white/45 mb-4">
+              Clicking <strong>Use This Invoice</strong> jumps to Settlement with the OTC template pre-filled.
+              You can change the template, edit fields, and confirm before creating the agreement.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={onClose} className="btn-secondary flex-1 justify-center">Close</button>
+              <button
+                onClick={() => onUseInvoice(parsed)}
+                className="btn-primary flex-1 justify-center"
+              >
+                Use This Invoice →
+              </button>
+            </div>
+          </>
+        )}
       </motion.div>
     </motion.div>
   );
