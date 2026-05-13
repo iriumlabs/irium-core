@@ -25,7 +25,7 @@ const BuyerWizard  = lazy(() => import('./pages/BuyerWizard'));
 const Logs         = lazy(() => import('./pages/Logs'));
 const About        = lazy(() => import('./pages/About'));
 import Onboarding, { ONBOARDING_KEY, FORCE_ONBOARDING_KEY, Splash } from './pages/Onboarding';
-import { useNodePoller } from './hooks/useNodePoller';
+import { useNodePoller, startAggressivePoll } from './hooks/useNodePoller';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { node, config, update, wallet } from './lib/tauri';
 import { useStore } from './lib/store';
@@ -181,7 +181,7 @@ function AppLayout() {
     autoStartFired.current = true;
     setNodeStarting(true);
     setNodeOperation('starting');
-    node.start(undefined, settings.external_ip).catch(() => {
+    node.start(undefined, settings.external_ip).then(() => startAggressivePoll()).catch(() => {
       setNodeStarting(false);
       setNodeOperation(null);
     });

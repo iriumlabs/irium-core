@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { fetch as tauriFetch, Body, ResponseType } from '@tauri-apps/api/http';
 import { node, wallet } from '../lib/tauri';
+import { startAggressivePoll } from '../hooks/useNodePoller';
 import { useStore } from '../lib/store';
 import type { NodeStatus, WalletCreateResult, BinaryCheckResult } from '../lib/types';
 import { truncateHash } from '../lib/types';
@@ -749,7 +750,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
     let mounted = true;
 
     node.start()
-      .then(() => { if (mounted) setNodeStarted(true); })
+      .then(() => { startAggressivePoll(); if (mounted) setNodeStarted(true); })
       .catch((e) => {
         if (!mounted) return;
         setNodeStarted(true);
@@ -819,6 +820,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
       startedAtRef.current = null;                  // reset the 30-s timer
       setNodeStarted(false);
       await node.start();
+      startAggressivePoll();
     } catch (e) {
       setStartError(humanizeStartError(String(e)));
     } finally {

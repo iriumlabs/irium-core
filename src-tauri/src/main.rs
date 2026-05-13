@@ -427,6 +427,73 @@ fn trim_seedlist_extra() {
     }
 }
 
+/// Trim peers.json to MAX_KEPT_PEERS entries BEFORE iriumd starts.
+/// iriumd reads ~/.irium/state/peers.json at startup via load_persisted_startup_seeds
+/// (iriumd.rs:1405) and promotes every `dialable=true` entry into the bootstrap
+/// seed dial list. An unbounded file means hundreds of stale/dead addresses compete
+/// with the two live seeds, slowing initial peer connect significantly.
+///
+/// We keep the 50 most-recently-seen dialable records. Live peers are re-added on
+/// every run by iriumd's own peer-store writer, so the file recovers organically.
+fn trim_peers_json() {
+    const MAX_KEPT_PEERS: usize = 50;
+
+    let home_dir = match dirs::home_dir() {
+        Some(d) => d,
+        None => return,
+    };
+    let peers_path = home_dir.join(".irium").join("state").join("peers.json");
+    let raw = match std::fs::read_to_string(&peers_path) {
+        Ok(s) => s,
+        Err(_) => return, // file doesn't exist yet — first run, nothing to trim
+    };
+
+    let value: serde_json::Value = match serde_json::from_str(&raw) {
+        Ok(v) => v,
+        Err(_) => return, // corrupt file — leave iriumd to handle it
+    };
+
+    let map = match value.as_object() {
+        Some(m) => m,
+        None => return,
+    };
+
+    if map.len() <= MAX_KEPT_PEERS {
+        return; // below threshold, leave file untouched
+    }
+
+    let original_len = map.len();
+
+    // Sort by last_seen descending; keep the freshest MAX_KEPT_PEERS entries.
+    let mut entries: Vec<(f64, String, serde_json::Value)> = map
+        .iter()
+        .map(|(k, v)| {
+            let last_seen = v.get("last_seen").and_then(|s| s.as_f64()).unwrap_or(0.0);
+            (last_seen, k.clone(), v.clone())
+        })
+        .collect();
+    entries.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+    entries.truncate(MAX_KEPT_PEERS);
+
+    let mut kept = serde_json::Map::new();
+    for (_, multiaddr, entry) in entries {
+        kept.insert(multiaddr, entry);
+    }
+
+    let body = match serde_json::to_string_pretty(&serde_json::Value::Object(kept)) {
+        Ok(s) => s,
+        Err(_) => return,
+    };
+
+    match std::fs::write(&peers_path, body.as_bytes()) {
+        Ok(_) => tracing::info!(
+            "[trim_peers_json] trimmed peers.json: {} → {} entries (kept most recently seen)",
+            original_len, MAX_KEPT_PEERS
+        ),
+        Err(e) => tracing::warn!("[trim_peers_json] failed to write trimmed file: {}", e),
+    }
+}
+
 // ============================================================
 // UPnP — decentralized NAT traversal using tokio + reqwest.
 // Opens TCP port 38291 on the router so other NAT-behind nodes
@@ -659,6 +726,7 @@ async fn start_node(
     // are dead nodes from past sessions, and cycling through them at 5
     // peers/5s pushes initial peer connect time into the minutes range.
     trim_seedlist_extra();
+    trim_peers_json();
 
     let mut args = vec!["--http-rpc".to_string()];
     if let Some(dir) = &data_dir {

@@ -32,6 +32,7 @@ import { useStore } from "../lib/store";
 import { rpc, diagnostics, update, nodeUpdate, node, config } from "../lib/tauri";
 import { DEFAULT_SETTINGS, type DiagnosticsResult, type NodeUpdateCheckResult, type Theme, timeAgo } from "../lib/types";
 import { ONBOARDING_KEY, FORCE_ONBOARDING_KEY } from "./Onboarding";
+import { startAggressivePoll } from '../hooks/useNodePoller';
 
 // ─── Theme catalog ───────────────────────────────────────────────────────────
 // Preview gradient = same stops the theme uses for --grad-brand in globals.css.
@@ -466,6 +467,7 @@ export default function Settings() {
       const result = await node.start(undefined, local.external_ip);
       if (result.success) {
         toast.success('Node restarting…');
+        startAggressivePoll(15_000);
       } else {
         toast.error(result.message);
       }
