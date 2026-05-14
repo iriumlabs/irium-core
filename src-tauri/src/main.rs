@@ -541,10 +541,18 @@ fn trim_seedlist_extra() {
 /// seed dial list. An unbounded file means hundreds of stale/dead addresses compete
 /// with the two live seeds, slowing initial peer connect significantly.
 ///
-/// We keep the 50 most-recently-seen dialable records. Live peers are re-added on
-/// every run by iriumd's own peer-store writer, so the file recovers organically.
+/// Trim peers.json to a tight, high-quality dial pool before each iriumd spawn.
+///
+/// Selection priority (within the MAX_KEPT_PEERS cap):
+///   1. Official VPS seed IPs — always kept even if dialable=false.
+///   2. Other dialable=true entries, sorted by last_seen descending.
+///   3. Non-dialable entries (most recently seen) to fill any remaining slots.
+///
+/// This prevents the 38-stale-gossip-peer problem where iriumd burns 5 s per
+/// dead address before the real seeds get a dial slot.
 fn trim_peers_json() {
-    const MAX_KEPT_PEERS: usize = 50;
+    const MAX_KEPT_PEERS: usize = 10;
+    const VPS_IPS: [&str; 2] = ["207.244.247.86", "157.173.116.134"];
 
     let home_dir = match dirs::home_dir() {
         Some(d) => d,
@@ -567,24 +575,32 @@ fn trim_peers_json() {
     };
 
     if map.len() <= MAX_KEPT_PEERS {
-        return; // below threshold, leave file untouched
+        return; // already small enough, leave file untouched
     }
 
     let original_len = map.len();
 
-    // Sort by last_seen descending; keep the freshest MAX_KEPT_PEERS entries.
-    let mut entries: Vec<(f64, String, serde_json::Value)> = map
+    // Tag each entry: (is_vps, dialable, last_seen, addr, value)
+    // Sort key: VPS first → dialable first → most recently seen first.
+    let mut entries: Vec<(bool, bool, f64, String, serde_json::Value)> = map
         .iter()
         .map(|(k, v)| {
+            let dialable = v.get("dialable").and_then(|d| d.as_bool()).unwrap_or(false);
             let last_seen = v.get("last_seen").and_then(|s| s.as_f64()).unwrap_or(0.0);
-            (last_seen, k.clone(), v.clone())
+            let is_vps = VPS_IPS.iter().any(|ip| k.contains(ip));
+            (is_vps, dialable, last_seen, k.clone(), v.clone())
         })
         .collect();
-    entries.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+
+    entries.sort_by(|a, b| {
+        b.0.cmp(&a.0) // VPS seeds first
+            .then(b.1.cmp(&a.1)) // dialable before non-dialable
+            .then(b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal)) // most recent first
+    });
     entries.truncate(MAX_KEPT_PEERS);
 
     let mut kept = serde_json::Map::new();
-    for (_, multiaddr, entry) in entries {
+    for (_, _, _, multiaddr, entry) in entries {
         kept.insert(multiaddr, entry);
     }
 
@@ -595,7 +611,7 @@ fn trim_peers_json() {
 
     match std::fs::write(&peers_path, body.as_bytes()) {
         Ok(_) => tracing::info!(
-            "[trim_peers_json] trimmed peers.json: {} → {} entries (kept most recently seen)",
+            "[trim_peers_json] trimmed peers.json: {} → {} entries (VPS pinned, dialable preferred)",
             original_len, MAX_KEPT_PEERS
         ),
         Err(e) => tracing::warn!("[trim_peers_json] failed to write trimmed file: {}", e),
@@ -971,10 +987,11 @@ async fn start_node(
     // Sync cooldown between block-range requests per peer (default 2 s → 1 s).
     node_env.insert("IRIUM_P2P_SYNC_COOLDOWN_SECS".to_string(), "1".to_string());
 
-    // Per-peer outbound TCP connect timeout (p2p.rs:2782 IRIUM_P2P_CONNECT_TIMEOUT_SECS,
-    // default 8 s, clamped [2, 30]). Tightened to 5 s so a blocked/dead seed
-    // fails faster, reducing time-to-retry on the next dial cycle.
-    node_env.insert("IRIUM_P2P_CONNECT_TIMEOUT_SECS".to_string(), "5".to_string());
+    // Per-peer outbound TCP connect timeout (p2p.rs IRIUM_P2P_CONNECT_TIMEOUT_SECS,
+    // default 8 s, clamped [2, 30]). Tightened to 3 s so dead gossip seeds
+    // fail fast — with peers.json trimmed to 10 entries the total worst-case
+    // dial drain is 30 s instead of the former 190 s (38 stale × 5 s each).
+    node_env.insert("IRIUM_P2P_CONNECT_TIMEOUT_SECS".to_string(), "3".to_string());
 
     // Announce the node's public IP so seeds correctly register this node as
     // dialable and share the address via PEX to other nodes. Without this,
