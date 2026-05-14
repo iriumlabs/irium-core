@@ -927,12 +927,30 @@ async fn start_node(
         *state.upnp_external_ip.lock().map_err(lock_err)? = None;
     }
 
-    // Resolve the public IP: user override > UPnP > HTTP probe.
-    let resolved_public_ip: Option<String> = if let Some(ref ip) = external_ip {
+    // Dialable IP: only set when port 38291 is CONFIRMED open externally.
+    // Priority: explicit user override (user asserts port is forwarded) >
+    // UPnP success (router confirmed AddPortMapping). We intentionally do NOT
+    // fall through to an HTTP probe here — knowing our public IP is not enough.
+    // If port 38291 is not reachable from outside, the seed's sybil challenge
+    // includes a reachability probe (connect-back to announced IP:port) that
+    // fails, causing success=0 on every outbound attempt. The CLI never sets
+    // IRIUM_NODE_PUBLIC_IP and connects to peers in 10-15 s; this was the
+    // root cause of the GUI never connecting.
+    let dialable_ip: Option<String> = if let Some(ref ip) = external_ip {
         let t = ip.trim();
         if !t.is_empty() { Some(t.to_string()) } else { None }
-    } else if let Some(ref ip) = upnp_ip {
-        Some(ip.clone())
+    } else {
+        upnp_ip.clone() // Some only when UPnP succeeded
+    };
+
+    // Detected IP: used only for self-dial prevention (own_ip filter below).
+    // iriumd gossip can propagate our address to other peers; without knowing
+    // our external IP, iriumd can't filter it out via is_self_ip and may try
+    // to dial itself. We detect the IP via HTTP even in outbound-only mode,
+    // but do NOT pass it to iriumd as IRIUM_NODE_PUBLIC_IP (that would
+    // re-introduce the reachability-probe failure described above).
+    let detected_ip: Option<String> = if dialable_ip.is_some() {
+        dialable_ip.clone()
     } else {
         detect_public_ip("https://api4.ipify.org".to_string())
             .await
@@ -944,7 +962,7 @@ async fn start_node(
     // Own public IP filtered out so iriumd doesn't try to dial itself.
     // seedlist.extra entries are intentionally NOT included here (see the
     // longer comment above where extra_seeds is read).
-    let own_ip = resolved_public_ip.as_deref().unwrap_or("").trim().to_string();
+    let own_ip = detected_ip.as_deref().unwrap_or("").trim().to_string();
     let mut seen = std::collections::HashSet::new();
     let bootstrap_seeds: String = builtin_seeds
         .into_iter()
@@ -993,17 +1011,21 @@ async fn start_node(
     // dial drain is 30 s instead of the former 190 s (38 stale × 5 s each).
     node_env.insert("IRIUM_P2P_CONNECT_TIMEOUT_SECS".to_string(), "3".to_string());
 
-    // Announce the node's public IP so seeds correctly register this node as
-    // dialable and share the address via PEX to other nodes. Without this,
-    // iriumd's local_ips set won't include the public IP — preventing
-    // is_self_ip from working and causing unnecessary self-dial attempts when
-    // our own address is returned by seeds via PEX.
-    if let Some(ref ip) = resolved_public_ip {
+    // Only announce the node's public IP when the port is confirmed open.
+    // If UPnP succeeded (dialable_ip is Some), seeds can reach us inbound and
+    // will mark us as dialable via PEX. If UPnP failed, we skip this entirely:
+    // announcing an unreachable IP causes the seed's sybil challenge to issue a
+    // reachability probe (connect-back to our IP:38291) which fails silently,
+    // giving success=0 on every outbound handshake attempt. Without this var
+    // iriumd operates in outbound-only mode — still fully syncs and connects.
+    if let Some(ref ip) = dialable_ip {
         if !ip.is_empty() {
             node_env.insert("IRIUM_NODE_PUBLIC_IP".to_string(), ip.clone());
             node_env.insert("IRIUM_PUBLIC_IP".to_string(), ip.clone());
-            tracing::info!("[start_node] announcing public IP: {}", ip);
+            tracing::info!("[start_node] announcing dialable public IP: {} (UPnP confirmed)", ip);
         }
+    } else {
+        tracing::info!("[start_node] UPnP unavailable — outbound-only mode, not announcing public IP");
     }
 
     // Try Tauri sidecar first; fall back to launching iriumd from system PATH.
