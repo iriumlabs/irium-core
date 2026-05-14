@@ -11,7 +11,7 @@ import { fetch as tauriFetch, Body, ResponseType } from '@tauri-apps/api/http';
 import { node, wallet } from '../lib/tauri';
 import { startAggressivePoll } from '../hooks/useNodePoller';
 import { useStore } from '../lib/store';
-import type { NodeStatus, WalletCreateResult, BinaryCheckResult, SeedCheckResult } from '../lib/types';
+import type { NodeStatus, WalletCreateResult, BinaryCheckResult } from '../lib/types';
 import { truncateHash } from '../lib/types';
 import clsx from 'clsx';
 
@@ -606,7 +606,7 @@ function StepBootstrap({ onNext }: { onNext: () => void }) {
       await new Promise((r) => setTimeout(r, 280));
       try {
         await node.setupDataDir();
-        log('→ Writing seedlist.txt (207.244.247.86:38291, 157.173.116.134:38291)');
+        log('→ Writing bootstrap seedlist.txt…');
         await new Promise((r) => setTimeout(r, 340));
         log('→ Writing static_peers.txt…');
         await new Promise((r) => setTimeout(r, 260));
@@ -669,9 +669,6 @@ function StepBootstrap({ onNext }: { onNext: () => void }) {
   );
 }
 
-// Fallback seeds used before the dynamic resolution completes (matches bundled seedlist.txt).
-const FALLBACK_SEEDS = ['207.244.247.86', '157.173.116.134'];
-
 // Tight match for ONLY the literal "node already running" success path. An
 // earlier version used `.includes('already')`, which accidentally also matched
 // "address already in use" / "Only one usage of each socket address" port-bind
@@ -725,10 +722,9 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
   const [nodeStarted, setNodeStarted] = useState(false);
   const [startError, setStartError]   = useState<string | null>(null);
   const [status, setStatus]           = useState<NodeStatus | null>(null);
-  const [retrying, setRetrying]       = useState(false);
-  const [seedResults, setSeedResults]     = useState<SeedCheckResult[] | null>(null);
-  const [bootstrapSeeds, setBootstrapSeeds] = useState<string[]>(FALLBACK_SEEDS);
-  const [manualPeer, setManualPeer]       = useState('');
+  const [retrying, setRetrying]         = useState(false);
+  const [networkReachable, setNetworkReachable] = useState<boolean | null>(null);
+  const [manualPeer, setManualPeer]     = useState('');
   const [addPeerStatus, setAddPeerStatus] = useState<
     | { kind: 'idle' }
     | { kind: 'pending' }
@@ -740,65 +736,36 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
   const [nowTick, setNowTick] = useState(0);
   // Records when iriumd was first observed as started (after node.start
   // resolves) — drives the 30-second timeout for the no-peers warning.
-  const startedAtRef    = useRef<number | null>(null);
-  const seedsInjectedRef = useRef(false);
-  const pollRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startedAtRef = useRef<number | null>(null);
+  const pollRef      = useRef<ReturnType<typeof setInterval> | null>(null);
   const onNextRef = useRef(onNext);
   useEffect(() => { onNextRef.current = onNext; });
 
   useEffect(() => {
     let mounted = true;
 
-    // Fetch dynamic seeds (runtime + dialable peers + bundled) in parallel with
-    // the TCP pre-check. Falls back to FALLBACK_SEEDS if the IPC call fails.
-    node.getBootstrapSeeds()
-      .then(seeds => { if (mounted && seeds.length > 0) setBootstrapSeeds(seeds); })
+    // TCP probe (≤3 s, any seed in parallel) — detects outbound port-38291-blocked
+    // conditions immediately. iriumd's own bootstrap loop handles all peer discovery
+    // via IRIUM_ADDNODE; no seed injection needed from the GUI.
+    node.checkNetworkReachable()
+      .then(reachable => { if (mounted) setNetworkReachable(reachable); })
       .catch(() => {});
 
-    // TCP pre-check (≤3 s, seeds in parallel) fires before node.start so
-    // we can show "port blocked" immediately instead of waiting 25 s.
-    // Poll starts immediately alongside the check — it returns nothing until
-    // iriumd binds its RPC port, which is fine.
-    (async () => {
-      try {
-        const results = await node.checkSeedConnectivity();
-        if (mounted) setSeedResults(results);
-      } catch { /* non-Tauri context — skip check, proceed to start */ }
-
-      if (!mounted) return;
-
-      node.start()
-        .then(() => { startAggressivePoll(); if (mounted) setNodeStarted(true); })
-        .catch((e) => {
-          if (!mounted) return;
-          setNodeStarted(true);
-          // Only swallow the literal "node already running" success path;
-          // every other failure (incl. port-in-use) goes through
-          // humanizeStartError so the user sees an actionable message.
-          if (!isAlreadyRunning(String(e))) setStartError(humanizeStartError(String(e)));
-        });
-    })();
+    node.start()
+      .then(() => { startAggressivePoll(); if (mounted) setNodeStarted(true); })
+      .catch((e) => {
+        if (!mounted) return;
+        setNodeStarted(true);
+        // Only swallow the literal "node already running" success path;
+        // every other failure (incl. port-in-use) goes through humanizeStartError.
+        if (!isAlreadyRunning(String(e))) setStartError(humanizeStartError(String(e)));
+      });
 
     const poll = async () => {
       const direct = await fetchRpcStatus(rpcUrl);
       if (direct) {
         if (mounted) setStatus(direct);
-        if (direct.running && mounted) {
-          setNodeStarted(true);
-          // Bypass iriumd's periodic seed-dial timer (~30-60 s) by pushing the
-          // known seeds into the dial queue the moment RPC is available.
-          if (!seedsInjectedRef.current) {
-            seedsInjectedRef.current = true;
-            for (const ip of bootstrapSeeds) {
-              tauriFetch<{ added?: boolean }>(`${rpcUrl}/admin/add-seed`, {
-                method: 'POST',
-                timeout: 5,
-                responseType: ResponseType.JSON,
-                body: Body.json({ addr: `${ip}:38291` }),
-              }).catch(() => {});
-            }
-          }
-        }
+        if (direct.running && mounted) setNodeStarted(true);
         return;
       }
       try {
@@ -843,23 +810,22 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
   const secondsSinceStart = startedAtRef.current
     ? Math.floor((Date.now() - startedAtRef.current) / 1000)
     : 0;
-  const allSeedsUnreachable = seedResults !== null && seedResults.every((r) => !r.reachable);
-  const showNoPeersWarning = nodeStarted && peers === 0 && secondsSinceStart >= 25 && !allSeedsUnreachable;
+  const showPortBlocked    = networkReachable === false;
+  const showNoPeersWarning = nodeStarted && peers === 0 && secondsSinceStart >= 25 && !showPortBlocked;
 
   const handleRetry = async () => {
     setRetrying(true);
     setStartError(null);
-    setSeedResults(null);
+    setNetworkReachable(null);
     try {
-      await node.stop().catch(() => {});            // tolerate "not running"
-      await new Promise((r) => setTimeout(r, 600)); // let the OS release ports
-      startedAtRef.current = null;                  // reset the 25-s timer
-      seedsInjectedRef.current = false;              // allow re-inject on next successful poll
+      await node.stop().catch(() => {});
+      await new Promise((r) => setTimeout(r, 600));
+      startedAtRef.current = null;
       setNodeStarted(false);
       try {
-        const results = await node.checkSeedConnectivity();
-        setSeedResults(results);
-      } catch { /* ignore — non-Tauri context */ }
+        const reachable = await node.checkNetworkReachable();
+        setNetworkReachable(reachable);
+      } catch { /* non-Tauri context */ }
       await node.start();
       startAggressivePoll();
     } catch (e) {
@@ -872,7 +838,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
   const handleAddPeer = async () => {
     const addr = manualPeer.trim();
     if (!isValidIpPort(addr)) {
-      setAddPeerStatus({ kind: 'err', message: 'Use IP:PORT (e.g. 207.244.247.86:38291)' });
+      setAddPeerStatus({ kind: 'err', message: 'Use IP:PORT format (e.g. 1.2.3.4:38291)' });
       return;
     }
     setAddPeerStatus({ kind: 'pending' });
@@ -986,31 +952,6 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
           </div>
         </div>
 
-        {/* TCP pre-check results — show immediately once available */}
-        {seedResults !== null && (
-          <div className="flex items-start justify-between text-sm">
-            <span style={{ color: 'rgba(238,240,255,0.45)' }}>TCP pre-check</span>
-            <div className="flex flex-col items-end gap-0.5">
-              {seedResults.map((r) => (
-                <span key={r.addr} className="flex items-center gap-1.5 text-xs font-mono">
-                  {r.reachable
-                    ? <CheckCircle2 size={10} style={{ color: '#34d399' }} />
-                    : <XCircle size={10} style={{ color: '#f87171' }} />}
-                  <span style={{ color: r.reachable ? 'rgba(238,240,255,0.55)' : 'rgba(238,240,255,0.35)' }}>
-                    {r.addr}
-                  </span>
-                  {r.reachable && r.latency_ms !== undefined && (
-                    <span style={{ color: '#34d399' }}>{r.latency_ms}ms</span>
-                  )}
-                  {!r.reachable && (
-                    <span style={{ color: '#f87171' }}>unreachable</span>
-                  )}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Tip hash */}
         {status?.tip && (
           <div className="flex items-center justify-between text-xs" style={{ color: 'rgba(238,240,255,0.30)' }}>
@@ -1039,10 +980,10 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
         </div>
       )}
 
-      {/* Immediate port-blocked warning — shows as soon as the TCP pre-check
-          confirms both seeds are unreachable, without waiting for any timer. */}
+      {/* Port-blocked warning — fires immediately when the TCP probe detects
+          that outbound port 38291 is closed. No IPs surfaced to the user. */}
       <AnimatePresence>
-        {allSeedsUnreachable && (
+        {showPortBlocked && (
           <motion.div
             key="port-blocked-warning"
             initial={{ opacity: 0, y: 6 }}
@@ -1056,18 +997,17 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
               <div className="text-xs leading-relaxed">
                 <p className="font-semibold mb-1" style={{ color: '#fbbf24' }}>Port 38291 appears to be blocked outbound</p>
                 <p style={{ color: 'rgba(238,240,255,0.60)' }}>
-                  Neither bootstrap seed is reachable. Check your router or firewall — port{' '}
-                  <span className="font-mono">38291</span> must be open for outbound TCP connections to join the Irium network.
+                  The Irium network cannot be reached. Check your router or firewall — port{' '}
+                  <span className="font-mono">38291</span> must be open for outbound TCP connections.
                 </p>
-                <div className="mt-2 font-mono text-[11px] space-y-1">
-                  {seedResults!.map((r) => (
-                    <div key={r.addr} className="flex items-center gap-1.5">
-                      <XCircle size={11} style={{ color: '#f87171' }} />
-                      <span style={{ color: 'rgba(238,240,255,0.45)' }}>{r.addr}:38291</span>
-                      <span style={{ color: '#f87171' }}>unreachable</span>
-                    </div>
-                  ))}
-                </div>
+                <button
+                  onClick={handleRetry}
+                  disabled={retrying}
+                  className="btn-secondary mt-3 px-3 py-1.5 text-xs flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {retrying ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                  {retrying ? 'Restarting node…' : 'Retry connection'}
+                </button>
               </div>
             </div>
           </motion.div>
@@ -1089,26 +1029,8 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
               <div className="text-xs leading-relaxed flex-1">
                 <p className="font-semibold mb-1" style={{ color: '#fbbf24' }}>Still connecting to peers…</p>
                 <p style={{ color: 'rgba(238,240,255,0.60)' }}>
-                  Both bootstrap seeds are reachable. The node is establishing P2P connections — this usually completes within 30 seconds.
+                  The node is reaching out to the Irium network. This usually completes within 30 seconds — hang tight.
                 </p>
-                <p className="mt-2.5" style={{ color: 'rgba(238,240,255,0.40)' }}>
-                  The node tries to reach these official bootstrap seeds:
-                </p>
-                <div className="mt-1 font-mono text-[11px] space-y-0.5">
-                  {seedResults !== null ? seedResults.map((r) => (
-                    <div key={r.addr} className="flex items-center gap-1.5">
-                      {r.reachable
-                        ? <CheckCircle2 size={11} style={{ color: '#34d399' }} />
-                        : <XCircle size={11} style={{ color: '#f87171' }} />}
-                      <span style={{ color: 'rgba(238,240,255,0.55)' }}>{r.addr}</span>
-                      {r.reachable && r.latency_ms !== undefined && (
-                        <span style={{ color: '#34d399' }}>{r.latency_ms}ms</span>
-                      )}
-                    </div>
-                  )) : bootstrapSeeds.map((s) => (
-                    <div key={s} style={{ color: 'rgba(238,240,255,0.55)' }}>{s}</div>
-                  ))}
-                </div>
                 <button
                   onClick={handleRetry}
                   disabled={retrying}
@@ -1133,7 +1055,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
                         }
                       }}
                       onKeyDown={(e) => { if (e.key === 'Enter') handleAddPeer(); }}
-                      placeholder="207.244.247.86:38291"
+                      placeholder="1.2.3.4:38291"
                       disabled={addPeerStatus.kind === 'pending'}
                       className="input flex-1 text-xs"
                       style={{ fontFamily: '"JetBrains Mono", monospace', padding: '6px 10px' }}

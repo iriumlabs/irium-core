@@ -1,6 +1,6 @@
 import { safeInvoke } from './invoke';
 import type {
-  NodeStatus, NodeMetrics, NodeStartResult, BinaryCheckResult, SeedCheckResult, SystemInfo, WalletBalance, AddressInfo,
+  NodeStatus, NodeMetrics, NodeStartResult, BinaryCheckResult, SystemInfo, WalletBalance, AddressInfo,
   SendResult, Transaction, Offer, CreateOfferParams, CreateOfferResult,
   OfferTakeResult, FeedEntry, FeedSyncResult, Agreement,
   CreateAgreementParams, AgreementResult, ReleaseResult,
@@ -65,11 +65,8 @@ export const node = {
   saveDiscoveredPeers: (multiaddrs: string[]) =>
     safeInvoke<number>('save_discovered_peers', { multiaddrs }),
 
-  getBootstrapSeeds: () =>
-    safeInvoke<string[]>('get_bootstrap_seeds'),
-
-  checkSeedConnectivity: () =>
-    safeInvoke<SeedCheckResult[]>('check_seed_connectivity'),
+  checkNetworkReachable: () =>
+    safeInvoke<boolean>('check_network_reachable'),
 
   logs: (lines?: number) =>
     safeInvoke<string[]>('get_node_logs', { lines }),

@@ -44,7 +44,7 @@ const FAQS = [
   },
   {
     q: 'My node is not connecting to peers',
-    a: 'Irium uses a DNS-free bootstrap system. On first run it connects to signed seed nodes at 207.244.247.86:38291 and 157.173.116.134:38291. If you are behind a strict firewall, ensure outbound TCP port 38291 is allowed. You can also add a peer manually in Settings using the Add Seed option.',
+    a: 'Irium uses a DNS-free bootstrap system with signed seed nodes. If you are behind a strict firewall, ensure outbound TCP port 38291 is allowed. You can also add a peer manually from the Network Sync screen or in Settings using the Add Seed option.',
   },
   {
     q: 'How do I start mining?',

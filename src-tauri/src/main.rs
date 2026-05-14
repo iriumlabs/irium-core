@@ -148,51 +148,34 @@ fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
-/// Return the dynamically-resolved bootstrap seed IPs for the GUI.
-/// Same priority order as `bootstrap_seeds_for_ui`: runtime → dialable peers
-/// → bundled seedlist.txt → hardcoded fallback.
+/// Probe bootstrap seeds over raw TCP (3-second timeout, all in parallel).
+/// Returns true if ANY seed is reachable — a single boolean so the frontend
+/// can detect a blocked port-38291 without any IP addresses leaking to the UI.
 #[tauri::command]
-fn get_bootstrap_seeds() -> Vec<String> {
-    bootstrap_seeds_for_ui()
-}
-
-/// Probe bootstrap seeds over raw TCP (3-second timeout each, all in parallel).
-/// Seeds are resolved dynamically via `bootstrap_seeds_for_ui` so new peers
-/// accumulated during previous sessions are checked alongside the official ones.
-/// Called from the Onboarding Network Sync step before iriumd starts.
-#[tauri::command]
-async fn check_seed_connectivity() -> Vec<SeedCheckResult> {
+async fn check_network_reachable() -> bool {
     let seeds = bootstrap_seeds_for_ui();
     let timeout_dur = std::time::Duration::from_secs(3);
 
-    let handles: Vec<tokio::task::JoinHandle<SeedCheckResult>> = seeds
-        .into_iter()
-        .take(5)
-        .map(|addr| {
-            let d = timeout_dur;
-            tokio::spawn(async move {
-                let start = std::time::Instant::now();
-                let reachable = tokio::time::timeout(
-                    d,
-                    tokio::net::TcpStream::connect(format!("{}:38291", addr)),
-                )
-                .await
-                .map(|r| r.is_ok())
-                .unwrap_or(false);
-                SeedCheckResult {
-                    addr,
-                    reachable,
-                    latency_ms: if reachable { Some(start.elapsed().as_millis() as u64) } else { None },
-                }
-            })
-        })
-        .collect();
-
-    let mut results = Vec::new();
-    for h in handles {
-        if let Ok(r) = h.await { results.push(r); }
+    let mut join_set = tokio::task::JoinSet::new();
+    for addr in seeds.into_iter().take(5) {
+        let d = timeout_dur;
+        join_set.spawn(async move {
+            tokio::time::timeout(
+                d,
+                tokio::net::TcpStream::connect(format!("{}:38291", addr)),
+            )
+            .await
+            .map(|r| r.is_ok())
+            .unwrap_or(false)
+        });
     }
-    results
+
+    while let Some(result) = join_set.join_next().await {
+        if let Ok(true) = result {
+            return true;
+        }
+    }
+    false
 }
 
 // Returns hardware info the GUI needs at startup. cpu_cores is what
@@ -5858,8 +5841,7 @@ fn main() {
             check_binaries,
             try_upnp_port_map,
             get_app_version,
-            get_bootstrap_seeds,
-            check_seed_connectivity,
+            check_network_reachable,
             get_system_info,
             // Wallet
             wallet_get_balance,
