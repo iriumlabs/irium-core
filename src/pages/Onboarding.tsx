@@ -734,6 +734,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
   // Re-render every second while we're still waiting on peers so the 30-second
   // "no peers" warning surfaces without needing another RPC poll to fire.
   const [nowTick, setNowTick] = useState(0);
+  const [syncCountdown, setSyncCountdown] = useState<number | null>(null);
   // Records when iriumd was first observed as started (after node.start
   // resolves) — drives the 30-second timeout for the no-peers warning.
   const startedAtRef = useRef<number | null>(null);
@@ -805,7 +806,24 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
     const id = setInterval(() => setNowTick((t) => t + 1), 1000);
     return () => clearInterval(id);
   }, [peers]);
-  void nowTick;
+
+  // Auto-advance 2 s after synced — keeps the button visible but saves the click
+  useEffect(() => {
+    if (!synced) return;
+    setSyncCountdown(2);
+    let remaining = 2;
+    const id = setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        clearInterval(id);
+        setSyncCountdown(null);
+        onNextRef.current();
+      } else {
+        setSyncCountdown(remaining);
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [synced]);
 
   const secondsSinceStart = startedAtRef.current
     ? Math.floor((Date.now() - startedAtRef.current) / 1000)
@@ -915,6 +933,28 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
           </span>
         </div>
 
+        {/* Peer discovery pulse — visible while node is up but has no peers yet */}
+        <AnimatePresence>
+          {peers === 0 && nodeStarted && networkReachable === true && (
+            <motion.div
+              key="peer-discovery-pulse"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center gap-1.5 text-xs"
+              style={{ color: 'rgba(238,240,255,0.28)', fontFamily: '"JetBrains Mono", monospace' }}
+            >
+              <motion.div
+                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                style={{ background: 'rgba(110,198,255,0.45)' }}
+                animate={{ opacity: [0.3, 1, 0.3] }}
+                transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              <span>Searching for peers on the Irium network{'.'.repeat(nowTick % 4)}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Block height */}
         <div className="flex items-center justify-between text-sm">
           <span style={{ color: 'rgba(238,240,255,0.45)' }}>Block height</span>
@@ -974,6 +1014,28 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
         </AnimatePresence>
       </div>
 
+      {/* Connectivity status line — visible during startup before nodeStarted */}
+      <AnimatePresence mode="wait">
+        {!nodeStarted && networkReachable !== false && (
+          <motion.div
+            key={networkReachable === null ? 'checking' : 'reachable'}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center gap-2 mb-4 text-xs"
+            style={{ color: 'rgba(238,240,255,0.38)' }}
+          >
+            <Loader2 size={11} className="animate-spin flex-shrink-0" />
+            <span>
+              {networkReachable === null
+                ? 'Checking network connectivity…'
+                : 'Network reachable — starting node…'}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {startError && (
         <div className="flex items-center gap-2 mb-4 text-xs" style={{ color: '#fbbf24' }}>
           <AlertTriangle size={12} /> {startError}
@@ -1030,6 +1092,9 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
                 <p className="font-semibold mb-1" style={{ color: '#fbbf24' }}>Still connecting to peers…</p>
                 <p style={{ color: 'rgba(238,240,255,0.60)' }}>
                   The node is reaching out to the Irium network. This usually completes within 30 seconds — hang tight.
+                </p>
+                <p className="font-mono mt-1" style={{ color: 'rgba(238,240,255,0.35)', fontSize: 10 }}>
+                  Connecting for {secondsSinceStart}s…
                 </p>
                 <button
                   onClick={handleRetry}
@@ -1090,12 +1155,19 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
       <div className="flex items-center gap-3">
         {synced ? (
           <motion.button
-            className="btn-primary"
+            className="btn-primary flex items-center gap-2"
             onClick={onNext}
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
           >
-            Continue to Wallet <ArrowRight size={15} />
+            {syncCountdown !== null ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                Continuing in {syncCountdown}s…
+              </>
+            ) : (
+              <>Continue to Wallet <ArrowRight size={15} /></>
+            )}
           </motion.button>
         ) : (
           <>
@@ -1109,7 +1181,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
               style={{ color: 'rgba(238,240,255,0.35)' }}
               onClick={onNext}
             >
-              Skip (continue without full sync)
+              Continue anyway →
             </button>
           </>
         )}
