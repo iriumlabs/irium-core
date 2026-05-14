@@ -111,7 +111,7 @@ export default function BuyerWizard() {
     }
   };
 
-  const activeOffer = selectedOffer ?? (offerIdInput.trim() ? null : null);
+  const activeOffer = selectedOffer;
 
   const handleNext = async () => {
     setError('');

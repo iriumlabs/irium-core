@@ -585,7 +585,7 @@ export default function SettlementPage() {
       } catch { /* offline */ }
     };
     fetchFee();
-  }, []);
+  }, [rpcUrl]);
 
   useEffect(() => {
     if (view !== 'hub') return;

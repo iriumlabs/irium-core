@@ -210,7 +210,7 @@ const TopBar = memo(function TopBar() {
               {balanceLabelText}
             </span>
           )}
-          {balance && balance.unconfirmed > 0 && activeAddrIdx === 0 && (
+          {balance && balance.unconfirmed > 0 && (
             <span
               className="text-xs font-display font-semibold"
               style={{ color: '#fbbf24' }}

@@ -73,9 +73,8 @@ const RISK_CONFIG: Record<
 };
 
 // Approximate block-window → wall-clock conversion. Irium block time is
-// nominally 600s but the user-facing UI treats it as ~2 minutes for now;
-// adjust the constant when the displayed approximation needs revision.
-const APPROX_MINUTES_PER_BLOCK = 2;
+// nominally 600s (10 minutes). Adjust if the block target changes.
+const APPROX_MINUTES_PER_BLOCK = 10;
 function blocksToReadable(blocks: number): string {
   const minutes = blocks * APPROX_MINUTES_PER_BLOCK;
   if (minutes < 120) return `~${Math.round(minutes)} minutes`;
