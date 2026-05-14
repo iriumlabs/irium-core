@@ -735,8 +735,11 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
   // "no peers" warning surfaces without needing another RPC poll to fire.
   const [nowTick, setNowTick] = useState(0);
   const [syncCountdown, setSyncCountdown] = useState<number | null>(null);
-  // Records when iriumd was first observed as started (after node.start
-  // resolves) — drives the 30-second timeout for the no-peers warning.
+  // Stamps when iriumd sidecar spawned (nodeStarted=true) — drives the
+  // 30s "Loading blockchain data" vs "Starting node…" daemon-row label.
+  const nodeSpawnedAtRef = useRef<number | null>(null);
+  // Stamps when running===true is first seen — drives the no-peers warning
+  // threshold (so it doesn't fire during the 4-min chain init).
   const startedAtRef = useRef<number | null>(null);
   const pollRef      = useRef<ReturnType<typeof setInterval> | null>(null);
   const onNextRef = useRef(onNext);
@@ -766,7 +769,12 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
       const direct = await fetchRpcStatus(rpcUrl);
       if (direct) {
         if (mounted) setStatus(direct);
-        if (direct.running && mounted) setNodeStarted(true);
+        if (direct.running && mounted) {
+          setNodeStarted(true);
+          // Stamp here — not at spawn — so the no-peers timer only starts
+          // once iriumd actually has P2P listening (after ~4 min chain init).
+          if (startedAtRef.current === null) startedAtRef.current = Date.now();
+        }
         return;
       }
       try {
@@ -784,10 +792,11 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rpcUrl]);
 
-  // Stamp the moment we observed nodeStarted go true; reset on retry.
+  // Stamp spawn time when nodeStarted goes true; startedAtRef is stamped
+  // later in the poll when running===true is first observed.
   useEffect(() => {
-    if (nodeStarted && startedAtRef.current === null) {
-      startedAtRef.current = Date.now();
+    if (nodeStarted && nodeSpawnedAtRef.current === null) {
+      nodeSpawnedAtRef.current = Date.now();
     }
   }, [nodeStarted]);
 
@@ -825,6 +834,9 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
     return () => clearInterval(id);
   }, [synced]);
 
+  const secondsSinceSpawn = nodeSpawnedAtRef.current
+    ? Math.floor((Date.now() - nodeSpawnedAtRef.current) / 1000)
+    : 0;
   const secondsSinceStart = startedAtRef.current
     ? Math.floor((Date.now() - startedAtRef.current) / 1000)
     : 0;
@@ -839,6 +851,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
       await node.stop().catch(() => {});
       await new Promise((r) => setTimeout(r, 600));
       startedAtRef.current = null;
+      nodeSpawnedAtRef.current = null;
       setNodeStarted(false);
       try {
         const reachable = await node.checkNetworkReachable();
@@ -882,7 +895,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
     <motion.div key="sync" {...fadeIn}>
       <h2 className="font-display font-bold text-2xl mb-1.5 gradient-text">Network Sync</h2>
       <p className="text-sm mb-6" style={{ color: 'rgba(238,240,255,0.45)' }}>
-        Connecting to the Irium P2P network and downloading the blockchain.
+        Loading local blockchain data and connecting to the Irium P2P network.
       </p>
 
       <div className="panel p-5 mb-5 space-y-4">
@@ -901,7 +914,9 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
           ) : (
             <span className="flex items-center gap-2 text-xs">
               <Loader2 size={12} className="animate-spin" style={{ color: '#fbbf24' }} />
-              <span style={{ color: '#fbbf24' }}>Connecting…</span>
+              <span style={{ color: '#fbbf24' }}>
+                {secondsSinceSpawn < 30 ? 'Loading blockchain data…' : 'Starting node…'}
+              </span>
             </span>
           )}
         </div>
