@@ -65,6 +65,9 @@ export const node = {
   saveDiscoveredPeers: (multiaddrs: string[]) =>
     safeInvoke<number>('save_discovered_peers', { multiaddrs }),
 
+  getBootstrapSeeds: () =>
+    safeInvoke<string[]>('get_bootstrap_seeds'),
+
   checkSeedConnectivity: () =>
     safeInvoke<SeedCheckResult[]>('check_seed_connectivity'),
 

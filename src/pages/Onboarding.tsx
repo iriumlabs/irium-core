@@ -669,11 +669,8 @@ function StepBootstrap({ onNext }: { onNext: () => void }) {
   );
 }
 
-// Mirrors irium-source/bootstrap/seedlist.txt — the official signed seeds the
-// embedded iriumd dials on startup. Kept inline (rather than fetched from disk)
-// so this screen can render diagnostic context even when iriumd hasn't reached
-// its own seedlist yet.
-const KNOWN_SEEDS = ['207.244.247.86', '157.173.116.134'];
+// Fallback seeds used before the dynamic resolution completes (matches bundled seedlist.txt).
+const FALLBACK_SEEDS = ['207.244.247.86', '157.173.116.134'];
 
 // Tight match for ONLY the literal "node already running" success path. An
 // earlier version used `.includes('already')`, which accidentally also matched
@@ -729,8 +726,9 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
   const [startError, setStartError]   = useState<string | null>(null);
   const [status, setStatus]           = useState<NodeStatus | null>(null);
   const [retrying, setRetrying]       = useState(false);
-  const [seedResults, setSeedResults] = useState<SeedCheckResult[] | null>(null);
-  const [manualPeer, setManualPeer]   = useState('');
+  const [seedResults, setSeedResults]     = useState<SeedCheckResult[] | null>(null);
+  const [bootstrapSeeds, setBootstrapSeeds] = useState<string[]>(FALLBACK_SEEDS);
+  const [manualPeer, setManualPeer]       = useState('');
   const [addPeerStatus, setAddPeerStatus] = useState<
     | { kind: 'idle' }
     | { kind: 'pending' }
@@ -751,8 +749,14 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
   useEffect(() => {
     let mounted = true;
 
-    // TCP pre-check (≤3 s, both seeds in parallel) fires before node.start so
-    // we can show "port blocked" immediately instead of waiting 15 s.
+    // Fetch dynamic seeds (runtime + dialable peers + bundled) in parallel with
+    // the TCP pre-check. Falls back to FALLBACK_SEEDS if the IPC call fails.
+    node.getBootstrapSeeds()
+      .then(seeds => { if (mounted && seeds.length > 0) setBootstrapSeeds(seeds); })
+      .catch(() => {});
+
+    // TCP pre-check (≤3 s, seeds in parallel) fires before node.start so
+    // we can show "port blocked" immediately instead of waiting 25 s.
     // Poll starts immediately alongside the check — it returns nothing until
     // iriumd binds its RPC port, which is fine.
     (async () => {
@@ -785,7 +789,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
           // known seeds into the dial queue the moment RPC is available.
           if (!seedsInjectedRef.current) {
             seedsInjectedRef.current = true;
-            for (const ip of KNOWN_SEEDS) {
+            for (const ip of bootstrapSeeds) {
               tauriFetch<{ added?: boolean }>(`${rpcUrl}/admin/add-seed`, {
                 method: 'POST',
                 timeout: 5,
@@ -1101,7 +1105,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
                         <span style={{ color: '#34d399' }}>{r.latency_ms}ms</span>
                       )}
                     </div>
-                  )) : KNOWN_SEEDS.map((s) => (
+                  )) : bootstrapSeeds.map((s) => (
                     <div key={s} style={{ color: 'rgba(238,240,255,0.55)' }}>{s}</div>
                   ))}
                 </div>

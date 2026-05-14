@@ -148,48 +148,51 @@ fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
-/// Probe both official bootstrap seeds over raw TCP (3-second timeout each,
-/// run in parallel). Called from the Onboarding Network Sync step before
-/// iriumd starts so we can show an immediate "port blocked" message instead
-/// of making the user wait 15 s for the no-peers warning.
+/// Return the dynamically-resolved bootstrap seed IPs for the GUI.
+/// Same priority order as `bootstrap_seeds_for_ui`: runtime → dialable peers
+/// → bundled seedlist.txt → hardcoded fallback.
+#[tauri::command]
+fn get_bootstrap_seeds() -> Vec<String> {
+    bootstrap_seeds_for_ui()
+}
+
+/// Probe bootstrap seeds over raw TCP (3-second timeout each, all in parallel).
+/// Seeds are resolved dynamically via `bootstrap_seeds_for_ui` so new peers
+/// accumulated during previous sessions are checked alongside the official ones.
+/// Called from the Onboarding Network Sync step before iriumd starts.
 #[tauri::command]
 async fn check_seed_connectivity() -> Vec<SeedCheckResult> {
+    let seeds = bootstrap_seeds_for_ui();
     let timeout_dur = std::time::Duration::from_secs(3);
 
-    let (r1, r2) = tokio::join!(
-        async {
-            let start = std::time::Instant::now();
-            let reachable = tokio::time::timeout(
-                timeout_dur,
-                tokio::net::TcpStream::connect("207.244.247.86:38291"),
-            )
-            .await
-            .map(|r| r.is_ok())
-            .unwrap_or(false);
-            SeedCheckResult {
-                addr: "207.244.247.86".to_string(),
-                reachable,
-                latency_ms: if reachable { Some(start.elapsed().as_millis() as u64) } else { None },
-            }
-        },
-        async {
-            let start = std::time::Instant::now();
-            let reachable = tokio::time::timeout(
-                timeout_dur,
-                tokio::net::TcpStream::connect("157.173.116.134:38291"),
-            )
-            .await
-            .map(|r| r.is_ok())
-            .unwrap_or(false);
-            SeedCheckResult {
-                addr: "157.173.116.134".to_string(),
-                reachable,
-                latency_ms: if reachable { Some(start.elapsed().as_millis() as u64) } else { None },
-            }
-        }
-    );
+    let handles: Vec<tokio::task::JoinHandle<SeedCheckResult>> = seeds
+        .into_iter()
+        .take(5)
+        .map(|addr| {
+            let d = timeout_dur;
+            tokio::spawn(async move {
+                let start = std::time::Instant::now();
+                let reachable = tokio::time::timeout(
+                    d,
+                    tokio::net::TcpStream::connect(format!("{}:38291", addr)),
+                )
+                .await
+                .map(|r| r.is_ok())
+                .unwrap_or(false);
+                SeedCheckResult {
+                    addr,
+                    reachable,
+                    latency_ms: if reachable { Some(start.elapsed().as_millis() as u64) } else { None },
+                }
+            })
+        })
+        .collect();
 
-    vec![r1, r2]
+    let mut results = Vec::new();
+    for h in handles {
+        if let Ok(r) = h.await { results.push(r); }
+    }
+    results
 }
 
 // Returns hardware info the GUI needs at startup. cpu_cores is what
@@ -396,6 +399,84 @@ fn read_extra_seeds() -> Vec<String> {
             if ip.is_empty() { None } else { Some(ip) }
         })
         .collect()
+}
+
+/// Resolve bootstrap seed IPs for the GUI's TCP pre-check and auto-inject.
+/// Priority: runtime seeds (iriumd /admin/add-seed appends here) →
+/// dialable peers in peers.json (top 10 by last_seen) →
+/// bundled seedlist.txt → hardcoded fallback.
+fn bootstrap_seeds_for_ui() -> Vec<String> {
+    let mut seeds: Vec<String> = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+
+    let home_dir = match dirs::home_dir() {
+        Some(d) => d,
+        None => {
+            for line in BOOTSTRAP_SEEDLIST_TXT.lines() {
+                let l = line.trim();
+                if !l.is_empty() && !l.starts_with('#') && seen.insert(l.to_string()) {
+                    seeds.push(l.to_string());
+                }
+            }
+            for ip in &["207.244.247.86", "157.173.116.134"] {
+                if seen.insert(ip.to_string()) { seeds.push(ip.to_string()); }
+            }
+            return seeds;
+        }
+    };
+    let irium_dir = home_dir.join(".irium");
+
+    // Priority 1: ~/.irium/bootstrap/seedlist.runtime (IP:PORT lines written by /admin/add-seed)
+    let runtime_path = irium_dir.join("bootstrap").join("seedlist.runtime");
+    if let Ok(content) = std::fs::read_to_string(&runtime_path) {
+        for line in content.lines() {
+            let l = line.trim();
+            if l.is_empty() || l.starts_with('#') { continue; }
+            let ip = l.split(':').next().unwrap_or("").trim().to_string();
+            if !ip.is_empty() && seen.insert(ip.clone()) { seeds.push(ip); }
+        }
+    }
+
+    // Priority 2: peers.json dialable entries, top 10 by last_seen
+    // Keys are multiaddr /ip4/X.X.X.X/tcp/PORT; values have dialable+last_seen.
+    let peers_path = irium_dir.join("state").join("peers.json");
+    if let Ok(raw) = std::fs::read_to_string(&peers_path) {
+        if let Ok(serde_json::Value::Object(map)) = serde_json::from_str::<serde_json::Value>(&raw) {
+            let mut dialable: Vec<(f64, String)> = map
+                .iter()
+                .filter_map(|(k, v)| {
+                    let is_dialable = v.get("dialable").and_then(|d| d.as_bool()).unwrap_or(false);
+                    let last_seen = v.get("last_seen").and_then(|s| s.as_f64()).unwrap_or(0.0);
+                    if is_dialable && last_seen > 0.0 {
+                        let parts: Vec<&str> = k.split('/').collect();
+                        let ip = parts.get(2).copied().unwrap_or("").to_string();
+                        if !ip.is_empty() { Some((last_seen, ip)) } else { None }
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            dialable.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+            for (_, ip) in dialable.iter().take(10) {
+                if seen.insert(ip.clone()) { seeds.push(ip.clone()); }
+            }
+        }
+    }
+
+    // Priority 3: bundled seedlist.txt (IP-only, one per line, signed)
+    for line in BOOTSTRAP_SEEDLIST_TXT.lines() {
+        let l = line.trim();
+        if !l.is_empty() && !l.starts_with('#') && seen.insert(l.to_string()) {
+            seeds.push(l.to_string());
+        }
+    }
+
+    // Priority 4: hardcoded fallback — guarantees the two official seeds are always present
+    for ip in &["207.244.247.86", "157.173.116.134"] {
+        if seen.insert(ip.to_string()) { seeds.push(ip.to_string()); }
+    }
+
+    seeds
 }
 
 /// Trim seedlist.extra to MAX_KEPT_EXTRA_SEEDS entries on app start.
@@ -806,12 +887,17 @@ async fn start_node(
     // Our private IP (192.168.x.x ≈ 3.2B) > 157.173.116.134 (≈ 2.6B), so marking that
     // seed as trusted permanently blocks our outbound connection to it. The ADDNODE seed
     // dial loop has no such restriction and handles seeds independently of trusted status.
-    // Only the two official seed nodes from irium-source/bootstrap/seedlist.txt.
-    // Community IPs are deliberately excluded here — they go stale as participants
-    // change their nodes. The gossip system discovers new peers organically from these seeds.
-    let hardcoded_seeds: &[&str] = &[
-        "207.244.247.86", "157.173.116.134",
-    ];
+    // Only the official seed nodes from irium-source/bootstrap/seedlist.txt.
+    // Parsed from the bundled constant so adding a seed to the signed file
+    // automatically propagates here without a separate code change.
+    // Community IPs are deliberately excluded — they go stale as participants
+    // change nodes. The gossip system discovers new peers from these seeds.
+    let builtin_seeds: Vec<String> = BOOTSTRAP_SEEDLIST_TXT
+        .lines()
+        .map(|l| l.trim())
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .map(|l| l.to_string())
+        .collect();
 
     // Peers organically discovered by iriumd in previous sessions via P2P gossip.
     // No external server dependency — purely local data iriumd wrote itself.
@@ -855,16 +941,15 @@ async fn start_node(
             .map(|ip| ip.trim().to_string())
     };
 
-    // High-priority dial list — only the known-reliable hardcoded seeds.
+    // High-priority dial list — only the known-reliable official seeds.
     // Own public IP filtered out so iriumd doesn't try to dial itself.
     // seedlist.extra entries are intentionally NOT included here (see the
     // longer comment above where extra_seeds is read).
     let own_ip = resolved_public_ip.as_deref().unwrap_or("").trim().to_string();
     let mut seen = std::collections::HashSet::new();
-    let bootstrap_seeds: String = hardcoded_seeds
-        .iter()
-        .map(|s| s.to_string())
-        .filter(|ip| !ip.is_empty() && ip != &own_ip && seen.insert(ip.clone()))
+    let bootstrap_seeds: String = builtin_seeds
+        .into_iter()
+        .filter(|ip| !ip.is_empty() && ip.as_str() != own_ip.as_str() && seen.insert(ip.clone()))
         .collect::<Vec<_>>()
         .join(",");
     node_env.insert("IRIUM_ADDNODE".to_string(), bootstrap_seeds);
@@ -5773,6 +5858,7 @@ fn main() {
             check_binaries,
             try_upnp_port_map,
             get_app_version,
+            get_bootstrap_seeds,
             check_seed_connectivity,
             get_system_info,
             // Wallet
