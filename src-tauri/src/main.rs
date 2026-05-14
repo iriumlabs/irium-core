@@ -4585,7 +4585,7 @@ async fn load_settings(app_handle: tauri::AppHandle) -> Result<Option<String>, S
 // ============================================================
 
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
-const RELEASES_API: &str = "https://api.github.com/repos/iriumlabs/irium-core-gui/releases/latest";
+const RELEASES_API: &str = "https://api.github.com/repos/iriumlabs/irium-core/releases/latest";
 
 #[tauri::command]
 async fn check_for_updates() -> Result<UpdateCheckResult, String> {

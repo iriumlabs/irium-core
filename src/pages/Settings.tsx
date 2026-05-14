@@ -297,6 +297,7 @@ export default function Settings() {
     try {
       await rpc.setUrl(local.rpc_url);
       updateSettings(local);
+      try { await config.saveSettings(JSON.stringify(local)); } catch { /* non-fatal in browser preview */ }
       setDirty(false);
       setSaveState("saved");
       toast.success("Settings saved");

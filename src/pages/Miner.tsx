@@ -200,10 +200,14 @@ function CpuMinerTab() {
   const [threads, setThreads] = useState(() => Math.max(1, Math.floor(maxThreads / 2)));
   const [threadsTouched, setThreadsTouched] = useState(false);
   useEffect(() => {
-    if (!threadsTouched && cpuCores) {
+    if (!threadsTouched && cpuCores && !status?.running) {
       setThreads(Math.max(1, Math.floor(cpuCores / 2)));
     }
-  }, [cpuCores, threadsTouched]);
+  }, [cpuCores, threadsTouched, status?.running]);
+
+  // When running, show the thread count the miner binary actually reported.
+  // This survives tab switches that would otherwise reset local `threads` state.
+  const displayThreads = (status?.running && status.threads) ? status.threads : threads;
 
   // Poll iriumd /network-status every 3s while mining is active. Uses Tauri's
   // HTTP API (allowlist.http scope) so the request bypasses the renderer CSP
@@ -486,19 +490,19 @@ function CpuMinerTab() {
         </div>
 
         <div>
-          <label className="label">Threads — {threads} of {maxThreads} cores</label>
+          <label className="label">Threads — {displayThreads} of {maxThreads} cores{status?.running ? ' (running)' : ''}</label>
           <input
-            type="range" min={1} max={maxThreads} value={threads}
+            type="range" min={1} max={maxThreads} value={displayThreads}
             onChange={e => { setThreads(parseInt(e.target.value)); setThreadsTouched(true); }}
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer mt-1"
-            style={{ background: `linear-gradient(to right, #3b3bff 0%, #6ec6ff 50%, #a78bfa ${(threads / maxThreads) * 100}%, rgba(255,255,255,0.08) ${(threads / maxThreads) * 100}%, rgba(255,255,255,0.08) 100%)` }}
+            disabled={!!status?.running}
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ background: `linear-gradient(to right, #3b3bff 0%, #6ec6ff 50%, #a78bfa ${(displayThreads / maxThreads) * 100}%, rgba(255,255,255,0.08) ${(displayThreads / maxThreads) * 100}%, rgba(255,255,255,0.08) 100%)` }}
           />
-          {/* Per-core dot indicator: first `threads` cores filled green to
-              show what the miner will spin up; remaining cores stay dim.
-              Wraps automatically on small windows. */}
+          {/* Per-core dot indicator: first `displayThreads` cores filled green to
+              show active/running thread count; remaining cores stay dim. */}
           <div className="flex flex-wrap gap-1 mt-2.5">
             {Array.from({ length: maxThreads }).map((_, i) => {
-              const active = i < threads;
+              const active = i < displayThreads;
               return (
                 <span
                   key={i}
