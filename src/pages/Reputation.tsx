@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import NodeOfflineBanner from "../components/NodeOfflineBanner";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -14,6 +14,7 @@ import {
   XCircle,
   User,
   Copy,
+  HelpCircle,
 } from "lucide-react";
 import { reputation, reputationActions } from "../lib/tauri";
 import type { Reputation as ReputationData, ReputationOutcome } from "../lib/types";
@@ -291,6 +292,7 @@ function SellerProfileBlock({ data, resultVisible }: { data: ReputationData; res
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function Reputation() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [shimmer, setShimmer] = useState(false);
@@ -426,11 +428,20 @@ export default function Reputation() {
     <div className="w-full space-y-6 px-8 py-6">
       <NodeOfflineBanner />
       {/* Header */}
-      <div>
-        <h1 className="page-title">Reputation</h1>
-        <p className="page-subtitle">
-          Query the on-chain reputation score for any Irium address or public key.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="page-title">Reputation</h1>
+          <p className="page-subtitle">
+            Query the on-chain reputation score for any Irium address or public key.
+          </p>
+        </div>
+        <button
+          onClick={() => navigate('/help#reputation')}
+          className="btn-ghost p-2 text-white/40 hover:text-white/80 flex-shrink-0 mt-1"
+          title="Reputation help"
+        >
+          <HelpCircle size={18} />
+        </button>
       </div>
 
       {/* Search bar (first seller) */}

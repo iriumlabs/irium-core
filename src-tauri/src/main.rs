@@ -3254,6 +3254,114 @@ async fn settlement_create_deposit(
     })
 }
 
+#[tauri::command]
+async fn settlement_create_merchant_delayed(
+    state: State<'_, AppState>,
+    params: MerchantDelayedParams,
+) -> Result<AgreementResult, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+
+    let height = get_current_height(&rpc_url).await;
+    let cooldown_blocks = params.cooldown_hours.unwrap_or(72) * 6;
+    let deadline_blocks = params.deadline_hours.unwrap_or(336) * 6;
+    let settlement_deadline = height + cooldown_blocks;
+    let refund_timeout = height + deadline_blocks;
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default().as_secs();
+    let secret_hash = format!("{:0>64x}", ts);
+    let doc_hash = format!("{:0>64x}", ts.wrapping_add(5));
+
+    let mut args = vec![
+        "agreement-create-simple-settlement".to_string(),
+        "--agreement-id".to_string(), format!("merchant-{}", ts),
+        "--creation-time".to_string(), ts.to_string(),
+        "--party-a".to_string(), format!("addr={}", params.buyer),
+        "--party-b".to_string(), format!("addr={}", params.merchant),
+        "--amount".to_string(), format!("{:.8}", sats_to_irm(params.amount_sats)),
+        "--secret-hash".to_string(), secret_hash,
+        "--refund-timeout".to_string(), refund_timeout.to_string(),
+        "--document-hash".to_string(), doc_hash,
+        "--settlement-deadline".to_string(), settlement_deadline.to_string(),
+        "--release-summary".to_string(), "Merchant delivery confirmed".to_string(),
+        "--refund-summary".to_string(), "Buyer dispute — refund issued".to_string(),
+        "--json".to_string(),
+    ];
+    if let Some(memo) = params.memo {
+        args.push("--notes".to_string());
+        args.push(memo);
+    }
+
+    let output = run_wallet_cmd(args, wallet_path, data_dir).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output)
+        .map_err(|e| format!("Parse error: {}", e))?;
+
+    Ok(AgreementResult {
+        agreement_id: raw["agreement_id"].as_str().unwrap_or("").to_string(),
+        hash: raw["agreement_hash"].as_str().map(String::from),
+        success: true,
+        message: None,
+    })
+}
+
+#[tauri::command]
+async fn settlement_create_contractor(
+    state: State<'_, AppState>,
+    params: ContractorMilestoneParams,
+) -> Result<AgreementResult, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+
+    let height = get_current_height(&rpc_url).await;
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default().as_secs();
+    let secret_hash = format!("{:0>64x}", ts);
+    let doc_hash = format!("{:0>64x}", ts.wrapping_add(6));
+    let timeout = height + (params.milestone_count as u64 * 500);
+    let per_milestone = sats_to_irm(params.amount_sats / params.milestone_count as u64);
+
+    let mut args = vec![
+        "agreement-create-milestone".to_string(),
+        "--agreement-id".to_string(), format!("contractor-{}", ts),
+        "--creation-time".to_string(), ts.to_string(),
+        "--party-a".to_string(), format!("addr={}", params.client),
+        "--party-b".to_string(), format!("addr={}", params.contractor),
+        "--secret-hash".to_string(), secret_hash,
+        "--refund-timeout".to_string(), timeout.to_string(),
+        "--document-hash".to_string(), doc_hash,
+        "--json".to_string(),
+    ];
+    if let Some(scope) = params.scope {
+        args.push("--notes".to_string());
+        args.push(scope);
+    }
+    for i in 0..params.milestone_count {
+        let m_timeout = height + ((i as u64 + 1) * 500);
+        let m_secret = format!("{:0>64x}", ts.wrapping_add(10 + i as u64));
+        let m_hash = format!("{:0>64x}", ts.wrapping_add(100 + i as u64));
+        args.push("--milestone".to_string());
+        args.push(format!(
+            "m{}|Milestone {}|{:.8}|{}|{}|{}",
+            i + 1, i + 1, per_milestone, m_timeout, m_secret, m_hash
+        ));
+    }
+
+    let output = run_wallet_cmd(args, wallet_path, data_dir).await?;
+    let raw: serde_json::Value = serde_json::from_str(&output)
+        .map_err(|e| format!("Parse error: {}", e))?;
+
+    Ok(AgreementResult {
+        agreement_id: raw["agreement_id"].as_str().unwrap_or("").to_string(),
+        hash: raw["agreement_hash"].as_str().map(String::from),
+        success: true,
+        message: None,
+    })
+}
+
 // ============================================================
 // MINER
 // ============================================================
@@ -5730,6 +5838,8 @@ fn main() {
             settlement_create_freelance,
             settlement_create_milestone,
             settlement_create_deposit,
+            settlement_create_merchant_delayed,
+            settlement_create_contractor,
             // Miner (CPU)
             start_miner,
             stop_miner,

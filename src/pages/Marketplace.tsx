@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, RefreshCw, Search, Globe, X, Rss, Star, Download, Upload, Compass } from 'lucide-react';
+import { Plus, RefreshCw, Search, Globe, X, Rss, Star, Download, Upload, Compass, HelpCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../lib/store';
@@ -533,6 +533,7 @@ export default function MarketplacePage() {
   const [showTakeModal, setShowTakeModal] = useState<Offer | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState<Offer | null>(null);
+  const navigate = useNavigate();
   const [addFeedUrl, setAddFeedUrl] = useState('');
   const [showAddFeed, setShowAddFeed] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -732,9 +733,18 @@ export default function MarketplacePage() {
       <div className="w-full space-y-5 px-8 py-6">
       <NodeOfflineBanner />
       {/* Page header */}
-      <div>
-        <h1 className="page-title">Marketplace</h1>
-        <p className="page-subtitle">Browse and post settlement offers on the Irium peer-to-peer network.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="page-title">Marketplace</h1>
+          <p className="page-subtitle">Browse and post settlement offers on the Irium peer-to-peer network.</p>
+        </div>
+        <button
+          onClick={() => navigate('/help#marketplace')}
+          className="btn-ghost p-2 text-white/40 hover:text-white/80 flex-shrink-0 mt-1"
+          title="Marketplace help"
+        >
+          <HelpCircle size={18} />
+        </button>
       </div>
       {/* Tab bar */}
       <div className="flex border-b border-white/[0.06] mb-5">

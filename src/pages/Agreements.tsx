@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen, FileJson, AlertCircle, Copy, FileText, Receipt, PenLine, ShieldCheck, Gavel, CheckCircle2, XCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen, FileJson, AlertCircle, Copy, FileText, Receipt, PenLine, ShieldCheck, Gavel, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetch as tauriFetch, Body, ResponseType } from '@tauri-apps/api/http';
@@ -265,6 +265,13 @@ export default function AgreementsPage() {
           <p className="page-subtitle">On-chain settlement agreements</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/help#agreements')}
+            className="btn-ghost p-2 text-white/40 hover:text-white/80"
+            title="Agreements help"
+          >
+            <HelpCircle size={18} />
+          </button>
           <button
             onClick={() => setShowImportInvoiceModal(true)}
             className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"

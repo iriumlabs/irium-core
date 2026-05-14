@@ -7,6 +7,7 @@ import type {
   Proof, ProofSubmitResult, Reputation, MinerStatus, FoundBlock,
   GpuDevice, GpuPlatform, GpuMinerStatus, StratumStatus,
   OtcParams, FreelanceParams, MilestoneParams, DepositParams,
+  MerchantDelayedParams, ContractorMilestoneParams,
   PeerInfo, MempoolInfo, DiagnosticsResult, UpdateCheckResult,
   NodeUpdateCheckResult, NodeUpdatePullResult,
   WalletCreateResult, WalletFileInfo, WalletInfo,
@@ -279,6 +280,12 @@ export const settlement = {
 
   deposit: (params: DepositParams) =>
     safeInvoke<AgreementResult>('settlement_create_deposit', { params }),
+
+  merchantDelayed: (params: MerchantDelayedParams) =>
+    safeInvoke<AgreementResult>('settlement_create_merchant_delayed', { params }),
+
+  contractor: (params: ContractorMilestoneParams) =>
+    safeInvoke<AgreementResult>('settlement_create_contractor', { params }),
 };
 
 // ── CPU MINER ─────────────────────────────────────────────────

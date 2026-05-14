@@ -652,6 +652,25 @@ pub struct DepositParams {
     pub deadline_hours: Option<u64>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MerchantDelayedParams {
+    pub buyer: String,
+    pub merchant: String,
+    pub amount_sats: u64,
+    pub cooldown_hours: Option<u64>,
+    pub deadline_hours: Option<u64>,
+    pub memo: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ContractorMilestoneParams {
+    pub client: String,
+    pub contractor: String,
+    pub amount_sats: u64,
+    pub milestone_count: u32,
+    pub scope: Option<String>,
+}
+
 // ============================================================
 // UPDATE CHECK
 // ============================================================

@@ -22,6 +22,7 @@ const NAV = [
   { to: '/reputation',  icon: Star,            label: 'Reputation'  },
   { to: '/miner',       icon: Cpu,             label: 'Miner'       },
   { to: '/logs',        icon: Terminal,        label: 'Logs'        },
+  { to: '/help',        icon: HelpCircle,      label: 'Help'        },
 ];
 
 const ACTIVE_BG = 'linear-gradient(135deg, rgba(110,198,255,0.16) 0%, rgba(167,139,250,0.10) 100%)';

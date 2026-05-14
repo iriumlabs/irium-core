@@ -487,6 +487,23 @@ export interface DepositParams {
   deadline_hours?: number;
 }
 
+export interface MerchantDelayedParams {
+  buyer: string;
+  merchant: string;
+  amount_sats: number;
+  cooldown_hours?: number;
+  deadline_hours?: number;
+  memo?: string;
+}
+
+export interface ContractorMilestoneParams {
+  client: string;
+  contractor: string;
+  amount_sats: number;
+  milestone_count: number;
+  scope?: string;
+}
+
 // ============================================================
 // DIAGNOSTICS
 // ============================================================

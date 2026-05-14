@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeftRight, Briefcase, Target, Landmark,
   ArrowLeft, Copy, Loader2, AlertCircle, CheckCircle2,
-  Zap, Hourglass, Hammer, X,
+  Zap, Hourglass, Hammer, X, HelpCircle,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -13,11 +13,11 @@ import { settlement, rpc, agreements as agreementsApi, invoices, tradeStatus, re
 import { useIriumEvents } from '../lib/hooks';
 import NodeOfflineBanner from '../components/NodeOfflineBanner';
 import { SATS_PER_IRM, formatIRM, truncateHash } from '../lib/types';
-import type { OtcParams, FreelanceParams, MilestoneParams, DepositParams, AgreementResult, Agreement, SellerStatus, BuyerStatus, Invoice, SelfTradeCheckResult } from '../lib/types';
+import type { OtcParams, FreelanceParams, MilestoneParams, DepositParams, MerchantDelayedParams, ContractorMilestoneParams, AgreementResult, Agreement, SellerStatus, BuyerStatus, Invoice, SelfTradeCheckResult } from '../lib/types';
 
 // ── Template definitions ─────────────────────────────────────────
 
-type TemplateId = 'otc' | 'freelance' | 'milestone' | 'deposit';
+type TemplateId = 'otc' | 'freelance' | 'milestone' | 'deposit' | 'merchant_delayed' | 'contractor';
 
 interface TemplateConfig {
   id: TemplateId;
@@ -71,24 +71,25 @@ const TEMPLATES: TemplateConfig[] = [
     iconColor: 'text-amber-400',
     borderColor: 'border-amber-500/40',
   },
-];
-
-// Templates that exist on-chain (irium-source/src/settlement.rs:24-33
-// `MerchantDelayedSettlement` and `ContractorMilestone`) but do not have
-// Tauri IPC bindings yet. Rendered as disabled cards in the grid so users
-// can see they exist; backend wiring is a follow-up.
-const COMING_SOON: { id: string; name: string; desc: string; Icon: React.ElementType }[] = [
   {
     id: 'merchant_delayed',
     name: 'Merchant Delayed',
-    desc: 'Merchant sale with built-in cool-down window before payment settles',
+    desc: 'Merchant sale with a built-in cool-down window. Funds are held in escrow and the merchant can claim only after the dispute window closes.',
     Icon: Hourglass,
+    glowBg: 'bg-orange-500',
+    iconBg: 'bg-orange-500/20',
+    iconColor: 'text-orange-400',
+    borderColor: 'border-orange-500/40',
   },
   {
     id: 'contractor',
     name: 'Contractor Milestones',
-    desc: 'Contractor work split across milestones with per-milestone attestor proof',
+    desc: 'Contractor work split into milestones. Each milestone has its own escrow and deliverable proof requirement. Funds release stage by stage.',
     Icon: Hammer,
+    glowBg: 'bg-teal-500',
+    iconBg: 'bg-teal-500/20',
+    iconColor: 'text-teal-400',
+    borderColor: 'border-teal-500/40',
   },
 ];
 
@@ -99,6 +100,7 @@ interface FormState {
   partyB: string;
   amountIrm: string;
   deadlineHours: string;
+  cooldownHours: string;
   scope: string;
   milestoneCount: string;
   memo: string;
@@ -111,6 +113,7 @@ const DEFAULT_FORM: FormState = {
   partyB: '',
   amountIrm: '',
   deadlineHours: '48',
+  cooldownHours: '72',
   scope: '',
   milestoneCount: '3',
   memo: '',
@@ -122,10 +125,12 @@ type View = 'hub' | 'grid' | 'wizard' | 'success';
 
 function getLabels(id: TemplateId): { partyA: string; partyB: string } {
   switch (id) {
-    case 'otc':       return { partyA: 'Buyer Address',      partyB: 'Seller Address'     };
-    case 'freelance': return { partyA: 'Client Address',     partyB: 'Contractor Address' };
-    case 'milestone': return { partyA: 'Payer Address',      partyB: 'Payee Address'      };
-    case 'deposit':   return { partyA: 'Depositor Address',  partyB: 'Recipient Address'  };
+    case 'otc':              return { partyA: 'Buyer Address',      partyB: 'Seller Address'     };
+    case 'freelance':        return { partyA: 'Client Address',     partyB: 'Contractor Address' };
+    case 'milestone':        return { partyA: 'Payer Address',      partyB: 'Payee Address'      };
+    case 'deposit':          return { partyA: 'Depositor Address',  partyB: 'Recipient Address'  };
+    case 'merchant_delayed': return { partyA: 'Buyer Address',      partyB: 'Merchant Address'   };
+    case 'contractor':       return { partyA: 'Client Address',     partyB: 'Contractor Address' };
   }
 }
 
@@ -135,7 +140,7 @@ function validateStep0(id: TemplateId, form: FormState): Record<string, string> 
   if (!form.partyB.trim()) errs.partyB = 'Address is required';
   const amt = parseFloat(form.amountIrm);
   if (!form.amountIrm.trim() || isNaN(amt) || amt <= 0) errs.amountIrm = 'Enter a positive amount';
-  if (id === 'milestone') {
+  if (id === 'milestone' || id === 'contractor') {
     const mc = parseInt(form.milestoneCount);
     if (isNaN(mc) || mc < 2 || mc > 20) errs.milestoneCount = 'Between 2 and 20';
   }
@@ -150,15 +155,20 @@ function getReviewRows(id: TemplateId, form: FormState): Array<{ label: string; 
     { label: labels.partyB, value: form.partyB || '—' },
     { label: 'Amount', value: form.amountIrm ? `${form.amountIrm} IRM (${amountSats.toLocaleString()} sats)` : '—', highlight: true },
   ];
-  if (id !== 'milestone') rows.push({ label: 'Deadline', value: `${form.deadlineHours}h` });
-  if (id === 'freelance' && form.scope) rows.push({ label: 'Scope', value: form.scope });
-  if (id === 'milestone') {
+  if (id !== 'milestone' && id !== 'contractor') rows.push({ label: 'Deadline', value: `${form.deadlineHours}h` });
+  if ((id === 'freelance' || id === 'contractor') && form.scope) rows.push({ label: 'Scope', value: form.scope });
+  if (id === 'milestone' || id === 'contractor') {
     rows.push({ label: 'Milestones', value: form.milestoneCount });
     const count = parseInt(form.milestoneCount) || 1;
     if (form.amountIrm) {
       const perMs = parseFloat(form.amountIrm) / count;
       rows.push({ label: 'Per Milestone', value: `${perMs.toFixed(4)} IRM` });
     }
+  }
+  if (id === 'merchant_delayed') {
+    rows.push({ label: 'Cool-down Window', value: `${form.cooldownHours}h` });
+    rows.push({ label: 'Total Escrow Window', value: `${form.deadlineHours}h` });
+    if (form.memo) rows.push({ label: 'Memo', value: form.memo });
   }
   if (id === 'otc' && form.memo) rows.push({ label: 'Memo', value: form.memo });
   if (id === 'otc' && form.assetReference) rows.push({ label: 'Asset Ref', value: form.assetReference });
@@ -231,15 +241,27 @@ function PreviewCard({
                   <span className="font-mono text-white/50">{feeRate} sat/b</span>
                 </div>
               )}
-              {id === 'milestone' && milestoneCount > 1 && (
+              {(id === 'milestone' || id === 'contractor') && milestoneCount > 1 && (
                 <div className="flex justify-between text-xs">
                   <span className="text-white/40">Per milestone</span>
                   <span className="font-mono text-white/50">{formatIRM(Math.floor(amtSats / milestoneCount))}</span>
                 </div>
               )}
-              {form.deadlineHours && id !== 'milestone' && (
+              {form.deadlineHours && id !== 'milestone' && id !== 'contractor' && id !== 'merchant_delayed' && (
                 <div className="flex justify-between text-xs">
                   <span className="text-white/40">Deadline</span>
+                  <span className="font-mono text-white/50">{form.deadlineHours}h</span>
+                </div>
+              )}
+              {id === 'merchant_delayed' && form.cooldownHours && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-white/40">Cool-down</span>
+                  <span className="font-mono text-white/50">{form.cooldownHours}h</span>
+                </div>
+              )}
+              {id === 'merchant_delayed' && form.deadlineHours && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-white/40">Total window</span>
                   <span className="font-mono text-white/50">{form.deadlineHours}h</span>
                 </div>
               )}
@@ -520,6 +542,23 @@ export default function SettlementPage() {
         amount_sats: amountSats,
         deadline_hours: parseInt(form.deadlineHours) || 48,
       };
+    } else if (selectedTemplate === 'merchant_delayed') {
+      params = {
+        buyer: form.partyA,
+        merchant: form.partyB,
+        amount_sats: amountSats,
+        cooldown_hours: parseInt(form.cooldownHours) || 72,
+        deadline_hours: parseInt(form.deadlineHours) || 336,
+        memo: form.memo || undefined,
+      };
+    } else if (selectedTemplate === 'contractor') {
+      params = {
+        client: form.partyA,
+        contractor: form.partyB,
+        amount_sats: amountSats,
+        milestone_count: parseInt(form.milestoneCount) || 3,
+        scope: form.scope || undefined,
+      };
     }
     return JSON.stringify({ template: selectedTemplate, params }, null, 2);
   }, [selectedTemplate, form]);
@@ -685,7 +724,7 @@ export default function SettlementPage() {
           milestone_count: parseInt(form.milestoneCount) || 3,
         };
         res = await settlement.milestone(params);
-      } else {
+      } else if (selectedTemplate === 'deposit') {
         const params: DepositParams = {
           depositor: form.partyA,
           recipient: form.partyB,
@@ -693,6 +732,25 @@ export default function SettlementPage() {
           deadline_hours: parseInt(form.deadlineHours) || 48,
         };
         res = await settlement.deposit(params);
+      } else if (selectedTemplate === 'merchant_delayed') {
+        const params: MerchantDelayedParams = {
+          buyer: form.partyA,
+          merchant: form.partyB,
+          amount_sats: amountSats,
+          cooldown_hours: parseInt(form.cooldownHours) || 72,
+          deadline_hours: parseInt(form.deadlineHours) || 336,
+          memo: form.memo || undefined,
+        };
+        res = await settlement.merchantDelayed(params);
+      } else {
+        const params: ContractorMilestoneParams = {
+          client: form.partyA,
+          contractor: form.partyB,
+          amount_sats: amountSats,
+          milestone_count: parseInt(form.milestoneCount) || 3,
+          scope: form.scope || undefined,
+        };
+        res = await settlement.contractor(params);
       }
       setResult(res);
       setView('success');
@@ -742,11 +800,20 @@ export default function SettlementPage() {
         <NodeOfflineBanner />
       </div>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="page-title">Settlement Hub</h1>
-        <p className="page-subtitle">
-          Trustless on-chain settlements using Irium's proof-based escrow system
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="page-title">Settlement Hub</h1>
+          <p className="page-subtitle">
+            Trustless on-chain settlements using Irium's proof-based escrow system
+          </p>
+        </div>
+        <button
+          onClick={() => navigate('/help#settlement')}
+          className="btn-ghost p-2 text-white/40 hover:text-white/80 flex-shrink-0 mt-1"
+          title="Settlement help"
+        >
+          <HelpCircle size={18} />
+        </button>
       </div>
 
       <AnimatePresence mode="wait">
@@ -949,32 +1016,6 @@ export default function SettlementPage() {
                   </div>
                 </motion.div>
               ))}
-              {/* Coming-soon cards — surface the on-chain templates that
-                  exist in irium-source but have no Tauri IPC binding yet. */}
-              {COMING_SOON.map((template) => (
-                <motion.div
-                  key={template.id}
-                  initial={{ opacity: 0, y: 24 }}
-                  animate={{ opacity: 0.55, y: 0, transition: { duration: 0.35, ease: 'easeOut' } }}
-                  onClick={() => toast('This template exists on-chain but is not yet wired to the desktop UI. Coming soon.', { icon: '⏳' })}
-                  className="card p-7 cursor-not-allowed flex flex-col items-center text-center gap-4 relative overflow-hidden"
-                  title="Coming soon — backend wiring pending"
-                >
-                  <div
-                    className="absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-display font-bold"
-                    style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(238,240,255,0.55)' }}
-                  >
-                    Coming Soon
-                  </div>
-                  <div className="relative z-10 p-5 rounded-2xl bg-white/5">
-                    <template.Icon size={32} className="text-white/40" />
-                  </div>
-                  <div className="relative z-10">
-                    <div className="font-display font-bold text-xl text-white/60">{template.name}</div>
-                    <div className="text-white/40 text-sm mt-1.5">{template.desc}</div>
-                  </div>
-                </motion.div>
-              ))}
             </div>
           </motion.div>
         )}
@@ -1113,7 +1154,7 @@ export default function SettlementPage() {
                     </ShakeField>
 
                     {/* Deadline */}
-                    {selectedTemplate !== 'milestone' && (
+                    {selectedTemplate !== 'milestone' && selectedTemplate !== 'contractor' && selectedTemplate !== 'merchant_delayed' && (
                       <div>
                         <label className="label">Deadline (hours)</label>
                         <input
@@ -1126,8 +1167,49 @@ export default function SettlementPage() {
                       </div>
                     )}
 
-                    {/* Scope — freelance */}
-                    {selectedTemplate === 'freelance' && (
+                    {/* Merchant Delayed — cool-down and total escrow windows */}
+                    {selectedTemplate === 'merchant_delayed' && (
+                      <>
+                        <div>
+                          <label className="label">Cool-down Window (hours)</label>
+                          <input
+                            className="input"
+                            type="number"
+                            min="1"
+                            value={form.cooldownHours}
+                            onChange={setField('cooldownHours')}
+                          />
+                          <p className="text-xs text-white/30 mt-1">
+                            How long the buyer has to dispute before the merchant can claim.
+                          </p>
+                        </div>
+                        <div>
+                          <label className="label">Total Escrow Window (hours)</label>
+                          <input
+                            className="input"
+                            type="number"
+                            min="1"
+                            value={form.deadlineHours}
+                            onChange={setField('deadlineHours')}
+                          />
+                          <p className="text-xs text-white/30 mt-1">
+                            Outer limit — funds return to buyer if unclaimed by this deadline.
+                          </p>
+                        </div>
+                        <div>
+                          <label className="label">Memo (optional)</label>
+                          <input
+                            className="input"
+                            placeholder="Order description..."
+                            value={form.memo}
+                            onChange={setField('memo')}
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {/* Scope — freelance and contractor */}
+                    {(selectedTemplate === 'freelance' || selectedTemplate === 'contractor') && (
                       <div>
                         <label className="label">Work Scope (optional)</label>
                         <textarea
@@ -1139,8 +1221,8 @@ export default function SettlementPage() {
                       </div>
                     )}
 
-                    {/* Milestone count */}
-                    {selectedTemplate === 'milestone' && (
+                    {/* Milestone count — milestone and contractor */}
+                    {(selectedTemplate === 'milestone' || selectedTemplate === 'contractor') && (
                       <ShakeField error={errors.milestoneCount}>
                         <label className="label">Number of Milestones</label>
                         <input
