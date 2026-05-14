@@ -982,6 +982,31 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
           </div>
         </div>
 
+        {/* TCP pre-check results — show immediately once available */}
+        {seedResults !== null && (
+          <div className="flex items-start justify-between text-sm">
+            <span style={{ color: 'rgba(238,240,255,0.45)' }}>TCP pre-check</span>
+            <div className="flex flex-col items-end gap-0.5">
+              {seedResults.map((r) => (
+                <span key={r.addr} className="flex items-center gap-1.5 text-xs font-mono">
+                  {r.reachable
+                    ? <CheckCircle2 size={10} style={{ color: '#34d399' }} />
+                    : <XCircle size={10} style={{ color: '#f87171' }} />}
+                  <span style={{ color: r.reachable ? 'rgba(238,240,255,0.55)' : 'rgba(238,240,255,0.35)' }}>
+                    {r.addr}
+                  </span>
+                  {r.reachable && r.latency_ms !== undefined && (
+                    <span style={{ color: '#34d399' }}>{r.latency_ms}ms</span>
+                  )}
+                  {!r.reachable && (
+                    <span style={{ color: '#f87171' }}>unreachable</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Tip hash */}
         {status?.tip && (
           <div className="flex items-center justify-between text-xs" style={{ color: 'rgba(238,240,255,0.30)' }}>
@@ -1776,22 +1801,31 @@ function StepBackupSecure({
   // request resolves (would otherwise warn about setState on unmounted).
   const [wif, setWif]               = useState<string>('');
   const [wifLoading, setWifLoading] = useState<boolean>(true);
+  const [wifError, setWifError]     = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     setWifLoading(true);
-    wallet.readWif(walletData.address, walletData.wallet_path)
-      .then((value) => { if (!cancelled) setWif(value ?? ''); })
-      .catch(() => { if (!cancelled) setWif(''); })
+    setWifError(null);
+    const path = walletData.wallet_path || undefined;
+    wallet.readWif(walletData.address, path)
+      .then((value) => { if (!cancelled) { setWif(value ?? ''); setWifError(null); } })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setWif('');
+          setWifError(String(err));
+          console.error('[readWif] failed:', err, { address: walletData.address, wallet_path: walletData.wallet_path });
+        }
+      })
       .finally(() => { if (!cancelled) setWifLoading(false); });
     return () => { cancelled = true; };
-  }, [walletData.address]);
+  }, [walletData.address, walletData.wallet_path]);
 
   const getValue = (key: BackupField['key']): string => {
     switch (key) {
       case 'address':  return walletData.address;
       case 'wif':      return wifLoading
                          ? 'Loading…'
-                         : (wif || '(failed to read WIF — open Security panel after launch)');
+                         : (wif || `(WIF read failed — use Security panel after launch${wifError ? `: ${wifError}` : ''})`);
       case 'mnemonic': return walletData.mnemonic;
     }
   };

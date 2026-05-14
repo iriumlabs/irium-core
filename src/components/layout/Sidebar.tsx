@@ -193,40 +193,6 @@ const Sidebar = memo(function Sidebar() {
           )}
         </NavLink>
 
-        {/* Help & About */}
-        <NavLink
-          to="/about"
-          className={({ isActive }) =>
-            clsx(
-              'flex items-center h-10 mx-2 px-3.5 rounded-xl overflow-hidden transition-all duration-150',
-              isActive
-                ? 'text-white'
-                : 'text-[rgba(238,240,255,0.40)] hover:text-[rgba(238,240,255,0.90)] hover:bg-[rgba(110,198,255,0.05)]',
-            )
-          }
-          style={({ isActive }) => ({
-            background: isActive ? ACTIVE_BG : undefined,
-            borderLeft: isActive ? '2px solid #6ec6ff' : '2px solid transparent',
-          })}
-        >
-          {({ isActive }) => (
-            <>
-              <HelpCircle size={17} style={{ flexShrink: 0, minWidth: 17, color: isActive ? '#6ec6ff' : undefined }} />
-              <span
-                className="text-sm font-display font-medium whitespace-nowrap ml-3"
-                style={{
-                  opacity: expanded ? 1 : 0,
-                  transform: expanded ? 'translateX(0)' : 'translateX(-8px)',
-                  transition: 'opacity 180ms ease, transform 180ms ease',
-                  transitionDelay: expanded ? '70ms' : '0ms',
-                  pointerEvents: 'none',
-                }}
-              >
-                Help &amp; About
-              </span>
-            </>
-          )}
-        </NavLink>
       </div>
     </aside>
   );

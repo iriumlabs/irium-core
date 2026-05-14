@@ -23,7 +23,6 @@ const Explorer     = lazy(() => import('./pages/Explorer'));
 const SellerWizard = lazy(() => import('./pages/SellerWizard'));
 const BuyerWizard  = lazy(() => import('./pages/BuyerWizard'));
 const Logs         = lazy(() => import('./pages/Logs'));
-const About        = lazy(() => import('./pages/About'));
 const Help         = lazy(() => import('./pages/Help'));
 import Onboarding, { ONBOARDING_KEY, FORCE_ONBOARDING_KEY, Splash } from './pages/Onboarding';
 import { useNodePoller, startAggressivePoll } from './hooks/useNodePoller';
@@ -251,7 +250,7 @@ function AppLayout() {
                     <Route path="/logs"        element={<Logs />}        />
                     <Route path="/settlement/seller-wizard" element={<SellerWizard />} />
                     <Route path="/settlement/buyer-wizard"  element={<BuyerWizard />}  />
-                    <Route path="/about"       element={<About />}        />
+                    <Route path="/about"       element={<Navigate to="/help#about" replace />} />
                     <Route path="/help"        element={<Help />}         />
                   </Routes>
                 </Suspense>
