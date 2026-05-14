@@ -109,9 +109,7 @@
         "nsis": {
           "installerIcon": "icons/icon.ico",
           "headerImage": "icons/nsis-header.bmp",
-          "sidebarImage": "icons/nsis-sidebar.bmp",
-          "installerFilename": "IriumCore-{{version}}-Setup",
-          "startMenuFolder": "Irium"
+          "sidebarImage": "icons/nsis-sidebar.bmp"
         }
       },
       "macOS": {
