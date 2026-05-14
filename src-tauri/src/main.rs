@@ -618,6 +618,58 @@ fn trim_peers_json() {
     }
 }
 
+/// Reset the reputation score for official seeds when they have been temp-banned.
+/// iriumd's reputation manager bans peers whose score drops below 20. On a
+/// congested network the seeds often close connections early (inbound queue full),
+/// recording failures that drive our score for them below the ban threshold.
+/// After the ban, iriumd skips them entirely — even after the seed is less busy.
+/// We reset only the seed entries that are below the ban threshold so iriumd
+/// can reconnect on the next start without losing reputation for other peers.
+fn reset_seed_reputation() {
+    const BAN_THRESHOLD: i64 = 20;
+    const VPS_IPS: [&str; 2] = ["207.244.247.86", "157.173.116.134"];
+
+    let home_dir = match dirs::home_dir() {
+        Some(d) => d,
+        None => return,
+    };
+    let rep_path = home_dir.join(".irium").join("state").join("peer_reputation.json");
+    let raw = match std::fs::read_to_string(&rep_path) {
+        Ok(s) => s,
+        Err(_) => return,
+    };
+    let mut value: serde_json::Value = match serde_json::from_str(&raw) {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+    let map = match value.as_object_mut() {
+        Some(m) => m,
+        None => return,
+    };
+    let mut reset_count = 0usize;
+    for (key, entry) in map.iter_mut() {
+        let is_seed = VPS_IPS.iter().any(|ip| key.starts_with(ip));
+        if !is_seed { continue; }
+        let score = entry.get("score").and_then(|v| v.as_i64()).unwrap_or(100);
+        if score < BAN_THRESHOLD {
+            if let Some(obj) = entry.as_object_mut() {
+                obj.insert("score".to_string(), serde_json::Value::from(100));
+                obj.insert("failed_connections".to_string(), serde_json::Value::from(0));
+            }
+            reset_count += 1;
+        }
+    }
+    if reset_count == 0 { return; }
+    let body = match serde_json::to_string_pretty(&value) {
+        Ok(s) => s,
+        Err(_) => return,
+    };
+    match std::fs::write(&rep_path, body.as_bytes()) {
+        Ok(_) => tracing::info!("[reset_seed_reputation] cleared ban on {} seed(s) in peer_reputation.json", reset_count),
+        Err(e) => tracing::warn!("[reset_seed_reputation] failed to write peer_reputation.json: {}", e),
+    }
+}
+
 // ============================================================
 // UPnP — decentralized NAT traversal using tokio + reqwest.
 // Opens TCP port 38291 on the router so other NAT-behind nodes
@@ -851,6 +903,7 @@ async fn start_node(
     // peers/5s pushes initial peer connect time into the minutes range.
     trim_seedlist_extra();
     trim_peers_json();
+    reset_seed_reputation();
 
     let mut args = vec!["--http-rpc".to_string()];
     if let Some(dir) = &data_dir {
@@ -927,20 +980,21 @@ async fn start_node(
         *state.upnp_external_ip.lock().map_err(lock_err)? = None;
     }
 
-    // Dialable IP: only set when port 38291 is CONFIRMED open externally.
-    // Priority: explicit user override (user asserts port is forwarded) >
-    // UPnP success (router confirmed AddPortMapping). We intentionally do NOT
-    // fall through to an HTTP probe here — knowing our public IP is not enough.
-    // If port 38291 is not reachable from outside, the seed's sybil challenge
-    // includes a reachability probe (connect-back to announced IP:port) that
-    // fails, causing success=0 on every outbound attempt. The CLI never sets
-    // IRIUM_NODE_PUBLIC_IP and connects to peers in 10-15 s; this was the
-    // root cause of the GUI never connecting.
+    // Dialable IP: only set when the user has EXPLICITLY confirmed the port
+    // is open (via the external-IP override in Settings). UPnP can map the
+    // router port, but we have no way to verify the mapped port is actually
+    // reachable from the internet (ISP firewall, double-NAT, etc.). If we
+    // announce an unreachable IP, the seed's sybil challenge issues a
+    // reachability probe (connect-back to IP:38291) that fails silently,
+    // giving success=0 on every outbound handshake — the node never connects.
+    // The CLI never sets IRIUM_NODE_PUBLIC_IP and connects in 10-15 s.
+    // UPnP port mapping is still performed above (other nodes may reach us
+    // via gossip without us announcing), but we do NOT use it to set dialable_ip.
     let dialable_ip: Option<String> = if let Some(ref ip) = external_ip {
         let t = ip.trim();
         if !t.is_empty() { Some(t.to_string()) } else { None }
     } else {
-        upnp_ip.clone() // Some only when UPnP succeeded
+        None // Never announce from UPnP — reachability unverified
     };
 
     // Detected IP: used only for self-dial prevention (own_ip filter below).
@@ -976,6 +1030,9 @@ async fn start_node(
     node_env.insert("IRIUM_SEED_DIAL_BASE_SECS".to_string(), "1".to_string());
     node_env.insert("IRIUM_SEED_DIAL_MAX_SECS".to_string(), "60".to_string());
     node_env.insert("IRIUM_SEED_DIAL_BANNED_SECS".to_string(), "30".to_string());
+    // Seeds on a small network are often saturated; give them 300 s to send the sybil challenge
+    // (default 120 s times out before the overloaded seed responds).
+    node_env.insert("IRIUM_P2P_SYBIL_CHALLENGE_TIMEOUT_SECS".to_string(), "300".to_string());
 
     // Temp-ban window: 30 s instead of the default 120 s so transient failures
     // don't lock out the only available peers for long on a small network.
