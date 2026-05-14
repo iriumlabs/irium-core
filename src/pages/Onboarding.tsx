@@ -826,7 +826,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
   const synced  = status?.synced  ?? false;
   const running = status?.running ?? false;
 
-  // 1 Hz re-render while we're still at zero peers — needed so the 30-second
+  // 1 Hz re-render while we're still at zero peers — needed so the 25-second
   // "no peers" warning surfaces without waiting on the 2.5 s RPC poll. Stops
   // ticking the moment peers > 0 so we don't burn cycles forever.
   useEffect(() => {
@@ -840,7 +840,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
     ? Math.floor((Date.now() - startedAtRef.current) / 1000)
     : 0;
   const allSeedsUnreachable = seedResults !== null && seedResults.every((r) => !r.reachable);
-  const showNoPeersWarning = nodeStarted && peers === 0 && secondsSinceStart >= 15 && !allSeedsUnreachable;
+  const showNoPeersWarning = nodeStarted && peers === 0 && secondsSinceStart >= 25 && !allSeedsUnreachable;
 
   const handleRetry = async () => {
     setRetrying(true);
@@ -849,7 +849,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
     try {
       await node.stop().catch(() => {});            // tolerate "not running"
       await new Promise((r) => setTimeout(r, 600)); // let the OS release ports
-      startedAtRef.current = null;                  // reset the 15-s timer
+      startedAtRef.current = null;                  // reset the 25-s timer
       seedsInjectedRef.current = false;              // allow re-inject on next successful poll
       setNodeStarted(false);
       try {
@@ -1083,9 +1083,9 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
             <div className="flex items-start gap-2">
               <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" style={{ color: '#fbbf24' }} />
               <div className="text-xs leading-relaxed flex-1">
-                <p className="font-semibold mb-1" style={{ color: '#fbbf24' }}>No peers found</p>
+                <p className="font-semibold mb-1" style={{ color: '#fbbf24' }}>Still connecting to peers…</p>
                 <p style={{ color: 'rgba(238,240,255,0.60)' }}>
-                  Check your internet connection or firewall. Port <span className="font-mono">38291</span> must be reachable outbound.
+                  Both bootstrap seeds are reachable. The node is establishing P2P connections — this usually completes within 30 seconds.
                 </p>
                 <p className="mt-2.5" style={{ color: 'rgba(238,240,255,0.40)' }}>
                   The node tries to reach these official bootstrap seeds:
