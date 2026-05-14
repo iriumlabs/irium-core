@@ -2373,13 +2373,10 @@ async fn wallet_read_wif(
     };
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
 
-    let tmp = std::env::temp_dir().join(format!(
-        "irium_wif_{}.txt",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis()
-    ));
+    // Use the staging dir (under ~/.irium/staging/) instead of system temp.
+    // The sidecar has guaranteed write access there; system temp is unreliable
+    // in the Tauri sidecar context on some platforms.
+    let tmp = next_staged_path("wif", "txt", &data_dir)?;
 
     run_wallet_cmd(
         vec!["export-wif".to_string(), address, "--out".to_string(), tmp.to_string_lossy().to_string()],
