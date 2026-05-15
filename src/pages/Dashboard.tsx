@@ -591,6 +591,26 @@ export default function Dashboard() {
     }
   };
 
+  const handleRestartNode = async () => {
+    setOperation('starting');
+    try {
+      await node.stop();
+      await new Promise((r) => setTimeout(r, 1000));
+      const result = await node.start(undefined, externalIp);
+      if (result.success) {
+        setNodeStarting(true);
+        addNotification({ type: 'info', title: 'Node restarting…', message: result.message });
+        startAggressivePoll(15_000);
+      } else {
+        toast.error(result.message);
+        setOperation(null);
+      }
+    } catch (e) {
+      toast.error(String(e));
+      setOperation(null);
+    }
+  };
+
   const chartData = recentTx.slice().reverse().map((tx, i) => ({
     i,
     label: tx.timestamp ? timeAgo(tx.timestamp) : String(i),
@@ -815,6 +835,89 @@ export default function Dashboard() {
                 >
                   <RefreshCw size={12} className={operation === 'clearing' ? 'animate-spin' : ''} /> Clear &amp; Restart
                 </button>
+              </div>
+            </motion.div>
+          ) : heightLastChanged !== null && (Date.now() - heightLastChanged) > 5 * 60 * 1000 ? (
+            /* ── Has peers but no new blocks in 5+ min ────────── */
+            <motion.div
+              key="stuck-height-banner"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div
+                className="relative flex items-center gap-3 rounded-xl px-5 py-4 overflow-hidden"
+                style={{
+                  background: 'rgba(8,11,22,0.94)',
+                  border: '1px solid rgba(245,158,11,0.45)',
+                  boxShadow: '0 8px 28px rgba(0,0,0,0.45), 0 0 24px rgba(245,158,11,0.16)',
+                }}
+              >
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{ background: 'radial-gradient(ellipse 60% 100% at 0% 0%, rgba(245,158,11,0.16) 0%, transparent 70%)' }}
+                />
+                <div className="relative flex items-center gap-3 flex-1">
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.40)' }}
+                  >
+                    <span className="dot-syncing" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-display font-bold" style={{ color: '#fbbf24' }}>
+                      Block height hasn't increased in {Math.floor((Date.now() - heightLastChanged!) / 60000)}m
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: 'rgba(238,240,255,0.55)' }}>
+                      If your node appears stuck, try restarting or clearing the chain state.
+                    </p>
+                  </div>
+                </div>
+                <div className="relative flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={handleRestartNode}
+                    disabled={!!operation}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-display font-semibold transition-all active:scale-[0.97] disabled:opacity-50"
+                    style={{
+                      background: 'rgba(245,158,11,0.16)',
+                      border: '1px solid rgba(245,158,11,0.55)',
+                      color: '#fff',
+                      boxShadow: '0 0 16px rgba(245,158,11,0.18)',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (operation) return;
+                      e.currentTarget.style.background  = 'rgba(245,158,11,0.24)';
+                      e.currentTarget.style.borderColor = 'rgba(245,158,11,0.75)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background  = 'rgba(245,158,11,0.16)';
+                      e.currentTarget.style.borderColor = 'rgba(245,158,11,0.55)';
+                    }}
+                  >
+                    <RefreshCw size={12} className={operation ? 'animate-spin' : ''} /> Restart Node
+                  </button>
+                  <button
+                    onClick={() => navigate('/settings')}
+                    className="inline-flex items-center px-4 py-2 rounded-xl text-xs font-display font-semibold transition-all active:scale-[0.97]"
+                    style={{
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.14)',
+                      color: 'rgba(238,240,255,0.75)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background  = 'rgba(255,255,255,0.09)';
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background  = 'rgba(255,255,255,0.05)';
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)';
+                    }}
+                  >
+                    Clear Chain State
+                  </button>
+                </div>
               </div>
             </motion.div>
           ) : null}
