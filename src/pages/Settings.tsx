@@ -135,7 +135,7 @@ function Toggle({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Settings() {
-  const { settings, updateSettings, setUpdateInfo, errorLog, clearErrorLog } = useStore();
+  const { settings, updateSettings, setUpdateInfo, dismissUpdateBanner, errorLog, clearErrorLog } = useStore();
   // Banner-ready update info — populated by the silent startup check in
   // App.tsx and refreshed when this Settings page mounts (covers users who
   // leave the app running for days without a restart).
@@ -341,6 +341,7 @@ export default function Settings() {
         setInstallState('error');
       } else if (status === 'DONE') {
         setInstallState('installed');
+        dismissUpdateBanner();
       }
     });
     // Listen to byte-level download progress so we can show a real %.

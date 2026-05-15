@@ -185,7 +185,7 @@ function AppLayout() {
   useEffect(() => {
     // Silent startup check
     update.check().then((info) => {
-      if (info?.available) setUpdateInfo(info);
+      if (info) setUpdateInfo(info);
     }).catch(() => {});
 
     // Listen for the Rust-emitted event (startup check runs before the window)
