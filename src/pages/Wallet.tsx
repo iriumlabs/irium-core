@@ -1881,10 +1881,12 @@ function SendModal({
 }) {
   const [sendTo, setSendTo] = useState("");
   const [sendAmountIrm, setSendAmountIrm] = useState("");
-  const [sendStep, setSendStep] = useState<"form" | "confirm">("form");
+  const [sendStep, setSendStep] = useState<"form" | "confirm" | "success">("form");
   const [sendLoading, setSendLoading] = useState(false);
   const [addrError, setAddrError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [sentTxid, setSentTxid] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const parsedIrm = parseFloat(sendAmountIrm);
   const amountSats = !isNaN(parsedIrm) && parsedIrm > 0 ? Math.round(parsedIrm * SATS_PER_IRM) : 0;
@@ -1900,10 +1902,10 @@ function SendModal({
   };
 
   useEffect(() => {
-    const handler = () => onClose();
+    const handler = () => sendStep === "success" ? onSuccess() : onClose();
     window.addEventListener('irium:close-modal', handler);
     return () => window.removeEventListener('irium:close-modal', handler);
-  }, [onClose]);
+  }, [onClose, onSuccess, sendStep]);
 
   const handleConfirmSend = async () => {
     if (!sendTo || !sendAmountIrm) return;
@@ -1911,17 +1913,24 @@ function SendModal({
     setSendError(null);
     try {
       const result: SendResult = await wallet.send(sendTo, amountSats);
-      toast.success("Transaction sent · " + result.txid.slice(0, 12));
-      onSuccess();
+      setSentTxid(result.txid);
+      setSendStep("success");
+      setSendLoading(false);
     } catch (e) {
       const raw = String(e).toLowerCase();
       let msg: string;
       if (raw.includes('insufficient funds') || raw.includes('insufficient balance') || raw.includes('not enough')) {
-        msg = `You do not have enough IRM to complete this transaction. Check your balance and try a smaller amount.`;
+        msg = 'You do not have enough IRM to complete this transaction. Check your balance and try a smaller amount.';
       } else if (raw.includes('no spendable') || raw.includes('no utxo') || raw.includes('no outputs') || raw.includes('unspent')) {
-        msg = `Your funds are not yet confirmed. Wait for at least 1 confirmation before sending.`;
+        msg = 'Your funds are not yet confirmed. Wait for at least 1 confirmation before sending.';
+      } else if (raw.includes('double spend') || raw.includes('already spent') || raw.includes('txn-mempool-conflict')) {
+        msg = 'This transaction conflicts with another pending transaction. Please wait and try again.';
       } else {
-        msg = String(e);
+        // Strip raw hex blobs and reject any messages containing mining vocabulary
+        const stripped = String(e).replace(/\b[0-9a-fA-F]{16,}\b/g, '').trim();
+        msg = /\b(share|nonce|difficulty|hashrate|proof.of.work|submitted)\b/i.test(String(e)) || stripped.length > 200
+          ? 'Transaction could not be broadcast. Please check that the node is online and try again.'
+          : stripped || 'Transaction failed. Please try again.';
       }
       setSendError(msg);
       setSendLoading(false);
@@ -1930,7 +1939,7 @@ function SendModal({
 
   return (
     <>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-40" onClick={onClose} />
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 z-40" onClick={sendStep === "success" ? onSuccess : onClose} />
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 16 }}
@@ -1941,7 +1950,7 @@ function SendModal({
         >
           <div className="flex items-center justify-between mb-1">
             <h2 className="font-display font-bold text-lg text-white">Send IRM</h2>
-            <button onClick={onClose} className="btn-ghost text-white/40 p-1"><X size={16} /></button>
+            <button onClick={sendStep === "success" ? onSuccess : onClose} className="btn-ghost text-white/40 p-1"><X size={16} /></button>
           </div>
 
           {/* Available balance */}
@@ -2000,7 +2009,7 @@ function SendModal({
                   </button>
                 </div>
               </motion.div>
-            ) : (
+            ) : sendStep === "confirm" ? (
               <motion.div key="confirm" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-4">
                 <div className="card p-4 space-y-3">
                   <div className="text-white/50 text-sm font-display">
@@ -2048,6 +2057,46 @@ function SendModal({
                   >
                     {sendLoading ? <Loader2 size={14} className="animate-spin" /> : null}
                     Confirm Send
+                  </button>
+                </div>
+              </motion.div>
+            ) : (
+              /* ── Success step ──────────────────────────────────────────── */
+              <motion.div key="success" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }} className="space-y-5">
+                <div className="flex flex-col items-center gap-3 pt-2 pb-1">
+                  <div className="w-14 h-14 rounded-full bg-emerald-500/15 flex items-center justify-center">
+                    <Check size={26} className="text-emerald-400" />
+                  </div>
+                  <div className="text-center space-y-1">
+                    <div className="font-display font-bold text-white text-lg">Transaction Sent</div>
+                    <div className="text-white/40 text-xs">Your transaction will appear in the next block</div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="label mb-1.5">Transaction ID</div>
+                  <div className="card p-3 flex items-start gap-2.5">
+                    <span className="font-mono text-xs text-white/70 break-all flex-1 select-all leading-relaxed">{sentTxid}</span>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(sentTxid ?? ''); toast.success('Transaction ID copied'); }}
+                      className="shrink-0 p-1 text-white/35 hover:text-white/70 transition-colors"
+                      title="Copy transaction ID"
+                    >
+                      <Copy size={13} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-1">
+                  <button
+                    onClick={() => { navigate('/explorer', { state: { searchTab: 'tx', searchQ: sentTxid } }); onSuccess(); }}
+                    className="btn-secondary flex-1 justify-center gap-1.5"
+                  >
+                    <ArrowUpRight size={14} />
+                    View in Explorer
+                  </button>
+                  <button onClick={onSuccess} className="btn-primary flex-1 justify-center">
+                    Done
                   </button>
                 </div>
               </motion.div>
