@@ -101,7 +101,9 @@ jobs:
             libgtk-3-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev \
-            libssl-dev
+            libssl-dev \
+            ocl-icd-opencl-dev \
+            opencl-headers
 
       # Cache both the GUI crate and the irium node crate independently so
       # incremental compilation works across runs.
