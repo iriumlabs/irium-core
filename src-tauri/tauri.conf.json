@@ -80,7 +80,7 @@
     },
     "bundle": {
       "active": true,
-      "targets": "all",
+      "targets": ["nsis", "deb", "appimage", "rpm", "dmg", "app"],
       "identifier": "com.iriumlabs.core",
       "publisher": "Irium Labs",
       "category": "Finance",

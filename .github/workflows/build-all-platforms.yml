@@ -154,7 +154,7 @@ jobs:
 
             ## Installers
 
-            - Windows: NSIS .exe and .msi (x64)
+            - Windows: NSIS .exe (x64)
             - macOS: .dmg (Intel and Apple Silicon)
             - Linux: .deb and .AppImage (x64)
           releaseDraft: false
