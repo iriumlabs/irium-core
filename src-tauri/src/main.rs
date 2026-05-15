@@ -112,26 +112,34 @@ fn parse_hashrate_khs(line: &str) -> Option<f64> {
         .zip(line.split_whitespace().skip(1))
         .find(|(_, unit)| {
             let u = unit.to_lowercase();
+            u.starts_with("gh/s") || u.starts_with("ghs") ||
+            u.starts_with("mh/s") || u.starts_with("mhs") ||
             u.starts_with("kh/s") || u.starts_with("khs") ||
             u.starts_with("h/s") || u.starts_with("hs")
         });
     if let Some((val_str, unit)) = re_pat {
         if let Ok(val) = val_str.trim_end_matches(',').parse::<f64>() {
             let u = unit.to_lowercase();
-            if u.starts_with("kh") {
+            if u.starts_with("gh") {
+                return Some(val * 1_000_000.0);
+            } else if u.starts_with("mh") {
+                return Some(val * 1_000.0);
+            } else if u.starts_with("kh") {
                 return Some(val);
             } else {
                 return Some(val / 1000.0);
             }
         }
     }
-    // Fallback: find any number adjacent to kH/s in the line
+    // Fallback: find any number adjacent to GH/s, MH/s, or kH/s in the line
     let lower = line.to_lowercase();
-    if let Some(pos) = lower.find("kh/s") {
-        let before = &line[..pos].trim_end();
-        if let Some(num_str) = before.split_whitespace().last() {
-            if let Ok(v) = num_str.trim_end_matches(',').parse::<f64>() {
-                return Some(v);
+    for (unit_str, multiplier) in &[("gh/s", 1_000_000.0_f64), ("mh/s", 1_000.0), ("kh/s", 1.0)] {
+        if let Some(pos) = lower.find(unit_str) {
+            let before = &line[..pos].trim_end();
+            if let Some(num_str) = before.split_whitespace().last() {
+                if let Ok(v) = num_str.trim_end_matches(',').parse::<f64>() {
+                    return Some(v * multiplier);
+                }
             }
         }
     }
@@ -6205,6 +6213,7 @@ fn main() {
                 for name in [
                     "iriumd-x86_64-pc-windows-msvc.exe",
                     "irium-miner-x86_64-pc-windows-msvc.exe",
+                    "irium-miner-gpu-x86_64-pc-windows-msvc.exe",
                     "irium-explorer-x86_64-pc-windows-msvc.exe",
                 ] {
                     let _ = std::process::Command::new("taskkill")

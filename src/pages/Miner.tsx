@@ -580,6 +580,7 @@ function GpuMinerTab() {
   const [showModal, setShowModal]           = useState(false);
   const [startLoading, setStartLoading]     = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
+  const [showOpenCLError, setShowOpenCLError] = useState(false);
   const [address, setAddress]               = useState('');
   const [selectedPlatformIdx, setSelectedPlatformIdx] = useState(0);
   const [selectedDeviceIdxs, setSelectedDeviceIdxs]   = useState<number[]>([]);
@@ -630,7 +631,10 @@ function GpuMinerTab() {
         : undefined;
       await gpuMiner.start(address.trim(), platformSel, selectedDeviceIdxs);
       toast.success('GPU miner started');
-    } catch (e) { toast.error(String(e)); }
+    } catch (e) {
+      const msg = String(e);
+      if (msg.includes('already running')) { toast.error(msg); } else { setShowOpenCLError(true); }
+    }
     finally { setStartLoading(false); }
   };
 
@@ -985,6 +989,58 @@ function GpuMinerTab() {
                 onClick={() => setShowModal(false)}
               >
                 Done
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* OpenCL driver error modal */}
+      <AnimatePresence>
+        {showOpenCLError && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(2,5,14,0.82)' }}
+            onClick={() => setShowOpenCLError(false)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+          >
+            <motion.div
+              className="card p-6 w-full max-w-md"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ scale: 0.95, opacity: 0, y: 8 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 8 }}
+              transition={{ duration: 0.18 }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-display font-bold text-base" style={{ color: 'var(--t1)' }}>
+                  No OpenCL-capable GPU detected
+                </h3>
+                <button
+                  onClick={() => setShowOpenCLError(false)}
+                  className="btn-ghost text-xs py-1 px-2"
+                  style={{ color: 'var(--t3)' }}
+                >
+                  ✕ Close
+                </button>
+              </div>
+              <div className="space-y-3">
+                <p className="text-sm" style={{ color: 'var(--t3)' }}>To fix this, install the OpenCL driver for your GPU:</p>
+                <ul className="space-y-2 text-sm" style={{ color: 'var(--t2)' }}>
+                  <li><strong>NVIDIA:</strong> Reinstall your GPU driver from nvidia.com</li>
+                  <li><strong>AMD:</strong> Install AMD Software Adrenalin from amd.com</li>
+                  <li><strong>Intel:</strong> Install Intel Graphics Driver from intel.com</li>
+                </ul>
+                <p className="text-xs pt-1" style={{ color: 'var(--t3)' }}>After installing, restart Irium Core.</p>
+              </div>
+              <button
+                className="btn-primary mt-5 w-full"
+                onClick={() => setShowOpenCLError(false)}
+              >
+                OK
               </button>
             </motion.div>
           </motion.div>
