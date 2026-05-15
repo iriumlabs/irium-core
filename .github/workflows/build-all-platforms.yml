@@ -105,12 +105,19 @@ jobs:
 
       # Cache both the GUI crate and the irium node crate independently so
       # incremental compilation works across runs.
+      # cache-bin: false — dtolnay/rust-toolchain installs cargo into
+      # ~/.cargo/bin BEFORE this step runs. Restoring a cached bin dir
+      # overwrites the freshly installed cargo shim with a stale one from
+      # a previous run, which on macos-15-arm64 resolves to rustup-init
+      # and fails with "unexpected argument 'build'". Excluding bin from
+      # the cache lets the toolchain action's install always win.
       - name: Cache Rust artifacts
         uses: swatinem/rust-cache@v2
         with:
           workspaces: |
             irium-source -> target
             src-tauri -> target
+          cache-bin: false
 
       - name: Install npm dependencies
         run: npm ci
