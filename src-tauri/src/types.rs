@@ -584,15 +584,19 @@ pub struct GpuMinerStatus {
 
 // A single block found by the CPU or GPU miner. Populated by the miner
 // spawn loops in main.rs as they parse the sidecar's stdout for
-// block-accept / block-mined events. Reward is left at 0 until we wire
-// the RPC fetch for the coinbase amount — current miner stdout doesn't
-// include it.
+// block-accept / block-mined events. The extra header fields (prev_hash,
+// merkle_root, bits, nonce) are filled in by fetch_block_details once
+// the iriumd RPC confirms the block.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FoundBlock {
     pub height: u64,
     pub hash: String,
     pub timestamp: u64,
     pub reward_sats: u64,
+    pub prev_hash: String,
+    pub merkle_root: String,
+    pub bits: String,
+    pub nonce: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

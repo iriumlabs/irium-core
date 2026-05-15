@@ -422,13 +422,18 @@ export interface GpuMinerStatus {
 
 // A block found by the CPU or GPU miner. Mirrors the Rust FoundBlock
 // struct in src-tauri/src/types.rs. Hash is "" when the miner sidecar
-// hasn't surfaced one yet (text-mode CPU output, for instance). Reward
-// is 0 until we wire the coinbase RPC lookup.
+// hasn't surfaced one yet (text-mode CPU output). Header fields (prev_hash,
+// merkle_root, bits, nonce) are "" / 0 until fetch_block_details fills them
+// from the iriumd RPC response.
 export interface FoundBlock {
   height: number;
   hash: string;
   timestamp: number;
   reward_sats: number;
+  prev_hash: string;
+  merkle_root: string;
+  bits: string;
+  nonce: number;
 }
 
 export interface StratumStatus {

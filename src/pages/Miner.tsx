@@ -126,7 +126,22 @@ function FoundBlocksList() {
             return (
               <div
                 key={`${b.height}-${i}`}
-                onClick={() => navigate('/explorer', { state: { openBlockHeight: b.height } })}
+                onClick={() => navigate('/explorer', {
+                  state: {
+                    openBlockHeight: b.height,
+                    openBlockData: {
+                      height:       b.height,
+                      hash:         b.hash,
+                      prev_hash:    b.prev_hash,
+                      merkle_root:  b.merkle_root,
+                      time:         b.timestamp,
+                      tx_count:     0,
+                      bits:         b.bits || undefined,
+                      nonce:        b.nonce || undefined,
+                      miner_address: undefined,
+                    },
+                  },
+                })}
                 className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs cursor-pointer hover:bg-white/5 transition-colors"
                 style={{ background: 'rgba(110,198,255,0.04)', border: '1px solid rgba(110,198,255,0.10)' }}
                 title="Open this block in the Explorer"

@@ -3642,6 +3642,9 @@ fn parse_block_found(line: &str) -> Option<(u64, Option<String>)> {
 // Record a block-found event into AppState. Capped at 100 entries (oldest
 // drained first) so a long mining session doesn't accumulate unbounded
 // memory in the shell. Hash falls back to "" when not yet known.
+// Dedup: if a block at the same height was already recorded (e.g. from
+// both stdout and stderr of the same miner process), the second call is
+// silently ignored.
 fn record_found_block(
     blocks_found: &Arc<Mutex<u64>>,
     found_blocks: &Arc<Mutex<Vec<FoundBlock>>>,
@@ -3657,26 +3660,46 @@ fn record_found_block(
         hash: hash.unwrap_or_default(),
         timestamp: ts,
         reward_sats: 0,
+        prev_hash: String::new(),
+        merkle_root: String::new(),
+        bits: String::new(),
+        nonce: 0,
     };
-    if let Ok(mut counter) = blocks_found.lock() {
-        *counter += 1;
-    }
     if let Ok(mut list) = found_blocks.lock() {
+        if list.iter().any(|b| b.height == height) {
+            return;
+        }
         list.push(entry);
         if list.len() > 100 {
             let excess = list.len() - 100;
             list.drain(0..excess);
         }
     }
+    if let Ok(mut counter) = blocks_found.lock() {
+        *counter += 1;
+    }
 }
 
-// Fetch the coinbase reward for a freshly-mined block from iriumd. The
-// real endpoint is /rpc/block?height=N (verified in rpc_get_block at
-// :3610). The response shape isn't documented; we try a handful of
-// likely top-level reward fields first, then fall back to summing the
-// first tx's outputs (the coinbase by convention). Returns None on any
-// failure — caller should leave reward_sats at 0 in that case.
-async fn fetch_block_reward(rpc_url: &str, height: u64) -> Option<u64> {
+// All block-header detail extracted from a single /rpc/block?height=N call.
+// Populated by fetch_block_details and written into the matching FoundBlock
+// by update_block_details.
+struct BlockDetails {
+    reward_sats: u64,
+    hash: String,
+    prev_hash: String,
+    merkle_root: String,
+    bits: String,
+    nonce: u64,
+}
+
+// Fetch block details for a freshly-mined block from iriumd. The endpoint
+// /rpc/block?height=N returns a nested structure: top-level fields are
+// height, miner_address, tx_hex; hash/prev_hash/merkle_root/time/bits/nonce
+// are nested inside a "header" sub-object (same layout as get_recent_blocks).
+// Returns None only if the HTTP request itself fails — partial data is always
+// returned in Some(BlockDetails) so the caller can update whatever fields
+// iriumd did supply.
+async fn fetch_block_details(rpc_url: &str, height: u64) -> Option<BlockDetails> {
     let client = reqwest::Client::new();
     let url = format!("{}/rpc/block?height={}", rpc_url.trim_end_matches('/'), height);
     let resp = client
@@ -3690,57 +3713,67 @@ async fn fetch_block_reward(rpc_url: &str, height: u64) -> Option<u64> {
     }
     let json: serde_json::Value = resp.json().await.ok()?;
 
+    // iriumd nests hash/prev_hash/merkle_root/bits/nonce inside "header".
+    let hdr = &json["header"];
+    let hash        = hdr["hash"].as_str().unwrap_or("").to_string();
+    let prev_hash   = hdr["prev_hash"].as_str().unwrap_or("").to_string();
+    let merkle_root = hdr["merkle_root"].as_str().unwrap_or("").to_string();
+    let bits = hdr["bits"].as_str()
+        .map(String::from)
+        .or_else(|| hdr["bits"].as_u64().map(|n| format!("{:#010x}", n)))
+        .unwrap_or_default();
+    let nonce = hdr["nonce"].as_u64().unwrap_or(0);
+
     // Direct reward fields — first match wins.
-    for field in &[
-        "reward",
-        "block_reward",
-        "subsidy",
-        "coinbase_reward",
-        "coinbase_value",
-        "miner_reward",
-    ] {
+    let mut reward_sats = 0u64;
+    for field in &["reward", "block_reward", "subsidy", "coinbase_reward", "coinbase_value", "miner_reward"] {
         if let Some(v) = json.get(field).and_then(|x| x.as_u64()) {
-            return Some(v);
+            reward_sats = v;
+            break;
+        }
+    }
+    // Fall back to summing the first tx's outputs (coinbase by convention).
+    if reward_sats == 0 {
+        if let Some(txs) = json.get("tx").or_else(|| json.get("txs")).or_else(|| json.get("transactions")) {
+            if let Some(coinbase) = txs.as_array().and_then(|a| a.first()) {
+                if let Some(outputs) = coinbase.get("vout").or_else(|| coinbase.get("outputs")) {
+                    if let Some(arr) = outputs.as_array() {
+                        reward_sats = arr.iter()
+                            .filter_map(|o| {
+                                o.get("value_sats")
+                                    .or_else(|| o.get("value"))
+                                    .or_else(|| o.get("amount"))
+                                    .and_then(|v| v.as_u64())
+                            })
+                            .sum();
+                    }
+                }
+            }
         }
     }
 
-    // Fall back to summing the first tx's outputs (coinbase by convention).
-    let txs = json
-        .get("tx")
-        .or_else(|| json.get("txs"))
-        .or_else(|| json.get("transactions"))?;
-    let coinbase = txs.as_array()?.first()?;
-    let outputs = coinbase
-        .get("vout")
-        .or_else(|| coinbase.get("outputs"))?;
-    let total: u64 = outputs
-        .as_array()?
-        .iter()
-        .filter_map(|o| {
-            o.get("value_sats")
-                .or_else(|| o.get("value"))
-                .or_else(|| o.get("amount"))
-                .and_then(|v| v.as_u64())
-        })
-        .sum();
-    if total > 0 {
-        Some(total)
-    } else {
-        None
-    }
+    Some(BlockDetails { reward_sats, hash, prev_hash, merkle_root, bits, nonce })
 }
 
-// Patch the reward field of the most-recent matching entry. We scan from
-// newest-to-oldest so simultaneous block-found events at different
-// heights don't trample each other.
-fn update_block_reward(
+// Patch all detail fields of the most-recent matching entry. We scan from
+// newest-to-oldest so simultaneous block-found events at different heights
+// don't trample each other. Only overwrites hash if the RPC gave us one
+// (text-mode miner output may have already set it from stdout).
+fn update_block_details(
     found_blocks: &Arc<Mutex<Vec<FoundBlock>>>,
     height: u64,
-    reward: u64,
+    details: BlockDetails,
 ) {
     if let Ok(mut list) = found_blocks.lock() {
         if let Some(b) = list.iter_mut().rev().find(|b| b.height == height) {
-            b.reward_sats = reward;
+            b.reward_sats = details.reward_sats;
+            if !details.hash.is_empty() {
+                b.hash = details.hash;
+            }
+            b.prev_hash   = details.prev_hash;
+            b.merkle_root = details.merkle_root;
+            b.bits        = details.bits;
+            b.nonce       = details.nonce;
         }
     }
 }
@@ -3799,15 +3832,15 @@ async fn start_miner(
             // hashrate regex, so the order doesn't shadow either signal.
             if let Some((height, hash)) = parse_block_found(&line) {
                 record_found_block(&blocks_found_ref, &found_blocks_ref, height, hash);
-                // Fire-and-forget reward fetch — fills the reward_sats
-                // field of the entry we just pushed. If the RPC fails or
-                // the response shape is unrecognized, reward stays at 0
-                // and the UI shows "—".
+                // Fire-and-forget detail fetch — fills reward_sats, hash,
+                // prev_hash, merkle_root, bits, and nonce on the entry we
+                // just pushed. If the RPC fails all fields stay at their
+                // zero-value defaults and the UI shows "—".
                 let fb_for_reward = Arc::clone(&found_blocks_ref);
                 let rpc_for_reward = rpc_url_for_reward.clone();
                 tauri::async_runtime::spawn(async move {
-                    if let Some(reward) = fetch_block_reward(&rpc_for_reward, height).await {
-                        update_block_reward(&fb_for_reward, height, reward);
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                        update_block_details(&fb_for_reward, height, details);
                     }
                 });
                 continue;
@@ -4060,8 +4093,8 @@ async fn start_gpu_miner(
                 let fb_for_reward = Arc::clone(&found_blocks_ref);
                 let rpc_for_reward = rpc_url_for_reward.clone();
                 tauri::async_runtime::spawn(async move {
-                    if let Some(reward) = fetch_block_reward(&rpc_for_reward, height).await {
-                        update_block_reward(&fb_for_reward, height, reward);
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                        update_block_details(&fb_for_reward, height, details);
                     }
                 });
                 continue;

@@ -366,10 +366,11 @@ export default function Explorer() {
     searchTab?: SearchTab;
     searchQ?: string;
     // openBlockHeight: deep-link from the Miner page's Found Blocks list.
-    // When present, mount-effect below fetches the block via rpc.block(...)
-    // and opens BlockDetailModal directly, then clears history state so a
-    // back-then-forward navigation doesn't re-open the modal.
+    // When present, mount-effect below opens BlockDetailModal directly.
     openBlockHeight?: number;
+    // openBlockData: full block object pre-fetched by the Miner page via
+    // fetch_block_details. When present, used directly — no extra RPC call.
+    openBlockData?: ExplorerBlock;
   } | null;
   const [searchTab,    setSearchTab]    = useState<SearchTab>(navState?.searchTab ?? 'block');
   const [searchQ,      setSearchQ]      = useState(navState?.searchQ ?? '');
@@ -386,18 +387,28 @@ export default function Explorer() {
   }, [initialLoaded]);
 
   // Option C deep-link — when arriving via navigate('/explorer', { state:
-  // { openBlockHeight: N } }) (used by Miner.tsx's Found Blocks list),
-  // fetch the block from iriumd and open BlockDetailModal directly. The
-  // consumed ref guards against StrictMode's intentional double-invoke
-  // and against location.state lingering across history navigation; we
-  // also call window.history.replaceState({}, '') to drop the state so a
-  // browser back/forward doesn't re-trigger the modal.
+  // { openBlockHeight: N, openBlockData: {...} } }) from Miner.tsx's Found
+  // Blocks list. If openBlockData is present, use it directly (no extra RPC
+  // call — the Miner page already fetched it via fetch_block_details). If
+  // only openBlockHeight is present, fetch from iriumd as a fallback,
+  // extracting fields from the nested "header" sub-object that iriumd uses.
+  // The consumed ref guards against StrictMode's double-invoke and stale
+  // location.state. window.history.replaceState clears state so back/forward
+  // navigation doesn't re-open the modal.
   const deepLinkConsumedRef = useRef(false);
   useEffect(() => {
     if (deepLinkConsumedRef.current) return;
     const h = navState?.openBlockHeight;
     if (h == null) return;
     deepLinkConsumedRef.current = true;
+    window.history.replaceState({}, '');
+
+    const passedBlock = navState?.openBlockData;
+    if (passedBlock) {
+      setSelectedBlock(passedBlock);
+      return;
+    }
+
     (async () => {
       try {
         const raw = (await rpc.block(String(h))) as Record<string, unknown>;
@@ -405,24 +416,24 @@ export default function Explorer() {
         const str = (v: unknown): string => (typeof v === 'string' ? v : '');
         const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v) || 0);
         const txArr = Array.isArray(raw.tx) ? (raw.tx as unknown[]) : null;
+        // iriumd nests hash/prev_hash/merkle_root/time/bits/nonce in "header".
+        const hdr = (typeof raw.header === 'object' && raw.header !== null)
+          ? (raw.header as Record<string, unknown>)
+          : {};
         const block: ExplorerBlock = {
-          height: num(raw.height) || h,
-          hash: str(raw.hash),
-          prev_hash:
-            str(raw.prev_hash) ||
-            str(raw.previousblockhash) ||
-            str(raw.previous_block_hash),
-          merkle_root: str(raw.merkle_root) || str(raw.merkleroot),
-          time: num(raw.time),
-          tx_count: num(raw.tx_count) || num(raw.n_tx) || (txArr ? txArr.length : 0),
-          bits: str(raw.bits),
-          nonce: typeof raw.nonce === 'number' ? raw.nonce : undefined,
+          height:       num(raw.height) || h,
+          hash:         str(hdr.hash) || str(raw.hash),
+          prev_hash:    str(hdr.prev_hash) || str(raw.prev_hash) || str(raw.previousblockhash) || str(raw.previous_block_hash),
+          merkle_root:  str(hdr.merkle_root) || str(raw.merkle_root) || str(raw.merkleroot),
+          time:         num(hdr.time) || num(raw.time),
+          tx_count:     num(raw.tx_count) || num(raw.n_tx) || (txArr ? txArr.length : 0),
+          bits:         str(hdr.bits) || str(raw.bits),
+          nonce:        typeof hdr.nonce === 'number' ? hdr.nonce : (typeof raw.nonce === 'number' ? raw.nonce : undefined),
           miner_address: str(raw.miner_address) || str(raw.miner),
         };
         setSelectedBlock(block);
       } catch { /* block not found / node offline — silent */ }
     })();
-    window.history.replaceState({}, '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
