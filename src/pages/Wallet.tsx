@@ -1993,6 +1993,12 @@ function SendModal({
                     </p>
                   )}
                 </div>
+                <div className="flex items-center gap-1.5 mt-2">
+                  <Shield size={11} className="flex-shrink-0" style={{ color: '#6ec6ff' }} />
+                  <p className="text-[11px] leading-snug" style={{ color: 'rgba(238,240,255,0.35)' }}>
+                    Transactions are secured by your private key signature, not mining. No PoW required to send.
+                  </p>
+                </div>
                 <div className="text-white/30 text-xs font-mono">Estimated fee: ~1,000 sats</div>
                 <div className="flex gap-3 pt-1">
                   <button onClick={onClose} className="btn-secondary flex-1 justify-center">Cancel</button>
@@ -2070,6 +2076,34 @@ function SendModal({
                   <div className="text-center space-y-1">
                     <div className="font-display font-bold text-white text-lg">Transaction Sent</div>
                     <div className="text-white/40 text-xs">Your transaction will appear in the next block</div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2">
+                  <Shield size={12} className="flex-shrink-0 mt-0.5" style={{ color: '#6ec6ff' }} />
+                  <p className="text-xs leading-relaxed" style={{ color: 'rgba(238,240,255,0.45)' }}>
+                    Your transaction is cryptographically signed with your private key and broadcast to the network. It will be permanently secured when included in the next mined block.
+                  </p>
+                </div>
+
+                <div className="flex rounded-xl overflow-hidden border border-white/[0.06]" style={{ background: 'rgba(0,0,0,0.25)' }}>
+                  <div className="flex-1 flex items-center gap-2 px-3 py-2.5 border-r border-white/[0.06]" style={{ background: 'rgba(52,211,153,0.06)' }}>
+                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                      <Check size={11} className="text-emerald-400" />
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-display font-bold text-emerald-400" style={{ letterSpacing: '0.08em' }}>SIGNED</div>
+                      <div className="text-[9px] text-white/35 leading-tight">Private key verified</div>
+                    </div>
+                  </div>
+                  <div className="flex-1 flex items-center gap-2 px-3 py-2.5">
+                    <div className="w-5 h-5 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-white/20" />
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-display font-bold" style={{ color: 'rgba(238,240,255,0.30)', letterSpacing: '0.08em' }}>CONFIRMING</div>
+                      <div className="text-[9px] leading-tight" style={{ color: 'rgba(238,240,255,0.25)' }}>Next mined block</div>
+                    </div>
                   </div>
                 </div>
 
