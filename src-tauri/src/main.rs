@@ -2746,7 +2746,7 @@ async fn offer_remove(state: State<'_, AppState>, offer_id: String) -> Result<bo
         let contents = std::fs::read_to_string(&path).unwrap_or_default();
         let parsed: serde_json::Value = serde_json::from_str(&contents)
             .unwrap_or(serde_json::Value::Null);
-        if parsed["id"].as_str() == Some(offer_id.as_str()) {
+        if parsed["offer_id"].as_str() == Some(offer_id.as_str()) {
             std::fs::remove_file(&path)
                 .map_err(|e| format!("Failed to delete offer: {}", e))?;
             return Ok(true);
@@ -2937,7 +2937,7 @@ async fn agreement_remove(state: State<'_, AppState>, agreement_id: String) -> R
         let contents = std::fs::read_to_string(&path).unwrap_or_default();
         let parsed: serde_json::Value = serde_json::from_str(&contents)
             .unwrap_or(serde_json::Value::Null);
-        if parsed["id"].as_str() == Some(agreement_id.as_str()) {
+        if parsed["agreement_id"].as_str() == Some(agreement_id.as_str()) {
             std::fs::remove_file(&path)
                 .map_err(|e| format!("Failed to delete agreement: {}", e))?;
             return Ok(true);
