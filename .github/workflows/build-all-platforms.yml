@@ -146,24 +146,7 @@ jobs:
         with:
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           releaseName: ${{ github.ref_type == 'tag' && format('Irium Core {0}', github.ref_name) || '' }}
-          releaseBody: |
-            Initial public release of Irium Core, the official full-node desktop wallet and miner for the Irium (IRM) blockchain.
-
-            ## Features
-
-            - Wallet — create, import, and manage Irium wallets locally with full private-key control. Send and receive IRM, view transaction history, back up and restore wallet files.
-            - Miner — integrated CPU, GPU (OpenCL), and ASIC/Stratum-pool mining. Live hashrate chart, blocks-found counter, uptime tracking, and a live block-info strip showing the current block being mined, previous block hash, block time, and network difficulty, polled from the local node every three seconds.
-            - Settlement — on-chain proof-based settlements with OTC, freelance, milestone, and deposit templates.
-            - Marketplace — peer-to-peer offer feed for trustless trades across the Irium network.
-            - RPC connection — routes through Tauri's HTTP API so node requests bypass the renderer CSP and the node's CORS-off default. Works against a locally-run iriumd at 127.0.0.1:38300.
-            - Themes — four selectable color palettes: Midnight, Obsidian, Aurora, Nebula.
-            - Network background — animated constellation aurora with depth-parallax particles and a radial mask that keeps the animation out of the main content area.
-
-            ## Installers
-
-            - Windows: NSIS .exe (x64)
-            - macOS: .dmg (Intel and Apple Silicon)
-            - Linux: .deb and .AppImage (x64)
+          releaseBody: "See the commit history for changes in this release."
           releaseDraft: false
           prerelease: false
           args: --target ${{ matrix.target }}
