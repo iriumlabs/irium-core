@@ -1,0 +1,29 @@
+ui:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'src/**/*.tsx'
+      - 'src/**/*.ts'
+      - 'src/**/*.css'
+
+backend:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'src-tauri/src/**'
+
+ci:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '.github/**'
+
+documentation:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/*.md'
+
+dependencies:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src-tauri/Cargo.toml'
+      - 'src-tauri/Cargo.lock'
