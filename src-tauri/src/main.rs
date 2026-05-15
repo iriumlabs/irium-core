@@ -6189,7 +6189,7 @@ fn main() {
         ])
         .build(tauri::generate_context!())
         .expect("error while running Irium Core")
-        .run(|app_handle, event| {
+        .run(|_app_handle, _event| {
             // On Windows, kill all node sidecars when the updater has finished
             // downloading the NSIS installer and is about to launch it. The
             // sidecars survive the Tauri process exit on Windows (they are not
@@ -6198,9 +6198,9 @@ fn main() {
             #[cfg(target_os = "windows")]
             if let tauri::RunEvent::Updater(
                 tauri::UpdaterEvent::Downloaded,
-            ) = &event
+            ) = &_event
             {
-                let state = app_handle.state::<AppState>();
+                let state = _app_handle.state::<AppState>();
                 if let Ok(mut g) = state.node_process.lock() {
                     if let Some(child) = g.take() { let _ = child.kill(); }
                 }
