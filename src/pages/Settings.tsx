@@ -9,7 +9,6 @@ import {
   RefreshCw,
   CheckCircle,
   AlertTriangle,
-  Save,
   RotateCcw,
   Shield,
   Globe,
@@ -150,13 +149,12 @@ export default function Settings() {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [installError, setInstallError] = useState<string | null>(null);
   const [local, setLocal] = useState({ ...settings });
-  const [dirty, setDirty] = useState(false);
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [testingRpc, setTestingRpc] = useState(false);
   const [rpcOk, setRpcOk] = useState<boolean | null>(null);
   const [rpcError, setRpcError] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const confirmResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [runningDiag, setRunningDiag] = useState(false);
   const [diagResult, setDiagResult] = useState<DiagnosticsResult | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
@@ -207,6 +205,7 @@ export default function Settings() {
     return () => {
       if (confirmResetTimerRef.current) clearTimeout(confirmResetTimerRef.current);
       if (confirmClearTimerRef.current) clearTimeout(confirmClearTimerRef.current);
+      if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
     };
   }, []);
 
@@ -223,13 +222,24 @@ export default function Settings() {
     });
   }, [setUpdateInfo]);
 
+  const TEXT_SETTING_KEYS: ReadonlyArray<string> = ['rpc_url', 'wallet_path', 'data_dir', 'external_ip'];
+
   const patch = <K extends keyof typeof local>(key: K, value: (typeof local)[K]) => {
     setLocal((prev) => ({ ...prev, [key]: value }));
-    setDirty(true);
-    if (saveState === "saved") setSaveState("idle");
     if (key === "rpc_url") {
       setRpcOk(null);
       setRpcError(null);
+    }
+    if (TEXT_SETTING_KEYS.includes(key as string)) {
+      if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+      saveDebounceRef.current = setTimeout(() => {
+        updateSettings({ [key]: value } as Partial<typeof local>);
+        if (key === 'rpc_url') rpc.setUrl(value as string).catch(() => {});
+        toast.success('Settings saved', { duration: 2000 });
+      }, 500);
+    } else {
+      updateSettings({ [key]: value } as Partial<typeof local>);
+      toast.success('Settings saved', { duration: 2000 });
     }
   };
 
@@ -290,23 +300,6 @@ export default function Settings() {
     ];
     navigator.clipboard.writeText(lines.join('\n'));
     toast.success('Report copied to clipboard');
-  };
-
-  const save = async () => {
-    setSaveState("saving");
-    try {
-      await rpc.setUrl(local.rpc_url);
-      updateSettings(local);
-      try { await config.saveSettings(JSON.stringify(local)); } catch { /* non-fatal in browser preview */ }
-      setDirty(false);
-      setSaveState("saved");
-      toast.success("Settings saved");
-      setTimeout(() => setSaveState("idle"), 2500);
-    } catch (e: unknown) {
-      console.error(e);
-      setSaveState("idle");
-      toast.error('Failed to save settings');
-    }
   };
 
   const reset = async () => {
@@ -488,7 +481,7 @@ export default function Settings() {
       const ip = await node.detectPublicIp(detectServiceUrl);
       patch('external_ip', ip);
       setShowDetectPanel(false);
-      toast.success(`Detected IP: ${ip} — save settings to apply`);
+      toast.success(`Detected IP: ${ip} — settings auto-saved`);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Detection failed');
     } finally {
@@ -801,11 +794,9 @@ export default function Settings() {
                     <button
                       key={t.id}
                       onClick={() => {
-                        // Apply immediately (live preview + persist via store).
-                        // Mirror in local so the swatch UI reflects selection
-                        // without waiting for the Save button.
                         setLocal((prev) => ({ ...prev, theme: t.id }));
                         updateSettings({ theme: t.id });
+                        toast.success('Settings saved', { duration: 2000 });
                       }}
                       title={t.label}
                       className="rounded-xl p-2.5 flex flex-col items-center gap-2 transition-all"
@@ -1403,7 +1394,7 @@ export default function Settings() {
       </motion.div>
 
       {/* Action bar */}
-      <div className="flex items-center justify-between pt-1 pb-4">
+      <div className="flex items-center pt-1 pb-4">
         {/* Reset to defaults — inline confirm */}
         <button
           onClick={handleResetClick}
@@ -1434,52 +1425,6 @@ export default function Settings() {
               </motion.span>
             )}
           </AnimatePresence>
-        </button>
-
-        {/* Save button — spinner → checkmark → normal with green glow flash */}
-        <button
-          onClick={save}
-          disabled={!dirty || saveState !== "idle"}
-          className={`btn-primary flex items-center gap-2 px-6 py-2.5 text-sm disabled:opacity-50 transition-shadow ${
-            saveState === "saved" ? "glow-green" : ""
-          }`}
-        >
-          <AnimatePresence mode="wait" initial={false}>
-            {saveState === "saving" ? (
-              <motion.span
-                key="saving"
-                initial={{ opacity: 0, rotate: -90 }}
-                animate={{ opacity: 1, rotate: 0 }}
-                exit={{ opacity: 0 }}
-              >
-                <RefreshCw size={15} className="animate-spin" />
-              </motion.span>
-            ) : saveState === "saved" ? (
-              <motion.span
-                key="saved"
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0 }}
-                transition={{ type: "spring", stiffness: 400, damping: 20 }}
-              >
-                <CheckCircle size={15} className="text-emerald-300" />
-              </motion.span>
-            ) : (
-              <motion.span
-                key="idle"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                <Save size={15} />
-              </motion.span>
-            )}
-          </AnimatePresence>
-          {saveState === "saving"
-            ? "Saving…"
-            : saveState === "saved"
-            ? "Saved!"
-            : "Save Settings"}
         </button>
       </div>
 
