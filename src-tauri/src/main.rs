@@ -6179,6 +6179,39 @@ fn main() {
             // Logs
             get_node_logs,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Irium Core");
+        .build(tauri::generate_context!())
+        .expect("error while running Irium Core")
+        .run(|app_handle, event| {
+            // On Windows, kill all node sidecars when the updater has finished
+            // downloading the NSIS installer and is about to launch it. The
+            // sidecars survive the Tauri process exit on Windows (they are not
+            // true children of the GUI process), so NSIS cannot overwrite their
+            // binaries without an explicit kill first.
+            #[cfg(target_os = "windows")]
+            if let tauri::RunEvent::Updater(
+                tauri::UpdaterEvent::Downloaded,
+            ) = &event
+            {
+                let state = app_handle.state::<AppState>();
+                if let Ok(mut g) = state.node_process.lock() {
+                    if let Some(child) = g.take() { let _ = child.kill(); }
+                }
+                if let Ok(mut g) = state.miner_process.lock() {
+                    if let Some(child) = g.take() { let _ = child.kill(); }
+                }
+                if let Ok(mut g) = state.explorer_process.lock() {
+                    if let Some(child) = g.take() { let _ = child.kill(); }
+                }
+                for name in [
+                    "iriumd-x86_64-pc-windows-msvc.exe",
+                    "irium-miner-x86_64-pc-windows-msvc.exe",
+                    "irium-explorer-x86_64-pc-windows-msvc.exe",
+                ] {
+                    let _ = std::process::Command::new("taskkill")
+                        .args(["/F", "/T", "/IM", name])
+                        .output();
+                }
+                std::thread::sleep(std::time::Duration::from_millis(1500));
+            }
+        });
 }
