@@ -1,6 +1,6 @@
 {
   "name": "irium-core",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Irium Core — Full-node desktop wallet and miner for the Irium blockchain",
   "homepage": "https://iriumlabs.org",
   "repository": {
