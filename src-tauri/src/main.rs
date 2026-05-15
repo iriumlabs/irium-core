@@ -2725,6 +2725,36 @@ async fn offer_import(state: State<'_, AppState>, file_path: String) -> Result<b
     Ok(true)
 }
 
+#[tauri::command]
+async fn offer_remove(state: State<'_, AppState>, offer_id: String) -> Result<bool, String> {
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let irium_dir = data_dir
+        .as_ref()
+        .map(|d| PathBuf::from(d))
+        .unwrap_or_else(|| dirs::home_dir().unwrap_or_default().join(".irium"));
+    let offers_dir = irium_dir.join("offers");
+    if !offers_dir.exists() {
+        return Err("Offers directory not found".to_string());
+    }
+    let entries = std::fs::read_dir(&offers_dir)
+        .map_err(|e| format!("Cannot read offers directory: {}", e))?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("json") {
+            continue;
+        }
+        let contents = std::fs::read_to_string(&path).unwrap_or_default();
+        let parsed: serde_json::Value = serde_json::from_str(&contents)
+            .unwrap_or(serde_json::Value::Null);
+        if parsed["id"].as_str() == Some(offer_id.as_str()) {
+            std::fs::remove_file(&path)
+                .map_err(|e| format!("Failed to delete offer: {}", e))?;
+            return Ok(true);
+        }
+    }
+    Err(format!("Offer '{}' not found", offer_id))
+}
+
 // ============================================================
 // FEED MANAGEMENT
 // ============================================================
@@ -2884,6 +2914,36 @@ async fn agreement_show(state: State<'_, AppState>, agreement_id: String) -> Res
         deadline: None,
         policy: None,
     })
+}
+
+#[tauri::command]
+async fn agreement_remove(state: State<'_, AppState>, agreement_id: String) -> Result<bool, String> {
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let irium_dir = data_dir
+        .as_ref()
+        .map(|d| PathBuf::from(d))
+        .unwrap_or_else(|| dirs::home_dir().unwrap_or_default().join(".irium"));
+    let agreements_dir = irium_dir.join("agreements");
+    if !agreements_dir.exists() {
+        return Err("Agreements directory not found".to_string());
+    }
+    let entries = std::fs::read_dir(&agreements_dir)
+        .map_err(|e| format!("Cannot read agreements directory: {}", e))?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("json") {
+            continue;
+        }
+        let contents = std::fs::read_to_string(&path).unwrap_or_default();
+        let parsed: serde_json::Value = serde_json::from_str(&contents)
+            .unwrap_or(serde_json::Value::Null);
+        if parsed["id"].as_str() == Some(agreement_id.as_str()) {
+            std::fs::remove_file(&path)
+                .map_err(|e| format!("Failed to delete agreement: {}", e))?;
+            return Ok(true);
+        }
+    }
+    Err(format!("Agreement '{}' not found", agreement_id))
 }
 
 #[tauri::command]
@@ -5972,6 +6032,7 @@ fn main() {
             offer_take,
             offer_export,
             offer_import,
+            offer_remove,
             // Feeds
             feed_add,
             feed_remove,
@@ -5982,6 +6043,7 @@ fn main() {
             // Agreements
             agreement_list,
             agreement_show,
+            agreement_remove,
             agreement_create,
             agreement_pack,
             agreement_unpack,

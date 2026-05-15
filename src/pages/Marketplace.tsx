@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, RefreshCw, Search, Globe, X, Rss, Star, Download, Upload, Compass, HelpCircle } from 'lucide-react';
+import { Plus, RefreshCw, Search, Globe, X, Rss, Star, Download, Upload, Compass, HelpCircle, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../lib/store';
@@ -65,7 +65,7 @@ async function openSavePicker(opts: { defaultName: string; extensions: string[];
 }
 
 // ─── Offer Card ────────────────────────────────────────────────
-function OfferCard({ offer, onTake, onOpenDetail, onExport, isOnline }: { offer: Offer; onTake: () => void; onOpenDetail: () => void; onExport?: () => void; isOnline: boolean }) {
+function OfferCard({ offer, onTake, onOpenDetail, onExport, onDelete, isOnline }: { offer: Offer; onTake: () => void; onOpenDetail: () => void; onExport?: () => void; onDelete?: () => void; isOnline: boolean }) {
   const navigate = useNavigate();
   const score = offer.reputation?.score ?? 0;
   const riskBadge =
@@ -157,7 +157,7 @@ function OfferCard({ offer, onTake, onOpenDetail, onExport, isOnline }: { offer:
         {formatIRM(offer.amount)}
       </div>
 
-      {/* Right: Export (My Offers only) + Take Offer */}
+      {/* Right: Export (My Offers only) + Delete (My Offers only) + Take Offer */}
       {onExport && (
         <button
           onClick={(e) => {
@@ -168,6 +168,15 @@ function OfferCard({ offer, onTake, onOpenDetail, onExport, isOnline }: { offer:
           className="btn-ghost text-xs p-1.5 flex-shrink-0 text-irium-400 hover:text-irium-300"
         >
           <Download size={13} />
+        </button>
+      )}
+      {onDelete && (!offer.status || offer.status === 'open') && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          title="Delete this offer from your local store"
+          className="btn-ghost text-xs p-1.5 flex-shrink-0 text-red-400 hover:text-red-300"
+        >
+          <Trash2 size={13} />
         </button>
       )}
       <button
@@ -540,6 +549,7 @@ export default function MarketplacePage() {
   const [removingFeed, setRemovingFeed] = useState<string | null>(null);
   // Phase 7 — Discover Feeds modal state.
   const [showDiscoverModal, setShowDiscoverModal] = useState(false);
+  const [showDeleteOfferModal, setShowDeleteOfferModal] = useState<Offer | null>(null);
   // Server-side filter params for offers.list. Min/Max are IRM strings
   // (kept as strings so the inputs allow partial values like "1."); the
   // backend offer_list command accepts f64 IRM directly — see main.rs:2262
@@ -666,6 +676,17 @@ export default function MarketplacePage() {
       toast.success('Offer exported to ' + path);
     } catch (e) {
       toast.error('Export failed: ' + String(e));
+    }
+  };
+
+  const handleDeleteOffer = async (offer: Offer) => {
+    try {
+      await offers.remove(offer.id);
+      toast.success('Offer deleted');
+      setShowDeleteOfferModal(null);
+      await loadMyOffers();
+    } catch (e) {
+      toast.error('Delete failed: ' + String(e));
     }
   };
 
@@ -1010,6 +1031,7 @@ export default function MarketplacePage() {
                   onTake={() => setShowTakeModal(offer)}
                   onOpenDetail={() => setShowDetailModal(offer)}
                   onExport={() => handleExportOffer(offer.id)}
+                  onDelete={() => setShowDeleteOfferModal(offer)}
                   isOnline={!!nodeStatus?.running}
                 />
               ))}
@@ -1224,6 +1246,45 @@ export default function MarketplacePage() {
           onAfterAdd={() => loadFeeds()}
         />
       )}
+
+      <AnimatePresence>
+        {showDeleteOfferModal && (
+          <motion.div
+            key="delete-offer-overlay"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.7)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="card w-full max-w-md p-6"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+            >
+              <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
+                <Trash2 size={16} className="text-red-400" /> Delete Offer
+              </h2>
+              <p className="text-sm text-white/60 mb-1">
+                Are you sure you want to delete offer <span className="font-mono text-white/80">{showDeleteOfferModal.id.slice(0, 20)}…</span>?
+              </p>
+              <p className="text-xs text-white/40 mb-5">This removes it from your local store only. Buyers who already received this offer are not affected.</p>
+              <div className="flex gap-3 justify-end">
+                <button className="btn-ghost text-sm py-1.5 px-4" onClick={() => setShowDeleteOfferModal(null)}>
+                  Cancel
+                </button>
+                <button
+                  className="btn-primary text-sm py-1.5 px-4 bg-red-600 hover:bg-red-500"
+                  onClick={() => handleDeleteOffer(showDeleteOfferModal)}
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       </div>
     </motion.div>
   );

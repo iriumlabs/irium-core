@@ -348,6 +348,7 @@ export const useStore = create<AppStore>((set) => ({
     set((state) => {
       const updated = { ...state.settings, ...patch };
       saveSettings(updated);
+      invoke('save_settings', { settingsJson: JSON.stringify(updated) }).catch(() => {});
       return { settings: updated };
     }),
 

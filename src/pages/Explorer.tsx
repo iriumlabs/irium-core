@@ -505,6 +505,17 @@ export default function Explorer() {
     if (running && !initialLoaded) fetchLatest();
   }, [running, initialLoaded, fetchLatest]);
 
+  // Trigger refresh whenever the chain tip advances (nodeStatus polls every 3s)
+  const prevFetchHeightRef = useRef<number | null>(null);
+  useEffect(() => {
+    const h = nodeStatus?.height ?? null;
+    if (h === null) return;
+    if (prevFetchHeightRef.current !== null && h > prevFetchHeightRef.current) {
+      fetchLatest();
+    }
+    prevFetchHeightRef.current = h;
+  }, [nodeStatus?.height, fetchLatest]);
+
   // Chain-reset detection: if clear_node_state was called, iriumd restarts at height 0
   // while our accumulated block list still holds the old chain. Wipe it so the UI
   // starts fresh instead of merging new blocks into the stale high-height list.

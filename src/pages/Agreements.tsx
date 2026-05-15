@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen, FileJson, AlertCircle, Copy, FileText, Receipt, PenLine, ShieldCheck, Gavel, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen, FileJson, AlertCircle, Copy, FileText, Receipt, PenLine, ShieldCheck, Gavel, CheckCircle2, XCircle, HelpCircle, Trash2 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetch as tauriFetch, Body, ResponseType } from '@tauri-apps/api/http';
@@ -116,6 +116,7 @@ export default function AgreementsPage() {
   // Drives the Open Dispute confirmation modal — id of the agreement being
   // disputed, or null when the modal is closed.
   const [disputeAgreementId, setDisputeAgreementId] = useState<string | null>(null);
+  const [deleteAgreementId, setDeleteAgreementId] = useState<string | null>(null);
   // Drives the Agreement Audit modal — id of the agreement whose audit
   // record is being viewed. The modal also needs the hash for the RPC
   // call; we look it up from agreementList by id.
@@ -217,6 +218,17 @@ export default function AgreementsPage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteAgreement = async (id: string) => {
+    try {
+      await agreements.remove(id);
+      toast.success('Agreement deleted');
+      setDeleteAgreementId(null);
+      await loadData();
+    } catch (e) {
+      toast.error('Delete failed: ' + String(e));
     }
   };
 
@@ -416,6 +428,7 @@ export default function AgreementsPage() {
                 }}
                 onRefund={() => handleRefund(a.id)}
                 onDispute={() => setDisputeAgreementId(a.id)}
+                onDelete={() => setDeleteAgreementId(a.id)}
                 onViewAudit={() => setAuditAgreementId(a.id)}
                 onSign={() => setSigningId(a.id)}
                 label={agreementLabels[a.id]}
@@ -561,6 +574,48 @@ export default function AgreementsPage() {
         )}
       </AnimatePresence>
 
+      {/* Delete Agreement Modal */}
+      <AnimatePresence>
+        {deleteAgreementId !== null && (
+          <motion.div
+            key="delete-agreement-overlay"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.7)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="card w-full max-w-md p-6"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+            >
+              <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
+                <Trash2 size={16} className="text-red-400" /> Delete Agreement
+              </h2>
+              <p className="text-sm text-white/60 mb-1">
+                Delete agreement <span className="font-mono text-white/80">{deleteAgreementId.slice(0, 20)}…</span>?
+              </p>
+              <p className="text-xs text-white/40 mb-5">
+                This removes the agreement from your local store only. The counterparty's copy is not affected. Only unfunded (open/pending) agreements can be deleted.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button className="btn-ghost text-sm py-1.5 px-4" onClick={() => setDeleteAgreementId(null)}>
+                  Cancel
+                </button>
+                <button
+                  className="btn-primary text-sm py-1.5 px-4 bg-red-600 hover:bg-red-500"
+                  onClick={() => handleDeleteAgreement(deleteAgreementId)}
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Audit Modal */}
       <AnimatePresence>
         {auditAgreementId !== null && (() => {
@@ -670,6 +725,7 @@ interface AgreementCardProps {
   onViewAudit: () => void;
   // Phase 7 — open the SignAgreementModal for this agreement.
   onSign: () => void;
+  onDelete?: () => void;
   label?: string;
   onSaveLabel: (label: string) => void;
   actionLoading: boolean;
@@ -775,6 +831,7 @@ function AgreementCard({
   onDispute,
   onViewAudit,
   onSign,
+  onDelete,
   label,
   onSaveLabel,
   actionLoading,
@@ -1210,6 +1267,15 @@ function AgreementCard({
                 >
                   <Copy size={12} /> Share Text
                 </button>
+                {isUnfunded && onDelete && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                    title="Delete this agreement from your local store. The counterparty's copy is not affected."
+                    className="btn-ghost text-xs py-1.5 px-3 text-red-400 hover:text-red-300 flex items-center gap-1"
+                  >
+                    <Trash2 size={12} /> Delete
+                  </button>
+                )}
               </div>
 
               {/* Phase 7 — Verify Signatures. The local store doesn't

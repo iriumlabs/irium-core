@@ -178,6 +178,9 @@ export const offers = {
 
   import: (filePath: string) =>
     safeInvoke<boolean>('offer_import', { filePath }),
+
+  remove: (offerId: string) =>
+    safeInvoke<boolean>('offer_remove', { offerId }),
 };
 
 // ── FEEDS ─────────────────────────────────────────────────────
@@ -226,6 +229,9 @@ export const agreements = {
 
   refund: (agreementId: string, broadcast?: boolean) =>
     safeInvoke<ReleaseResult>('agreement_refund', { agreementId, broadcast }),
+
+  remove: (agreementId: string) =>
+    safeInvoke<boolean>('agreement_remove', { agreementId }),
 };
 
 // ── PROOFS ────────────────────────────────────────────────────
