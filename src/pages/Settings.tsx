@@ -1260,25 +1260,6 @@ export default function Settings() {
               )}
             </div>
 
-            {/* After pull: rebuild instruction */}
-            <AnimatePresence>
-              {!nodeUpdateInfo?.has_update && nodeUpdateInfo && nodeUpdateInfo.current_commit !== 'unknown' && pullingNodeUpdate === false && (
-                <motion.div
-                  key="rebuild-note"
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20 text-blue-300 text-xs"
-                >
-                  <Info size={13} className="mt-0.5 shrink-0" />
-                  <span>
-                    After pulling an update, rebuild the node binaries by running{' '}
-                    <code className="font-mono bg-white/5 px-1 rounded">npm run build:node -- --force</code>{' '}
-                    then restart Irium Core to apply the new version.
-                  </span>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </Section>
         </motion.div>
 

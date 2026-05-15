@@ -9,7 +9,7 @@
   },
   "package": {
     "productName": "Irium Core",
-    "version": "1.0.11"
+    "version": "1.0.12"
   },
   "tauri": {
     "allowlist": {
@@ -80,7 +80,7 @@
     },
     "bundle": {
       "active": true,
-      "targets": ["nsis", "deb", "appimage", "rpm", "dmg", "app"],
+      "targets": ["nsis", "deb", "appimage", "rpm", "dmg", "app", "updater"],
       "identifier": "com.iriumlabs.core",
       "publisher": "Irium Labs",
       "category": "Finance",
