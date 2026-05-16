@@ -4064,6 +4064,7 @@ async fn start_gpu_miner(
     address: String,
     platform_sel: Option<String>,
     device_indices: Vec<u32>,
+    intensity: u32,
 ) -> Result<bool, String> {
     let mut miner_lock = state.miner_process.lock().map_err(lock_err)?;
     if miner_lock.is_some() {
@@ -4093,6 +4094,10 @@ async fn start_gpu_miner(
             args.push(joined);
         }
     }
+    const DEFAULT_BATCH_SIZE: u32 = 4_194_304;
+    let batch = ((intensity.clamp(10, 100) as f64 / 100.0) * DEFAULT_BATCH_SIZE as f64).round() as u32;
+    args.push("--batch".into());
+    args.push(batch.to_string());
 
     let (mut rx, child) = Command::new_sidecar("irium-miner-gpu")
         .map_err(|e| format!("irium-miner-gpu not bundled: {}", e))?

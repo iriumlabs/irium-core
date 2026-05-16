@@ -128,6 +128,11 @@ interface AppStore {
   // null (e.g. before the first fetch returns).
   cpuCores: number | null;
   setCpuCores: (n: number | null) => void;
+
+  // GPU miner intensity (10–100). Persisted to localStorage so the slider
+  // survives app restarts. Maps to --batch via DEFAULT_BATCH_SIZE (4194304).
+  gpuIntensity: number;
+  setGpuIntensity: (v: number) => void;
 }
 
 interface ErrorEntry {
@@ -427,6 +432,9 @@ export const useStore = create<AppStore>((set) => ({
 
   cpuCores: null,
   setCpuCores: (cpuCores) => set({ cpuCores }),
+
+  gpuIntensity: loadGpuIntensity(),
+  setGpuIntensity: (gpuIntensity) => { saveGpuIntensity(gpuIntensity); set({ gpuIntensity }); },
 }));
 
 const SETTINGS_KEY = "irium_core_settings";
@@ -496,6 +504,23 @@ function saveAddressLabels(labels: Record<string, string>) {
   try {
     localStorage.setItem(ADDR_LABEL_KEY, JSON.stringify(labels));
   } catch {}
+}
+
+const GPU_INTENSITY_KEY = 'irium-gpu-intensity';
+
+function loadGpuIntensity(): number {
+  try {
+    const raw = localStorage.getItem(GPU_INTENSITY_KEY);
+    if (raw) {
+      const v = parseInt(raw, 10);
+      if (!isNaN(v) && v >= 10 && v <= 100) return v;
+    }
+  } catch {}
+  return 80;
+}
+
+function saveGpuIntensity(v: number) {
+  try { localStorage.setItem(GPU_INTENSITY_KEY, String(v)); } catch {}
 }
 
 // Fetch CARGO_PKG_VERSION at module load time so the Splash screen renders the

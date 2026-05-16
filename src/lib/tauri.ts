@@ -320,8 +320,8 @@ export const gpuMiner = {
   listPlatforms: () =>
     safeInvoke<GpuPlatform[]>('list_gpu_platforms'),
 
-  start: (address: string, platformSel: string | undefined, deviceIndices: number[]) =>
-    safeInvoke<boolean>('start_gpu_miner', { address, platformSel, deviceIndices }),
+  start: (address: string, platformSel: string | undefined, deviceIndices: number[], intensity: number) =>
+    safeInvoke<boolean>('start_gpu_miner', { address, platformSel, deviceIndices, intensity }),
 
   stop: () =>
     safeInvoke<boolean>('stop_gpu_miner'),

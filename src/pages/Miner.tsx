@@ -603,7 +603,8 @@ function GpuMinerTab() {
   const [address, setAddress]               = useState('');
   const [selectedPlatformIdx, setSelectedPlatformIdx] = useState(0);
   const [selectedDeviceIdxs, setSelectedDeviceIdxs]   = useState<number[]>([]);
-  const [intensity, setIntensity]           = useState(80);
+  const intensity    = useStore((s) => s.gpuIntensity);
+  const setIntensity = useStore((s) => s.setGpuIntensity);
 
   const loading = status === null;
 
@@ -671,7 +672,7 @@ function GpuMinerTab() {
       const platformSel = (gpuPlatforms && gpuPlatforms.length > 0)
         ? String(selectedPlatformIdx)
         : undefined;
-      await gpuMiner.start(address.trim(), platformSel, selectedDeviceIdxs);
+      await gpuMiner.start(address.trim(), platformSel, selectedDeviceIdxs, intensity);
       toast.success('GPU miner started');
     } catch (e) {
       const msg = String(e);
