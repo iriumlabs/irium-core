@@ -1299,9 +1299,9 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
 
   // Confirmations — single source of truth shared with the detail modal.
   const currentTip = useStore((s) => s.nodeStatus?.height) ?? 0;
-  const confirmations = tx.height
+  const confirmations = Math.max(0, tx.height
     ? computeConfirmations(tx.height, currentTip)
-    : tx.confirmations;
+    : (tx.confirmations ?? 0));
   const isConfirmed = confirmations > 0;
 
   const goToBlock = (e: React.MouseEvent) => {
@@ -1561,7 +1561,7 @@ function CreateWalletModal({
         if (!wif.trim()) { toast.error("Enter a WIF key"); setImporting(false); return; }
         resolvedPath = await wallet.importWif(wif.trim());
       }
-      if (resolvedPath) {
+      if (typeof resolvedPath === 'string' && resolvedPath.length > 0 && resolvedPath.endsWith('.json')) {
         updateSettings({ wallet_path: resolvedPath });
         // Belt-and-suspenders: explicitly tell Rust about the new active
         // wallet path. The App.tsx useEffect that mirrors settings.wallet_path
@@ -1570,6 +1570,8 @@ function CreateWalletModal({
         // loadData reads the OLD wallet. Awaiting setPath here closes that
         // window so loadData always sees the freshly-imported wallet.
         await wallet.setPath(resolvedPath);
+      } else if (resolvedPath) {
+        throw new Error(`Wallet binary returned invalid path: ${resolvedPath}`);
       }
       toast.success("Wallet imported successfully");
       onSuccess();
@@ -1875,13 +1877,18 @@ function SendModal({
   fromAddress,
   onClose,
   onSuccess,
-  availableBalance,
+  availableBalance: availableBalanceProp,
 }: {
   fromAddress: string;
   onClose: () => void;
   onSuccess: () => void;
   availableBalance: number; // sats
 }) {
+  // Read live balance from store so the modal always shows current data
+  // even if the user opened it minutes ago (H3: stale balance fix).
+  const liveAddresses = useStore((s) => s.addresses);
+  const liveBalance = liveAddresses.find((a) => a.address === fromAddress)?.balance;
+  const availableBalance = liveBalance !== undefined ? liveBalance : availableBalanceProp;
   const [sendTo, setSendTo] = useState("");
   const [sendAmountIrm, setSendAmountIrm] = useState("");
   const [sendStep, setSendStep] = useState<"form" | "confirm" | "success">("form");
@@ -1916,7 +1923,9 @@ function SendModal({
     setSendError(null);
     try {
       const result: SendResult = await wallet.send(fromAddress, sendTo, amountSats);
-      setSentTxid(result.txid);
+      const rawTxid = result.txid ?? '';
+      const cleanTxid = rawTxid.startsWith('txid ') ? rawTxid.slice(5) : rawTxid;
+      setSentTxid(cleanTxid);
       setSendStep("success");
       setSendLoading(false);
     } catch (e) {
@@ -2485,9 +2494,14 @@ function ManageWalletsPanel({
     if (renameCommitted.current) return;
     renameCommitted.current = true;
     setRenamingPath(null);
-    // Don't fire if the name didn't change (strip .json for comparison).
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    if (/[/\\:*?"<>|]/.test(trimmed)) {
+      toast.error('Wallet name cannot contain: / \\ : * ? " < > |');
+      return;
+    }
     const currentName = path.split(/[\\/]/).pop()?.replace(/\.json$/i, '') ?? '';
-    if (name.trim() && name.trim() !== currentName) onRenameWalletFile(path, name.trim());
+    if (trimmed !== currentName) onRenameWalletFile(path, trimmed);
   };
   const commitLabel = (address: string, label: string) => {
     if (labelCommitted.current) return;

@@ -1801,7 +1801,11 @@ async fn wallet_send(
     }
 
     let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await?;
-    let txid = output.trim().to_string();
+    let raw = output.trim();
+    let txid = raw.strip_prefix("txid ").unwrap_or(raw).to_string();
+    if txid.len() != 64 || !txid.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err(format!("wallet returned invalid txid: {}", txid));
+    }
     Ok(SendResult { txid, amount: amount_sats, fee: fee_sats.unwrap_or(0) })
 }
 
@@ -3084,10 +3088,15 @@ async fn agreement_release(
         args.push("--broadcast".to_string());
     }
     let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await?;
-    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    let raw: serde_json::Value = serde_json::from_str(&output)
+        .map_err(|e| format!("agreement-release parse error: {}. Output: {}", e, &output[..output.len().min(200)]))?;
+    if let Some(err) = raw.get("error").and_then(|v| v.as_str()) {
+        return Err(err.to_string());
+    }
+    let txid = raw["txid"].as_str().map(String::from);
     Ok(ReleaseResult {
-        txid: raw["txid"].as_str().map(String::from),
-        success: true,
+        success: txid.is_some(),
+        txid,
         message: None,
     })
 }
@@ -3106,10 +3115,15 @@ async fn agreement_refund(
         args.push("--broadcast".to_string());
     }
     let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await?;
-    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    let raw: serde_json::Value = serde_json::from_str(&output)
+        .map_err(|e| format!("agreement-refund parse error: {}. Output: {}", e, &output[..output.len().min(200)]))?;
+    if let Some(err) = raw.get("error").and_then(|v| v.as_str()) {
+        return Err(err.to_string());
+    }
+    let txid = raw["txid"].as_str().map(String::from);
     Ok(ReleaseResult {
-        txid: raw["txid"].as_str().map(String::from),
-        success: true,
+        success: txid.is_some(),
+        txid,
         message: None,
     })
 }
@@ -3202,8 +3216,12 @@ async fn proof_submit(
     ).await;
     let _ = std::fs::remove_file(&staged);
     let output = output_res?;
-    serde_json::from_str::<ProofSubmitResult>(&output)
-        .map_err(|e| format!("Parse error: {} | raw: {}", e, &output[..output.len().min(200)]))
+    let result = serde_json::from_str::<ProofSubmitResult>(&output)
+        .map_err(|e| format!("Parse error: {} | raw: {}", e, &output[..output.len().min(200)]))?;
+    if !result.success {
+        return Err(result.message.unwrap_or_else(|| format!("Proof rejected by node: status={}", result.status)));
+    }
+    Ok(result)
 }
 
 // proof_create_and_submit: end-to-end proof creation flow for users who
@@ -4936,10 +4954,18 @@ async fn multisig_create(
         args.push(pk.clone());
     }
     let output = run_wallet_cmd(args, wallet_path, data_dir).await?;
-    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    let raw: serde_json::Value = serde_json::from_str(&output)
+        .map_err(|e| format!("multisig-create parse error: {}. Output: {}", e, &output[..output.len().min(200)]))?;
+    if let Some(err) = raw.get("error").and_then(|v| v.as_str()) {
+        return Err(err.to_string());
+    }
+    let address = raw["address"].as_str().unwrap_or("").to_string();
+    if address.is_empty() {
+        return Err(format!("multisig-create returned no address. Output: {}", output.trim()));
+    }
     Ok(MultisigCreateResult {
         script_pubkey: raw["script_pubkey"].as_str().unwrap_or("").to_string(),
-        address: raw["address"].as_str().unwrap_or("").to_string(),
+        address,
         threshold,
         pubkeys,
     })
@@ -4957,11 +4983,16 @@ async fn multisig_broadcast(
         vec!["multisig-broadcast".to_string(), "--raw-tx".to_string(), raw_tx.clone(), "--json".to_string()],
         wallet_path, data_dir, rpc_url,
     ).await?;
-    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    let raw: serde_json::Value = serde_json::from_str(&output)
+        .map_err(|e| format!("multisig-broadcast parse error: {}. Output: {}", e, &output[..output.len().min(200)]))?;
+    if let Some(err) = raw.get("error").and_then(|v| v.as_str()) {
+        return Err(err.to_string());
+    }
+    let txid = raw["txid"].as_str().map(String::from);
     Ok(MultisigSpendResult {
         raw_tx: Some(raw_tx),
-        txid: raw["txid"].as_str().map(String::from),
-        success: true,
+        success: txid.is_some(),
+        txid,
         message: None,
     })
 }

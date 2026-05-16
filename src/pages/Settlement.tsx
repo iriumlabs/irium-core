@@ -134,12 +134,18 @@ function getLabels(id: TemplateId): { partyA: string; partyB: string } {
   }
 }
 
+const MAX_IRM_SUPPLY = 100_000_000;
+
 function validateStep0(id: TemplateId, form: FormState): Record<string, string> {
   const errs: Record<string, string> = {};
   if (!form.partyA.trim()) errs.partyA = 'Address is required';
   if (!form.partyB.trim()) errs.partyB = 'Address is required';
+  if (form.partyA.trim() && form.partyB.trim() && form.partyA.trim() === form.partyB.trim()) {
+    errs.partyB = 'Party A and Party B cannot be the same address';
+  }
   const amt = parseFloat(form.amountIrm);
   if (!form.amountIrm.trim() || isNaN(amt) || amt <= 0) errs.amountIrm = 'Enter a positive amount';
+  else if (amt > MAX_IRM_SUPPLY) errs.amountIrm = `Amount cannot exceed ${MAX_IRM_SUPPLY.toLocaleString()} IRM (total supply)`;
   if (id === 'milestone' || id === 'contractor') {
     const mc = parseInt(form.milestoneCount);
     if (isNaN(mc) || mc < 2 || mc > 20) errs.milestoneCount = 'Between 2 and 20';
@@ -548,7 +554,7 @@ export default function SettlementPage() {
         merchant: form.partyB,
         amount_sats: amountSats,
         cooldown_hours: parseInt(form.cooldownHours) || 72,
-        deadline_hours: parseInt(form.deadlineHours) || 336,
+        deadline_hours: parseInt(form.deadlineHours) || 48,
         memo: form.memo || undefined,
       };
     } else if (selectedTemplate === 'contractor') {
@@ -635,12 +641,14 @@ export default function SettlementPage() {
     const seller = form.partyB.trim();
     const buyer = form.partyA.trim();
     if (!seller || !buyer) return;
+    let cancelled = false;
     setSelfTradeChecking(true);
     reputationActions
       .selfTradeCheck(seller, buyer)
-      .then((r) => setSelfTradeCheck(r))
-      .catch(() => setSelfTradeCheck(null))
-      .finally(() => setSelfTradeChecking(false));
+      .then((r) => { if (!cancelled) setSelfTradeCheck(r); })
+      .catch(() => { if (!cancelled) setSelfTradeCheck(null); })
+      .finally(() => { if (!cancelled) setSelfTradeChecking(false); });
+    return () => { cancelled = true; setSelfTradeChecking(false); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, wizardStep, form.partyA, form.partyB]);
 
@@ -738,7 +746,7 @@ export default function SettlementPage() {
           merchant: form.partyB,
           amount_sats: amountSats,
           cooldown_hours: parseInt(form.cooldownHours) || 72,
-          deadline_hours: parseInt(form.deadlineHours) || 336,
+          deadline_hours: parseInt(form.deadlineHours) || 48,
           memo: form.memo || undefined,
         };
         res = await settlement.merchantDelayed(params);
@@ -1201,9 +1209,15 @@ export default function SettlementPage() {
                           <input
                             className="input"
                             placeholder="Order description..."
+                            maxLength={500}
                             value={form.memo}
                             onChange={setField('memo')}
                           />
+                          {form.memo.length > 400 && (
+                            <p className="text-xs mt-1" style={{ color: form.memo.length >= 500 ? '#f87171' : 'rgba(255,255,255,0.30)' }}>
+                              {form.memo.length}/500
+                            </p>
+                          )}
                         </div>
                       </>
                     )}
@@ -1274,9 +1288,15 @@ export default function SettlementPage() {
                           <input
                             className="input"
                             placeholder="Trade description..."
+                            maxLength={500}
                             value={form.memo}
                             onChange={setField('memo')}
                           />
+                          {form.memo.length > 400 && (
+                            <p className="text-xs mt-1" style={{ color: form.memo.length >= 500 ? '#f87171' : 'rgba(255,255,255,0.30)' }}>
+                              {form.memo.length}/500
+                            </p>
+                          )}
                         </div>
                       </>
                     )}

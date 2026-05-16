@@ -153,6 +153,7 @@ export default function Settings() {
   const [rpcOk, setRpcOk] = useState<boolean | null>(null);
   const [rpcError, setRpcError] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [resetInput, setResetInput] = useState('');
   const confirmResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [runningDiag, setRunningDiag] = useState(false);
@@ -441,12 +442,20 @@ export default function Settings() {
   };
 
   const handleResetClick = () => {
+    const hasCustomWallet = !!local.wallet_path;
     if (confirmReset) {
+      if (hasCustomWallet && resetInput !== 'RESET') {
+        toast.error('Type RESET in the field to confirm');
+        return;
+      }
       reset();
       setConfirmReset(false);
+      setResetInput('');
     } else {
       setConfirmReset(true);
-      confirmResetTimerRef.current = setTimeout(() => setConfirmReset(false), 3000);
+      setResetInput('');
+      if (confirmResetTimerRef.current) clearTimeout(confirmResetTimerRef.current);
+      confirmResetTimerRef.current = setTimeout(() => { setConfirmReset(false); setResetInput(''); }, 10000);
     }
   };
 
@@ -459,7 +468,12 @@ export default function Settings() {
     setConfirmClear(false);
     setClearingState(true);
     try {
-      await node.clearState();
+      const cleared = await node.clearState();
+      if (!cleared) {
+        toast.error('Failed to clear chain state — check node is stopped and try again');
+        setClearingState(false);
+        return;
+      }
       toast.success('Chain state cleared — restarting node from scratch…');
       await new Promise((r) => setTimeout(r, 800));
       const result = await node.start(undefined, local.external_ip);
@@ -1069,7 +1083,7 @@ export default function Settings() {
                             {check.label}
                           </span>
                           {check.detail && (
-                            <p className="text-white/40 mt-0.5 font-mono truncate">{check.detail}</p>
+                            <p className="text-white/40 mt-0.5 font-mono break-all whitespace-pre-wrap">{check.detail}</p>
                           )}
                         </div>
                       </div>
@@ -1408,6 +1422,33 @@ export default function Settings() {
             )}
           </AnimatePresence>
         </button>
+        <AnimatePresence>
+          {confirmReset && local.wallet_path && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden mt-3 w-full"
+            >
+              <div className="rounded-lg p-3 border border-amber-500/40 bg-amber-500/10 space-y-2">
+                <p className="text-xs text-amber-300 flex items-start gap-2">
+                  <AlertTriangle size={13} className="flex-shrink-0 mt-0.5 text-amber-400" />
+                  <span>
+                    Your wallet is at a custom path: <span className="font-mono text-amber-200 break-all">{local.wallet_path}</span>.
+                    After reset you will need to re-import it. Type <strong>RESET</strong> to confirm.
+                  </span>
+                </p>
+                <input
+                  className="input text-xs py-1.5"
+                  placeholder="Type RESET to confirm"
+                  value={resetInput}
+                  onChange={(e) => setResetInput(e.target.value.toUpperCase())}
+                  autoFocus
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* ── Update Node Source confirmation modal ─────────────── */}

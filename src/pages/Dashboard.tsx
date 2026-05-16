@@ -329,6 +329,7 @@ function agreementBorderColor(status: AgreementStatus): string {
 
 // ── Decentralization banner ───────────────────────────────────
 const DECENTRAL_DISMISSED_KEY = 'irium-decentral-dismissed';
+const HEIGHT_WARN_DISMISSED_KEY = 'irium-height-warn-dismissed-until';
 
 // SVG viewBox 0 0 112 78 — 5 healthy network nodes + 1 dimmed "you" node at bottom
 const NET_POS = [
@@ -503,6 +504,9 @@ export default function Dashboard() {
   const heightLastChanged = useStore((s) => s.heightLastChanged);
   const [showDecentral, setShowDecentral] = useState(
     () => !localStorage.getItem(DECENTRAL_DISMISSED_KEY)
+  );
+  const [heightWarnDismissedUntil, setHeightWarnDismissedUntil] = useState(
+    () => parseInt(localStorage.getItem(HEIGHT_WARN_DISMISSED_KEY) ?? '0', 10)
   );
   const [peersExpanded, setPeersExpanded] = useState(false);
   const [recentTx, setRecentTx] = useState<Transaction[]>([]);
@@ -837,8 +841,8 @@ export default function Dashboard() {
                 </button>
               </div>
             </motion.div>
-          ) : heightLastChanged !== null && (Date.now() - heightLastChanged) > 5 * 60 * 1000 ? (
-            /* ── Has peers but no new blocks in 5+ min ────────── */
+          ) : heightLastChanged !== null && (Date.now() - heightLastChanged) > 30 * 60 * 1000 && (nodeStatus?.peers ?? 0) > 0 && Date.now() > heightWarnDismissedUntil ? (
+            /* ── Has peers but no new blocks in 30+ min ─────────── */
             <motion.div
               key="stuck-height-banner"
               initial={{ opacity: 0, height: 0 }}
@@ -868,7 +872,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-display font-bold" style={{ color: '#fbbf24' }}>
-                      Block height hasn't increased in {Math.floor((Date.now() - heightLastChanged!) / 60000)}m
+                      Block height hasn't increased in {Math.round((Date.now() - heightLastChanged!) / 60000)}m
                     </p>
                     <p className="text-xs mt-0.5" style={{ color: 'rgba(238,240,255,0.55)' }}>
                       If your node appears stuck, try restarting or clearing the chain state.
@@ -916,6 +920,22 @@ export default function Dashboard() {
                     }}
                   >
                     Clear Chain State
+                  </button>
+                  <button
+                    onClick={() => {
+                      const until = Date.now() + 60 * 60 * 1000;
+                      localStorage.setItem(HEIGHT_WARN_DISMISSED_KEY, String(until));
+                      setHeightWarnDismissedUntil(until);
+                    }}
+                    className="inline-flex items-center px-3 py-2 rounded-xl text-xs font-display font-semibold transition-all active:scale-[0.97]"
+                    style={{
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.10)',
+                      color: 'rgba(238,240,255,0.45)',
+                    }}
+                    title="Dismiss for 1 hour"
+                  >
+                    <X size={12} />
                   </button>
                 </div>
               </div>
@@ -1045,8 +1065,8 @@ export default function Dashboard() {
                     ? 'Node offline'
                     : !nodeStatus.synced
                     ? `Syncing — ${nodeStatus.height.toLocaleString()} / ${nodeStatus.network_tip > 0 ? nodeStatus.network_tip.toLocaleString() : '?'}`
-                    : heightLastChanged && (Date.now() - heightLastChanged) > 5 * 60 * 1000
-                    ? `At tip · no new blocks (${Math.floor((Date.now() - heightLastChanged) / 60000)}m)`
+                    : heightLastChanged && (Date.now() - heightLastChanged) > 30 * 60 * 1000 && (nodeStatus?.peers ?? 0) > 0
+                    ? `At tip · no new blocks (${Math.round((Date.now() - heightLastChanged) / 60000)}m)`
                     : 'At chain tip'
                 }
                 icon={<Activity size={18} />}
@@ -1054,11 +1074,11 @@ export default function Dashboard() {
               />
               <StatCard
                 title="Peers"
-                value={String(peerList.length > 0 ? peerList.length : peersCount)}
+                value={String(peerList.length)}
                 sub={
                   peerList.length > 0
                     ? `${peerList.filter(p => p.source === 'live' || p.dialable).length} active · ${peerList.length} known`
-                    : 'Connected nodes'
+                    : nodeStatus?.running ? 'No peers — connecting…' : 'Node offline'
                 }
                 icon={<Users size={18} />}
                 color="green"

@@ -267,10 +267,12 @@ function CpuMinerTab() {
   const loading = status === null;
 
   const handleStart = async () => {
-    if (!address.trim()) { toast.error('Mining address required'); return; }
+    const addr = address.trim();
+    if (!addr) { toast.error('Mining address required'); return; }
+    if (!/^[QP]/.test(addr)) { toast.error('Invalid address — must start with Q or P'); return; }
     setStartLoading(true);
     try {
-      await miner.start(address.trim(), threads);
+      await miner.start(addr, threads);
       toast.success('CPU miner started');
     } catch (e) { toast.error(String(e)); }
     finally { setStartLoading(false); }
@@ -422,8 +424,8 @@ function CpuMinerTab() {
                   <span className="text-[10px] text-white/30">last confirmed block</span>
                 </div>
 
-                {/* Block time */}
-                {netInfo.seconds_since_last_block != null && (
+                {/* Block time — hidden while syncing to avoid showing stale data */}
+                {netInfo.seconds_since_last_block != null && status.hashrate_khs !== 0 && (
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1.5">
                       <Clock size={11} color="#34d399" className="opacity-50" />
@@ -494,7 +496,7 @@ function CpuMinerTab() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <StatCard label="Hashrate"       value={status?.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#A78BFA" icon={Activity} />
+        <StatCard label="Hashrate"       value={status === null ? '—' : status.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#A78BFA" icon={Activity} />
         <StatCard label="Est. Block Time" value={etaSeconds ? formatEta(etaSeconds) : '—'} color="#6ec6ff" icon={Timer} />
         <StatCard label="Blocks Found"   value={String(status?.blocks_found ?? 0)} color="#34d399" icon={Hash} />
         <StatCard label="Uptime"         value={status?.uptime_secs ? formatUptime(status.uptime_secs) : '—'} color="#60a5fa" icon={Clock} />
@@ -666,13 +668,17 @@ function GpuMinerTab() {
     : null;
 
   const handleStart = async () => {
-    if (!address.trim()) { toast.error('Mining address required'); return; }
+    const addr = address.trim();
+    if (!addr) { toast.error('Mining address required'); return; }
+    if (!/^[QP]/.test(addr)) { toast.error('Invalid address — must start with Q or P'); return; }
     setStartLoading(true);
     try {
       const platformSel = (gpuPlatforms && gpuPlatforms.length > 0)
         ? String(selectedPlatformIdx)
         : undefined;
-      await gpuMiner.start(address.trim(), platformSel, selectedDeviceIdxs, intensity);
+      const deviceIdxs = selectedDeviceIdxs.length > 0 ? selectedDeviceIdxs : [0];
+      if (selectedDeviceIdxs.length === 0) toast('No device selected — using default device 0', { icon: '⚠️' });
+      await gpuMiner.start(addr, platformSel, deviceIdxs, intensity);
       toast.success('GPU miner started');
     } catch (e) {
       const msg = String(e);
@@ -830,7 +836,7 @@ function GpuMinerTab() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <StatCard label="Hashrate"       value={status?.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#60a5fa" icon={Activity} />
+        <StatCard label="Hashrate"       value={status === null ? '—' : status.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#60a5fa" icon={Activity} />
         <StatCard label="Est. Block Time" value={etaSeconds ? formatEta(etaSeconds) : '—'} color="#6ec6ff" icon={Timer} />
         <StatCard label="Temperature"    value={!status?.running ? '—' : status.temperature_c != null ? `${status.temperature_c.toFixed(1)}°C` : 'N/A (Linux only)'} color={status?.running && (status.temperature_c ?? 0) > 80 ? '#f87171' : '#fbbf24'} icon={Thermometer} />
         <StatCard label="Power"          value={!status?.running ? '—' : status.power_w != null ? `${status.power_w.toFixed(1)}W` : 'N/A (Linux only)'} color="#a78bfa" icon={Zap} />
@@ -1173,7 +1179,7 @@ function StratumTab() {
   const [connectLoading, setConnectLoading] = useState(false);
   const [poolUrl, setPoolUrl] = useState('stratum+tcp://irium.f2pool.com:3333');
   const [worker, setWorker] = useState('');
-  const [password, setPassword] = useState('x');
+  const [password, setPassword] = useState('');
   const [selectedPreset, setSelectedPreset] = useState(0);
   // Confirm flyout for Disconnect — mirrors the Stop Mining pattern on
   // the CPU/GPU tabs so dropping in-progress shares isn't a single click.
@@ -1314,9 +1320,9 @@ function StratumTab() {
 
         {/* Password */}
         <div>
-          <label className="label">Worker Password</label>
+          <label className="label">Pool password (usually "x")</label>
           <input value={password} onChange={e => setPassword(e.target.value)} placeholder="x" className="input" />
-          <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Usually "x" for most pools</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Leave blank to use "x" (the default for most pools)</p>
         </div>
 
         <div className="flex items-center gap-3 pt-1">

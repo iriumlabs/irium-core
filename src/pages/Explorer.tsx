@@ -590,13 +590,19 @@ export default function Explorer() {
       if (result && Object.keys(result).length > 0) {
         setSearchResult(result);
       } else {
-        setSearchErr('No result found.');
+        if (searchTab === 'block') setSearchErr('Block not found on chain.');
+        else if (searchTab === 'tx') setSearchErr('Transaction not found.');
+        else setSearchErr('Address not found.');
       }
-    } catch {
-      if (searchTab === 'block') {
-        setSearchErr('Block not found.');
+    } catch (err) {
+      const msg = String(err).toLowerCase();
+      const nodeOffline = msg.includes('network') || msg.includes('connection') || msg.includes('econnrefused') || msg.includes('timeout') || msg.includes('offline');
+      if (nodeOffline) {
+        setSearchErr('Cannot reach node — make sure the node is running on the Dashboard.');
+      } else if (searchTab === 'block') {
+        setSearchErr('Block not found on chain.');
       } else if (searchTab === 'tx') {
-        setSearchErr('Transaction not found — the node may not yet index transactions by ID.');
+        setSearchErr('Transaction not found — confirm the txid is correct and the node is fully synced.');
       } else {
         setSearchErr('Address not found — the node may not yet expose address balance lookup.');
       }
