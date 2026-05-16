@@ -237,7 +237,7 @@ function CpuMinerTab() {
   const displayThreads = (status?.running && status.threads) ? status.threads : threads;
 
   const etaSeconds = (netInfo?.difficulty && status?.hashrate_khs && status.hashrate_khs > 0)
-    ? netInfo.difficulty / (status.hashrate_khs * 1000)
+    ? (netInfo.difficulty * 4_294_967_296) / (status.hashrate_khs * 1000)
     : null;
 
   // Poll iriumd /network-status every 3s while mining is active. Uses Tauri's
@@ -662,7 +662,7 @@ function GpuMinerTab() {
   }, [status?.running, rpcUrl]);
 
   const etaSeconds = (netInfo?.difficulty && status?.hashrate_khs && status.hashrate_khs > 0)
-    ? netInfo.difficulty / (status.hashrate_khs * 1000)
+    ? (netInfo.difficulty * 4_294_967_296) / (status.hashrate_khs * 1000)
     : null;
 
   const handleStart = async () => {
@@ -731,6 +731,69 @@ function GpuMinerTab() {
             )}
           </div>
 
+          {status?.running && netInfo && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 rounded-xl px-4 py-3"
+              style={{ background: 'rgba(110,198,255,0.04)', border: '1px solid rgba(110,198,255,0.12)' }}
+            >
+              <div className="flex items-center gap-2 pb-3 mb-3 border-b border-white/5">
+                <Hash size={15} style={{ color: '#6ec6ff' }} className="opacity-80" />
+                <span
+                  className="font-mono font-bold text-base tracking-tight"
+                  style={{ color: '#6ec6ff', fontFamily: '"JetBrains Mono", monospace' }}
+                >
+                  Mining block #{(netInfo.height + 1).toLocaleString()}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5">
+                    <Hash size={11} color="#A78BFA" className="opacity-50" />
+                    <span className="label mb-0 text-[10px]">Previous block</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono font-semibold text-sm" style={{ color: '#A78BFA', fontFamily: '"JetBrains Mono", monospace' }}>
+                      {truncateHash(netInfo.tip_hash)}
+                    </span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(netInfo.tip_hash);
+                        toast.success('Tip hash copied');
+                      }}
+                      className="text-white/40 hover:text-white/85 transition-colors flex-shrink-0"
+                      title="Copy full hash"
+                    >
+                      <Copy size={11} />
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-white/30">last confirmed block</span>
+                </div>
+                {netInfo.seconds_since_last_block != null && (
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5">
+                      <Clock size={11} color="#34d399" className="opacity-50" />
+                      <span className="label mb-0 text-[10px]">Block time</span>
+                    </div>
+                    <span className="font-mono font-semibold text-base" style={{ color: '#34d399', fontFamily: '"JetBrains Mono", monospace' }}>
+                      {formatBlockAge(netInfo.seconds_since_last_block)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-1.5">
+                    <Target size={11} color="#fbbf24" className="opacity-50" />
+                    <span className="label mb-0 text-[10px]">Network difficulty</span>
+                  </div>
+                  <span className="font-mono font-semibold text-base" style={{ color: '#fbbf24', fontFamily: '"JetBrains Mono", monospace' }}>
+                    {netInfo.difficulty.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           <AnimatePresence>
             {status?.running && history.length > 1 ? (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 120 }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.35 }}>
@@ -769,8 +832,8 @@ function GpuMinerTab() {
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <StatCard label="Hashrate"       value={status?.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#60a5fa" icon={Activity} />
         <StatCard label="Est. Block Time" value={etaSeconds ? formatEta(etaSeconds) : '—'} color="#6ec6ff" icon={Timer} />
-        <StatCard label="Temperature"    value={status?.running && status.temperature_c ? `${status.temperature_c.toFixed(1)}°C` : '—'} color={status?.running && (status.temperature_c ?? 0) > 80 ? '#f87171' : '#fbbf24'} icon={Thermometer} />
-        <StatCard label="Power"          value={status?.running && status.power_w ? `${status.power_w.toFixed(1)}W` : '—'} color="#a78bfa" icon={Zap} />
+        <StatCard label="Temperature"    value={!status?.running ? '—' : status.temperature_c != null ? `${status.temperature_c.toFixed(1)}°C` : 'N/A (Linux only)'} color={status?.running && (status.temperature_c ?? 0) > 80 ? '#f87171' : '#fbbf24'} icon={Thermometer} />
+        <StatCard label="Power"          value={!status?.running ? '—' : status.power_w != null ? `${status.power_w.toFixed(1)}W` : 'N/A (Linux only)'} color="#a78bfa" icon={Zap} />
         <StatCard label="Blocks Found"   value={String(status?.blocks_found ?? 0)} color="#34d399" icon={Hash} />
       </div>
 
