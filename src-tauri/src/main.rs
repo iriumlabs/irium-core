@@ -47,6 +47,8 @@ struct AppState {
     // they reset only when the app restarts.
     blocks_found: Arc<Mutex<u64>>,
     found_blocks: Arc<Mutex<Vec<FoundBlock>>>,
+    gpu_temperature_c: Arc<Mutex<Option<f64>>>,
+    gpu_power_w: Arc<Mutex<Option<f64>>>,
 }
 
 impl AppState {
@@ -75,6 +77,8 @@ impl AppState {
             node_logs: Arc::new(Mutex::new(Vec::new())),
             blocks_found: Arc::new(Mutex::new(0)),
             found_blocks: Arc::new(Mutex::new(Vec::new())),
+            gpu_temperature_c: Arc::new(Mutex::new(None)),
+            gpu_power_w: Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -146,6 +150,16 @@ fn parse_hashrate_khs(line: &str) -> Option<f64> {
     None
 }
 
+fn parse_gpu_thermal(line: &str) -> Option<(f64, f64)> {
+    if !line.contains("[GPU] temp=") { return None; }
+    let temp = line.split("temp=").nth(1)?
+        .split('C').next()?
+        .trim().parse::<f64>().ok()?;
+    let power = line.split("power=").nth(1)?
+        .split('W').next()?
+        .trim().parse::<f64>().ok()?;
+    Some((temp, power))
+}
 
 fn lock_err(e: impl std::fmt::Display) -> String {
     format!("Lock error: {}", e)
@@ -3890,6 +3904,8 @@ async fn stop_miner(app: tauri::AppHandle, state: State<'_, AppState>) -> Result
         *state.miner_threads.lock().map_err(lock_err)? = 0;
         *state.miner_hashrate.lock().map_err(lock_err)? = 0.0;
         *state.miner_sync_status.lock().map_err(lock_err)? = None;
+        *state.gpu_temperature_c.lock().map_err(lock_err)? = None;
+        *state.gpu_power_w.lock().map_err(lock_err)? = None;
         let _ = app.tray_handle().set_tooltip("Irium Core");
         return Ok(true);
     }
@@ -4088,6 +4104,8 @@ async fn start_gpu_miner(
     let hashrate_ref = Arc::clone(&state.miner_hashrate);
     let blocks_found_ref = Arc::clone(&state.blocks_found);
     let found_blocks_ref = Arc::clone(&state.found_blocks);
+    let temp_ref = Arc::clone(&state.gpu_temperature_c);
+    let power_ref = Arc::clone(&state.gpu_power_w);
     let rpc_url_for_reward = rpc_url.clone();
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
@@ -4110,6 +4128,10 @@ async fn start_gpu_miner(
             if let Some(khs) = parse_hashrate_khs(&line) {
                 if let Ok(mut h) = hashrate_ref.lock() { *h = khs; }
             }
+            if let Some((tc, pw)) = parse_gpu_thermal(&line) {
+                if let Ok(mut t) = temp_ref.lock() { *t = Some(tc); }
+                if let Ok(mut p) = power_ref.lock() { *p = Some(pw); }
+            }
         }
     });
     *miner_lock = Some(child);
@@ -4128,7 +4150,9 @@ async fn get_gpu_miner_status(state: State<'_, AppState>) -> Result<GpuMinerStat
     let running = state.miner_process.lock().map_err(lock_err)?.is_some();
     let hashrate_khs = *state.miner_hashrate.lock().map_err(lock_err)?;
     let blocks_found = *state.blocks_found.lock().map_err(lock_err)?;
-    Ok(GpuMinerStatus { running, hashrate_khs, blocks_found, device_name: None, temperature_c: None, power_w: None })
+    let temperature_c = *state.gpu_temperature_c.lock().map_err(lock_err)?;
+    let power_w = *state.gpu_power_w.lock().map_err(lock_err)?;
+    Ok(GpuMinerStatus { running, hashrate_khs, blocks_found, device_name: None, temperature_c, power_w })
 }
 
 // Returns the list of blocks the CPU or GPU miner has found during this

@@ -4,7 +4,7 @@ import {
   Cpu, Play, Square, RefreshCw, ArrowRight,
   Monitor, Wifi, WifiOff, Activity, Zap,
   ChevronDown, Server, Hash, Clock, Target,
-  Thermometer, Fan, Gauge, Copy, ExternalLink,
+  Thermometer, Fan, Gauge, Copy, ExternalLink, Timer,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
@@ -31,6 +31,18 @@ function formatBlockAge(secs: number): string {
   if (secs < 60) return `${secs}s ago`;
   if (secs < 3600) return `${Math.floor(secs / 60)}m ${secs % 60}s ago`;
   return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m ago`;
+}
+
+function formatEta(seconds: number): string {
+  if (seconds < 60) return `~${Math.round(seconds)}s`;
+  if (seconds < 3600) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.round(seconds % 60);
+    return `~${m}m ${s}s`;
+  }
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return `~${h}h ${m}m`;
 }
 
 // Shape of iriumd's /network-status response. Verified against upstream
@@ -223,6 +235,10 @@ function CpuMinerTab() {
   // When running, show the thread count the miner binary actually reported.
   // This survives tab switches that would otherwise reset local `threads` state.
   const displayThreads = (status?.running && status.threads) ? status.threads : threads;
+
+  const etaSeconds = (netInfo?.difficulty && status?.hashrate_khs && status.hashrate_khs > 0)
+    ? netInfo.difficulty / (status.hashrate_khs * 1000)
+    : null;
 
   // Poll iriumd /network-status every 3s while mining is active. Uses Tauri's
   // HTTP API (allowlist.http scope) so the request bypasses the renderer CSP
@@ -477,11 +493,12 @@ function CpuMinerTab() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Hashrate"     value={status?.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#A78BFA" icon={Activity} />
-        <StatCard label="Blocks Found" value={String(status?.blocks_found ?? 0)} color="#34d399" icon={Hash} />
-        <StatCard label="Uptime"       value={status?.uptime_secs ? formatUptime(status.uptime_secs) : '—'} color="#60a5fa" icon={Clock} />
-        <StatCard label="Difficulty"   value={netInfo?.difficulty != null ? netInfo.difficulty.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'} color="#fbbf24" icon={Target} />
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <StatCard label="Hashrate"       value={status?.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#A78BFA" icon={Activity} />
+        <StatCard label="Est. Block Time" value={etaSeconds ? formatEta(etaSeconds) : '—'} color="#6ec6ff" icon={Timer} />
+        <StatCard label="Blocks Found"   value={String(status?.blocks_found ?? 0)} color="#34d399" icon={Hash} />
+        <StatCard label="Uptime"         value={status?.uptime_secs ? formatUptime(status.uptime_secs) : '—'} color="#60a5fa" icon={Clock} />
+        <StatCard label="Difficulty"     value={netInfo?.difficulty != null ? netInfo.difficulty.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'} color="#fbbf24" icon={Target} />
       </div>
 
       {/* Found Blocks list (Bug 1) */}
@@ -575,7 +592,9 @@ function GpuMinerTab() {
   const resetGpuMinerHistory = useStore((s) => s.resetGpuMinerHistory);
   const gpuPlatforms        = useStore((s) => s.gpuPlatforms);
   const setGpuPlatforms     = useStore((s) => s.setGpuPlatforms);
+  const rpcUrl              = useStore((s) => s.settings.rpc_url);
 
+  const [netInfo, setNetInfo] = useState<NetInfo | null>(null);
   const [detecting, setDetecting]           = useState(false);
   const [showModal, setShowModal]           = useState(false);
   const [startLoading, setStartLoading]     = useState(false);
@@ -621,6 +640,29 @@ function GpuMinerTab() {
     const plat = gpuPlatforms.find((p) => p.index === selectedPlatformIdx);
     setSelectedDeviceIdxs(plat ? plat.devices.map((d) => d.index) : []);
   }, [selectedPlatformIdx, gpuPlatforms]);
+
+  // Poll /network-status every 3s while GPU mining to get difficulty for ETA.
+  useEffect(() => {
+    if (!status?.running) { setNetInfo(null); return; }
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const r = await tauriFetch<NetInfo>(`${rpcUrl}/network-status`, {
+          method: 'GET',
+          timeout: 3,
+          responseType: ResponseType.JSON,
+        });
+        if (!cancelled && r.ok) setNetInfo(r.data);
+      } catch { /* tolerate RPC misses */ }
+    };
+    poll();
+    const id = setInterval(poll, 3000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [status?.running, rpcUrl]);
+
+  const etaSeconds = (netInfo?.difficulty && status?.hashrate_khs && status.hashrate_khs > 0)
+    ? netInfo.difficulty / (status.hashrate_khs * 1000)
+    : null;
 
   const handleStart = async () => {
     if (!address.trim()) { toast.error('Mining address required'); return; }
@@ -723,11 +765,12 @@ function GpuMinerTab() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Hashrate"     value={status?.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#60a5fa" icon={Activity} />
-        <StatCard label="Temperature"  value={status?.running && status.temperature_c ? `${status.temperature_c}°C` : '—'} color={status?.running && (status.temperature_c ?? 0) > 80 ? '#f87171' : '#fbbf24'} icon={Thermometer} />
-        <StatCard label="Power"        value={status?.running && status.power_w ? `${status.power_w}W` : '—'} color="#a78bfa" icon={Zap} />
-        <StatCard label="Blocks Found" value={String(status?.blocks_found ?? 0)} color="#34d399" icon={Hash} />
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <StatCard label="Hashrate"       value={status?.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#60a5fa" icon={Activity} />
+        <StatCard label="Est. Block Time" value={etaSeconds ? formatEta(etaSeconds) : '—'} color="#6ec6ff" icon={Timer} />
+        <StatCard label="Temperature"    value={status?.running && status.temperature_c ? `${status.temperature_c.toFixed(1)}°C` : '—'} color={status?.running && (status.temperature_c ?? 0) > 80 ? '#f87171' : '#fbbf24'} icon={Thermometer} />
+        <StatCard label="Power"          value={status?.running && status.power_w ? `${status.power_w.toFixed(1)}W` : '—'} color="#a78bfa" icon={Zap} />
+        <StatCard label="Blocks Found"   value={String(status?.blocks_found ?? 0)} color="#34d399" icon={Hash} />
       </div>
 
       {/* Found Blocks list */}
