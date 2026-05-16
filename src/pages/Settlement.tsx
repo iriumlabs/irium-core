@@ -167,8 +167,11 @@ function getReviewRows(id: TemplateId, form: FormState): Array<{ label: string; 
     rows.push({ label: 'Milestones', value: form.milestoneCount });
     const count = parseInt(form.milestoneCount) || 1;
     if (form.amountIrm) {
-      const perMs = parseFloat(form.amountIrm) / count;
-      rows.push({ label: 'Per Milestone', value: `${perMs.toFixed(4)} IRM` });
+      const totalSats = Math.round(parseFloat(form.amountIrm) * SATS_PER_IRM);
+      const perMsSats = Math.floor(totalSats / count);
+      const remainder = totalSats - perMsSats * count;
+      const note = remainder > 0 ? ` (last gets +${remainder} sats)` : '';
+      rows.push({ label: 'Per Milestone', value: `${formatIRM(perMsSats)}${note}` });
     }
   }
   if (id === 'merchant_delayed') {
@@ -1247,13 +1250,18 @@ export default function SettlementPage() {
                           value={form.milestoneCount}
                           onChange={setField('milestoneCount')}
                         />
-                        {form.amountIrm && form.milestoneCount && (
-                          <p className="text-xs text-white/30 mt-1 font-mono">
-                            {formatIRM(
-                              Math.round((parseFloat(form.amountIrm) / (parseInt(form.milestoneCount) || 1)) * SATS_PER_IRM)
-                            )} per milestone
-                          </p>
-                        )}
+                        {form.amountIrm && form.milestoneCount && (() => {
+                          const totalSats = Math.round(parseFloat(form.amountIrm) * SATS_PER_IRM);
+                          const count = parseInt(form.milestoneCount) || 1;
+                          const perMsSats = Math.floor(totalSats / count);
+                          const remainder = totalSats - perMsSats * count;
+                          return (
+                            <p className="text-xs text-white/30 mt-1 font-mono">
+                              {formatIRM(perMsSats)} per milestone
+                              {remainder > 0 && <span className="text-white/20"> (last gets +{remainder} sats)</span>}
+                            </p>
+                          );
+                        })()}
                         {errors.milestoneCount && (
                           <p className="text-xs text-red-400 mt-0.5 flex items-center gap-1">
                             <AlertCircle size={11} />{errors.milestoneCount}

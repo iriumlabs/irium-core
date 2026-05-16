@@ -838,16 +838,13 @@ export default function WalletPage() {
                 // effect rehydrates state.wallet_path from settings.wallet_path
                 // on every launch, so the backend setPath alone is not enough.
                 updateSettings({ wallet_path: path });
-                // Order matters: load the NEW wallet's addresses first so
-                // the store has fresh data, THEN reset the selection to 0.
-                // If we reset first, the next render briefly points idx 0
-                // at the OLD addresses array — a stale-data flash. (The
-                // store's setAddresses also re-anchors selection by address
-                // string, so this explicit reset only matters for the rare
-                // case where the new wallet happens to share an address
-                // with the old one.)
-                await loadData();
+                // Clear addresses + selection BEFORE the loadData await so
+                // the brief async window doesn't render the OLD wallet's
+                // addresses against the NEW wallet's path/label. UI shows
+                // an empty list for ~1 frame, then the new addresses pop in.
+                setAddresses([]);
                 setActiveAddrIdx(0);
+                await loadData();
                 await loadWalletFiles();
                 toast.success(`Switched to ${path.split(/[\\/]/).pop()}`);
               } catch (e) { toast.error(`Failed to switch: ${e}`); }
@@ -1907,6 +1904,9 @@ function SendModal({
     if (!addr) return false;
     if (!/^[QP]/.test(addr)) { setAddrError("Address must start with Q or P"); return false; }
     if (addr.length < 30 || addr.length > 40) { setAddrError("Invalid address length"); return false; }
+    // Base58 alphabet: digits 1-9 and letters A-Z, a-z excluding 0, O, I, l.
+    // Catches typos before the node bounces the broadcast.
+    if (!/^[QP][1-9A-HJ-NP-Za-km-z]+$/.test(addr)) { setAddrError("Invalid character in address"); return false; }
     setAddrError(null);
     return true;
   };

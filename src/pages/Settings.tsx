@@ -167,7 +167,17 @@ export default function Settings() {
   const [confirmClear, setConfirmClear] = useState(false);
   const confirmClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showDetectPanel, setShowDetectPanel] = useState(false);
-  const [detectServiceUrl, setDetectServiceUrl] = useState('https://api.ipify.org');
+  // M14: persist user's chosen IP-detection URL so it survives unmount/restart.
+  const DETECT_SERVICE_URL_KEY = 'irium-detect-service-url';
+  const [detectServiceUrl, setDetectServiceUrl] = useState(() => {
+    try {
+      const stored = localStorage.getItem(DETECT_SERVICE_URL_KEY);
+      return stored && stored.trim() ? stored : 'https://api.ipify.org';
+    } catch { return 'https://api.ipify.org'; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(DETECT_SERVICE_URL_KEY, detectServiceUrl); } catch { /* ignore */ }
+  }, [detectServiceUrl]);
   const [fetchingIp, setFetchingIp] = useState(false);
   const [retryingUpnp, setRetryingUpnp] = useState(false);
   const nodeStatus = useStore((s) => s.nodeStatus);
@@ -258,16 +268,35 @@ export default function Settings() {
         timeout: 4,
         responseType: ResponseType.JSON,
       });
-      if (resp.ok) {
-        setRpcOk(true);
-        const height = resp.data?.height;
-        if (typeof height === "number") {
-          toast.success(`Connected to node at height ${height.toLocaleString()}`);
-        } else {
-          toast.success('Connected to node successfully');
-        }
-      } else {
+      if (!resp.ok) {
         setRpcError(`HTTP ${resp.status}`);
+        return;
+      }
+      // M15: also probe a second endpoint so a half-broken node (status replies
+      // but RPC subsystem dead) doesn't silently pass the test. /metrics is the
+      // cheapest deeper endpoint and is already used elsewhere in the app.
+      try {
+        const metricsResp = await tauriFetch<unknown>(`${local.rpc_url}/metrics`, {
+          method: "GET",
+          timeout: 4,
+          responseType: ResponseType.JSON,
+        });
+        if (!metricsResp.ok) {
+          setRpcOk(true);
+          toast(`Status OK, but /metrics returned HTTP ${metricsResp.status}`);
+          return;
+        }
+      } catch (e) {
+        setRpcOk(true);
+        toast(`Status OK, but /metrics unreachable: ${e instanceof Error ? e.message : String(e)}`);
+        return;
+      }
+      setRpcOk(true);
+      const height = resp.data?.height;
+      if (typeof height === "number") {
+        toast.success(`Connected to node at height ${height.toLocaleString()}`);
+      } else {
+        toast.success('Connected to node successfully');
       }
     } catch (e: unknown) {
       setRpcError(e instanceof Error ? e.message : "Connection failed");
