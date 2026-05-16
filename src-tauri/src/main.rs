@@ -1780,6 +1780,7 @@ async fn wallet_list_addresses(state: State<'_, AppState>) -> Result<Vec<Address
 #[tauri::command]
 async fn wallet_send(
     state: State<'_, AppState>,
+    from_address: String,
     to: String,
     amount_sats: u64,
     fee_sats: Option<u64>,
@@ -1788,12 +1789,10 @@ async fn wallet_send(
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let from = get_first_wallet_address(wallet_path.clone(), data_dir.clone()).await?;
-
     let amount_irm = format!("{:.8}", sats_to_irm(amount_sats));
     let mut args = vec![
         "send".to_string(),
-        from,
+        from_address,
         to.clone(),
         amount_irm,
     ];

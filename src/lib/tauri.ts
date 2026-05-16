@@ -83,8 +83,8 @@ export const wallet = {
   listAddresses: () =>
     safeInvoke<AddressInfo[]>('wallet_list_addresses'),
 
-  send: (to: string, amountSats: number, feeSats?: number) =>
-    safeInvoke<SendResult>('wallet_send', { to, amountSats, feeSats }),
+  send: (from: string, to: string, amountSats: number, feeSats?: number) =>
+    safeInvoke<SendResult>('wallet_send', { fromAddress: from, to, amountSats, feeSats }),
 
   transactions: (limit?: number, address?: string) =>
     safeInvoke<Transaction[]>('wallet_transactions', { limit, address }),

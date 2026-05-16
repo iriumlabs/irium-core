@@ -653,6 +653,7 @@ export default function WalletPage() {
       <AnimatePresence>
         {showSend && (
           <SendModal
+            fromAddress={activeAddress}
             onClose={() => setShowSend(false)}
             onSuccess={() => { setShowSend(false); loadData(); }}
             availableBalance={activeBalance}
@@ -1871,10 +1872,12 @@ function CreateWalletModal({
 
 // ── Send Modal ────────────────────────────────────────────────
 function SendModal({
+  fromAddress,
   onClose,
   onSuccess,
   availableBalance,
 }: {
+  fromAddress: string;
   onClose: () => void;
   onSuccess: () => void;
   availableBalance: number; // sats
@@ -1912,7 +1915,7 @@ function SendModal({
     setSendLoading(true);
     setSendError(null);
     try {
-      const result: SendResult = await wallet.send(sendTo, amountSats);
+      const result: SendResult = await wallet.send(fromAddress, sendTo, amountSats);
       setSentTxid(result.txid);
       setSendStep("success");
       setSendLoading(false);
