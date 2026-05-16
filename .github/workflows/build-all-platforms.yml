@@ -151,7 +151,12 @@ jobs:
         with:
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           releaseName: ${{ github.ref_type == 'tag' && format('Irium Core {0}', github.ref_name) || '' }}
-          releaseBody: "See the commit history for changes in this release."
+          releaseBody: |
+            feat: GPU miner intensity slider wired to batch size
+            feat: GPU temperature and power display on Linux
+            feat: estimated block time on CPU and GPU dashboards
+            fix: GPU miner intensity persists across navigation
+            fix: NSIS installer Irium branding
           releaseDraft: false
           prerelease: false
           args: --target ${{ matrix.target }}
