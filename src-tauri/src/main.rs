@@ -49,6 +49,13 @@ struct AppState {
     found_blocks: Arc<Mutex<Vec<FoundBlock>>>,
     gpu_temperature_c: Arc<Mutex<Option<f64>>>,
     gpu_power_w: Arc<Mutex<Option<f64>>>,
+    // C-10 fix: cumulative stratum share counters, populated by the
+    // stratum_connect spawn loop as it parses `[stratum] share accepted`
+    // (stdout) and `[stratum] share rejected: <reason>` (stderr) lines
+    // emitted by irium-miner.rs:stratum_reader (v1.9.13+). Reset to 0 on
+    // every stratum_connect so a new pool session starts at zero.
+    stratum_shares_accepted: Arc<Mutex<u64>>,
+    stratum_shares_rejected: Arc<Mutex<u64>>,
 }
 
 impl AppState {
@@ -79,6 +86,8 @@ impl AppState {
             found_blocks: Arc::new(Mutex::new(Vec::new())),
             gpu_temperature_c: Arc::new(Mutex::new(None)),
             gpu_power_w: Arc::new(Mutex::new(None)),
+            stratum_shares_accepted: Arc::new(Mutex::new(0)),
+            stratum_shares_rejected: Arc::new(Mutex::new(0)),
         }
     }
 }
@@ -4358,7 +4367,14 @@ async fn stratum_connect(
         .spawn()
         .map_err(|e| format!("Failed to start pool miner: {}", e))?;
 
+    // C-10 fix: reset share counters for the new pool session so a fresh
+    // connect doesn't accumulate against a previous pool's stats.
+    if let Ok(mut a) = state.stratum_shares_accepted.lock() { *a = 0; }
+    if let Ok(mut r) = state.stratum_shares_rejected.lock() { *r = 0; }
+
     let hashrate_ref = Arc::clone(&state.miner_hashrate);
+    let shares_accepted_ref = Arc::clone(&state.stratum_shares_accepted);
+    let shares_rejected_ref = Arc::clone(&state.stratum_shares_rejected);
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
             let line = match event {
@@ -4366,6 +4382,16 @@ async fn stratum_connect(
                 CommandEvent::Stderr(l) => l,
                 _ => break,
             };
+            // C-10 fix: parse share-result lines emitted by irium-miner's
+            // stratum_reader (v1.9.13+). substring match on the prefix —
+            // accepted is on stdout, rejected is on stderr but both funnel
+            // through `line` here. Substring (not starts_with) tolerates
+            // optional log prefixes a future build might prepend.
+            if line.contains("[stratum] share accepted") {
+                if let Ok(mut a) = shares_accepted_ref.lock() { *a = a.saturating_add(1); }
+            } else if line.contains("[stratum] share rejected") {
+                if let Ok(mut r) = shares_rejected_ref.lock() { *r = r.saturating_add(1); }
+            }
             if let Some(khs) = parse_hashrate_khs(&line) {
                 if let Ok(mut h) = hashrate_ref.lock() { *h = khs; }
             }
@@ -4395,7 +4421,11 @@ async fn get_stratum_status(state: State<'_, AppState>) -> Result<StratumStatus,
         let t = state.miner_start_time.lock().map_err(lock_err)?;
         t.as_ref().map(|i| i.elapsed().as_secs()).unwrap_or(0)
     };
-    Ok(StratumStatus { connected: running && pool_url.is_some(), pool_url, worker, shares_accepted: 0, shares_rejected: 0, uptime_secs })
+    // C-10 fix: real counters from AppState, populated by the stratum_connect
+    // spawn loop above. Was previously hardcoded to 0 on both sides.
+    let shares_accepted = *state.stratum_shares_accepted.lock().map_err(lock_err)?;
+    let shares_rejected = *state.stratum_shares_rejected.lock().map_err(lock_err)?;
+    Ok(StratumStatus { connected: running && pool_url.is_some(), pool_url, worker, shares_accepted, shares_rejected, uptime_secs })
 }
 
 // ============================================================
