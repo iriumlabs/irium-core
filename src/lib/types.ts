@@ -95,7 +95,7 @@ export interface PeerInfo {
 
 export interface MempoolInfo {
   size: number;
-  bytes: number;
+  // H-18 fix: `bytes` removed — iriumd doesn't expose total mempool byte size.
 }
 
 // ============================================================
@@ -410,14 +410,14 @@ export interface GpuMinerStatus {
   running: boolean;
   hashrate_khs: number;
   blocks_found: number;
-  uptime_secs: number;
-  difficulty: number;
-  device_index: number;
+  // C-9 fix: TS previously declared uptime_secs, difficulty, device_index,
+  // fan_pct, address as required/optional fields that the Rust GpuMinerStatus
+  // struct does not actually serialize. Removed to match what the backend
+  // sends. If those fields are needed in the future, add them to the Rust
+  // side first (src-tauri/src/types.rs and the get_gpu_miner_status builder).
   device_name?: string;
   temperature_c?: number;
-  fan_pct?: number;
   power_w?: number;
-  address?: string;
 }
 
 // A block found by the CPU or GPU miner. Mirrors the Rust FoundBlock
@@ -446,7 +446,10 @@ export interface StratumStatus {
   pool_hashrate_khs?: number;
   pool_diff?: number;
   last_share_time?: number;
-  uptime_secs?: number;
+  // M-23 fix: Rust serializes this as a required `u64` (always emitted) so
+  // marking it optional in TS forced unnecessary `?? 0` guards on every
+  // call site. Promoted to required to match the backend contract.
+  uptime_secs: number;
 }
 
 // ============================================================
@@ -830,6 +833,11 @@ export interface AgreementStoreListResult {
   raw_agreement_count?: number;
   bundle_count?: number;
   stored_raw_agreements?: AgreementStoreEntry[];
+  // H-17 fix: the Rust AgreementStoreListResponse serializes a `stored_bundles`
+  // array (Option<Vec<serde_json::Value>>) that was previously absent from
+  // this TS type. Typed as a loose record list because the bundle shape isn't
+  // tightly modeled on the frontend yet.
+  stored_bundles?: Record<string, unknown>[];
 }
 
 // ============================================================

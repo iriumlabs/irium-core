@@ -111,7 +111,9 @@ pub struct FeeEstimateResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MempoolInfo {
     pub size: u64,
-    pub bytes: u64,
+    // H-18 fix: `bytes` was always 0 because iriumd's /rpc/fee_estimate does
+    // not expose total mempool byte size. Field removed; if iriumd later adds
+    // a size-in-bytes field, restore here and in MempoolInfo (types.ts).
 }
 
 // Matches GET /rpc/balance: {"address":"Q...","balance":0,"mined_balance":0,...}
@@ -248,6 +250,10 @@ pub struct Offer {
     pub ranking_score: Option<f64>,
     pub reputation: Option<OfferReputation>,
     pub risk_signal: Option<String>,
+    // C-8 fix: previously dropped during From<RawOffer> conversion. The wallet
+    // binary emits this field directly; it represents the block height at
+    // which the offer auto-expires. UI uses it to render time-to-expiry.
+    pub timeout_height: Option<u64>,
 }
 
 impl From<RawOffer> for Offer {
@@ -263,6 +269,7 @@ impl From<RawOffer> for Offer {
             ranking_score: None,
             reputation: None,
             risk_signal: None,
+            timeout_height: r.timeout_height,
         }
     }
 }

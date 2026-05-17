@@ -1705,10 +1705,14 @@ async fn wallet_get_balance(state: State<'_, AppState>) -> Result<WalletBalance,
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
+    // H-1 fix: previously `.unwrap_or_default()` silently returned a
+    // zero-balance for any wallet-binary failure (locked file, wrong path,
+    // crash), which looked indistinguishable from a real empty wallet.
     let addr_output = run_wallet_cmd(
         vec!["list-addresses".to_string()],
         wallet_path, data_dir,
-    ).await.unwrap_or_default();
+    ).await
+    .map_err(|e| format!("Failed to list addresses for balance: {}", e))?;
 
     let addresses: Vec<String> = addr_output
         .lines()
@@ -1743,11 +1747,14 @@ async fn wallet_new_address(state: State<'_, AppState>) -> Result<String, String
     run_wallet_cmd(vec!["new-address".to_string()], wallet_path.clone(), data_dir.clone()).await?;
 
     let list = run_wallet_cmd(vec!["list-addresses".to_string()], wallet_path, data_dir).await?;
-    Ok(list.lines()
+    // H-3 fix: previously `.unwrap_or_default()` returned an empty string when
+    // list was empty, which the frontend then stored as the "new address" —
+    // breaking all subsequent balance/send operations silently.
+    list.lines()
         .map(|l| l.trim().to_string())
         .filter(|l| !l.is_empty())
         .last()
-        .unwrap_or_default())
+        .ok_or_else(|| "wallet new-address succeeded but list-addresses returned no entries — wallet state inconsistent".to_string())
 }
 
 // wallet_list_addresses: list-addresses outputs one address per line.
@@ -1832,13 +1839,16 @@ async fn wallet_transactions(
         }
         vec![trimmed.to_string()]
     } else {
+        // H-2 fix: previously `.unwrap_or_default()` returned an empty list on
+        // wallet binary failure, indistinguishable from a wallet that has no
+        // transactions. Propagate the error so the UI can surface it.
         let addr_output = run_wallet_cmd(
             vec!["list-addresses".to_string()],
             wallet_path,
             data_dir,
         )
         .await
-        .unwrap_or_default();
+        .map_err(|e| format!("Failed to list addresses for transaction history: {}", e))?;
         addr_output
             .lines()
             .map(|l| l.trim().to_string())
@@ -1881,6 +1891,16 @@ async fn wallet_transactions(
         }
     }
 
+    // L-6 fix: sort by descending block height (then unconfirmed last) BEFORE
+    // truncating to `limit`. Previously `truncate(n)` returned the first N
+    // entries by collection order — for a wallet with 3 addresses × 100 txs
+    // each and limit=10, the result was the first 10 of address[0] rather
+    // than the 10 most recent across all addresses.
+    all_txs.sort_by(|a, b| {
+        let bh = b.height.unwrap_or(u64::MAX);
+        let ah = a.height.unwrap_or(u64::MAX);
+        bh.cmp(&ah)
+    });
     if let Some(n) = limit {
         all_txs.truncate(n as usize);
     }
@@ -2710,7 +2730,9 @@ async fn offer_take(
     let raw: serde_json::Value = serde_json::from_str(&output)
         .map_err(|e| format!("Parse error: {} | raw: {}", e, &output[..output.len().min(200)]))?;
     Ok(OfferTakeResult {
-        agreement_id: raw["agreement_id"].as_str().unwrap_or("").to_string(),
+        agreement_id: raw["agreement_id"].as_str()
+            .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
+            .to_string(),
         offer_id,
         success: true,
         message: None,
@@ -2831,8 +2853,10 @@ async fn feed_sync(state: State<'_, AppState>) -> Result<FeedSyncResult, String>
         wallet_path, data_dir,
     ).await?;
 
+    // H-6 fix: propagate parse errors instead of silently treating any non-
+    // JSON output as `{processed:0, errors:0, imported:0}` — false success.
     let raw = serde_json::from_str::<FeedSyncRawResponse>(&output)
-        .unwrap_or_default();
+        .map_err(|e| format!("Failed to parse offer-feed-sync output: {} | raw: {}", e, &output[..output.len().min(200)]))?;
     let processed = raw.feeds_processed.unwrap_or(0);
     let errors = raw.total_errors.unwrap_or(0);
 
@@ -3009,7 +3033,9 @@ async fn agreement_create(
         .map_err(|e| format!("Parse error: {}", e))?;
 
     Ok(AgreementResult {
-        agreement_id: raw["agreement_id"].as_str().unwrap_or("").to_string(),
+        agreement_id: raw["agreement_id"].as_str()
+            .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
+            .to_string(),
         hash: raw["agreement_hash"].as_str().map(String::from),
         success: true,
         message: None,
@@ -3050,7 +3076,9 @@ async fn agreement_unpack(state: State<'_, AppState>, file_path: String) -> Resu
     let raw: serde_json::Value = serde_json::from_str(&output)
         .map_err(|e| format!("Parse error: {}", e))?;
     Ok(Agreement {
-        id: raw["agreement_id"].as_str().unwrap_or("").to_string(),
+        id: raw["agreement_id"].as_str()
+            .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
+            .to_string(),
         hash: raw["agreement_hash"].as_str().map(String::from),
         template: None,
         buyer: None,
@@ -3142,10 +3170,11 @@ async fn proof_list(state: State<'_, AppState>, agreement_id: Option<String>) ->
         args.push("--agreement-hash".to_string());
         args.push(id);
     }
+    // H-5 fix: propagate real errors. Empty list ≠ "fetch failed".
     let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await
-        .unwrap_or_else(|_| "[]".to_string());
+        .map_err(|e| format!("Failed to list proofs: {}", e))?;
     serde_json::from_str::<Vec<Proof>>(&output)
-        .or_else(|_| Ok(vec![]))
+        .map_err(|e| format!("Failed to parse proof list: {} | raw: {}", e, &output[..output.len().min(200)]))
 }
 
 #[tauri::command]
@@ -3410,7 +3439,9 @@ async fn settlement_create_freelance(
         .map_err(|e| format!("Parse error: {}", e))?;
 
     Ok(AgreementResult {
-        agreement_id: raw["agreement_id"].as_str().unwrap_or("").to_string(),
+        agreement_id: raw["agreement_id"].as_str()
+            .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
+            .to_string(),
         hash: raw["agreement_hash"].as_str().map(String::from),
         success: true,
         message: None,
@@ -3462,7 +3493,9 @@ async fn settlement_create_milestone(
         .map_err(|e| format!("Parse error: {}", e))?;
 
     Ok(AgreementResult {
-        agreement_id: raw["agreement_id"].as_str().unwrap_or("").to_string(),
+        agreement_id: raw["agreement_id"].as_str()
+            .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
+            .to_string(),
         hash: raw["agreement_hash"].as_str().map(String::from),
         success: true,
         message: None,
@@ -3507,7 +3540,9 @@ async fn settlement_create_deposit(
         .map_err(|e| format!("Parse error: {}", e))?;
 
     Ok(AgreementResult {
-        agreement_id: raw["agreement_id"].as_str().unwrap_or("").to_string(),
+        agreement_id: raw["agreement_id"].as_str()
+            .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
+            .to_string(),
         hash: raw["agreement_hash"].as_str().map(String::from),
         success: true,
         message: None,
@@ -3559,7 +3594,9 @@ async fn settlement_create_merchant_delayed(
         .map_err(|e| format!("Parse error: {}", e))?;
 
     Ok(AgreementResult {
-        agreement_id: raw["agreement_id"].as_str().unwrap_or("").to_string(),
+        agreement_id: raw["agreement_id"].as_str()
+            .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
+            .to_string(),
         hash: raw["agreement_hash"].as_str().map(String::from),
         success: true,
         message: None,
@@ -3615,7 +3652,9 @@ async fn settlement_create_contractor(
         .map_err(|e| format!("Parse error: {}", e))?;
 
     Ok(AgreementResult {
-        agreement_id: raw["agreement_id"].as_str().unwrap_or("").to_string(),
+        agreement_id: raw["agreement_id"].as_str()
+            .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
+            .to_string(),
         hash: raw["agreement_hash"].as_str().map(String::from),
         success: true,
         message: None,
@@ -4346,7 +4385,6 @@ async fn rpc_get_mempool(state: State<'_, AppState>) -> Result<MempoolInfo, Stri
     let fee_est = resp.json::<FeeEstimateResponse>().await.map_err(|e| e.to_string())?;
     Ok(MempoolInfo {
         size: fee_est.mempool_size.unwrap_or(0),
-        bytes: 0,
     })
 }
 
@@ -4386,10 +4424,21 @@ async fn rpc_get_tx(
         .send()
         .await
         .map_err(|e| e.to_string())?;
-    if resp.status().is_success() {
+    let status = resp.status();
+    if status.is_success() {
         resp.json::<serde_json::Value>().await.map_err(|e| e.to_string())
     } else {
-        Err(format!("Transaction not found"))
+        // L-10 fix: distinguish 404 (real "not found") from 400 (bad txid format)
+        // and other 4xx/5xx errors. Previously every non-2xx returned the same
+        // "Transaction not found" message, hiding malformed-txid bugs.
+        let body = resp.text().await.unwrap_or_default();
+        let body_snippet = if body.is_empty() { String::new() } else { format!(" — {}", body.chars().take(120).collect::<String>()) };
+        let code = status.as_u16();
+        match code {
+            404 => Err(format!("Transaction not found (txid {})", txid)),
+            400 => Err(format!("Invalid txid format: {}{}", txid, body_snippet)),
+            _ => Err(format!("RPC error {} for txid {}{}", code, txid, body_snippet)),
+        }
     }
 }
 
@@ -4802,7 +4851,14 @@ async fn check_for_updates() -> Result<UpdateCheckResult, String> {
         let notes = json["body"].as_str().map(|s| s.to_string());
         let url = json["html_url"].as_str().map(|s| s.to_string());
 
-        let available = !latest.is_empty() && latest != CURRENT_VERSION;
+        // L-3 fix: previously a naive string compare. Now strip pre-release
+        // suffixes (1.0.10-beta, 1.0.10-rc.1, etc.) on both sides so we
+        // don't falsely report "update available" between content-equivalent
+        // tags.
+        let strip_suffix = |s: &str| s.split('-').next().unwrap_or(s).to_string();
+        let latest_base = strip_suffix(&latest);
+        let current_base = strip_suffix(CURRENT_VERSION);
+        let available = !latest.is_empty() && latest_base != current_base;
         Ok(UpdateCheckResult {
             available,
             current_version: CURRENT_VERSION.to_string(),
@@ -5072,9 +5128,17 @@ async fn invoice_generate(
         args.push(op);
     }
     let output = run_wallet_cmd(args, wallet_path, data_dir).await?;
-    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    // H-8 fix: parse errors now propagate. Previously `.unwrap_or_default()`
+    // returned an invoice with empty `id`, indistinguishable from a real
+    // invoice — except it couldn't be looked up or paid.
+    let raw: serde_json::Value = serde_json::from_str(&output)
+        .map_err(|e| format!("Failed to parse invoice-generate output: {} | raw: {}", e, &output[..output.len().min(200)]))?;
+    let id = raw["invoice_id"].as_str()
+        .or_else(|| raw["id"].as_str())
+        .ok_or("Wallet binary returned no invoice_id — invoice generation failed silently")?
+        .to_string();
     Ok(Invoice {
-        id: raw["invoice_id"].as_str().or_else(|| raw["id"].as_str()).unwrap_or("").to_string(),
+        id,
         recipient: raw["recipient"].as_str().unwrap_or(&recipient).to_string(),
         amount: raw["amount"].as_u64().unwrap_or((amount_irm * 100_000_000.0) as u64),
         reference: raw["reference"].as_str().unwrap_or(&reference).to_string(),
@@ -5226,9 +5290,20 @@ async fn agreement_fund(
         args.push("--broadcast".to_string());
     }
     let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await?;
-    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    // C-1 fix: real parse + propagate accepted=false from FundAgreementResponse
+    // (binary emits `{txid, agreement_hash, accepted, fee, outputs:[...]}`).
+    let raw: serde_json::Value = serde_json::from_str(&output)
+        .map_err(|e| format!("Failed to parse agreement-fund output: {} | raw: {}", e, &output[..output.len().min(200)]))?;
+    let txid = raw["txid"].as_str().map(String::from);
+    let accepted = raw["accepted"].as_bool().unwrap_or(false);
+    if !accepted {
+        let detail = txid.as_deref()
+            .map(|t| format!(" (txid: {})", t))
+            .unwrap_or_default();
+        return Err(format!("Agreement funding rejected by node{}", detail));
+    }
     Ok(ReleaseResult {
-        txid: raw["txid"].as_str().map(String::from),
+        txid,
         success: true,
         message: None,
     })
@@ -5361,8 +5436,9 @@ async fn agreement_policy_list(
     if active_only.unwrap_or(false) {
         args.push("--active-only".to_string());
     }
+    // H-5 fix: propagate real errors instead of silent "[]".
     let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url)
-        .await.unwrap_or_else(|_| "[]".to_string());
+        .await.map_err(|e| format!("Failed to list policies: {}", e))?;
     serde_json::from_str::<Vec<ProofPolicy>>(&output).or_else(|_| {
         let val: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
         let arr = val.get("policies").and_then(|v| v.as_array()).cloned().unwrap_or_default();
@@ -5572,10 +5648,11 @@ async fn agreement_dispute(
 async fn agreement_dispute_list(state: State<'_, AppState>) -> Result<Vec<DisputeEntry>, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    // H-5 fix: propagate real errors instead of silent "[]".
     let output = run_wallet_cmd(
         vec!["agreement-dispute-list".to_string(), "--json".to_string()],
         wallet_path, data_dir,
-    ).await.unwrap_or_else(|_| "[]".to_string());
+    ).await.map_err(|e| format!("Failed to list disputes: {}", e))?;
     serde_json::from_str::<Vec<DisputeEntry>>(&output).or_else(|_| {
         let val: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
         let arr = val.get("disputes").and_then(|v| v.as_array()).cloned().unwrap_or_default();
@@ -5644,11 +5721,15 @@ async fn explorer_agreements(
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
     let _ = limit;
+    // H-7 fix: propagate real errors. Previously `.unwrap_or_else(|_| "{}")`
+    // silently produced an empty list indistinguishable from a real empty
+    // store.
     let output = run_wallet_cmd_with_rpc(
         vec!["agreement-local-store-list".to_string(), "--json".to_string()],
         wallet_path, data_dir, rpc_url,
-    ).await.unwrap_or_else(|_| "{}".to_string());
-    let val: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    ).await.map_err(|e| format!("Failed to list local agreement store: {}", e))?;
+    let val: serde_json::Value = serde_json::from_str(&output)
+        .map_err(|e| format!("Failed to parse agreement-local-store-list output: {} | raw: {}", e, &output[..output.len().min(200)]))?;
     let stored = val.get("stored_raw_agreements")
         .and_then(|v| v.as_array())
         .cloned()
@@ -5670,11 +5751,14 @@ async fn explorer_stats(state: State<'_, AppState>) -> Result<ExplorerStats, Str
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    // H-7 fix: propagate real errors. Previously `.unwrap_or_else(|_| "{}")`
+    // showed all-zero stats indistinguishable from a fresh install.
     let store_output = run_wallet_cmd_with_rpc(
         vec!["agreement-local-store-list".to_string(), "--json".to_string()],
         wallet_path, data_dir, rpc_url,
-    ).await.unwrap_or_else(|_| "{}".to_string());
-    let store: serde_json::Value = serde_json::from_str(&store_output).unwrap_or_default();
+    ).await.map_err(|e| format!("Failed to fetch explorer stats: {}", e))?;
+    let store: serde_json::Value = serde_json::from_str(&store_output)
+        .map_err(|e| format!("Failed to parse explorer stats output: {} | raw: {}", e, &store_output[..store_output.len().min(200)]))?;
     Ok(ExplorerStats {
         total_agreements: store.get("raw_agreement_count").and_then(|v| v.as_u64()),
         active_agreements: None,
@@ -5896,7 +5980,11 @@ async fn run_diagnostics(state: State<'_, AppState>) -> Result<DiagnosticsResult
     }
 
     // 4. irium-wallet --version / list-addresses runs successfully
-    match run_wallet_cmd(vec!["list-addresses".to_string()], wallet_path.clone(), data_dir.clone()).await {
+    // L-1 fix: cache the list-addresses output for reuse in check 5 below.
+    // Previously the binary was invoked twice back-to-back, doubling
+    // diagnostic latency for no functional gain.
+    let list_addr_result = run_wallet_cmd(vec!["list-addresses".to_string()], wallet_path.clone(), data_dir.clone()).await;
+    match &list_addr_result {
         Ok(out) => {
             let count = out.lines().filter(|l| !l.trim().is_empty()).count();
             checks.push(DiagnosticCheck {
@@ -5908,12 +5996,12 @@ async fn run_diagnostics(state: State<'_, AppState>) -> Result<DiagnosticsResult
         Err(e) => checks.push(DiagnosticCheck {
             label: "irium-wallet runs successfully".to_string(),
             passed: false,
-            detail: Some(e),
+            detail: Some(e.clone()),
         }),
     }
 
-    // 5. irium-wallet balance runs (get first address)
-    match run_wallet_cmd(vec!["list-addresses".to_string()], wallet_path.clone(), data_dir.clone()).await {
+    // 5. irium-wallet balance runs (get first address) — reuses cached output.
+    match &list_addr_result {
         Ok(out) => {
             let first_addr = out.lines().find(|l| !l.trim().is_empty()).unwrap_or("").trim().to_string();
             if first_addr.is_empty() {
@@ -5948,7 +6036,7 @@ async fn run_diagnostics(state: State<'_, AppState>) -> Result<DiagnosticsResult
         Err(e) => checks.push(DiagnosticCheck {
             label: "irium-wallet balance query".to_string(),
             passed: false,
-            detail: Some(e),
+            detail: Some(e.clone()),
         }),
     }
 
@@ -6014,9 +6102,15 @@ async fn run_diagnostics(state: State<'_, AppState>) -> Result<DiagnosticsResult
 #[tauri::command]
 async fn get_node_logs(state: State<'_, AppState>, lines: Option<usize>) -> Result<Vec<String>, String> {
     let n = lines.unwrap_or(200).min(1000);
-    let logs = state.node_logs.lock().map_err(lock_err)?;
-    let start = if logs.len() > n { logs.len() - n } else { 0 };
-    Ok(logs[start..].to_vec())
+    // L-5 fix: snapshot the slice under the lock, drop the guard, then return.
+    // Previously the .to_vec() ran while still holding the lock, briefly
+    // blocking the iriumd stdout reader that appends to the same mutex.
+    let snapshot = {
+        let logs = state.node_logs.lock().map_err(lock_err)?;
+        let start = if logs.len() > n { logs.len() - n } else { 0 };
+        logs[start..].to_vec()
+    };
+    Ok(snapshot)
 }
 
 // ============================================================

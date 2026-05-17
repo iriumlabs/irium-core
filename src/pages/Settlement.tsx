@@ -136,6 +136,10 @@ function getLabels(id: TemplateId): { partyA: string; partyB: string } {
 
 const MAX_IRM_SUPPLY = 100_000_000;
 
+// M-14 fix: cap deadline at 1 year (8760 h). Previously no upper bound — a
+// user mistyping `999999999` could lock funds for ~114,000 years.
+const MAX_DEADLINE_HOURS = 8760;
+
 function validateStep0(id: TemplateId, form: FormState): Record<string, string> {
   const errs: Record<string, string> = {};
   if (!form.partyA.trim()) errs.partyA = 'Address is required';
@@ -149,6 +153,19 @@ function validateStep0(id: TemplateId, form: FormState): Record<string, string> 
   if (id === 'milestone' || id === 'contractor') {
     const mc = parseInt(form.milestoneCount);
     if (isNaN(mc) || mc < 2 || mc > 20) errs.milestoneCount = 'Between 2 and 20';
+  }
+  // M-14: validate deadlineHours <= 1 year for every template that uses it.
+  if (id !== 'milestone' && id !== 'contractor') {
+    const dh = parseFloat(form.deadlineHours);
+    if (form.deadlineHours.trim() && (isNaN(dh) || dh < 1 || dh > MAX_DEADLINE_HOURS)) {
+      errs.deadlineHours = `Deadline must be between 1 and ${MAX_DEADLINE_HOURS} hours (1 year)`;
+    }
+  }
+  if (id === 'merchant_delayed') {
+    const ch = parseFloat(form.cooldownHours);
+    if (form.cooldownHours.trim() && (isNaN(ch) || ch < 1 || ch > MAX_DEADLINE_HOURS)) {
+      errs.cooldownHours = `Cool-down must be between 1 and ${MAX_DEADLINE_HOURS} hours (1 year)`;
+    }
   }
   return errs;
 }
@@ -498,6 +515,10 @@ export default function SettlementPage() {
   const [hubAgreements, setHubAgreements] = useState<Agreement[]>([]);
   const [allAgreements, setAllAgreements] = useState<Agreement[]>([]);
   const [hubLoading, setHubLoading] = useState(false);
+  // C-7 fix: surface backend errors instead of silently catching them. Empty
+  // state is shown only when load succeeded and there are genuinely zero
+  // agreements; this state distinguishes "load failed" from "user has none".
+  const [hubError, setHubError] = useState<string | null>(null);
   // Drives the Generate Payment Invoice modal on the success card.
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   // Toggles the JSON payload preview on the Review step of the wizard.
@@ -599,11 +620,18 @@ export default function SettlementPage() {
   useEffect(() => {
     if (view !== 'hub') return;
     setHubLoading(true);
+    setHubError(null);
     agreementsApi.list().then((list) => {
       const all = list ?? [];
       setAllAgreements(all);
       setHubAgreements(all.slice(-5).reverse());
-    }).catch(() => {}).finally(() => setHubLoading(false));
+    }).catch((e) => {
+      // C-7 fix: stop silently swallowing — show a real error banner so a
+      // user with active escrows doesn't see a deceptive empty state.
+      setHubError(e instanceof Error ? e.message : String(e));
+      setAllAgreements([]);
+      setHubAgreements([]);
+    }).finally(() => setHubLoading(false));
   }, [view]);
 
   // Phase 6: accept a prefilled invoice from the Agreements page → Import
@@ -950,8 +978,21 @@ export default function SettlementPage() {
             <BuyerDashboardCard address={selectedAddress} />
 
             {/* Recent agreements — or empty-state CTA (Phase 8) when no
-                agreements exist yet. */}
-            {hubAgreements.length === 0 && !hubLoading && (
+                agreements exist yet. C-7: explicit error banner when the
+                backend load failed, so the empty CTA isn't mistaken for
+                "no agreements" when it's really "couldn't fetch". */}
+            {hubError && !hubLoading && (
+              <div className="card p-4 border border-red-500/30" style={{ background: 'rgba(239,68,68,0.06)' }}>
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle size={14} className="flex-shrink-0 mt-0.5" style={{ color: '#f87171' }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-red-300 mb-1">Couldn't load agreements</div>
+                    <div className="text-xs text-white/55 break-all">{hubError}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {!hubError && hubAgreements.length === 0 && !hubLoading && (
               <div className="card p-6 text-center">
                 <div className="text-sm text-white/55 mb-3">
                   You haven't created any agreements yet.
@@ -1166,40 +1207,53 @@ export default function SettlementPage() {
 
                     {/* Deadline */}
                     {selectedTemplate !== 'milestone' && selectedTemplate !== 'contractor' && selectedTemplate !== 'merchant_delayed' && (
-                      <div>
+                      <ShakeField error={errors.deadlineHours}>
                         <label className="label">Deadline (hours)</label>
                         <input
-                          className="input"
+                          className={`input ${errors.deadlineHours ? 'border-red-500/50' : ''}`}
                           type="number"
                           min="1"
+                          max={MAX_DEADLINE_HOURS}
                           value={form.deadlineHours}
                           onChange={setField('deadlineHours')}
                         />
-                      </div>
+                        {errors.deadlineHours && (
+                          <p className="text-xs text-red-400 mt-0.5 flex items-center gap-1">
+                            <AlertCircle size={11} />{errors.deadlineHours}
+                          </p>
+                        )}
+                      </ShakeField>
                     )}
 
                     {/* Merchant Delayed — cool-down and total escrow windows */}
                     {selectedTemplate === 'merchant_delayed' && (
                       <>
-                        <div>
+                        <ShakeField error={errors.cooldownHours}>
                           <label className="label">Cool-down Window (hours)</label>
                           <input
-                            className="input"
+                            className={`input ${errors.cooldownHours ? 'border-red-500/50' : ''}`}
                             type="number"
                             min="1"
+                            max={MAX_DEADLINE_HOURS}
                             value={form.cooldownHours}
                             onChange={setField('cooldownHours')}
                           />
                           <p className="text-xs text-white/30 mt-1">
                             How long the buyer has to dispute before the merchant can claim.
                           </p>
-                        </div>
+                          {errors.cooldownHours && (
+                            <p className="text-xs text-red-400 mt-0.5 flex items-center gap-1">
+                              <AlertCircle size={11} />{errors.cooldownHours}
+                            </p>
+                          )}
+                        </ShakeField>
                         <div>
                           <label className="label">Total Escrow Window (hours)</label>
                           <input
                             className="input"
                             type="number"
                             min="1"
+                            max={MAX_DEADLINE_HOURS}
                             value={form.deadlineHours}
                             onChange={setField('deadlineHours')}
                           />
@@ -1225,16 +1279,22 @@ export default function SettlementPage() {
                       </>
                     )}
 
-                    {/* Scope — freelance and contractor */}
+                    {/* Scope — freelance and contractor (M-15 maxLength=200) */}
                     {(selectedTemplate === 'freelance' || selectedTemplate === 'contractor') && (
                       <div>
                         <label className="label">Work Scope (optional)</label>
                         <textarea
                           className="input h-20 resize-none"
                           placeholder="Describe the deliverables..."
+                          maxLength={200}
                           value={form.scope}
                           onChange={setField('scope')}
                         />
+                        {form.scope.length > 160 && (
+                          <p className="text-xs mt-1" style={{ color: form.scope.length >= 200 ? '#f87171' : 'rgba(255,255,255,0.30)' }}>
+                            {form.scope.length}/200
+                          </p>
+                        )}
                       </div>
                     )}
 
@@ -1273,11 +1333,16 @@ export default function SettlementPage() {
                     {/* OTC extras */}
                     {selectedTemplate === 'otc' && (
                       <>
+                        {/* M-15: maxLength caps on free-text inputs prevent
+                            overlong values failing at the RPC layer with
+                            cryptic errors. Caps match the values used by the
+                            backend's max-memo-size constants. */}
                         <div>
                           <label className="label">Asset Reference (optional)</label>
                           <input
                             className="input"
                             placeholder="e.g. BTC, ETH, USDT..."
+                            maxLength={100}
                             value={form.assetReference}
                             onChange={setField('assetReference')}
                           />
@@ -1287,6 +1352,7 @@ export default function SettlementPage() {
                           <input
                             className="input"
                             placeholder="e.g. Bank transfer, PayPal..."
+                            maxLength={50}
                             value={form.paymentMethod}
                             onChange={setField('paymentMethod')}
                           />

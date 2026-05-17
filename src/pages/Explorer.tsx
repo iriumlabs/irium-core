@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import {
   Copy, CheckCircle2, RefreshCw, Search,
   Cpu, Users, Layers, Clock, Activity, Zap, TrendingUp, Coins,
@@ -418,7 +419,12 @@ export default function Explorer() {
     (async () => {
       try {
         const raw = (await rpc.block(String(h))) as Record<string, unknown>;
-        if (!raw || Object.keys(raw).length === 0) return;
+        if (!raw || Object.keys(raw).length === 0) {
+          // H-15 fix: empty response is not the same as a successful "no
+          // block" — surface this to the user instead of silently dropping.
+          toast.error(`Block ${h.toLocaleString()} not found on the node`);
+          return;
+        }
         const str = (v: unknown): string => (typeof v === 'string' ? v : '');
         const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v) || 0);
         const txArr = Array.isArray(raw.tx) ? (raw.tx as unknown[]) : null;
@@ -439,7 +445,12 @@ export default function Explorer() {
           reward_sats:  passedBlock?.reward_sats,
         };
         setSelectedBlock(block);
-      } catch { /* block not found / node offline — silent */ }
+      } catch (e) {
+        // H-15 fix: was a bare silent catch. Now surfaces the failure so a
+        // user clicking a found block during a slow / offline node sees a
+        // toast instead of nothing.
+        toast.error(`Couldn't load block ${h.toLocaleString()}: ${e instanceof Error ? e.message : String(e)}`);
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

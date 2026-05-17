@@ -14,12 +14,12 @@ const SPECS = [
   { label: 'Network',              value: 'Mainnet' },
   { label: 'Coin',                 value: 'IRM' },
   { label: 'Max Supply',           value: '100,000,000 IRM' },
-  { label: 'Block Time',           value: '~2 minutes target' },
+  { label: 'Block Time',           value: '~13 minutes (live average, see Dashboard for current rate)' },
   { label: 'Block Reward',         value: '50 IRM (Early Miner Era)' },
   { label: 'Consensus',            value: 'SHA-256d Proof of Work' },
   { label: 'Difficulty Algorithm', value: 'LWMA-144' },
   { label: 'Address Prefix',       value: 'P / Q' },
-  { label: 'Key Derivation',       value: 'BIP32 (no BIP39 mnemonic — WIF key backup only)' },
+  { label: 'Key Derivation',       value: 'BIP39 24-word mnemonic seed phrase + WIF key (both supported for backup/recovery)' },
   { label: 'RPC Port',             value: '38300' },
   { label: 'P2P Port',             value: '38291' },
   { label: 'Bootstrap',            value: 'DNS-free (signed seedlist + blockchain-embedded peers)' },
@@ -48,7 +48,7 @@ const FAQS = [
   },
   {
     q: 'How do I start mining?',
-    a: 'Go to the Mining page, enter your IRM address in the configuration field, set the number of threads, and click Start Mining. Your address must start with P or Q. Blocks take approximately 2 minutes on average to find.',
+    a: 'Go to the Mining page, enter your IRM address in the configuration field, set the number of threads, and click Start Mining. Your address must start with P or Q. Average block time varies with network hashrate — currently around 13 minutes; the Dashboard shows the live value.',
   },
   {
     q: 'What is a settlement agreement?',
@@ -60,7 +60,7 @@ const FAQS = [
   },
   {
     q: 'How do I back up my wallet?',
-    a: 'Irium wallets use BIP32 key derivation and do not have a 12 or 24 word recovery phrase. To back up your wallet, go to Wallet → Security → Export WIF Key or Export Backup File. Store the file or WIF key offline in a safe place.',
+    a: 'Irium wallets use BIP39 with a 24-word recovery phrase. To back up your wallet, go to Wallet → Security → Show Recovery Phrase to view your 24-word mnemonic, or Export WIF Key for a single-address backup. Store the recovery phrase or WIF key offline in a safe place — the recovery phrase restores your entire wallet, while a WIF key only restores one address.',
   },
   {
     q: 'What is the difference between P and Q addresses?',

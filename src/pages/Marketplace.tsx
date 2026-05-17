@@ -377,13 +377,35 @@ function CreateOfferModal({
   });
   const [loading, setLoading] = useState(false);
 
+  // M-21: protect against misplaced-decimal disasters. Total IRM supply is
+  // 100M; offers above 1000 IRM also trigger a confirm step so the user
+  // can't silently lock their entire wallet by typing "10000" instead of
+  // "1.0000".
+  const MAX_OFFER_IRM = 100_000_000;
+  const CONFIRM_OFFER_IRM = 1_000;
+
   const handleSubmit = async () => {
     if (!form.amount) return;
+    const amt = parseFloat(form.amount);
+    if (isNaN(amt) || amt <= 0) {
+      toast.error('Enter a positive amount');
+      return;
+    }
+    if (amt > MAX_OFFER_IRM) {
+      toast.error(`Amount cannot exceed ${MAX_OFFER_IRM.toLocaleString()} IRM (total supply)`);
+      return;
+    }
+    if (amt > CONFIRM_OFFER_IRM) {
+      const ok = window.confirm(
+        `You're about to lock ${amt.toLocaleString()} IRM in escrow.\n\nThis is a large amount. Confirm you typed the decimal correctly.`
+      );
+      if (!ok) return;
+    }
     setLoading(true);
     try {
       const trimmedSeller = form.sellerAddress.trim();
       const result = await offers.create({
-        amount_sats: Math.round(parseFloat(form.amount) * SATS_PER_IRM),
+        amount_sats: Math.round(amt * SATS_PER_IRM),
         description: form.desc || undefined,
         payment_method: form.paymentMethod || undefined,
         offer_id: form.id || undefined,
@@ -475,9 +497,16 @@ function CreateOfferModal({
               <input
                 className="input"
                 placeholder="e.g. 1 IRM = $0.50 USD via PayPal"
+                maxLength={500}
                 value={form.desc}
                 onChange={(e) => setForm((f) => ({ ...f, desc: e.target.value }))}
               />
+              {/* M-22: cap matches Settlement memos. */}
+              {form.desc.length > 400 && (
+                <p className="text-xs mt-1" style={{ color: form.desc.length >= 500 ? '#f87171' : 'rgba(255,255,255,0.30)' }}>
+                  {form.desc.length}/500
+                </p>
+              )}
             </div>
             <div>
               <label className="label">Payment Method (optional)</label>

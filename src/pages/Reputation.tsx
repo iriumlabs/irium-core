@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { fetch as tauriFetch, ResponseType } from "@tauri-apps/api/http";
+import { useStore } from "../lib/store";
 import NodeOfflineBanner from "../components/NodeOfflineBanner";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -72,11 +74,13 @@ const RISK_CONFIG: Record<
   },
 };
 
-// Approximate block-window → wall-clock conversion. Irium block time is
-// nominally 600s (10 minutes). Adjust if the block target changes.
-const APPROX_MINUTES_PER_BLOCK = 10;
-function blocksToReadable(blocks: number): string {
-  const minutes = blocks * APPROX_MINUTES_PER_BLOCK;
+// C-11 fix: previously a hardcoded `APPROX_MINUTES_PER_BLOCK = 10` (600s)
+// constant that conflicted with the live network average (currently
+// ~13 min). Now derived from iriumd's /rpc/network_hashrate.avg_block_time
+// at mount, with a 13-min fallback if the RPC is unreachable.
+const FALLBACK_MINUTES_PER_BLOCK = 13;
+function blocksToReadable(blocks: number, minutesPerBlock: number): string {
+  const minutes = blocks * minutesPerBlock;
   if (minutes < 120) return `~${Math.round(minutes)} minutes`;
   const hours = minutes / 60;
   if (hours < 48) return `~${Math.round(hours)} hours`;
@@ -300,6 +304,25 @@ export default function Reputation() {
   const [resultVisible, setResultVisible] = useState(false);
   const [showOutcomeModal, setShowOutcomeModal] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  // C-11 fix: live block-time from iriumd. Falls back to the literal default
+  // if the RPC is unreachable. Updated once on mount — block-time drifts
+  // slowly so we don't bother polling.
+  const rpcUrl = useStore((s) => s.settings.rpc_url);
+  const [minutesPerBlock, setMinutesPerBlock] = useState<number>(FALLBACK_MINUTES_PER_BLOCK);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await tauriFetch<{ avg_block_time?: number }>(`${rpcUrl}/rpc/network_hashrate`, {
+          method: 'GET', timeout: 4, responseType: ResponseType.JSON,
+        });
+        if (!cancelled && r.ok && typeof r.data?.avg_block_time === 'number' && r.data.avg_block_time > 0) {
+          setMinutesPerBlock(r.data.avg_block_time / 60);
+        }
+      } catch { /* fall back */ }
+    })();
+    return () => { cancelled = true; };
+  }, [rpcUrl]);
   // Recent lookups — last 5 queried addresses, persisted to localStorage so
   // they survive page reloads. Surfaced as clickable chips below the
   // search bar(s) for quick re-query.
@@ -764,7 +787,7 @@ export default function Reputation() {
                   Recent Window
                   {data.recent.window != null && (
                     <span className="ml-1 text-white/30 normal-case tracking-normal">
-                      · last {data.recent.window.toLocaleString()} blocks ({blocksToReadable(data.recent.window)})
+                      · last {data.recent.window.toLocaleString()} blocks ({blocksToReadable(data.recent.window, minutesPerBlock)})
                     </span>
                   )}
                 </p>

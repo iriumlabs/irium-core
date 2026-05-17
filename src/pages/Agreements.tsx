@@ -150,6 +150,21 @@ export default function AgreementsPage() {
     loadData();
   }, []);
 
+  // H-14 fix: refresh when the tab regains visibility so a user returning
+  // to this page after a counterparty action (funding, proof submission)
+  // sees current status instead of a stale snapshot from the previous
+  // mount. Pairs with the existing WS event handler below, which only
+  // fires while the tab is already active.
+  useEffect(() => {
+    const onVis = () => { if (!document.hidden) loadData(); };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('focus', onVis);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('focus', onVis);
+    };
+  }, []);
+
   // Phase 5: real-time refresh on agreement.* events from the Rust WS bridge.
   // Polling stays as a fallback when the WS connection is down.
   useIriumEvents((event) => {
@@ -866,7 +881,12 @@ function AgreementCard({
   // we disable the button and show the binary's reason in the tooltip.
   // Undefined (RPC not yet returned, or failed) → fall back to permissive
   // behaviour so a working refund path isn't blocked by a slow RPC.
-  const refundBlocked = refundElig !== undefined && !refundElig.eligible;
+  // H-16 fix: previously defaulted to FALSE when refundElig was undefined,
+  // leaving the Refund button enabled before eligibility was confirmed or
+  // when the eligibility fetch failed (the catch handlers above silently
+  // leave it undefined). Now blocked unless eligibility was successfully
+  // fetched AND came back with eligible: true.
+  const refundBlocked = !refundElig?.eligible;
   // Proof-finality warning: only meaningful once the backend has told us
   // release is eligible AND we know proof_final/proof_depth. If either is
   // unknown, we don't warn — UX is honest about its uncertainty.
@@ -1294,6 +1314,7 @@ function AgreementCard({
                 <input
                   type="text"
                   placeholder='Friendly name (e.g. "Laptop from John")'
+                  maxLength={100}
                   value={labelDraft}
                   onChange={(e) => setLabelDraft(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSaveLabel(e); }}
@@ -1383,6 +1404,17 @@ function ProofModal({
 }: ProofModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [browsing, setBrowsing]     = useState(false);
+
+  // M-20: Escape-to-close (matches Explorer's BlockDetailModal). Disabled
+  // while submitting so a misplaced key doesn't abort an in-flight proof
+  // submission mid-broadcast.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !submitting) onClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose, submitting]);
 
   // Create-from-Evidence form state.
   const addresses = useStore((s) => s.addresses);
@@ -1566,9 +1598,16 @@ function ProofModal({
                   className="input resize-none"
                   rows={4}
                   placeholder="e.g. Payment of $50 received via bank transfer, reference #12345."
+                  maxLength={2000}
                   value={evidenceSummary}
                   onChange={(e) => setEvidenceSummary(e.target.value)}
                 />
+                {/* M-19: char counter — visible after 80% of cap. */}
+                {evidenceSummary.length > 1600 && (
+                  <p className="text-xs mt-1" style={{ color: evidenceSummary.length >= 2000 ? '#f87171' : 'rgba(255,255,255,0.30)' }}>
+                    {evidenceSummary.length}/2000
+                  </p>
+                )}
               </div>
             </div>
 

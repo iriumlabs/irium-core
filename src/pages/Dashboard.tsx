@@ -1166,7 +1166,12 @@ export default function Dashboard() {
             <h2 className="font-display font-semibold text-white/90">Recent Activity</h2>
             {recentTx.length > 0 && <span className="badge badge-irium">Last 10 txs</span>}
           </div>
-            {chartData.length > 0 ? (
+            {/* H-12 fix: show shimmer while initial load is in flight so the
+                user doesn't see "No transaction history yet" flash on every
+                page entry. */}
+            {loading ? (
+              <div className="shimmer h-44 rounded-lg" />
+            ) : chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={180}>
                 <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
                   <defs>
@@ -1212,7 +1217,14 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display font-semibold text-white/90">Recent Transactions</h2>
           </div>
-          {txLoadError ? (
+          {/* H-12 fix: shimmer during initial load instead of "No transactions yet" flash. */}
+          {loading ? (
+            <div className="space-y-2">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="shimmer h-10 rounded-lg" />
+              ))}
+            </div>
+          ) : txLoadError ? (
             <p className="text-xs text-rose-400/70 py-2">Could not load recent transactions</p>
           ) : recentTx.length === 0 ? (
             <EmptyState icon={<Package />} text="No transactions yet" />
