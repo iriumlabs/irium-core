@@ -1,70 +1,94 @@
 {
   "_meta": {
-    "status": "needs_translation",
+    "status": "machine_translated",
     "review_needed": true,
     "language": "हिन्दी",
     "english_name": "Hindi",
     "direction": "ltr"
   },
   "common": {
-    "save": "Save",
-    "cancel": "Cancel",
-    "close": "Close",
-    "retry": "Retry",
-    "back": "Back",
-    "next": "Next",
-    "continue": "Continue",
-    "confirm": "Confirm",
-    "delete": "Delete",
-    "remove": "Remove",
-    "loading": "Loading…",
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "close": "बंद करें",
+    "retry": "पुनः प्रयास",
+    "back": "वापस",
+    "next": "अगला",
+    "continue": "जारी रखें",
+    "confirm": "पुष्टि करें",
+    "delete": "हटाएं",
+    "remove": "हटाएं",
+    "loading": "लोड हो रहा है...",
     "saving": "Saving…",
-    "error": "Error",
-    "success": "Success",
-    "settings_saved": "Settings saved",
-    "copy": "Copy",
-    "copy_address": "Copy address",
+    "error": "त्रुटि",
+    "success": "सफलता",
+    "settings_saved": "सेटिंग्स सहेजी गईं",
+    "copy": "कॉपी",
+    "copy_address": "पता कॉपी करें",
     "copy_hash": "Copy hash",
     "copy_id": "Copy ID",
     "copy_txid": "Copy transaction ID",
     "open_in_explorer": "Open in Explorer",
     "no_data": "No data",
-    "yes": "Yes",
-    "no": "No",
-    "submit": "Submit",
-    "search": "Search",
-    "clear": "Clear",
-    "dismiss": "Dismiss",
-    "create": "Create",
-    "import": "Import",
-    "export": "Export"
+    "yes": "हाँ",
+    "no": "नहीं",
+    "submit": "भेजें",
+    "search": "खोज",
+    "clear": "साफ करें",
+    "dismiss": "अनदेखा करें",
+    "create": "बनाएं",
+    "import": "आयात",
+    "export": "निर्यात"
   },
   "nav": {
-    "dashboard": "Dashboard",
-    "wallet": "Wallet",
-    "miner": "Mining",
-    "explorer": "Explorer",
-    "settlement": "Settlement",
-    "marketplace": "Marketplace",
-    "agreements": "Agreements",
-    "reputation": "Reputation",
-    "settings": "Settings",
-    "logs": "Logs",
-    "help": "Help"
+    "dashboard": "डैशबोर्ड",
+    "wallet": "वॉलेट",
+    "miner": "माइनिंग",
+    "explorer": "एक्सप्लोरर",
+    "settlement": "निपटान",
+    "marketplace": "बाज़ार",
+    "agreements": "समझौते",
+    "reputation": "प्रतिष्ठा",
+    "settings": "सेटिंग्स",
+    "logs": "लॉग",
+    "help": "मदद"
   },
   "topbar": {
-    "block_height": "Block height",
-    "peers_connected": "Connected peers",
+    "block_height": "ब्लॉक की ऊँचाई",
+    "peers_connected": "जुड़े हुए पीयर",
     "starting_node": "Starting node…",
-    "node_offline": "Node offline",
-    "notifications": "Notifications",
-    "no_notifications": "No notifications yet"
+    "node_offline": "नोड ऑफ़लाइन",
+    "notifications": "सूचनाएँ",
+    "no_notifications": "No notifications yet",
+    "toasts": {
+      "node_stopping": "Node stopping...",
+      "failed_start": "Failed to start node",
+      "node_starting": "Node starting..."
+    },
+    "address_balance_tooltip": "{{label}} address balance",
+    "wallet_balance_tooltip": "Wallet balance",
+    "unconfirmed_tooltip": "Unconfirmed (incoming) balance",
+    "stop_button": "रोकें",
+    "start_node_button": "नोड शुरू करें",
+    "clear_all": "सब साफ करें",
+    "no_notifications_short": "No notifications",
+    "pill_starting": "Starting...",
+    "pill_offline": "ऑफ़लाइन",
+    "pill_connecting": "कनेक्ट हो रहा है",
+    "pill_syncing": "सिंक हो रहा है",
+    "pill_live": "लाइव"
   },
   "status_bar": {
-    "height_label": "Height",
-    "peers_label": "Peers",
-    "synced": "Synced",
-    "syncing": "Syncing"
+    "height_label": "ऊँचाई",
+    "peers_label": "पीयर",
+    "synced": "सिंक्ड",
+    "syncing": "सिंक हो रहा है",
+    "tip_copied": "Tip hash copied",
+    "copy_failed": "Failed to copy",
+    "mainnet": "Mainnet",
+    "synced_lower": "synced",
+    "upnp_tooltip": "UPnP active - port 38291 mapped on router, inbound peers enabled",
+    "click_copy_tip": "Click to copy tip hash",
+    "tip_label": "tip"
   },
   "node_status": {
     "running": "Node Running",
@@ -78,13 +102,14 @@
     "boundary_title": "Something went wrong",
     "boundary_message": "An unexpected error occurred while rendering this page. The error has been logged.",
     "boundary_reload": "Reload app",
-    "node_offline_short": "Node offline"
+    "node_offline_short": "नोड ऑफ़लाइन",
+    "boundary_copy": "Copy Error"
   },
   "settings": {
-    "page_title": "Settings",
+    "page_title": "सेटिंग्स",
     "sections": {
       "node_connection": "Node Connection",
-      "wallet": "Wallet",
+      "wallet": "वॉलेट",
       "display": "Display",
       "language": "Language",
       "network": "Network",
@@ -172,7 +197,7 @@
       "install": "Install Update",
       "downloading": "Downloading…",
       "restart_now": "Restart Now",
-      "retry": "Retry",
+      "retry": "पुनः प्रयास",
       "open_releases": "Open releases page in browser instead"
     },
     "test_states": {
@@ -204,8 +229,8 @@
       "active_manual": "Active (manual) — {{count}} inbound peer(s)",
       "detecting": "Detecting… ({{seconds}}s)",
       "inactive": "Inactive — outbound only",
-      "node_offline": "Node offline",
-      "retry": "Retry",
+      "node_offline": "नोड ऑफ़लाइन",
+      "retry": "पुनः प्रयास",
       "external_ip_label": "External IP",
       "detecting_paragraph": "Waiting up to 60s for an inbound peer to confirm reachability. PEX needs a moment to propagate your address to other nodes after start.",
       "inactive_paragraph": "UPnP failed and no inbound peers have arrived. Configure manual port forwarding on your router (TCP 38291) or enable UPnP, then click Retry. Outbound connections still work in this state."
@@ -226,7 +251,7 @@
       "count_one": "{{count}} error recorded.",
       "count_other": "{{count}} errors recorded.",
       "count": "{{count}} error(s) recorded.",
-      "clear": "Clear"
+      "clear": "साफ करें"
     },
     "about_info": {
       "application": "Application",
@@ -257,7 +282,7 @@
       "detect_panel_paragraph": "Enter a URL that returns your public IP as plain text. The request will only be sent when you click Fetch.",
       "fetching": "Fetching…",
       "fetch": "Fetch",
-      "cancel": "Cancel",
+      "cancel": "रद्द करें",
       "clear_state_description": "Wipe block data and resync from scratch. Wallet and agreements are preserved.",
       "clearing": "Clearing…",
       "confirm_resync": "Confirm — this will resync!",
@@ -278,18 +303,18 @@
     "node_update_modal": {
       "title": "Update Node Source",
       "body": "This will pull the latest iriumd source code and rebuild the node binary. If the new code is unstable it may break your running node and require a restart. Only proceed if you know what you are doing.",
-      "cancel": "Cancel",
+      "cancel": "रद्द करें",
       "proceed": "I understand, update anyway"
     }
   },
   "dashboard": {
-    "page_title": "Dashboard",
+    "page_title": "डैशबोर्ड",
     "stats": {
-      "confirmed_balance": "Confirmed Balance",
+      "confirmed_balance": "पुष्ट शेष",
       "block_height": "Block Height",
-      "peers": "Peers",
+      "peers": "पीयर",
       "syncing": "Syncing…",
-      "node_offline": "Node offline",
+      "node_offline": "नोड ऑफ़लाइन",
       "catching_up": "Catching up · #{{height}} {{tip}}",
       "pending": "+{{amount}} pending",
       "all_confirmed": "All confirmed",
@@ -306,7 +331,7 @@
       "empty_tx_list": "No transactions yet",
       "load_error": "Could not load recent transactions",
       "last_n_txs": "Last 10 txs",
-      "amount_label": "Amount"
+      "amount_label": "राशि"
     },
     "operation_banner": {
       "starting": "Starting node",
@@ -322,7 +347,7 @@
     "banners": {
       "iriumd_not_running": "iriumd is not running",
       "start_to_sync": "Start the node to sync with the Irium network.",
-      "start_node": "Start Node",
+      "start_node": "नोड शुरू करें",
       "searching_for_peers": "Searching for peers…",
       "peer_search_subtitle": "Block #{{height}} · iriumd is discovering the network. If stuck, try Clear & Restart.",
       "clear_restart": "Clear & Restart",
@@ -336,10 +361,10 @@
       "no_peers_searching": "Searching for peers…",
       "sync_stall": "Sync stalled — {{count}} blocks behind",
       "height_warning": "Block height hasn't changed in {{minutes}} minutes",
-      "dismiss": "Dismiss"
+      "dismiss": "अनदेखा करें"
     },
     "page_subtitle": "Irium blockchain overview · live",
-    "refresh": "Refresh",
+    "refresh": "रिफ्रेश",
     "refreshing": "Refreshing…",
     "decentral": {
       "title": "Your node isn't reachable by the network",
@@ -356,8 +381,8 @@
       "node_start_error": "Node start error"
     },
     "ticker": {
-      "block": "Block",
-      "node_offline": "Node offline",
+      "block": "ब्लॉक",
+      "node_offline": "नोड ऑफ़लाइन",
       "connecting_to_peers": "Connecting to peers…",
       "syncing_progress": "Syncing {{height}} / {{tip}}"
     },
@@ -367,13 +392,13 @@
       "discovering": "Discovering peers…",
       "col_address": "Address",
       "col_dialable": "Dialable",
-      "col_height": "Height",
+      "col_height": "ऊँचाई",
       "col_last_seen": "Last Seen"
     },
     "tx_row": {
       "mining_reward": "Mining Reward",
-      "sent": "Sent",
-      "received": "Received",
+      "sent": "भेजा गया",
+      "received": "प्राप्त हुआ",
       "txid_copied": "TXID copied",
       "mempool_awaiting": "Mempool · awaiting confirmation",
       "miner_label": "Miner: {{addr}}",
@@ -381,12 +406,12 @@
       "txid_label": "TXID: {{txid}}",
       "conf_label": "{{count}} conf",
       "block_label": "Block #{{n}}",
-      "confirmed": "Confirmed",
-      "pending": "Pending"
+      "confirmed": "पुष्टि की गई",
+      "pending": "लंबित"
     }
   },
   "wallet": {
-    "page_title": "Wallet",
+    "page_title": "वॉलेट",
     "tabs": {
       "addresses": "Addresses",
       "transactions": "Transactions",
@@ -445,7 +470,7 @@
       "import_seed": "Import Seed Phrase",
       "import_wif": "Import WIF Key",
       "import_backup": "Import Backup File",
-      "loading_seed": "Loading…",
+      "loading_seed": "लोड हो रहा है...",
       "exporting_wif": "Exporting…",
       "seed_modal_title": "Your recovery phrase",
       "seed_modal_warning": "Write this down on paper. Anyone with these 24 words can spend your funds.",
@@ -458,9 +483,9 @@
       "load_error": "Could not load transactions",
       "filter_placeholder": "Filter by txid or address…",
       "confirmations": "{{count}} confirmations",
-      "pending": "Pending",
-      "received": "Received",
-      "sent": "Sent"
+      "pending": "लंबित",
+      "received": "प्राप्त हुआ",
+      "sent": "भेजा गया"
     },
     "toasts": {
       "send_success": "Sent — txid {{txid}}",
@@ -486,11 +511,11 @@
     }
   },
   "agreements": {
-    "page_title": "Agreements",
+    "page_title": "समझौते",
     "tabs": {
       "all": "All",
       "active": "Active",
-      "pending": "Pending",
+      "pending": "लंबित",
       "completed": "Completed",
       "disputed": "Disputed"
     },
@@ -499,7 +524,7 @@
       "create_cta": "Create your first agreement →"
     },
     "card": {
-      "amount_label": "Amount",
+      "amount_label": "राशि",
       "buyer_label": "Buyer",
       "seller_label": "Seller",
       "agreement_hash": "Agreement Hash",
@@ -516,7 +541,7 @@
       "submit_proof": "Submit proof",
       "verify_signatures": "Verify signatures",
       "sign_agreement": "Sign agreement",
-      "delete": "Delete"
+      "delete": "हटाएं"
     },
     "proof_modal": {
       "title": "Submit proof",
@@ -539,7 +564,8 @@
       "refund_success": "Refunded — txid {{txid}}",
       "dispute_opened": "Dispute opened",
       "proof_submitted": "Proof submitted",
-      "delete_success": "Agreement deleted"
+      "delete_success": "Agreement deleted",
+      "failed_load": "Failed to load agreements"
     },
     "refund": {
       "blocked_default": "Refund eligibility unknown",
@@ -548,7 +574,7 @@
     }
   },
   "settlement": {
-    "page_title": "Settlement",
+    "page_title": "निपटान",
     "hub": {
       "total_agreements": "Total Agreements",
       "pending_proofs": "Pending Proofs",
@@ -599,11 +625,12 @@
     "buyer_status_unavailable": "Buyer status unavailable.",
     "toasts": {
       "fee_unavailable": "Fee estimate unavailable",
-      "agreement_created": "Agreement created — id {{id}}"
-    }
+      "agreement_created": "Agreement created!"
+    },
+    "page_title_hub": "Settlement Hub"
   },
   "marketplace": {
-    "page_title": "Marketplace",
+    "page_title": "बाज़ार",
     "tagline": "Browse and post settlement offers on the Irium peer-to-peer network.",
     "tabs": {
       "browse": "Browse",
@@ -669,11 +696,12 @@
       "feed_added": "Feed added",
       "min_must_be_positive": "Minimum trade amount must be a positive number",
       "min_cannot_exceed": "Minimum cannot exceed the offer amount",
-      "amount_exceeds_supply": "Amount cannot exceed {{max}} IRM (total supply)"
+      "amount_exceeds_supply": "Amount cannot exceed {{max}} IRM (total supply)",
+      "failed_to_load": "Failed to load offers: {{reason}}"
     }
   },
   "miner": {
-    "page_title": "Mining",
+    "page_title": "माइनिंग",
     "tabs": {
       "cpu": "CPU",
       "gpu": "GPU",
@@ -738,7 +766,7 @@
   },
   "onboarding": {
     "splash_title": "Irium Core",
-    "splash_subtitle": "Loading…",
+    "splash_subtitle": "लोड हो रहा है...",
     "steps": {
       "welcome": "Welcome",
       "network_bootstrap": "Network Bootstrap",
@@ -754,8 +782,8 @@
       "import_existing": "Import Existing"
     },
     "network": {
-      "block_height": "Block height",
-      "connected_peers": "Connected peers",
+      "block_height": "ब्लॉक की ऊँचाई",
+      "connected_peers": "जुड़े हुए पीयर",
       "blockchain_fully_synced": "Blockchain fully synced",
       "syncing": "Syncing…"
     },
@@ -775,7 +803,7 @@
     }
   },
   "reputation": {
-    "page_title": "Reputation",
+    "page_title": "प्रतिष्ठा",
     "search_placeholder": "Q-prefix address or 64-hex public key…",
     "no_address_queried": "No address queried yet",
     "search_above": "Search for a seller above",
@@ -797,29 +825,32 @@
     "risk": {
       "high_disputes": "More than 10% of this seller's agreements ended in dispute. Inspect their dispute history before trading.",
       "sybil_detected": "Detected agreements where buyer and seller appear to share a key derivation root. Inflated counts here may indicate fake reputation building."
-    }
+    },
+    "page_subtitle": "Query the on-chain reputation score for any Irium address or public key.",
+    "outcome_recorded": "Recorded \"{{choice}}\" for this seller",
+    "failed_to_record": "Failed to record outcome"
   },
   "explorer": {
-    "page_title": "Explorer",
+    "page_title": "एक्सप्लोरर",
     "search_tabs": {
-      "block": "Block",
+      "block": "ब्लॉक",
       "tx": "Transaction",
       "address": "Address"
     },
     "stats": {
       "block_height": "Block Height",
       "circulating_supply": "Circulating Supply",
-      "peers": "Peers",
+      "peers": "पीयर",
       "active_miners": "Active Miners",
       "next_halving": "Next halving: #{{height}}",
       "chain_tip": "chain tip",
       "tip_height": "tip #{{height}}"
     },
     "blocks_table": {
-      "height": "Height",
+      "height": "ऊँचाई",
       "hash": "Hash",
-      "time": "Time",
-      "miner": "Miner",
+      "time": "समय",
+      "miner": "माइनर",
       "tx_count": "Tx count",
       "reward": "Reward",
       "estimated_suffix": "(estimated)",
@@ -828,16 +859,16 @@
       "loaded_range": "{{count}} loaded · #{{from}}–#{{to}}"
     },
     "block_modal": {
-      "label_height": "Height",
+      "label_height": "ऊँचाई",
       "label_hash": "Hash",
       "label_prev_hash": "Prev Hash",
       "label_merkle": "Merkle Root",
-      "label_time": "Time",
+      "label_time": "समय",
       "label_reward": "Reward",
       "label_transactions": "Transactions",
       "label_bits": "Bits",
       "label_nonce": "Nonce",
-      "label_miner": "Miner",
+      "label_miner": "माइनर",
       "pending_title": "Block #{{height}} not yet available",
       "pending_body": "The node may still be indexing this block. Click to retry — the lookup runs again after 5 seconds.",
       "retrying": "Retrying in 5s…"
@@ -880,13 +911,21 @@
       "review_intro": "Confirm the details before taking the offer",
       "amount_to_lock": "Amount to Lock",
       "agreement_id_label": "Agreement ID",
-      "lock_payment_hint": "Lock your payment in the escrow contract"
+      "lock_payment_hint": "Lock your payment in the escrow contract",
+      "offers_loaded": "{{count}} offers loaded",
+      "offer_imported": "Offer imported",
+      "escrow_funded": "Escrow funded",
+      "payment_released": "Payment released to seller!",
+      "refunded": "Refunded to your wallet",
+      "settlement_hub": "Settlement Hub",
+      "review_offer_title": "Review Offer",
+      "fund_title": "Fund Escrow"
     },
     "seller": {
       "page_title": "Create an Offer",
       "step_choose": "Choose Settlement Type",
       "step_create": "Create Your Offer",
-      "step_agreements": "Agreements",
+      "step_agreements": "समझौते",
       "intro": "Define what you're selling and the price",
       "fields": {
         "amount_label": "Amount (IRM)",
@@ -901,24 +940,33 @@
         "price_note_placeholder": "e.g. 'BTC only, instant settlement'",
         "payment_instructions_label": "Payment Instructions",
         "payment_instructions_placeholder": "Bank details, crypto address, or other instructions for the buyer…"
-      }
+      },
+      "offer_exported": "Offer exported",
+      "offer_id_copied": "Offer ID copied"
     }
   },
   "logs": {
     "page_title": "Node Logs",
-    "filter_placeholder": "Filter logs…",
-    "clear_display": "Clear display",
+    "page_subtitle_live": "Live iriumd output - refreshes every 3s",
+    "page_subtitle_offline": "Node is offline - start the node to see logs",
     "scroll_to_bottom": "Scroll to bottom",
-    "no_logs": "No logs yet"
+    "clear_display": "Clear display",
+    "filter_placeholder": "Filter logs...",
+    "empty_offline": "Start the node from the Dashboard to see logs here",
+    "loading": "Loading logs...",
+    "line_count": "{{count}} lines",
+    "filtered_suffix": " (filtered)",
+    "autoscroll_on": "Auto-scroll on",
+    "autoscroll_paused": "Auto-scroll paused"
   },
   "modals": {
     "tx_detail": {
       "title": "Transaction",
-      "label_amount": "Amount",
+      "label_amount": "राशि",
       "label_fee": "Fee",
-      "label_block": "Block",
+      "label_block": "ब्लॉक",
       "label_confirmations": "Confirmations",
-      "label_time": "Time",
+      "label_time": "समय",
       "label_addresses": "Addresses",
       "label_inputs": "Inputs",
       "label_outputs": "Outputs",
@@ -929,5 +977,43 @@
       "title": "Address QR",
       "tap_to_copy": "Tap to copy"
     }
+  },
+  "node_offline_banner": {
+    "title": "Node is offline.",
+    "body": "Start it from the Dashboard to use this feature.",
+    "open_dashboard": "Open Dashboard"
+  },
+  "titlebar": {
+    "miner_active_confirm": "Mining is active. The miner will continue running in the background.\n\nClick OK to minimize to tray, or Cancel to keep the window open and stop mining first if you want to quit completely."
+  },
+  "sidebar": {
+    "live": "लाइव",
+    "syncing": "Syncing...",
+    "offline": "ऑफ़लाइन"
+  },
+  "tx_detail": {
+    "status": "स्थिति",
+    "unconfirmed": "Unconfirmed",
+    "confirmations": "Confirmations",
+    "time": "समय",
+    "block_section": "ब्लॉक",
+    "block_height": "Block Height",
+    "open_block_explorer": "Open this block in Explorer",
+    "block_hash": "Block Hash",
+    "index_in_block": "Index in Block",
+    "mining_section": "माइनिंग",
+    "block_reward": "Block Reward",
+    "miner": "माइनर",
+    "transaction_section": "Transaction",
+    "txid_label": "TXID",
+    "inputs": "Inputs",
+    "outputs": "Outputs",
+    "total_output": "Total Output",
+    "fee": "Fee",
+    "fee_value": "{{sats}} sats",
+    "to_your": "To (your)",
+    "receiving": "Receiving",
+    "full_details_unavailable": "Full details not available yet.",
+    "view_on_explorer": "View on Explorer"
   }
 }

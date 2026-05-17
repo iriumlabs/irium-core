@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -2071,6 +2072,7 @@ function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
 
 // ─── Main Onboarding ──────────────────────────────────────────────────────────
 export default function Onboarding({ onComplete: onGateComplete }: { onComplete?: () => void } = {}) {
+  const { t } = useTranslation();
   const navigate   = useNavigate();
   const [showWelcome,  setShowWelcome]  = useState(true);
   const [step, setStep]               = useState(1);

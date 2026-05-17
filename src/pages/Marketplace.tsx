@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, RefreshCw, Search, Globe, X, Rss, Star, Download, Upload, Compass, HelpCircle, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -384,6 +385,7 @@ function CreateOfferModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     amount: '',
     desc: '',
@@ -454,7 +456,7 @@ function CreateOfferModal({
         offer_id: form.id || undefined,
         seller_address: trimmedSeller.length > 0 ? trimmedSeller : undefined,
       });
-      toast.success('Offer created: ' + result.id);
+      toast.success(t('marketplace.toasts.offer_created', { id: result.id }));
       onSuccess();
     } catch (e) {
       toast.error(String(e));
@@ -652,6 +654,7 @@ function CreateOfferModal({
 
 // ─── Main Page ─────────────────────────────────────────────────
 export default function MarketplacePage() {
+  const { t } = useTranslation();
   const nodeStatus = useStore((s) => s.nodeStatus);
   // Currently-selected wallet address — used to pre-fill the seller/buyer
   // inputs in the Create and Take modals so the user doesn't have to paste
@@ -707,7 +710,7 @@ export default function MarketplacePage() {
     } catch (e) {
       // Suppress toast when offline — empty state communicates the problem.
       if (nodeStatus?.running) {
-        toast.error('Failed to load offers: ' + String(e));
+        toast.error(t('marketplace.toasts.failed_to_load', { reason: String(e) }));
       }
     } finally {
       setLoading(false);

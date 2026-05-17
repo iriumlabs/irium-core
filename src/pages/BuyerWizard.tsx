@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -38,6 +39,7 @@ const TEMPLATES: ReadonlyArray<{
 ];
 
 export default function BuyerWizard() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -85,7 +87,7 @@ export default function BuyerWizard() {
       const list = await offers.list({ source: 'all', sort: 'score' });
       setMarketOffers(list ?? []);
       setMarketLoaded(true);
-      toast.success(`${list?.length ?? 0} offers loaded`);
+      toast.success(t('wizards.buyer.offers_loaded', { count: list?.length ?? 0 }));
     } catch (e) {
       toast.error(String(e));
     } finally {
@@ -105,7 +107,7 @@ export default function BuyerWizard() {
       const list = await offers.list({ source: 'local', sort: 'newest' });
       const o = list && list.length > 0 ? list[list.length - 1] : null;
       if (o) { setSelectedOffer(o); setOfferIdInput(''); }
-      toast.success('Offer imported');
+      toast.success(t('wizards.buyer.offer_imported'));
     } catch (e) {
       toast.error(String(e));
     }
@@ -166,7 +168,7 @@ export default function BuyerWizard() {
     try {
       const res = await agreementSpend.fund(agreementId);
       if (!res?.success) throw new Error(res?.message ?? 'Funding failed');
-      toast.success('Escrow funded');
+      toast.success(t('wizards.buyer.escrow_funded'));
       setStep(4);
       startPolling();
     } catch (e) {
@@ -196,7 +198,7 @@ export default function BuyerWizard() {
       const res = await agreementsApi.release(agreementId);
       if (pollRef.current) { clearInterval(pollRef.current); setPolling(false); }
       setReleaseResult(res ?? { success: false });
-      if (res?.success) toast.success('Payment released to seller!');
+      if (res?.success) toast.success(t('wizards.buyer.payment_released'));
       else toast.error(res?.message ?? 'Release failed');
     } catch (e) {
       setError(String(e));
@@ -213,7 +215,7 @@ export default function BuyerWizard() {
       const res = await agreementsApi.refund(agreementId);
       if (pollRef.current) { clearInterval(pollRef.current); setPolling(false); }
       setReleaseResult(res ?? { success: false });
-      if (res?.success) toast.success('Refunded to your wallet');
+      if (res?.success) toast.success(t('wizards.buyer.refunded'));
       else toast.error(res?.message ?? 'Refund failed');
     } catch (e) {
       setError(String(e));
@@ -241,7 +243,7 @@ export default function BuyerWizard() {
         <div className="flex items-center gap-4 mb-6">
           <button onClick={handleBack} className="btn-ghost flex items-center gap-2 text-white/50 hover:text-white">
             <ArrowLeft size={16} />
-            {step === 0 ? 'Settlement Hub' : 'Back'}
+            {step === 0 ? t('wizards.buyer.settlement_hub') : t('common.back')}
           </button>
           <div className="ml-auto flex items-center gap-2">
             {STEPS.map((s, i) => (
@@ -273,7 +275,7 @@ export default function BuyerWizard() {
               className="space-y-5"
             >
               <div>
-                <h2 className="font-display font-bold text-xl text-white">Choose Settlement Type</h2>
+                <h2 className="font-display font-bold text-xl text-white">{t('wizards.buyer.step_choose')}</h2>
                 <p className="text-white/40 text-sm mt-1">
                   Pick the kind of trade you're looking for. We'll surface matching offers in the next step.
                 </p>
@@ -331,8 +333,8 @@ export default function BuyerWizard() {
               <div className="card p-5 space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="font-display font-bold text-xl text-white">Browse Marketplace</h2>
-                    <p className="text-white/40 text-sm mt-0.5">Find an offer from the network</p>
+                    <h2 className="font-display font-bold text-xl text-white">{t('wizards.buyer.browse_marketplace')}</h2>
+                    <p className="text-white/40 text-sm mt-0.5">{t('wizards.buyer.find_offer_hint')}</p>
                   </div>
                   <button
                     onClick={handleSync}
@@ -456,8 +458,8 @@ export default function BuyerWizard() {
           {step === 2 && foundOffer && (
             <motion.div key="s1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="card p-6 space-y-5">
               <div>
-                <h2 className="font-display font-bold text-xl text-white">Review Offer</h2>
-                <p className="text-white/40 text-sm mt-1">Confirm the details before taking the offer</p>
+                <h2 className="font-display font-bold text-xl text-white">{t('wizards.buyer.review_offer_title')}</h2>
+                <p className="text-white/40 text-sm mt-1">{t('wizards.buyer.review_intro')}</p>
               </div>
 
               <div className="space-y-2">
@@ -492,8 +494,8 @@ export default function BuyerWizard() {
           {step === 3 && (
             <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="card p-6 space-y-5">
               <div>
-                <h2 className="font-display font-bold text-xl text-white">Fund Escrow</h2>
-                <p className="text-white/40 text-sm mt-1">Lock your payment in the escrow contract</p>
+                <h2 className="font-display font-bold text-xl text-white">{t('wizards.buyer.fund_title')}</h2>
+                <p className="text-white/40 text-sm mt-1">{t('wizards.buyer.lock_payment_hint')}</p>
               </div>
 
               <div className="p-4 rounded-xl bg-white/5 space-y-3">

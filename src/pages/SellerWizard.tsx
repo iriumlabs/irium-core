@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -41,6 +42,7 @@ const TEMPLATES: ReadonlyArray<{
 ];
 
 export default function SellerWizard() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -134,7 +136,7 @@ export default function SellerWizard() {
       });
       if (!outPath) return;
       await offers.export(offerResult.id, outPath as string);
-      toast.success('Offer exported');
+      toast.success(t('wizards.seller.offer_exported'));
     } catch (e) {
       toast.error(String(e));
     }
@@ -143,7 +145,7 @@ export default function SellerWizard() {
   const handleCopyOfferId = () => {
     if (!offerResult?.id) return;
     navigator.clipboard.writeText(offerResult.id);
-    toast.success('Offer ID copied');
+    toast.success(t('wizards.seller.offer_id_copied'));
   };
 
   const handleBack = useCallback(() => {

@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeftRight, Briefcase, Target, Landmark,
@@ -495,6 +496,7 @@ function BuyerDashboardCard({ address }: { address: string }) {
 // ── Main component ───────────────────────────────────────────────
 
 export default function SettlementPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const nodeStatus = useStore((s) => s.nodeStatus);
@@ -793,7 +795,7 @@ export default function SettlementPage() {
       }
       setResult(res);
       setView('success');
-      toast.success('Agreement created!');
+      toast.success(t('settlement.toasts.agreement_created'));
     } catch (e) {
       toast.error(String(e));
     } finally {
@@ -841,7 +843,7 @@ export default function SettlementPage() {
       {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="page-title">Settlement Hub</h1>
+          <h1 className="page-title">{t('settlement.page_title_hub')}</h1>
           <p className="page-subtitle">
             Trustless on-chain settlements using Irium's proof-based escrow system
           </p>

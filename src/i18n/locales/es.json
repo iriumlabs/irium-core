@@ -58,13 +58,37 @@
     "starting_node": "Iniciando nodo...",
     "node_offline": "Nodo desconectado",
     "notifications": "Notificaciones",
-    "no_notifications": "Sin notificaciones todavia"
+    "no_notifications": "Sin notificaciones todavia",
+    "toasts": {
+      "node_stopping": "Node stopping...",
+      "failed_start": "Failed to start node",
+      "node_starting": "Node starting..."
+    },
+    "address_balance_tooltip": "{{label}} address balance",
+    "wallet_balance_tooltip": "Wallet balance",
+    "unconfirmed_tooltip": "Unconfirmed (incoming) balance",
+    "stop_button": "Stop",
+    "start_node_button": "Start Node",
+    "clear_all": "Clear all",
+    "no_notifications_short": "No notifications",
+    "pill_starting": "Starting...",
+    "pill_offline": "Offline",
+    "pill_connecting": "Connecting",
+    "pill_syncing": "Syncing",
+    "pill_live": "Live"
   },
   "status_bar": {
     "height_label": "Altura",
     "peers_label": "Pares",
     "synced": "Sincronizado",
-    "syncing": "Sincronizando"
+    "syncing": "Sincronizando",
+    "tip_copied": "Tip hash copied",
+    "copy_failed": "Failed to copy",
+    "mainnet": "Mainnet",
+    "synced_lower": "synced",
+    "upnp_tooltip": "UPnP active - port 38291 mapped on router, inbound peers enabled",
+    "click_copy_tip": "Click to copy tip hash",
+    "tip_label": "tip"
   },
   "node_status": {
     "running": "Nodo en ejecucion",
@@ -78,7 +102,8 @@
     "boundary_title": "Algo salio mal",
     "boundary_message": "Ocurrio un error inesperado al renderizar esta pagina. El error ha sido registrado.",
     "boundary_reload": "Recargar aplicacion",
-    "node_offline_short": "Nodo desconectado"
+    "node_offline_short": "Nodo desconectado",
+    "boundary_copy": "Copy Error"
   },
   "miner": {
     "page_title": "Mineria",
@@ -603,7 +628,8 @@
       "refund_success": "Refunded — txid {{txid}}",
       "dispute_opened": "Dispute opened",
       "proof_submitted": "Proof submitted",
-      "delete_success": "Agreement deleted"
+      "delete_success": "Agreement deleted",
+      "failed_load": "Failed to load agreements"
     },
     "refund": {
       "blocked_default": "Refund eligibility unknown",
@@ -664,7 +690,8 @@
     "toasts": {
       "fee_unavailable": "Fee estimate unavailable",
       "agreement_created": "Agreement created — id {{id}}"
-    }
+    },
+    "page_title_hub": "Settlement Hub"
   },
   "marketplace": {
     "page_title": "Marketplace",
@@ -733,7 +760,8 @@
       "feed_added": "Feed added",
       "min_must_be_positive": "Minimum trade amount must be a positive number",
       "min_cannot_exceed": "Minimum cannot exceed the offer amount",
-      "amount_exceeds_supply": "Amount cannot exceed {{max}} IRM (total supply)"
+      "amount_exceeds_supply": "Amount cannot exceed {{max}} IRM (total supply)",
+      "failed_to_load": "Failed to load offers: {{reason}}"
     }
   },
   "onboarding": {
@@ -797,7 +825,10 @@
     "risk": {
       "high_disputes": "More than 10% of this seller's agreements ended in dispute. Inspect their dispute history before trading.",
       "sybil_detected": "Detected agreements where buyer and seller appear to share a key derivation root. Inflated counts here may indicate fake reputation building."
-    }
+    },
+    "page_subtitle": "Query the on-chain reputation score for any Irium address or public key.",
+    "outcome_recorded": "Recorded \"{{choice}}\" for this seller",
+    "failed_to_record": "Failed to record outcome"
   },
   "explorer": {
     "page_title": "Explorer",
@@ -880,7 +911,15 @@
       "review_intro": "Confirm the details before taking the offer",
       "amount_to_lock": "Amount to Lock",
       "agreement_id_label": "Agreement ID",
-      "lock_payment_hint": "Lock your payment in the escrow contract"
+      "lock_payment_hint": "Lock your payment in the escrow contract",
+      "offers_loaded": "{{count}} offers loaded",
+      "offer_imported": "Offer imported",
+      "escrow_funded": "Escrow funded",
+      "payment_released": "Payment released to seller!",
+      "refunded": "Refunded to your wallet",
+      "settlement_hub": "Settlement Hub",
+      "review_offer_title": "Review Offer",
+      "fund_title": "Fund Escrow"
     },
     "seller": {
       "page_title": "Create an Offer",
@@ -901,7 +940,9 @@
         "price_note_placeholder": "e.g. 'BTC only, instant settlement'",
         "payment_instructions_label": "Payment Instructions",
         "payment_instructions_placeholder": "Bank details, crypto address, or other instructions for the buyer…"
-      }
+      },
+      "offer_exported": "Offer exported",
+      "offer_id_copied": "Offer ID copied"
     }
   },
   "logs": {
@@ -909,7 +950,15 @@
     "filter_placeholder": "Filter logs…",
     "clear_display": "Clear display",
     "scroll_to_bottom": "Scroll to bottom",
-    "no_logs": "No logs yet"
+    "no_logs": "No logs yet",
+    "page_subtitle_live": "Live iriumd output - refreshes every 3s",
+    "page_subtitle_offline": "Node is offline - start the node to see logs",
+    "empty_offline": "Start the node from the Dashboard to see logs here",
+    "loading": "Loading logs...",
+    "line_count": "{{count}} lines",
+    "filtered_suffix": " (filtered)",
+    "autoscroll_on": "Auto-scroll on",
+    "autoscroll_paused": "Auto-scroll paused"
   },
   "modals": {
     "tx_detail": {
@@ -929,5 +978,43 @@
       "title": "Address QR",
       "tap_to_copy": "Tap to copy"
     }
+  },
+  "node_offline_banner": {
+    "title": "Node is offline.",
+    "body": "Start it from the Dashboard to use this feature.",
+    "open_dashboard": "Open Dashboard"
+  },
+  "titlebar": {
+    "miner_active_confirm": "Mining is active. The miner will continue running in the background.\n\nClick OK to minimize to tray, or Cancel to keep the window open and stop mining first if you want to quit completely."
+  },
+  "sidebar": {
+    "live": "Live",
+    "syncing": "Syncing...",
+    "offline": "Offline"
+  },
+  "tx_detail": {
+    "status": "Status",
+    "unconfirmed": "Unconfirmed",
+    "confirmations": "Confirmations",
+    "time": "Time",
+    "block_section": "Block",
+    "block_height": "Block Height",
+    "open_block_explorer": "Open this block in Explorer",
+    "block_hash": "Block Hash",
+    "index_in_block": "Index in Block",
+    "mining_section": "Mining",
+    "block_reward": "Block Reward",
+    "miner": "Miner",
+    "transaction_section": "Transaction",
+    "txid_label": "TXID",
+    "inputs": "Inputs",
+    "outputs": "Outputs",
+    "total_output": "Total Output",
+    "fee": "Fee",
+    "fee_value": "{{sats}} sats",
+    "to_your": "To (your)",
+    "receiving": "Receiving",
+    "full_details_unavailable": "Full details not available yet.",
+    "view_on_explorer": "View on Explorer"
   }
 }

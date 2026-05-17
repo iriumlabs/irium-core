@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -356,6 +357,7 @@ function BlockRow({ block, onClick }: { block: ExplorerBlock; onClick: () => voi
 // ── Main page ─────────────────────────────────────────────────
 
 export default function Explorer() {
+  const { t } = useTranslation();
   const nodeStatus  = useStore((s) => s.nodeStatus);
   const location    = useLocation();
 
@@ -454,7 +456,7 @@ export default function Explorer() {
         setPendingBlock({ height: h, retrying: false });
       } else {
         // Other failures (node offline, network) still get a toast.
-        toast.error(`Couldn't load block ${h.toLocaleString('en-US')}: ${msg}`);
+        toast.error(t('explorer.toasts.block_load_error', { height: h.toLocaleString('en-US'), reason: msg }));
       }
     }
   }, []);

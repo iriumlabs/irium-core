@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, memo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, X, Play, Square, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { useStore } from '../../lib/store';
@@ -10,6 +11,7 @@ import clsx from 'clsx';
 import toast from 'react-hot-toast';
 
 const TopBar = memo(function TopBar() {
+  const { t } = useTranslation();
   const nodeStatus      = useStore((s) => s.nodeStatus);
   const balance         = useStore((s) => s.balance);
   const addresses       = useStore((s) => s.addresses);
@@ -95,8 +97,8 @@ const TopBar = memo(function TopBar() {
         setNodeStarting(false);
         setNodeOperation(null);
         await node.stop();
-        toast('Node stopping…', { icon: '🔴' });
-        addNotification({ type: 'info', title: 'Node stopping…' });
+        toast(t('topbar.toasts.node_stopping'), { icon: '🔴' });
+        addNotification({ type: 'info', title: t('topbar.toasts.node_stopping') });
         startAggressivePoll(6_000);
       } else {
         setNodeOperation('starting');
@@ -105,11 +107,11 @@ const TopBar = memo(function TopBar() {
           revert();
           setNodeOperation(null);
           toast.error(result.message);
-          addNotification({ type: 'error', title: 'Failed to start node', message: result.message });
+          addNotification({ type: 'error', title: t('topbar.toasts.failed_start'), message: result.message });
           return;
         }
         setNodeStarting(true);
-        addNotification({ type: 'info', title: 'Node starting…', message: result.message });
+        addNotification({ type: 'info', title: t('topbar.toasts.node_starting'), message: result.message });
         startAggressivePoll(15_000);
       }
     } catch (e: unknown) {
@@ -117,7 +119,7 @@ const TopBar = memo(function TopBar() {
       setNodeStarting(false);
       const msg = String(e);
       toast.error(msg);
-      addNotification({ type: 'error', title: 'Error', message: msg });
+      addNotification({ type: 'error', title: t('common.error'), message: msg });
     }
   }, [isRunning, addNotification, setNodeStarting, setNodeOperation]);
 
@@ -167,8 +169,8 @@ const TopBar = memo(function TopBar() {
           className="flex items-baseline gap-2"
           title={
             balanceLabelText
-              ? `${balanceLabelText} address balance`
-              : 'Wallet balance'
+              ? t('topbar.address_balance_tooltip', { label: balanceLabelText })
+              : t('topbar.wallet_balance_tooltip')
           }
         >
           {/* Balance — same gradient as the page titles (`.page-title`),
@@ -214,7 +216,7 @@ const TopBar = memo(function TopBar() {
             <span
               className="text-xs font-display font-semibold"
               style={{ color: '#fbbf24' }}
-              title="Unconfirmed (incoming) balance"
+              title={t('topbar.unconfirmed_tooltip')}
             >
               +{formatIRM(balance.unconfirmed)}
             </span>
@@ -254,8 +256,8 @@ const TopBar = memo(function TopBar() {
               className="flex items-center gap-1.5"
             >
               {isRunning
-                ? <><Square size={12} fill="currentColor" /> Stop</>
-                : <><Play   size={12} fill="currentColor" /> Start Node</>
+                ? <><Square size={12} fill="currentColor" /> {t('topbar.stop_button')}</>
+                : <><Play   size={12} fill="currentColor" /> {t('topbar.start_node_button')}</>
               }
             </motion.span>
           </AnimatePresence>
@@ -316,7 +318,7 @@ const TopBar = memo(function TopBar() {
                   style={{ borderBottom: '1px solid rgba(110,198,255,0.10)' }}
                 >
                   <span className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>
-                    Notifications
+                    {t('topbar.notifications')}
                   </span>
                   <div className="flex items-center gap-1.5">
                     {notifications.length > 0 && (
@@ -325,7 +327,7 @@ const TopBar = memo(function TopBar() {
                         className="text-xs px-2 py-0.5 rounded-md transition-all duration-150"
                         style={{ color: 'rgba(238,240,255,0.40)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
                       >
-                        Clear all
+                        {t('topbar.clear_all')}
                       </button>
                     )}
                     <button
@@ -340,7 +342,7 @@ const TopBar = memo(function TopBar() {
                 <div className="max-h-72 overflow-y-auto">
                   {notifications.length === 0 ? (
                     <div className="px-4 py-8 text-center" style={{ color: 'rgba(238,240,255,0.25)', fontSize: 13 }}>
-                      No notifications
+                      {t('topbar.no_notifications_short')}
                     </div>
                   ) : (
                     notifications
@@ -390,6 +392,7 @@ const NodeStatusPill = memo(function NodeStatusPill({
   status: NodeStatus | null;
   nodeStarting: boolean;
 }) {
+  const { t } = useTranslation();
   if (!status?.running) {
     if (nodeStarting) {
       return (
@@ -402,7 +405,7 @@ const NodeStatusPill = memo(function NodeStatusPill({
         >
           <Loader2 size={12} className="animate-spin" style={{ color: '#6ec6ff' }} />
           <span className="text-xs font-display font-semibold" style={{ color: '#6ec6ff' }}>
-            Starting…
+            {t('topbar.pill_starting')}
           </span>
         </div>
       );
@@ -417,7 +420,7 @@ const NodeStatusPill = memo(function NodeStatusPill({
       >
         <WifiOff size={12} style={{ color: '#fbbf24' }} />
         <span className="text-xs font-display font-semibold" style={{ color: '#fbbf24' }}>
-          Offline
+          {t('topbar.pill_offline')}
         </span>
       </div>
     );
@@ -434,7 +437,7 @@ const NodeStatusPill = memo(function NodeStatusPill({
       >
         <span className="dot-syncing" />
         <span className="text-xs font-display font-semibold" style={{ color: '#818cf8' }}>
-          Connecting
+          {t('topbar.pill_connecting')}
         </span>
       </div>
     );
@@ -450,7 +453,7 @@ const NodeStatusPill = memo(function NodeStatusPill({
       >
         <span className="dot-syncing" />
         <span className="text-xs font-display font-semibold" style={{ color: '#fbbf24' }}>
-          Syncing
+          {t('topbar.pill_syncing')}
         </span>
       </div>
     );
@@ -465,7 +468,7 @@ const NodeStatusPill = memo(function NodeStatusPill({
     >
       <span className="dot-live" />
       <span className="text-xs font-display font-semibold" style={{ color: '#34d399' }}>
-        Live
+        {t('topbar.pill_live')}
       </span>
     </div>
   );

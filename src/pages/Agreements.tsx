@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen, FileJson, AlertCircle, Copy, FileText, Receipt, PenLine, ShieldCheck, Gavel, CheckCircle2, XCircle, HelpCircle, Trash2 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -80,6 +81,7 @@ function borderColorForStatus(status: Agreement['status']): string {
 type PageView = 'agreements' | 'disputes';
 
 export default function AgreementsPage() {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const nodeStatus = useStore((s) => s.nodeStatus);
@@ -229,7 +231,7 @@ export default function AgreementsPage() {
       // Suppress toast when offline — the empty state already communicates the problem.
       // This also prevents the React 18 strict-mode double-invoke from firing two toasts.
       if (nodeStatus?.running) {
-        toast.error('Failed to load agreements');
+        toast.error(t('agreements.toasts.failed_load'));
       }
     } finally {
       setLoading(false);
@@ -239,7 +241,7 @@ export default function AgreementsPage() {
   const handleDeleteAgreement = async (id: string) => {
     try {
       await agreements.remove(id);
-      toast.success('Agreement deleted');
+      toast.success(t('agreements.toasts.delete_success'));
       setDeleteAgreementId(null);
       await loadData();
     } catch (e) {
@@ -288,7 +290,7 @@ export default function AgreementsPage() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="page-title">Agreements</h1>
+          <h1 className="page-title">{t('agreements.page_title')}</h1>
           <p className="page-subtitle">On-chain settlement agreements</p>
         </div>
         <div className="flex items-center gap-2">

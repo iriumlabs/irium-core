@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { appWindow } from '@tauri-apps/api/window';
 import { Minus, Square, X } from 'lucide-react';
 import { useStore } from '../../lib/store';
@@ -9,6 +10,7 @@ const TRIGGER_PX = 4;
 const BAR_HEIGHT_PX = 32;
 
 export default function TitleBar() {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
   // Ref mirrors state so the mousemove handler (closure) sees the current value
   const visibleRef = useRef(false);
@@ -18,10 +20,7 @@ export default function TitleBar() {
 
   const handleClose = () => {
     if (minerRunning) {
-      const ok = window.confirm(
-        'Mining is active. The miner will continue running in the background.\n\n' +
-        'Click OK to minimize to tray, or Cancel to keep the window open and stop mining first if you want to quit completely.'
-      );
+      const ok = window.confirm(t('titlebar.miner_active_confirm'));
       if (!ok) return;
     }
     appWindow.close();

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import { fetch as tauriFetch, ResponseType } from "@tauri-apps/api/http";
 import { useStore } from "../lib/store";
@@ -294,6 +295,7 @@ function SellerProfileBlock({ data, resultVisible }: { data: ReputationData; res
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function Reputation() {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
@@ -452,9 +454,9 @@ export default function Reputation() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="page-title">Reputation</h1>
+          <h1 className="page-title">{t('reputation.page_title')}</h1>
           <p className="page-subtitle">
-            Query the on-chain reputation score for any Irium address or public key.
+            {t('reputation.page_subtitle')}
           </p>
         </div>
         <button
@@ -863,6 +865,7 @@ function OutcomeModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useTranslation();
   const [choice, setChoice] = useState<ReputationOutcome | null>(null);
   const [proofResponseSecs, setProofResponseSecs] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -878,10 +881,10 @@ function OutcomeModal({
         Number.isFinite(secs) ? secs : undefined,
       );
       if (result.success) {
-        toast.success(`Recorded "${choice}" for this seller`);
+        toast.success(t('reputation.outcome_recorded', { choice }));
         onSuccess();
       } else {
-        toast.error(result.message ?? 'Failed to record outcome');
+        toast.error(result.message ?? t('reputation.failed_to_record'));
       }
     } catch (e) {
       toast.error(String(e));

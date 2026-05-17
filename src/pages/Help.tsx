@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { open as shellOpen } from '@tauri-apps/api/shell';
@@ -578,6 +579,7 @@ const SECTION_CONTENT: Record<string, React.ReactNode> = {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Help() {
+  const { t } = useTranslation();
   const location = useLocation();
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -619,8 +621,8 @@ export default function Help() {
       {/* Scrollable content */}
       <div ref={contentRef} className="flex-1 overflow-y-auto px-8 py-6 space-y-12">
         <div>
-          <h1 className="page-title">Help &amp; About</h1>
-          <p className="page-subtitle">App information, documentation, and FAQ.</p>
+          <h1 className="page-title">{t('help.page_title')}</h1>
+          <p className="page-subtitle">{t('help.subtitle')}</p>
         </div>
 
         {/* About renders directly (no card wrapper — it has its own sub-cards) */}
