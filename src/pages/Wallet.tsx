@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { save as saveDialog, open as openDialog } from "@tauri-apps/api/dialog";
 import { motion, AnimatePresence } from "framer-motion";
@@ -38,6 +39,7 @@ import type { AddressInfo, Transaction, SendResult, WalletCreateResult } from ".
  * ───────────────────────────────────────────────────────────────────────── */
 
 export default function WalletPage() {
+  const { t } = useTranslation();
   const balance = useStore((s) => s.balance);
   const nodeStatus = useStore((s) => s.nodeStatus);
   const settings = useStore((s) => s.settings);
@@ -140,7 +142,7 @@ export default function WalletPage() {
     } catch {
       // Only surface errors when the node is supposed to be running —
       // offline wallets are a valid mode.
-      if (nodeStatusRef.current?.running) toast.error('Failed to load addresses');
+      if (nodeStatusRef.current?.running) toast.error(t('wallet.toasts.failed_load_addresses'));
     } finally {
       hasLoadedOnceRef.current = true;
       setLoadingAddresses(false);
@@ -206,7 +208,7 @@ export default function WalletPage() {
           }
         } catch {
           if (targetGen === txsWantedGenRef.current && nodeStatusRef.current?.running) {
-            toast.error('Failed to load transactions');
+            toast.error(t('wallet.toasts.failed_load_transactions'));
           }
         } finally {
           if (targetGen === txsWantedGenRef.current) {
@@ -284,7 +286,7 @@ export default function WalletPage() {
   useEffect(() => {
     const openSend = () => {
       if (nodeStatusRef.current?.running) setShowSend(true);
-      else toast.error('Node must be online to send transactions');
+      else toast.error(t('wallet.toasts.node_must_be_online'));
     };
     const openReceive = () => setShowReceive(true);
     window.addEventListener('irium:open-send', openSend);
@@ -347,7 +349,7 @@ export default function WalletPage() {
       });
       if (!outPath) return;
       await wallet.exportWif(selectedAddr, outPath as string);
-      toast.success('WIF key exported');
+      toast.success(t('wallet.toasts.wif_exported'));
     } catch (e) {
       toast.error(String(e));
     } finally {
@@ -365,7 +367,7 @@ export default function WalletPage() {
       });
       if (!outPath) return;
       await wallet.backup(outPath as string);
-      toast.success('Wallet backup saved');
+      toast.success(t('wallet.toasts.backup_saved'));
     } catch (e) {
       toast.error(String(e));
     } finally {
@@ -439,7 +441,7 @@ export default function WalletPage() {
                   {activeAddress}
                 </span>
                 <button
-                  onClick={() => { navigator.clipboard.writeText(activeAddress); toast.success('Address copied'); }}
+                  onClick={() => { navigator.clipboard.writeText(activeAddress); toast.success(t('wallet.toasts.address_copied')); }}
                   className="text-white/45 hover:text-white transition-colors flex-shrink-0"
                   title="Copy address"
                 >
@@ -825,7 +827,7 @@ export default function WalletPage() {
                   updateSettings({ wallet_path: newPath });
                 }
                 await loadWalletFiles();
-                toast.success('Wallet renamed');
+                toast.success(t('wallet.toasts.wallet_renamed'));
               } catch (e) {
                 toast.error(`Rename failed: ${e}`);
               }
@@ -868,11 +870,11 @@ export default function WalletPage() {
             onSetPrimary={(idx) => {
               setAddresses(prev => [prev[idx], ...prev.filter((_, i) => i !== idx)]);
               setActiveAddrIdx(0);
-              toast.success('Set as primary');
+              toast.success(t('wallet.toasts.set_as_primary'));
             }}
             onRemove={(_idx, addr) => {
               hideAddress(addr);
-              toast.success('Address hidden');
+              toast.success(t('wallet.toasts.address_hidden'));
             }}
             onAddAddress={requestAddAddress}
             onShowQr={(addr) => setQrAddress(addr)}
@@ -1109,6 +1111,7 @@ function AddressCard({
   onRemove?: () => void;
   onSetPrimary?: () => void;
 }) {
+  const { t } = useTranslation();
   const [exportingWif, setExportingWif] = useState(false);
   // Read labels from store so the badge stays in sync with edits made in
   // the Manage Wallets panel.
@@ -1126,7 +1129,7 @@ function AddressCard({
       });
       if (!outPath) return;
       await wallet.exportWif(addr.address, outPath as string);
-      toast.success('WIF key exported');
+      toast.success(t('wallet.toasts.wif_exported'));
     } catch (e) {
       toast.error(String(e));
     } finally {
@@ -1247,7 +1250,7 @@ function AddressCard({
         </div>
         <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(addr.address); toast.success("Address copied"); }}
+            onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(addr.address); toast.success(t('wallet.toasts.address_copied')); }}
             className="btn-ghost p-1.5 text-white/40 hover:text-white"
             title="Copy address"
           >
@@ -1284,12 +1287,13 @@ function AddressCard({
 
 // ── Transaction row ───────────────────────────────────────────
 function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const isSend = tx.direction === "send";
   const isCoinbase = tx.is_coinbase === true;
   // Type-specific styling. Coinbase wins over the send/receive direction —
   // mining rewards are conceptually different from a regular incoming tx.
-  const typeLabel = isCoinbase ? "Mining Reward" : isSend ? "Sent" : "Received";
+  const typeLabel = isCoinbase ? t('dashboard.tx_row.mining_reward') : isSend ? t('dashboard.tx_row.sent') : t('dashboard.tx_row.received');
   const typeColor = isCoinbase ? "text-green-400" : isSend ? "text-red-400" : "text-green-400";
   const typeBg    = isCoinbase ? "bg-green-500/10" : isSend ? "bg-red-500/10" : "bg-green-500/10";
   const TypeIcon  = isCoinbase ? Pickaxe : isSend ? ArrowUpRight : ArrowDownLeft;
@@ -1310,7 +1314,7 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
   const copyTxid = (e: React.MouseEvent) => {
     e.stopPropagation();
     navigator.clipboard.writeText(tx.txid);
-    toast.success("TXID copied");
+    toast.success(t('wallet.toasts.txid_copied'));
   };
 
   // Middle-truncate helper. Uses three literal dots (not ellipsis char) to
@@ -1883,6 +1887,7 @@ function SendModal({
 }) {
   // Read live balance from store so the modal always shows current data
   // even if the user opened it minutes ago (H3: stale balance fix).
+  const { t } = useTranslation();
   const liveAddresses = useStore((s) => s.addresses);
   const liveBalance = liveAddresses.find((a) => a.address === fromAddress)?.balance;
   const availableBalance = liveBalance !== undefined ? liveBalance : availableBalanceProp;
@@ -2017,7 +2022,7 @@ function SendModal({
                   <button
                     onClick={() => {
                       const amt = parseFloat(sendAmountIrm);
-                      if (isNaN(amt) || amt <= 0) { toast.error('Enter a valid positive amount'); return; }
+                      if (isNaN(amt) || amt <= 0) { toast.error(t('wallet.send.enter_positive_amount')); return; }
                       if (validateAddress(sendTo)) setSendStep("confirm");
                     }}
                     disabled={!sendTo || !sendAmountIrm || insufficientFunds}
@@ -2124,7 +2129,7 @@ function SendModal({
                   <div className="card p-3 flex items-start gap-2.5">
                     <span className="font-mono text-xs text-white/70 break-all flex-1 select-all leading-relaxed">{sentTxid}</span>
                     <button
-                      onClick={() => { navigator.clipboard.writeText(sentTxid ?? ''); toast.success('Transaction ID copied'); }}
+                      onClick={() => { navigator.clipboard.writeText(sentTxid ?? ''); toast.success(t('wallet.toasts.txid_copied')); }}
                       className="shrink-0 p-1 text-white/35 hover:text-white/70 transition-colors"
                       title="Copy transaction ID"
                     >
@@ -2156,6 +2161,7 @@ function SendModal({
 
 // ── Receive Modal ─────────────────────────────────────────────
 function ReceiveModal({ address, onClose }: { address: string; onClose: () => void }) {
+  const { t } = useTranslation();
   useEffect(() => {
     const handler = () => onClose();
     window.addEventListener('irium:close-modal', handler);
@@ -2192,7 +2198,7 @@ function ReceiveModal({ address, onClose }: { address: string; onClose: () => vo
               {address || "No address available"}
             </div>
             <button
-              onClick={() => { if (address) { navigator.clipboard.writeText(address); toast.success("Address copied"); } }}
+              onClick={() => { if (address) { navigator.clipboard.writeText(address); toast.success(t('wallet.toasts.address_copied')); } }}
               className="btn-primary mx-auto gap-2"
               disabled={!address}
             >
@@ -2218,6 +2224,7 @@ function NewAddressModal({
   onClose: () => void;
   onShowRecoveryPhrase?: () => void;
 }) {
+  const { t } = useTranslation();
   const [revealWif, setRevealWif] = useState(false);
   return (
     <>
@@ -2265,7 +2272,7 @@ function NewAddressModal({
             </div>
             <div className="font-mono text-[11px] text-white/80 break-all text-center px-2">{info.address}</div>
             <button
-              onClick={() => { navigator.clipboard.writeText(info.address); toast.success('Address copied'); }}
+              onClick={() => { navigator.clipboard.writeText(info.address); toast.success(t('wallet.toasts.address_copied')); }}
               className="btn-ghost text-xs gap-1.5"
             >
               <Copy size={12} /> Copy address
@@ -2360,6 +2367,7 @@ function EyeOff(props: { size?: number }) {
 
 // ── Address QR modal — small popup showing one address as QR ────────────────
 function AddressQrModal({ address, onClose }: { address: string; onClose: () => void }) {
+  const { t } = useTranslation();
   return (
     <>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" onClick={onClose} />
@@ -2386,7 +2394,7 @@ function AddressQrModal({ address, onClose }: { address: string; onClose: () => 
           </div>
           <div className="font-mono text-[11px] text-white/75 break-all text-center max-w-[220px]">{address}</div>
           <button
-            onClick={() => { navigator.clipboard.writeText(address); toast.success('Address copied'); }}
+            onClick={() => { navigator.clipboard.writeText(address); toast.success(t('wallet.toasts.address_copied')); }}
             className="btn-ghost text-xs gap-1.5 w-full justify-center"
           >
             <Copy size={12} /> Copy
@@ -2458,6 +2466,7 @@ function ManageWalletsPanel({
   backingUp: boolean;
   onImportBackupFile: () => void;
 }) {
+  const { t } = useTranslation();
   const [exportingWifAddr, setExportingWifAddr] = useState<string | null>(null);
   // Per-row delete-confirmation state. Holds the WalletFileInfo of the
   // file the user is in the process of deleting (null when no modal open).
@@ -2542,7 +2551,7 @@ function ManageWalletsPanel({
       });
       if (!outPath) return;
       await wallet.exportWif(addr, outPath as string);
-      toast.success('WIF key exported');
+      toast.success(t('wallet.toasts.wif_exported'));
     } catch (e) { toast.error(String(e)); }
     finally { setExportingWifAddr(null); }
   };
@@ -2919,7 +2928,7 @@ function ManageWalletsPanel({
                         <Hash size={11} /> QR
                       </button>
                       <button
-                        onClick={() => { navigator.clipboard.writeText(addr.address); toast.success('Address copied'); }}
+                        onClick={() => { navigator.clipboard.writeText(addr.address); toast.success(t('wallet.toasts.address_copied')); }}
                         className="btn-ghost text-[10px] py-1 px-2 gap-1"
                         style={{ color: 'rgba(238,240,255,0.65)' }}
                         title="Copy"

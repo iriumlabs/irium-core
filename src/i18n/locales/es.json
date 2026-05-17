@@ -1,211 +1,485 @@
 {
   "_meta": {
-    "status": "needs_translation",
+    "status": "translated",
     "review_needed": true,
-    "language": "Español",
+    "language": "Espanol",
     "english_name": "Spanish",
     "direction": "ltr"
   },
   "common": {
-    "save": "Save",
-    "cancel": "Cancel",
-    "close": "Close",
-    "retry": "Retry",
-    "back": "Back",
-    "next": "Next",
-    "continue": "Continue",
-    "confirm": "Confirm",
-    "delete": "Delete",
-    "remove": "Remove",
-    "loading": "Loading…",
-    "saving": "Saving…",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "retry": "Reintentar",
+    "back": "Atras",
+    "next": "Siguiente",
+    "continue": "Continuar",
+    "confirm": "Confirmar",
+    "delete": "Eliminar",
+    "remove": "Quitar",
+    "loading": "Cargando...",
+    "saving": "Guardando...",
     "error": "Error",
-    "success": "Success",
-    "settings_saved": "Settings saved",
-    "copy": "Copy",
-    "copy_address": "Copy address",
-    "copy_hash": "Copy hash",
-    "copy_id": "Copy ID",
-    "copy_txid": "Copy transaction ID",
-    "open_in_explorer": "Open in Explorer",
-    "no_data": "No data",
-    "yes": "Yes",
+    "success": "Exito",
+    "settings_saved": "Ajustes guardados",
+    "copy": "Copiar",
+    "copy_address": "Copiar direccion",
+    "copy_hash": "Copiar hash",
+    "copy_id": "Copiar ID",
+    "copy_txid": "Copiar ID de transaccion",
+    "open_in_explorer": "Abrir en el Explorador",
+    "no_data": "Sin datos",
+    "yes": "Si",
     "no": "No",
-    "submit": "Submit",
-    "search": "Search",
-    "clear": "Clear",
-    "dismiss": "Dismiss",
-    "create": "Create",
-    "import": "Import",
-    "export": "Export"
+    "submit": "Enviar",
+    "search": "Buscar",
+    "clear": "Limpiar",
+    "dismiss": "Descartar",
+    "create": "Crear",
+    "import": "Importar",
+    "export": "Exportar"
   },
   "nav": {
-    "dashboard": "Dashboard",
-    "wallet": "Wallet",
-    "miner": "Mining",
-    "explorer": "Explorer",
-    "settlement": "Settlement",
-    "marketplace": "Marketplace",
-    "agreements": "Agreements",
-    "reputation": "Reputation",
-    "settings": "Settings",
-    "logs": "Logs",
-    "help": "Help"
+    "dashboard": "Panel",
+    "wallet": "Cartera",
+    "miner": "Mineria",
+    "explorer": "Explorador",
+    "settlement": "Liquidacion",
+    "marketplace": "Mercado",
+    "agreements": "Acuerdos",
+    "reputation": "Reputacion",
+    "settings": "Ajustes",
+    "logs": "Registros",
+    "help": "Ayuda"
   },
   "topbar": {
-    "block_height": "Block height",
-    "peers_connected": "Connected peers",
-    "starting_node": "Starting node…",
-    "node_offline": "Node offline",
-    "notifications": "Notifications",
-    "no_notifications": "No notifications yet"
+    "block_height": "Altura del bloque",
+    "peers_connected": "Pares conectados",
+    "starting_node": "Iniciando nodo...",
+    "node_offline": "Nodo desconectado",
+    "notifications": "Notificaciones",
+    "no_notifications": "Sin notificaciones todavia"
   },
   "status_bar": {
-    "height_label": "Height",
-    "peers_label": "Peers",
-    "synced": "Synced",
-    "syncing": "Syncing"
+    "height_label": "Altura",
+    "peers_label": "Pares",
+    "synced": "Sincronizado",
+    "syncing": "Sincronizando"
   },
   "node_status": {
-    "running": "Node Running",
-    "stopped": "Node Stopped",
-    "starting": "Starting…",
-    "syncing": "Syncing blockchain…",
-    "connecting_peers": "Connecting to peers…",
-    "offline_banner_text": "Node is offline. Start the node to use this page."
+    "running": "Nodo en ejecucion",
+    "stopped": "Nodo detenido",
+    "starting": "Iniciando...",
+    "syncing": "Sincronizando blockchain...",
+    "connecting_peers": "Conectando con pares...",
+    "offline_banner_text": "El nodo esta desconectado. Inicia el nodo para usar esta pagina."
   },
   "errors": {
-    "boundary_title": "Something went wrong",
-    "boundary_message": "An unexpected error occurred while rendering this page. The error has been logged.",
-    "boundary_reload": "Reload app",
-    "node_offline_short": "Node offline"
+    "boundary_title": "Algo salio mal",
+    "boundary_message": "Ocurrio un error inesperado al renderizar esta pagina. El error ha sido registrado.",
+    "boundary_reload": "Recargar aplicacion",
+    "node_offline_short": "Nodo desconectado"
   },
-  "settings": {
-    "page_title": "Settings",
-    "sections": {
-      "node_connection": "Node Connection",
-      "wallet": "Wallet",
-      "display": "Display",
-      "language": "Language",
-      "network": "Network",
-      "security": "Security",
-      "connection_diagnostics": "Connection Diagnostics",
-      "recent_errors": "Recent Errors",
-      "about": "About",
-      "node_source": "Node Source",
-      "node_data": "Node Data",
-      "developer": "Developer"
+  "miner": {
+    "page_title": "Mineria",
+    "page_subtitle": "SHA-256d · CPU · GPU · soporte de pool ASIC",
+    "tabs": {
+      "cpu": "CPU",
+      "gpu": "GPU",
+      "stratum": "Stratum Pool",
+      "asic": "ASIC & External Miner Support"
     },
-    "language_selector": {
-      "label": "Display language",
-      "description": "Choose the language for menus, labels, and messages. Persists across restarts. Node and miner log output remain in English."
-    },
-    "fields": {
-      "rpc_url": "RPC URL",
-      "wallet_file_path": "Wallet file path",
-      "data_directory": "Data directory",
-      "auto_start_node": "Auto-start node",
-      "minimize_to_tray": "Minimize to tray",
-      "currency_display": "Currency display",
-      "theme": "Theme",
-      "external_ip": "External IP",
-      "theme_description": "App color palette — applies instantly",
-      "currency_description": "How to show Irium amounts throughout the app",
-      "minimize_description": "Keep node running when the window is closed"
+    "configuration": "Configuration",
+    "configure_hint": "Configure your address below and start mining",
+    "block_time": "Block time",
+    "stats": {
+      "hashrate": "Hashrate",
+      "est_block_time": "Est. Block Time",
+      "blocks_found": "Blocks Found",
+      "uptime": "Uptime",
+      "difficulty": "Difficulty",
+      "temperature": "Temperature",
+      "power": "Power"
     },
     "buttons": {
-      "test_connection": "Test connection",
-      "detect_ip": "Detect",
-      "retry_upnp": "Retry UPnP port mapping",
-      "clear_chain_state": "Clear chain state",
-      "reset_onboarding": "Reset onboarding",
-      "check_for_updates": "Check for updates",
-      "install_update": "Install update",
-      "pull_node_update": "Pull node update",
-      "copy_diagnostics": "Copy report",
-      "run_diagnostics": "Run diagnostics",
-      "type_reset_to_confirm": "Type RESET to confirm"
+      "start_mining": "Start mining",
+      "stop_mining": "Stop mining",
+      "confirm_stop": "Confirm stop?",
+      "connect_pool": "Connect to pool",
+      "disconnect": "Disconnect",
+      "confirm_disconnect": "Confirm disconnect?",
+      "detect_gpus": "Detect GPUs"
+    },
+    "fields": {
+      "mining_address_label": "Mining address",
+      "mining_address_placeholder": "Paste your Irium mining address (Q... or P...)",
+      "threads_label": "Threads",
+      "stratum_url_label": "Pool URL",
+      "stratum_url_placeholder": "stratum+tcp://pool.example.com:3333",
+      "stratum_worker_label": "Worker",
+      "stratum_worker_hint": "Format: your_wallet_address.worker_id (e.g. Pxxx…xxxx.rig1)",
+      "stratum_password_label": "Pool password (usually \"x\")",
+      "devices_label": "Devices (multi-GPU)"
+    },
+    "found_blocks": {
+      "section_title": "Found Blocks",
+      "empty": "No blocks found yet in this session.",
+      "open_in_explorer_tooltip": "Open this block in the Explorer"
+    },
+    "shares": {
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "ratio": "Ratio"
+    },
+    "asic_info": {
+      "headline": "Connect your ASIC or GPU to a mining pool via Stratum",
+      "after_install": "After installing, restart Irium Core."
     },
     "toasts": {
-      "connected_at_height": "Connected to node at height {{height}}",
-      "connected_no_height": "Connected to node successfully",
-      "diagnostics_failed": "Diagnostics failed",
-      "report_copied": "Report copied to clipboard",
-      "reset_reloading": "Reset to defaults — reloading…",
-      "latest_version": "You are on the latest version",
-      "could_not_restart": "Could not restart",
-      "update_available": "Update available: v{{version}}",
-      "update_check_failed": "Update check failed",
-      "node_update_available": "Node update available — {{count}} commit(s) behind",
-      "node_up_to_date": "Node source is up to date",
-      "node_update_check_failed": "Node update check failed",
-      "pulled_rebuild": "Pulled {{commit}} — rebuild binaries to apply",
-      "pull_failed": "Pull failed",
-      "type_reset_to_confirm": "Type RESET in the field to confirm",
-      "clear_state_failed": "Failed to clear chain state — check node is stopped and try again",
-      "chain_state_cleared": "Chain state cleared — restarting node from scratch…",
-      "node_restarting": "Node restarting…",
-      "detected_ip": "Detected IP: {{ip}} — settings auto-saved",
-      "detection_failed": "Detection failed",
-      "upnp_mapped": "UPnP mapped TCP 38291 — external IP: {{ip}}",
-      "upnp_failed_router": "UPnP failed — router may not support it or port is already mapped",
-      "upnp_failed": "UPnP failed",
-      "could_not_open_browser": "Could not open browser",
-      "onboarding_reset": "Onboarding reset — restart the app to see the wizard"
+      "miner_started": "CPU miner started",
+      "miner_stopped": "Miner stopped",
+      "miner_address_required": "Mining address required",
+      "miner_address_invalid": "Invalid address — must start with Q or P",
+      "stratum_connected": "Connected to pool",
+      "stratum_disconnected": "Disconnected from pool"
+    }
+  },
+  "settings": {
+    "page_title": "Ajustes",
+    "page_subtitle": "Configura tu conexion al nodo, rutas de cartera y preferencias de visualizacion.",
+    "sections": {
+      "node_connection": "Conexion al nodo",
+      "wallet": "Cartera",
+      "display": "Visualizacion",
+      "language": "Idioma",
+      "network": "Red",
+      "security": "Seguridad",
+      "connection_diagnostics": "Diagnostico de conexion",
+      "recent_errors": "Errores recientes",
+      "about": "Acerca de",
+      "node_source": "Codigo del nodo",
+      "node_data": "Datos del nodo",
+      "developer": "Desarrollador"
+    },
+    "language_selector": {
+      "label": "Idioma de la interfaz",
+      "description": "Elige el idioma para menus, etiquetas y mensajes. Se conserva tras reiniciar. La salida de registros del nodo y del minero permanecen en ingles."
+    },
+    "fields": {
+      "rpc_url": "URL RPC",
+      "wallet_file_path": "Ruta del archivo de cartera",
+      "data_directory": "Directorio de datos",
+      "auto_start_node": "Iniciar nodo automaticamente",
+      "minimize_to_tray": "Minimizar a la bandeja",
+      "currency_display": "Visualizacion de moneda",
+      "theme": "Tema",
+      "external_ip": "IP externa",
+      "theme_description": "Paleta de colores de la app - se aplica al instante",
+      "currency_description": "Como mostrar las cantidades de Irium en toda la app",
+      "minimize_description": "Mantener el nodo en ejecucion cuando se cierre la ventana",
+      "rpc_url_description": "URL para tu instancia local de iriumd",
+      "auto_start_description": "Lanzar iriumd automaticamente cuando se abra Irium Core",
+      "wallet_path_description": "Ruta personalizada a tu archivo de cartera (deja en blanco para usar la predeterminada)",
+      "wallet_path_placeholder": "~/.irium/wallet.json (predeterminada)",
+      "data_dir_description": "Directorio de datos personalizado para iriumd (deja en blanco para usar el predeterminado)",
+      "data_dir_placeholder": "~/.irium (predeterminado)"
+    },
+    "buttons": {
+      "test_connection": "Probar conexion",
+      "detect_ip": "Detectar",
+      "retry_upnp": "Reintentar mapeo de puerto UPnP",
+      "clear_chain_state": "Borrar estado de la cadena",
+      "reset_onboarding": "Reiniciar incorporacion",
+      "check_for_updates": "Buscar actualizaciones",
+      "install_update": "Instalar actualizacion",
+      "pull_node_update": "Actualizar nodo",
+      "copy_diagnostics": "Copiar informe",
+      "run_diagnostics": "Ejecutar diagnostico",
+      "type_reset_to_confirm": "Escribe RESET para confirmar"
+    },
+    "toasts": {
+      "connected_at_height": "Conectado al nodo en la altura {{height}}",
+      "connected_no_height": "Conectado al nodo correctamente",
+      "diagnostics_failed": "El diagnostico fallo",
+      "report_copied": "Informe copiado al portapapeles",
+      "reset_reloading": "Restablecido a valores predeterminados - recargando...",
+      "latest_version": "Estas en la ultima version",
+      "could_not_restart": "No se pudo reiniciar",
+      "update_available": "Actualizacion disponible: v{{version}}",
+      "update_check_failed": "Error al comprobar actualizaciones",
+      "node_update_available": "Actualizacion del nodo disponible - {{count}} commit(s) atras",
+      "node_up_to_date": "El codigo del nodo esta actualizado",
+      "node_update_check_failed": "Error al comprobar la actualizacion del nodo",
+      "pulled_rebuild": "Descargado {{commit}} - recompila los binarios para aplicar",
+      "pull_failed": "Error al descargar la actualizacion",
+      "type_reset_to_confirm": "Escribe RESET en el campo para confirmar",
+      "clear_state_failed": "Error al borrar el estado de la cadena - comprueba que el nodo este detenido e intentalo de nuevo",
+      "chain_state_cleared": "Estado de la cadena borrado - reiniciando el nodo desde cero...",
+      "node_restarting": "Nodo reiniciandose...",
+      "detected_ip": "IP detectada: {{ip}} - ajustes guardados automaticamente",
+      "detection_failed": "Deteccion fallida",
+      "upnp_mapped": "UPnP mapeo TCP 38291 - IP externa: {{ip}}",
+      "upnp_failed_router": "UPnP fallo - tu router puede no soportarlo o el puerto ya esta mapeado",
+      "upnp_failed": "UPnP fallo",
+      "could_not_open_browser": "No se pudo abrir el navegador",
+      "onboarding_reset": "Incorporacion reiniciada - reinicia la app para ver el asistente",
+      "update_check_internet": "No se pudo comprobar actualizaciones. Revisa tu conexion a internet.",
+      "connection_failed": "Conexion fallida",
+      "update_failed": "Actualizacion fallida"
+    },
+    "update_banner": {
+      "title_installed": "Actualizacion instalada - v{{version}} lista",
+      "title_available": "Hay una nueva version de Irium Core disponible: v{{version}}",
+      "sub_installed": "Reinicia la app para empezar a usar la nueva version.",
+      "sub_downloading": "Descargando actualizacion... {{percent}}%",
+      "sub_current": "Estas en la v{{version}}.",
+      "install": "Instalar actualizacion",
+      "downloading": "Descargando...",
+      "restart_now": "Reiniciar ahora",
+      "retry": "Reintentar",
+      "open_releases": "Abrir la pagina de lanzamientos en el navegador"
+    },
+    "test_states": {
+      "testing": "Probando...",
+      "connected": "Conectado",
+      "failed": "Fallo",
+      "test": "Probar",
+      "connected_successfully": "Conectado correctamente"
+    },
+    "themes": {
+      "midnight": "Medianoche",
+      "obsidian": "Obsidiana",
+      "aurora": "Aurora",
+      "nebula": "Nebulosa"
+    },
+    "network_info": {
+      "network": "Red",
+      "p2p_port": "Puerto P2P",
+      "rpc_port": "Puerto RPC",
+      "address_prefix": "Prefijo de direccion",
+      "consensus": "Consenso",
+      "total_supply": "Suministro total"
+    },
+    "port_reachability": {
+      "title": "Accesibilidad del puerto",
+      "active_upnp": "Activo (UPnP) - TCP 38291 abierto",
+      "active_manual_one": "Activo (manual) - {{count}} par entrante",
+      "active_manual_other": "Activo (manual) - {{count}} pares entrantes",
+      "active_manual": "Activo (manual) - {{count}} par(es) entrante(s)",
+      "detecting": "Detectando... ({{seconds}}s)",
+      "inactive": "Inactivo - solo saliente",
+      "node_offline": "Nodo desconectado",
+      "retry": "Reintentar",
+      "external_ip_label": "IP externa",
+      "detecting_paragraph": "Esperando hasta 60s a que un par entrante confirme la accesibilidad. PEX necesita un momento para propagar tu direccion a otros nodos tras el inicio.",
+      "inactive_paragraph": "UPnP fallo y no han llegado pares entrantes. Configura el reenvio manual de puertos en tu router (TCP 38291) o activa UPnP, luego pulsa Reintentar. Las conexiones salientes siguen funcionando en este estado."
+    },
+    "security_info": {
+      "wallet_local": "Irium Core guarda tu archivo de cartera localmente. Tus claves privadas nunca salen de tu maquina. El archivo de cartera esta cifrado. Haz siempre una copia de seguridad de tu frase de recuperacion y guardala sin conexion.",
+      "rpc_token_warning": "Si configuras IRIUM_RPC_TOKEN en tu nodo, la interfaz utiliza actualmente la conexion sin autenticacion predeterminada. El soporte para autenticacion basada en token llegara en una version futura."
+    },
+    "diagnostics": {
+      "description": "Ejecuta 7 comprobaciones contra tu nodo, cartera y configuracion del binario.",
+      "running": "Ejecutando...",
+      "run": "Ejecutar diagnostico",
+      "checks_passed_suffix": "comprobaciones superadas",
+      "copy_report": "Copiar informe"
+    },
+    "errors_section": {
+      "none": "Sin errores registrados.",
+      "count_one": "{{count}} error registrado.",
+      "count_other": "{{count}} errores registrados.",
+      "count": "{{count}} error(es) registrado(s).",
+      "clear": "Limpiar"
+    },
+    "about_info": {
+      "application": "Aplicacion",
+      "version": "Version",
+      "framework": "Framework",
+      "license": "Licencia",
+      "check_github_releases": "Consulta los lanzamientos en GitHub para una version mas reciente de la GUI.",
+      "checking": "Comprobando...",
+      "check_updates": "Buscar actualizaciones"
+    },
+    "node_source_info": {
+      "description_before_link": "Los binarios del nodo (iriumd, irium-wallet, irium-miner) se compilan directamente desde el",
+      "description_after_link": "repositorio, que esta incrustado como un submodulo de git. Ninguna funcionalidad se pierde - cada capacidad anadida al repositorio irium queda automaticamente disponible para esta app.",
+      "built_from_commit": "Compilado desde el commit",
+      "loading": "cargando...",
+      "latest_on_main": "Ultimo en main",
+      "commits_behind": "{{count}} commit(s) atras",
+      "by_author": "por {{author}}",
+      "checking": "Comprobando...",
+      "check_node_update": "Buscar actualizacion del nodo",
+      "pulling": "Descargando...",
+      "pull_update": "Descargar actualizacion",
+      "view_changes": "Ver cambios"
+    },
+    "node_data_info": {
+      "external_ip_description": "Tu IP publica anunciada a la red para que los pares puedan contactarte. Nada se envia automaticamente - tu controlas cuando se detecta.",
+      "detect": "Detectar",
+      "detect_panel_paragraph": "Introduce una URL que devuelva tu IP publica como texto plano. La peticion solo se enviara cuando pulses Obtener.",
+      "fetching": "Obteniendo...",
+      "fetch": "Obtener",
+      "cancel": "Cancelar",
+      "clear_state_description": "Borra los datos de bloques y resincroniza desde cero. La cartera y los acuerdos se conservan.",
+      "clearing": "Borrando...",
+      "confirm_resync": "Confirmar - esto resincroniza!",
+      "clear_resync": "Borrar y resincronizar",
+      "confirm_hint": "Pulsa de nuevo para confirmar. Los bloques se descargaran de nuevo."
+    },
+    "developer_info": {
+      "reset_onboarding": "Reiniciar incorporacion",
+      "reset_onboarding_description": "Mostrar el asistente de configuracion inicial en el proximo inicio"
+    },
+    "action_bar": {
+      "are_you_sure": "Estas seguro?",
+      "reset_to_defaults": "Restablecer valores predeterminados",
+      "wallet_custom_warning_before": "Tu cartera esta en una ruta personalizada:",
+      "wallet_custom_warning_after": ". Despues del reinicio tendras que reimportarla. Escribe RESET para confirmar.",
+      "reset_placeholder": "Escribe RESET para confirmar"
+    },
+    "node_update_modal": {
+      "title": "Actualizar codigo del nodo",
+      "body": "Esto descargara el codigo fuente mas reciente de iriumd y recompilara el binario del nodo. Si el nuevo codigo es inestable, puede romper tu nodo en ejecucion y requerir un reinicio. Solo procede si sabes lo que estas haciendo.",
+      "cancel": "Cancelar",
+      "proceed": "Entiendo, actualizar de todos modos"
     }
   },
   "dashboard": {
-    "page_title": "Dashboard",
+    "page_title": "Panel",
+    "page_subtitle": "Vision general de la blockchain Irium - en vivo",
+    "refresh": "Actualizar",
+    "refreshing": "Actualizando...",
     "stats": {
-      "confirmed_balance": "Confirmed Balance",
-      "block_height": "Block Height",
-      "peers": "Peers",
-      "syncing": "Syncing"
+      "confirmed_balance": "Saldo confirmado",
+      "block_height": "Altura del bloque",
+      "peers": "Pares",
+      "syncing": "Sincronizando...",
+      "node_offline": "Nodo desconectado",
+      "catching_up": "Poniendose al dia - #{{height}} {{tip}}",
+      "pending": "+{{amount}} pendiente",
+      "all_confirmed": "Todo confirmado",
+      "wallet_not_open": "Cartera no abierta",
+      "syncing_height": "Sincronizando - {{height}} / {{tip}}",
+      "at_tip_no_new": "En la cima - sin bloques nuevos ({{minutes}}m)",
+      "at_chain_tip": "En la cima de la cadena",
+      "peers_sub": "{{active}} activos - {{known}} conocidos",
+      "no_peers_connecting": "Sin pares - conectando..."
     },
     "activity": {
-      "title": "Recent Activity",
-      "empty_chart": "No transaction history yet",
-      "empty_tx_list": "No transactions yet",
-      "load_error": "Could not load recent transactions",
-      "last_n_txs": "Last 10 txs"
+      "title": "Actividad reciente",
+      "empty_chart": "Sin historial de transacciones todavia",
+      "empty_tx_list": "Sin transacciones todavia",
+      "load_error": "No se pudieron cargar las transacciones recientes",
+      "last_n_txs": "Ultimas 10 tx",
+      "amount_label": "Cantidad"
     },
     "operation_banner": {
-      "starting": "Starting node",
-      "clearing": "Clearing & restarting",
-      "connected": "Connected",
-      "connected_with_peers": "Connected to {{count}} peer(s)"
+      "starting": "Iniciando nodo",
+      "clearing": "Borrando y reiniciando",
+      "connected": "Conectado",
+      "connected_with_peers": "Conectado a {{count}} par(es)",
+      "completed_subtitle": "El nodo esta en linea y sincronizado con la red.",
+      "slow_connect_hint": "Esto puede tardar un momento si no hay pares disponibles. El nodo esta intentando activamente alcanzar la red Irium."
     },
     "section_titles": {
-      "recent_transactions": "Recent Transactions"
+      "recent_transactions": "Transacciones recientes"
     },
     "banners": {
-      "no_peers_searching": "Searching for peers…",
-      "sync_stall": "Sync stalled — {{count}} blocks behind",
-      "height_warning": "Block height hasn't changed for {{minutes}} minutes",
-      "dismiss": "Dismiss"
+      "no_peers_searching": "Buscando pares...",
+      "sync_stall": "Sincronizacion detenida - {{count}} bloques atras",
+      "height_warning": "La altura del bloque no ha cambiado en {{minutes}} minutos",
+      "dismiss": "Descartar",
+      "iriumd_not_running": "iriumd no esta en ejecucion",
+      "start_to_sync": "Inicia el nodo para sincronizarte con la red Irium.",
+      "start_node": "Iniciar nodo",
+      "searching_for_peers": "Buscando pares...",
+      "peer_search_subtitle": "Bloque #{{height}} - iriumd esta descubriendo la red. Si se atasca, prueba Borrar y reiniciar.",
+      "clear_restart": "Borrar y reiniciar",
+      "sync_stalled": "Sincronizacion detenida - {{count}} bloques atras",
+      "sync_stalled_subtitle": "Bloque #{{height}} / #{{tip}} - El estado de la cadena puede estar corrupto. Borra y reinicia para resincronizar desde cero.",
+      "height_stuck": "La altura del bloque no ha aumentado en {{minutes}}m",
+      "height_stuck_subtitle": "Si tu nodo parece atascado, prueba a reiniciar o borrar el estado de la cadena.",
+      "restart_node": "Reiniciar nodo",
+      "clear_chain_state": "Borrar estado de la cadena",
+      "dismiss_1h": "Descartar durante 1 hora"
+    },
+    "decentral": {
+      "title": "Tu nodo no es accesible desde la red",
+      "body": "Estas conectado saliente pero otros nodos no pueden contactarte. Para una red descentralizada saludable cada nodo deberia ser un par bidireccional completo. Establece tu IP publica para que la red sepa como alcanzarte.",
+      "set_external_ip": "Establecer IP externa",
+      "subtle_hint": "La sincronizacion y la cartera funcionan sin esto"
+    },
+    "notifications": {
+      "state_cleared": "Estado borrado",
+      "restarting_scratch": "Reiniciando el nodo desde cero...",
+      "node_restarting": "Nodo reiniciandose...",
+      "node_starting": "Nodo iniciandose...",
+      "failed_to_start_node": "Error al iniciar el nodo",
+      "node_start_error": "Error de inicio del nodo"
+    },
+    "ticker": {
+      "block": "Bloque",
+      "node_offline": "Nodo desconectado",
+      "connecting_to_peers": "Conectando con pares...",
+      "syncing_progress": "Sincronizando {{height}} / {{tip}}"
+    },
+    "peers": {
+      "title": "Pares de red",
+      "known_count": "{{count}} conocidos",
+      "discovering": "Descubriendo pares...",
+      "col_address": "Direccion",
+      "col_dialable": "Contactable",
+      "col_height": "Altura",
+      "col_last_seen": "Ultima vez visto"
+    },
+    "tx_row": {
+      "mining_reward": "Recompensa de mineria",
+      "sent": "Enviado",
+      "received": "Recibido",
+      "txid_copied": "ID de transaccion copiado",
+      "mempool_awaiting": "Mempool - esperando confirmacion",
+      "miner_label": "Minero: {{addr}}",
+      "fee_label": "Comision: {{sats}} sats",
+      "txid_label": "TXID: {{txid}}",
+      "conf_label": "{{count}} conf",
+      "block_label": "Bloque #{{n}}",
+      "confirmed": "Confirmado",
+      "pending": "Pendiente"
     }
   },
   "wallet": {
-    "page_title": "Wallet",
+    "page_title": "Cartera",
     "tabs": {
-      "addresses": "Addresses",
-      "transactions": "Transactions",
-      "security": "Security"
+      "addresses": "Direcciones",
+      "transactions": "Transacciones",
+      "security": "Seguridad"
     },
-    "addresses": {
-      "section_title": "Addresses",
-      "no_addresses": "No addresses yet",
-      "add_address": "Add address",
-      "show_qr": "Show QR code",
-      "set_as_primary": "Set as primary",
-      "hide_address": "Hide address (stays in wallet file, can be unhidden later)",
-      "unhide_address": "Unhide this address",
-      "rename_wallet_file": "Rename wallet file",
-      "delete_wallet_file": "Permanently delete this wallet file",
-      "manage_wallets": "Manage wallets",
-      "manage_description": "Wallet files, import, hidden addresses"
+    "toasts": {
+      "send_success": "Enviado - txid {{txid}}",
+      "address_copied": "Direccion copiada",
+      "txid_copied": "ID de transaccion copiado",
+      "address_added": "Direccion anadida",
+      "address_hidden": "Direccion oculta",
+      "address_unhidden": "Direccion restaurada",
+      "wallet_renamed": "Cartera renombrada",
+      "rename_failed": "Renombrado fallido: {{reason}}",
+      "delete_failed": "Eliminacion fallida: {{reason}}",
+      "switched_to": "Cambiado a {{name}}",
+      "switch_failed": "Error al cambiar: {{reason}}",
+      "wallet_created": "Cartera creada",
+      "wallet_imported": "Cartera importada",
+      "wif_exported": "Clave WIF exportada a {{path}}",
+      "backup_exported": "Copia de seguridad guardada en {{path}}",
+      "failed_load_addresses": "Error al cargar direcciones",
+      "failed_load_transactions": "Error al cargar transacciones",
+      "node_must_be_online": "El nodo debe estar en linea para enviar transacciones",
+      "backup_saved": "Copia de seguridad guardada",
+      "set_as_primary": "Establecida como principal"
     },
     "send": {
+      "enter_positive_amount": "Introduce una cantidad positiva valida",
       "title": "Send IRM",
       "to_address_label": "To Address",
       "to_address_placeholder": "Q… or P… address",
@@ -224,7 +498,6 @@
       "addr_invalid_prefix": "Address must start with Q or P",
       "addr_invalid_length": "Invalid address length",
       "addr_invalid_chars": "Invalid character in address",
-      "enter_positive_amount": "Enter a valid positive amount",
       "errors": {
         "insufficient": "You do not have enough IRM to complete this transaction. Check your balance and try a smaller amount.",
         "unconfirmed": "Your funds are not yet confirmed. Wait for at least 1 confirmation before sending.",
@@ -232,6 +505,19 @@
         "generic": "Transaction could not be broadcast. Please check that the node is online and try again.",
         "fallback": "Transaction failed. Please try again."
       }
+    },
+    "addresses": {
+      "section_title": "Addresses",
+      "no_addresses": "No addresses yet",
+      "add_address": "Add address",
+      "show_qr": "Show QR code",
+      "set_as_primary": "Set as primary",
+      "hide_address": "Hide address (stays in wallet file, can be unhidden later)",
+      "unhide_address": "Unhide this address",
+      "rename_wallet_file": "Rename wallet file",
+      "delete_wallet_file": "Permanently delete this wallet file",
+      "manage_wallets": "Manage wallets",
+      "manage_description": "Wallet files, import, hidden addresses"
     },
     "receive": {
       "title": "Receive IRM",
@@ -261,23 +547,6 @@
       "pending": "Pending",
       "received": "Received",
       "sent": "Sent"
-    },
-    "toasts": {
-      "send_success": "Sent — txid {{txid}}",
-      "address_copied": "Address copied",
-      "txid_copied": "Transaction ID copied",
-      "address_added": "Address added",
-      "address_hidden": "Address hidden",
-      "address_unhidden": "Address restored",
-      "wallet_renamed": "Wallet renamed",
-      "rename_failed": "Rename failed: {{reason}}",
-      "delete_failed": "Delete failed: {{reason}}",
-      "switched_to": "Switched to {{name}}",
-      "switch_failed": "Failed to switch: {{reason}}",
-      "wallet_created": "Wallet created",
-      "wallet_imported": "Wallet imported",
-      "wif_exported": "WIF key exported to {{path}}",
-      "backup_exported": "Backup saved to {{path}}"
     }
   },
   "agreements": {
@@ -465,69 +734,6 @@
       "min_must_be_positive": "Minimum trade amount must be a positive number",
       "min_cannot_exceed": "Minimum cannot exceed the offer amount",
       "amount_exceeds_supply": "Amount cannot exceed {{max}} IRM (total supply)"
-    }
-  },
-  "miner": {
-    "page_title": "Mining",
-    "tabs": {
-      "cpu": "CPU",
-      "gpu": "GPU",
-      "stratum": "Stratum Pool",
-      "asic": "ASIC & External Miner Support"
-    },
-    "configuration": "Configuration",
-    "configure_hint": "Configure your address below and start mining",
-    "block_time": "Block time",
-    "stats": {
-      "hashrate": "Hashrate",
-      "est_block_time": "Est. Block Time",
-      "blocks_found": "Blocks Found",
-      "uptime": "Uptime",
-      "difficulty": "Difficulty",
-      "temperature": "Temperature",
-      "power": "Power"
-    },
-    "buttons": {
-      "start_mining": "Start mining",
-      "stop_mining": "Stop mining",
-      "confirm_stop": "Confirm stop?",
-      "connect_pool": "Connect to pool",
-      "disconnect": "Disconnect",
-      "confirm_disconnect": "Confirm disconnect?",
-      "detect_gpus": "Detect GPUs"
-    },
-    "fields": {
-      "mining_address_label": "Mining address",
-      "mining_address_placeholder": "Paste your Irium mining address (Q... or P...)",
-      "threads_label": "Threads",
-      "stratum_url_label": "Pool URL",
-      "stratum_url_placeholder": "stratum+tcp://pool.example.com:3333",
-      "stratum_worker_label": "Worker",
-      "stratum_worker_hint": "Format: your_wallet_address.worker_id (e.g. Pxxx…xxxx.rig1)",
-      "stratum_password_label": "Pool password (usually \"x\")",
-      "devices_label": "Devices (multi-GPU)"
-    },
-    "found_blocks": {
-      "section_title": "Found Blocks",
-      "empty": "No blocks found yet in this session.",
-      "open_in_explorer_tooltip": "Open this block in the Explorer"
-    },
-    "shares": {
-      "accepted": "Accepted",
-      "rejected": "Rejected",
-      "ratio": "Ratio"
-    },
-    "asic_info": {
-      "headline": "Connect your ASIC or GPU to a mining pool via Stratum",
-      "after_install": "After installing, restart Irium Core."
-    },
-    "toasts": {
-      "miner_started": "CPU miner started",
-      "miner_stopped": "Miner stopped",
-      "miner_address_required": "Mining address required",
-      "miner_address_invalid": "Invalid address — must start with Q or P",
-      "stratum_connected": "Connected to pool",
-      "stratum_disconnected": "Disconnected from pool"
     }
   },
   "onboarding": {

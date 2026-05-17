@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Cpu, Play, Square, RefreshCw, ArrowRight,
@@ -1385,6 +1386,7 @@ const TABS = [
 type TabKey = typeof TABS[number]['key'];
 
 export default function Miner() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabKey>('cpu');
 
   return (
@@ -1398,8 +1400,8 @@ export default function Miner() {
       <NodeOfflineBanner />
       {/* Header */}
       <div>
-        <h1 className="page-title">Miner</h1>
-        <p className="page-subtitle">SHA-256d · CPU · GPU · ASIC pool support</p>
+        <h1 className="page-title">{t('miner.page_title')}</h1>
+        <p className="page-subtitle">{t('miner.page_subtitle')}</p>
       </div>
 
       {/* Tabs */}

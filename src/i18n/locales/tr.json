@@ -111,7 +111,13 @@
       "external_ip": "External IP",
       "theme_description": "App color palette — applies instantly",
       "currency_description": "How to show Irium amounts throughout the app",
-      "minimize_description": "Keep node running when the window is closed"
+      "minimize_description": "Keep node running when the window is closed",
+      "rpc_url_description": "URL for your local iriumd instance",
+      "auto_start_description": "Launch iriumd automatically when Irium Core opens",
+      "wallet_path_description": "Custom path to your wallet file (leave blank for default)",
+      "wallet_path_placeholder": "~/.irium/wallet.json (default)",
+      "data_dir_description": "Custom iriumd data directory (leave blank for default)",
+      "data_dir_placeholder": "~/.irium (default)"
     },
     "buttons": {
       "test_connection": "Test connection",
@@ -151,7 +157,129 @@
       "upnp_failed_router": "UPnP failed — router may not support it or port is already mapped",
       "upnp_failed": "UPnP failed",
       "could_not_open_browser": "Could not open browser",
-      "onboarding_reset": "Onboarding reset — restart the app to see the wizard"
+      "onboarding_reset": "Onboarding reset — restart the app to see the wizard",
+      "update_check_internet": "Could not check for updates. Check your internet connection.",
+      "connection_failed": "Connection failed",
+      "update_failed": "Update failed"
+    },
+    "page_subtitle": "Configure your node connection, wallet paths, and display preferences.",
+    "update_banner": {
+      "title_installed": "Update installed — v{{version}} ready",
+      "title_available": "A new version of Irium Core is available: v{{version}}",
+      "sub_installed": "Restart the app to start using the new version.",
+      "sub_downloading": "Downloading update… {{percent}}%",
+      "sub_current": "You're on v{{version}}.",
+      "install": "Install Update",
+      "downloading": "Downloading…",
+      "restart_now": "Restart Now",
+      "retry": "Retry",
+      "open_releases": "Open releases page in browser instead"
+    },
+    "test_states": {
+      "testing": "Testing…",
+      "connected": "Connected",
+      "failed": "Failed",
+      "test": "Test",
+      "connected_successfully": "Connected successfully"
+    },
+    "themes": {
+      "midnight": "Midnight",
+      "obsidian": "Obsidian",
+      "aurora": "Aurora",
+      "nebula": "Nebula"
+    },
+    "network_info": {
+      "network": "Network",
+      "p2p_port": "P2P port",
+      "rpc_port": "RPC port",
+      "address_prefix": "Address prefix",
+      "consensus": "Consensus",
+      "total_supply": "Total supply"
+    },
+    "port_reachability": {
+      "title": "Port Reachability",
+      "active_upnp": "Active (UPnP) — TCP 38291 open",
+      "active_manual_one": "Active (manual) — {{count}} inbound peer",
+      "active_manual_other": "Active (manual) — {{count}} inbound peers",
+      "active_manual": "Active (manual) — {{count}} inbound peer(s)",
+      "detecting": "Detecting… ({{seconds}}s)",
+      "inactive": "Inactive — outbound only",
+      "node_offline": "Node offline",
+      "retry": "Retry",
+      "external_ip_label": "External IP",
+      "detecting_paragraph": "Waiting up to 60s for an inbound peer to confirm reachability. PEX needs a moment to propagate your address to other nodes after start.",
+      "inactive_paragraph": "UPnP failed and no inbound peers have arrived. Configure manual port forwarding on your router (TCP 38291) or enable UPnP, then click Retry. Outbound connections still work in this state."
+    },
+    "security_info": {
+      "wallet_local": "Irium Core stores your wallet file locally. Your private keys never leave your machine. The wallet file is encrypted. Always back up your seed phrase and keep it offline.",
+      "rpc_token_warning": "If you set IRIUM_RPC_TOKEN on your node, the GUI currently uses the default unauthenticated connection. Token-based auth support is coming in a future release."
+    },
+    "diagnostics": {
+      "description": "Runs 7 checks against your node, wallet, and binary setup.",
+      "running": "Running…",
+      "run": "Run Diagnostics",
+      "checks_passed_suffix": "checks passed",
+      "copy_report": "Copy Report"
+    },
+    "errors_section": {
+      "none": "No errors recorded.",
+      "count_one": "{{count}} error recorded.",
+      "count_other": "{{count}} errors recorded.",
+      "count": "{{count}} error(s) recorded.",
+      "clear": "Clear"
+    },
+    "about_info": {
+      "application": "Application",
+      "version": "Version",
+      "framework": "Framework",
+      "license": "License",
+      "check_github_releases": "Check GitHub releases for a newer GUI version.",
+      "checking": "Checking…",
+      "check_updates": "Check for Updates"
+    },
+    "node_source_info": {
+      "description_before_link": "The node binaries (iriumd, irium-wallet, irium-miner) are compiled directly from the",
+      "description_after_link": "repository, which is embedded as a git submodule. No features are ever missed — every capability added to the irium repo is automatically available to this app.",
+      "built_from_commit": "Built from commit",
+      "loading": "loading…",
+      "latest_on_main": "Latest on main",
+      "commits_behind": "{{count}} commit(s) behind",
+      "by_author": "by {{author}}",
+      "checking": "Checking…",
+      "check_node_update": "Check for Node Update",
+      "pulling": "Pulling…",
+      "pull_update": "Pull Update",
+      "view_changes": "View Changes"
+    },
+    "node_data_info": {
+      "external_ip_description": "Your public IP address announced to the network so peers can dial back to your node. Nothing is sent automatically — you control when detection happens.",
+      "detect": "Detect",
+      "detect_panel_paragraph": "Enter a URL that returns your public IP as plain text. The request will only be sent when you click Fetch.",
+      "fetching": "Fetching…",
+      "fetch": "Fetch",
+      "cancel": "Cancel",
+      "clear_state_description": "Wipe block data and resync from scratch. Wallet and agreements are preserved.",
+      "clearing": "Clearing…",
+      "confirm_resync": "Confirm — this will resync!",
+      "clear_resync": "Clear & Resync",
+      "confirm_hint": "Click again to confirm. Blocks will be re-downloaded."
+    },
+    "developer_info": {
+      "reset_onboarding": "Reset onboarding",
+      "reset_onboarding_description": "Show the first-run setup wizard again on next launch"
+    },
+    "action_bar": {
+      "are_you_sure": "Are you sure?",
+      "reset_to_defaults": "Reset to defaults",
+      "wallet_custom_warning_before": "Your wallet is at a custom path:",
+      "wallet_custom_warning_after": ". After reset you will need to re-import it. Type RESET to confirm.",
+      "reset_placeholder": "Type RESET to confirm"
+    },
+    "node_update_modal": {
+      "title": "Update Node Source",
+      "body": "This will pull the latest iriumd source code and rebuild the node binary. If the new code is unstable it may break your running node and require a restart. Only proceed if you know what you are doing.",
+      "cancel": "Cancel",
+      "proceed": "I understand, update anyway"
     }
   },
   "dashboard": {
@@ -160,29 +288,101 @@
       "confirmed_balance": "Confirmed Balance",
       "block_height": "Block Height",
       "peers": "Peers",
-      "syncing": "Syncing"
+      "syncing": "Syncing…",
+      "node_offline": "Node offline",
+      "catching_up": "Catching up · #{{height}} {{tip}}",
+      "pending": "+{{amount}} pending",
+      "all_confirmed": "All confirmed",
+      "wallet_not_open": "Wallet not open",
+      "syncing_height": "Syncing — {{height}} / {{tip}}",
+      "at_tip_no_new": "At tip · no new blocks ({{minutes}}m)",
+      "at_chain_tip": "At chain tip",
+      "peers_sub": "{{active}} active · {{known}} known",
+      "no_peers_connecting": "No peers — connecting…"
     },
     "activity": {
       "title": "Recent Activity",
       "empty_chart": "No transaction history yet",
       "empty_tx_list": "No transactions yet",
       "load_error": "Could not load recent transactions",
-      "last_n_txs": "Last 10 txs"
+      "last_n_txs": "Last 10 txs",
+      "amount_label": "Amount"
     },
     "operation_banner": {
       "starting": "Starting node",
       "clearing": "Clearing & restarting",
       "connected": "Connected",
-      "connected_with_peers": "Connected to {{count}} peer(s)"
+      "connected_with_peers": "Connected to {{count}} peer(s)",
+      "completed_subtitle": "Node is online and synced with the network.",
+      "slow_connect_hint": "This may take a moment if no peers are immediately available. The node is actively trying to reach the Irium network."
     },
     "section_titles": {
       "recent_transactions": "Recent Transactions"
     },
     "banners": {
+      "iriumd_not_running": "iriumd is not running",
+      "start_to_sync": "Start the node to sync with the Irium network.",
+      "start_node": "Start Node",
+      "searching_for_peers": "Searching for peers…",
+      "peer_search_subtitle": "Block #{{height}} · iriumd is discovering the network. If stuck, try Clear & Restart.",
+      "clear_restart": "Clear & Restart",
+      "sync_stalled": "Sync stalled — {{count}} blocks behind",
+      "sync_stalled_subtitle": "Block #{{height}} / #{{tip}} · Chain state may be corrupted. Clear & Restart to resync from scratch.",
+      "height_stuck": "Block height hasn't increased in {{minutes}}m",
+      "height_stuck_subtitle": "If your node appears stuck, try restarting or clearing the chain state.",
+      "restart_node": "Restart Node",
+      "clear_chain_state": "Clear Chain State",
+      "dismiss_1h": "Dismiss for 1 hour",
       "no_peers_searching": "Searching for peers…",
       "sync_stall": "Sync stalled — {{count}} blocks behind",
-      "height_warning": "Block height hasn't changed for {{minutes}} minutes",
+      "height_warning": "Block height hasn't changed in {{minutes}} minutes",
       "dismiss": "Dismiss"
+    },
+    "page_subtitle": "Irium blockchain overview · live",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "decentral": {
+      "title": "Your node isn't reachable by the network",
+      "body": "You're connected outbound but other nodes can't dial back to you. For a healthy decentralized network every node should be a full two-way peer. Set your public IP so the network knows how to reach you.",
+      "set_external_ip": "Set External IP",
+      "subtle_hint": "Sync and wallet work without this"
+    },
+    "notifications": {
+      "state_cleared": "State cleared",
+      "restarting_scratch": "Restarting node from scratch…",
+      "node_restarting": "Node restarting…",
+      "node_starting": "Node starting…",
+      "failed_to_start_node": "Failed to start node",
+      "node_start_error": "Node start error"
+    },
+    "ticker": {
+      "block": "Block",
+      "node_offline": "Node offline",
+      "connecting_to_peers": "Connecting to peers…",
+      "syncing_progress": "Syncing {{height}} / {{tip}}"
+    },
+    "peers": {
+      "title": "Network Peers",
+      "known_count": "{{count}} known",
+      "discovering": "Discovering peers…",
+      "col_address": "Address",
+      "col_dialable": "Dialable",
+      "col_height": "Height",
+      "col_last_seen": "Last Seen"
+    },
+    "tx_row": {
+      "mining_reward": "Mining Reward",
+      "sent": "Sent",
+      "received": "Received",
+      "txid_copied": "TXID copied",
+      "mempool_awaiting": "Mempool · awaiting confirmation",
+      "miner_label": "Miner: {{addr}}",
+      "fee_label": "Fee: {{sats}} sats",
+      "txid_label": "TXID: {{txid}}",
+      "conf_label": "{{count}} conf",
+      "block_label": "Block #{{n}}",
+      "confirmed": "Confirmed",
+      "pending": "Pending"
     }
   },
   "wallet": {
@@ -277,7 +477,12 @@
       "wallet_created": "Wallet created",
       "wallet_imported": "Wallet imported",
       "wif_exported": "WIF key exported to {{path}}",
-      "backup_exported": "Backup saved to {{path}}"
+      "backup_exported": "Backup saved to {{path}}",
+      "backup_saved": "Wallet backup saved",
+      "failed_load_addresses": "Failed to load addresses",
+      "failed_load_transactions": "Failed to load transactions",
+      "node_must_be_online": "Node must be online to send transactions",
+      "set_as_primary": "Set as primary"
     }
   },
   "agreements": {
@@ -528,7 +733,8 @@
       "miner_address_invalid": "Invalid address — must start with Q or P",
       "stratum_connected": "Connected to pool",
       "stratum_disconnected": "Disconnected from pool"
-    }
+    },
+    "page_subtitle": "SHA-256d · CPU · GPU · ASIC pool support"
   },
   "onboarding": {
     "splash_title": "Irium Core",
