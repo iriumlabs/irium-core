@@ -1,0 +1,104 @@
+{
+  "_meta": {
+    "status": "source",
+    "review_needed": false,
+    "language": "English"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "retry": "Retry",
+    "back": "Back",
+    "next": "Next",
+    "continue": "Continue",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "remove": "Remove",
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "error": "Error",
+    "success": "Success",
+    "settings_saved": "Settings saved"
+  },
+  "settings": {
+    "page_title": "Settings",
+    "sections": {
+      "node_connection": "Node Connection",
+      "wallet": "Wallet",
+      "display": "Display",
+      "language": "Language",
+      "network": "Network",
+      "security": "Security",
+      "connection_diagnostics": "Connection Diagnostics",
+      "recent_errors": "Recent Errors",
+      "about": "About",
+      "node_source": "Node Source",
+      "node_data": "Node Data",
+      "developer": "Developer"
+    },
+    "language_selector": {
+      "label": "Display language",
+      "description": "Choose the language for menus, labels, and messages. Persists across restarts. Node and miner log output remain in English."
+    },
+    "toasts": {
+      "connected_at_height": "Connected to node at height {{height}}",
+      "connected_no_height": "Connected to node successfully",
+      "diagnostics_failed": "Diagnostics failed",
+      "report_copied": "Report copied to clipboard",
+      "reset_reloading": "Reset to defaults — reloading…",
+      "latest_version": "You are on the latest version",
+      "could_not_restart": "Could not restart",
+      "update_available": "Update available: v{{version}}",
+      "update_check_failed": "Update check failed",
+      "node_update_available": "Node update available — {{count}} commit(s) behind",
+      "node_up_to_date": "Node source is up to date",
+      "node_update_check_failed": "Node update check failed",
+      "pulled_rebuild": "Pulled {{commit}} — rebuild binaries to apply",
+      "pull_failed": "Pull failed",
+      "type_reset_to_confirm": "Type RESET in the field to confirm",
+      "clear_state_failed": "Failed to clear chain state — check node is stopped and try again",
+      "chain_state_cleared": "Chain state cleared — restarting node from scratch…",
+      "node_restarting": "Node restarting…",
+      "detected_ip": "Detected IP: {{ip}} — settings auto-saved",
+      "detection_failed": "Detection failed",
+      "upnp_mapped": "UPnP mapped TCP 38291 — external IP: {{ip}}",
+      "upnp_failed_router": "UPnP failed — router may not support it or port is already mapped",
+      "upnp_failed": "UPnP failed",
+      "could_not_open_browser": "Could not open browser",
+      "onboarding_reset": "Onboarding reset — restart the app to see the wizard"
+    }
+  },
+  "dashboard": {
+    "page_title": "Dashboard",
+    "stats": {
+      "confirmed_balance": "Confirmed Balance",
+      "block_height": "Block Height",
+      "peers": "Peers",
+      "syncing": "Syncing"
+    },
+    "activity": {
+      "title": "Recent Activity",
+      "empty_chart": "No transaction history yet",
+      "empty_tx_list": "No transactions yet",
+      "load_error": "Could not load recent transactions",
+      "last_n_txs": "Last 10 txs"
+    },
+    "operation_banner": {
+      "starting": "Starting node",
+      "clearing": "Clearing & restarting",
+      "connected": "Connected",
+      "connected_with_peers": "Connected to {{count}} peer(s)"
+    },
+    "section_titles": {
+      "recent_transactions": "Recent Transactions"
+    }
+  },
+  "node_status": {
+    "running": "Node Running",
+    "stopped": "Node Stopped",
+    "starting": "Starting…",
+    "syncing": "Syncing blockchain…",
+    "connecting_peers": "Connecting to peers…"
+  }
+}

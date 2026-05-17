@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { listen } from '@tauri-apps/api/event';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
+import { getLanguageMeta } from './i18n';
 import { X, Download, Loader2 } from 'lucide-react';
 import { lazy, Suspense } from 'react';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -160,6 +162,19 @@ function AppLayout() {
     document.documentElement.dataset.theme = settings.theme;
   }, [settings.theme]);
 
+  // i18n: mirror the active language onto <html lang> and <html dir>. dir
+  // flips to 'rtl' for Arabic (the only RTL language in SUPPORTED_LANGUAGES);
+  // tailwindcss-rtl picks this up via its `[dir="rtl"]` parent selector to
+  // flip pl-*/pr-* and ml-*/mr-* utilities automatically.
+  const { i18n: i18nInstance } = useTranslation();
+  const baseLang = (i18nInstance.language || 'en').split('-')[0];
+  const langMeta = getLanguageMeta(baseLang);
+  const langDir = langMeta?.dir ?? 'ltr';
+  useEffect(() => {
+    document.documentElement.lang = baseLang;
+    document.documentElement.dir = langDir;
+  }, [baseLang, langDir]);
+
   useEffect(() => {
     config.setWalletConfig(
       settings.wallet_path ?? null,
@@ -262,9 +277,12 @@ function AppLayout() {
         <StatusBar />
       </div>
 
-      {/* Global toast notifications */}
+      {/* Global toast notifications.
+          Position flips on RTL so the toast pillbox anchors to the inside
+          edge of the content area rather than running off into the
+          sidebar that's now on the right. */}
       <Toaster
-        position="bottom-right"
+        position={langDir === 'rtl' ? 'bottom-left' : 'bottom-right'}
         toastOptions={{
           duration: 4000,
           style: {

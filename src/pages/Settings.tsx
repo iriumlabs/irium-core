@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
+import { SUPPORTED_LANGUAGES, type LanguageCode } from "../i18n";
 import {
   Server,
   FolderOpen,
@@ -21,6 +23,7 @@ import {
   Download,
   ExternalLink,
   Trash2,
+  Languages,
 } from "lucide-react";
 import { fetch as tauriFetch, ResponseType } from "@tauri-apps/api/http";
 import { open as openExternal } from "@tauri-apps/api/shell";
@@ -136,6 +139,12 @@ function Toggle({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Settings() {
   const { settings, updateSettings, setUpdateInfo, dismissUpdateBanner, errorLog, clearErrorLog } = useStore();
+  // i18n: t() reads from the active locale; changing the language via
+  // i18nInstance.changeLanguage() persists to localStorage 'irium_language'
+  // (via i18next-browser-languagedetector) and triggers a re-render of
+  // every component using useTranslation().
+  const { t, i18n: i18nInstance } = useTranslation();
+  const currentLang = (i18nInstance.language || 'en').split('-')[0] as LanguageCode;
   // Banner-ready update info — populated by the silent startup check in
   // App.tsx and refreshed when this Settings page mounts (covers users who
   // leave the app running for days without a restart).
@@ -895,6 +904,37 @@ export default function Settings() {
                 checked={local.minimize_to_tray}
                 onChange={(v) => patch("minimize_to_tray", v)}
               />
+            </FieldRow>
+          </Section>
+        </motion.div>
+
+        {/* Language selector — Phase 1 of i18n. The selector itself is
+            always rendered in the native script of each language so a
+            user who can't read the current UI can still find their own
+            language. */}
+        <motion.div variants={sectionVariants}>
+          <Section title={t('settings.sections.language')} icon={Languages}>
+            <FieldRow
+              label={t('settings.language_selector.label')}
+              description={t('settings.language_selector.description')}
+            >
+              <select
+                className="input text-sm"
+                style={{ minWidth: 220 }}
+                value={currentLang}
+                onChange={(e) => {
+                  const next = e.target.value as LanguageCode;
+                  i18nInstance.changeLanguage(next).then(() => {
+                    toast.success(t('common.settings_saved'), { duration: 2000 });
+                  });
+                }}
+              >
+                {SUPPORTED_LANGUAGES.map((lang) => (
+                  <option key={lang.code} value={lang.code} style={{ background: '#0f0f23', color: '#eef0ff' }}>
+                    {lang.nativeName} — {lang.englishName}
+                  </option>
+                ))}
+              </select>
             </FieldRow>
           </Section>
         </motion.div>
