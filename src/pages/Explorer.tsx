@@ -366,6 +366,13 @@ export default function Explorer() {
   const [blockCursor,   setBlockCursor]   = useState<number | null>(null);
   const [loadingMore,   setLoadingMore]   = useState(false);
 
+  // Deep-link retry state — when iriumd returns 404 (or any "not found"
+  // shaped error) for a block the user clicked from the Miner page, we
+  // show a banner offering a 5-second-delayed retry instead of dumping
+  // the raw "EOF / Block not found" error into a toast. The 5s delay
+  // gives a freshly-mined block time to be indexed by iriumd.
+  const [pendingBlock, setPendingBlock] = useState<{ height: number; retrying: boolean } | null>(null);
+
   const [hashrateInfo,  setHashrateInfo]  = useState<NetworkHashrateInfo | null>(null);
   const [refreshing,    setRefreshing]    = useState(false);
   const [selectedBlock, setSelectedBlock] = useState<ExplorerBlock | null>(null);
@@ -410,6 +417,55 @@ export default function Explorer() {
   // The consumed ref guards against StrictMode's double-invoke and stale
   // location.state. window.history.replaceState clears state so back/forward
   // navigation doesn't re-open the modal.
+  // Shared fetch helper — also used by the retry banner below.
+  const fetchBlockDeepLink = useCallback(async (h: number, passedBlock?: Partial<ExplorerBlock>) => {
+    try {
+      const raw = (await rpc.block(String(h))) as Record<string, unknown>;
+      if (!raw || Object.keys(raw).length === 0) {
+        setPendingBlock({ height: h, retrying: false });
+        return;
+      }
+      const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+      const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v) || 0);
+      const txArr = Array.isArray(raw.tx) ? (raw.tx as unknown[]) : null;
+      const hdr = (typeof raw.header === 'object' && raw.header !== null)
+        ? (raw.header as Record<string, unknown>)
+        : {};
+      const block: ExplorerBlock = {
+        height:       num(raw.height) || h,
+        hash:         str(hdr.hash) || str(raw.hash),
+        prev_hash:    str(hdr.prev_hash) || str(raw.prev_hash) || str(raw.previousblockhash) || str(raw.previous_block_hash),
+        merkle_root:  str(hdr.merkle_root) || str(raw.merkle_root) || str(raw.merkleroot),
+        time:         num(hdr.time) || num(raw.time) || (passedBlock?.time ?? 0),
+        tx_count:     num(raw.tx_count) || num(raw.n_tx) || (txArr ? txArr.length : 0),
+        bits:         str(hdr.bits) || str(raw.bits),
+        nonce:        typeof hdr.nonce === 'number' ? hdr.nonce : (typeof raw.nonce === 'number' ? raw.nonce : undefined),
+        miner_address: str(raw.miner_address) || str(raw.miner) || passedBlock?.miner_address,
+        reward_sats:  passedBlock?.reward_sats,
+      };
+      setSelectedBlock(block);
+      setPendingBlock(null);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      // Backend now returns "Block not found: {h}" for 404 (was "EOF while
+      // parsing…"). Treat that as "not yet indexed" and show retry banner
+      // instead of a destructive-feeling toast.
+      if (msg.includes('Block not found') || msg.includes('not found')) {
+        setPendingBlock({ height: h, retrying: false });
+      } else {
+        // Other failures (node offline, network) still get a toast.
+        toast.error(`Couldn't load block ${h.toLocaleString()}: ${msg}`);
+      }
+    }
+  }, []);
+
+  const handlePendingRetry = useCallback(() => {
+    if (!pendingBlock) return;
+    setPendingBlock({ ...pendingBlock, retrying: true });
+    // 5s delay gives iriumd time to finish indexing a freshly-mined block.
+    setTimeout(() => fetchBlockDeepLink(pendingBlock.height), 5000);
+  }, [pendingBlock, fetchBlockDeepLink]);
+
   const deepLinkConsumedRef = useRef(false);
   useEffect(() => {
     if (deepLinkConsumedRef.current) return;
@@ -424,42 +480,7 @@ export default function Explorer() {
       return;
     }
 
-    (async () => {
-      try {
-        const raw = (await rpc.block(String(h))) as Record<string, unknown>;
-        if (!raw || Object.keys(raw).length === 0) {
-          // H-15 fix: empty response is not the same as a successful "no
-          // block" — surface this to the user instead of silently dropping.
-          toast.error(`Block ${h.toLocaleString()} not found on the node`);
-          return;
-        }
-        const str = (v: unknown): string => (typeof v === 'string' ? v : '');
-        const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v) || 0);
-        const txArr = Array.isArray(raw.tx) ? (raw.tx as unknown[]) : null;
-        // iriumd nests hash/prev_hash/merkle_root/time/bits/nonce in "header".
-        const hdr = (typeof raw.header === 'object' && raw.header !== null)
-          ? (raw.header as Record<string, unknown>)
-          : {};
-        const block: ExplorerBlock = {
-          height:       num(raw.height) || h,
-          hash:         str(hdr.hash) || str(raw.hash),
-          prev_hash:    str(hdr.prev_hash) || str(raw.prev_hash) || str(raw.previousblockhash) || str(raw.previous_block_hash),
-          merkle_root:  str(hdr.merkle_root) || str(raw.merkle_root) || str(raw.merkleroot),
-          time:         num(hdr.time) || num(raw.time) || (passedBlock?.time ?? 0),
-          tx_count:     num(raw.tx_count) || num(raw.n_tx) || (txArr ? txArr.length : 0),
-          bits:         str(hdr.bits) || str(raw.bits),
-          nonce:        typeof hdr.nonce === 'number' ? hdr.nonce : (typeof raw.nonce === 'number' ? raw.nonce : undefined),
-          miner_address: str(raw.miner_address) || str(raw.miner) || passedBlock?.miner_address,
-          reward_sats:  passedBlock?.reward_sats,
-        };
-        setSelectedBlock(block);
-      } catch (e) {
-        // H-15 fix: was a bare silent catch. Now surfaces the failure so a
-        // user clicking a found block during a slow / offline node sees a
-        // toast instead of nothing.
-        toast.error(`Couldn't load block ${h.toLocaleString()}: ${e instanceof Error ? e.message : String(e)}`);
-      }
-    })();
+    fetchBlockDeepLink(h, passedBlock);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -877,6 +898,63 @@ export default function Explorer() {
       <AnimatePresence>
         {selectedBlock && (
           <BlockDetailModal block={selectedBlock} onClose={() => setSelectedBlock(null)} />
+        )}
+      </AnimatePresence>
+
+      {/* ── Deep-link retry banner ─────────────────────────
+          Shown when a click-through from the Miner page lands
+          before iriumd has indexed the block. Backend returns
+          "Block not found: N" (was the cryptic EOF); we surface
+          a retry with a 5s delay so the user doesn't have to
+          guess. Other failures (node offline, network) still
+          surface as toast errors. */}
+      <AnimatePresence>
+        {pendingBlock && (
+          <motion.div
+            key="block-pending"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}
+            onClick={() => setPendingBlock(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96, y: 12 }}
+              transition={{ duration: 0.16 }}
+              className="w-full max-w-md"
+              style={{ background: 'rgba(5,8,20,0.99)', border: '1px solid rgba(110,198,255,0.22)', borderRadius: 10, padding: 24 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-2.5 mb-3">
+                <Clock size={14} style={{ color: '#fbbf24' }} />
+                <span style={{ fontFamily: '"Space Grotesk", sans-serif', fontSize: 14, fontWeight: 700, color: '#fbbf24' }}>
+                  Block #{pendingBlock.height.toLocaleString()} not yet available
+                </span>
+              </div>
+              <p className="text-sm text-white/60 leading-relaxed mb-5">
+                The node may still be indexing this block. Click to retry — the lookup runs again after 5 seconds.
+              </p>
+              <div className="flex items-center gap-3 justify-end">
+                <button
+                  onClick={() => setPendingBlock(null)}
+                  className="btn-secondary text-xs py-2 px-4"
+                  disabled={pendingBlock.retrying}
+                >
+                  Dismiss
+                </button>
+                <button
+                  onClick={handlePendingRetry}
+                  className="btn-primary text-xs py-2 px-4 flex items-center gap-1.5"
+                  disabled={pendingBlock.retrying}
+                >
+                  {pendingBlock.retrying ? (
+                    <><RefreshCw size={12} className="animate-spin" /> Retrying in 5s…</>
+                  ) : (
+                    <><RefreshCw size={12} /> Retry</>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

@@ -4483,7 +4483,25 @@ async fn rpc_get_block(
         .send()
         .await
         .map_err(|e| e.to_string())?;
-    resp.json::<serde_json::Value>().await.map_err(|e| e.to_string())
+    // Fix: previously called .json() unconditionally, which produces "EOF while
+    // parsing a value at line 1 column 0" when iriumd returns 404 +
+    // content-length: 0 (the standard response for an unknown height/hash).
+    // Now status-check first, same pattern as rpc_get_tx, so the frontend
+    // can render a friendly "Block not yet available" message instead of
+    // showing the cryptic EOF parse error.
+    let status = resp.status();
+    if status.is_success() {
+        resp.json::<serde_json::Value>().await.map_err(|e| e.to_string())
+    } else if status == reqwest::StatusCode::NOT_FOUND {
+        Err(format!("Block not found: {}", height_or_hash))
+    } else {
+        let body = resp.text().await.unwrap_or_default();
+        Err(format!(
+            "RPC error {}: {}",
+            status.as_u16(),
+            body.chars().take(200).collect::<String>()
+        ))
+    }
 }
 
 #[tauri::command]
