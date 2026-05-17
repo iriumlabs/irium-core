@@ -149,11 +149,11 @@ function BlockDetailModal({ block, onClose }: { block: ExplorerBlock; onClose: (
   }, [onClose]);
 
   const rows = [
-    { label: 'Height',      value: `#${block.height.toLocaleString()}`,                                   mono: true,  copy: false },
+    { label: 'Height',      value: `#${block.height.toLocaleString('en-US')}`,                                   mono: true,  copy: false },
     { label: 'Hash',        value: block.hash || '—',                                                     mono: true,  copy: !!block.hash },
     { label: 'Prev Hash',   value: block.prev_hash || '—',                                                mono: true,  copy: !!block.prev_hash },
     { label: 'Merkle Root', value: block.merkle_root || '—',                                              mono: true,  copy: !!block.merkle_root },
-    { label: 'Time',        value: block.time ? new Date(block.time * 1000).toLocaleString() : '—',      mono: false, copy: false },
+    { label: 'Time',        value: block.time ? new Date(block.time * 1000).toLocaleString('en-US') : '—',      mono: false, copy: false },
     // H-13/L-12: Reward is computed client-side from a hardcoded halving formula
     // (HALVING_INTERVAL = 50_000, initial = 50 IRM). iriumd doesn't currently
     // expose a parsed reward per block, so this is an estimate based on the
@@ -183,7 +183,7 @@ function BlockDetailModal({ block, onClose }: { block: ExplorerBlock; onClose: (
           <div className="flex items-center gap-2.5">
             <Layers size={14} style={{ color: '#6ec6ff' }} />
             <span style={{ fontFamily: '"Space Grotesk", sans-serif', fontSize: 16, fontWeight: 800, color: '#6ec6ff' }}>
-              Block #{block.height.toLocaleString()}
+              Block #{block.height.toLocaleString('en-US')}
             </span>
           </div>
           <button
@@ -303,7 +303,7 @@ function BlockRow({ block, onClick }: { block: ExplorerBlock; onClick: () => voi
       {/* Height */}
       <td className="pl-4 pr-2 py-2.5 whitespace-nowrap">
         <span style={{ fontFamily: '"Space Grotesk", sans-serif', fontSize: 13, fontWeight: 800, color: '#6ec6ff' }}>
-          #{block.height.toLocaleString()}
+          #{block.height.toLocaleString('en-US')}
         </span>
       </td>
       {/* Hash — full 64-char hash with break-all so it wraps to fill
@@ -454,7 +454,7 @@ export default function Explorer() {
         setPendingBlock({ height: h, retrying: false });
       } else {
         // Other failures (node offline, network) still get a toast.
-        toast.error(`Couldn't load block ${h.toLocaleString()}: ${msg}`);
+        toast.error(`Couldn't load block ${h.toLocaleString('en-US')}: ${msg}`);
       }
     }
   }, []);
@@ -698,7 +698,7 @@ export default function Explorer() {
             </div>
             <div className="mt-1" style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, color: 'rgba(110,198,255,0.50)' }}>
               {live
-                ? `#${height.toLocaleString()} · ${peerCount}p · ${synced ? 'synced' : `${((height / (tip || 1)) * 100).toFixed(1)}% sync`}`
+                ? `#${height.toLocaleString('en-US')} · ${peerCount}p · ${synced ? 'synced' : `${((height / (tip || 1)) * 100).toFixed(1)}% sync`}`
                 : running ? 'Loading chain data…' : 'Node offline — start node on Dashboard'}
             </div>
           </div>
@@ -726,12 +726,12 @@ export default function Explorer() {
             Array.from({ length: 6 }).map((_, i) => <StatCardSkeleton key={i} />)
           ) : (
             <>
-              <StatCard icon={Layers}     label="Block Height"      value={`#${height.toLocaleString()}`}                         sub={tip > 0 && !synced ? `tip #${tip.toLocaleString()}` : 'chain tip'}   accent="#6ec6ff" />
-              <StatCard icon={Coins}      label="Circulating Supply" value={computeCirculatingSupply(height)}                      sub={`Next halving: #${nextHalvingBlock(height).toLocaleString()}`}           accent="#34d399" />
+              <StatCard icon={Layers}     label="Block Height"      value={`#${height.toLocaleString('en-US')}`}                         sub={tip > 0 && !synced ? `tip #${tip.toLocaleString('en-US')}` : 'chain tip'}   accent="#6ec6ff" />
+              <StatCard icon={Coins}      label="Circulating Supply" value={computeCirculatingSupply(height)}                      sub={`Next halving: #${nextHalvingBlock(height).toLocaleString('en-US')}`}           accent="#34d399" />
               <StatCard icon={Zap}        label="Network Hashrate"   value={hashrateInfo?.hashrate != null ? formatHashrate(hashrateInfo.hashrate) : '—'} sub="proof-of-work"                                accent="#fbbf24" />
               <StatCard icon={TrendingUp} label="Difficulty (LWMA)"  value={hashrateInfo?.difficulty != null ? formatDifficulty(hashrateInfo.difficulty) : '—'} sub="LWMA-144 target"                        accent="#a78bfa" />
-              <StatCard icon={Users}      label="Peers"              value={peerCount.toLocaleString()}                            sub="connected"                                                            accent="#6ec6ff" />
-              <StatCard icon={Cpu}        label="Active Miners"      value={activeMiners.toLocaleString()}                         sub="recent blocks"                                                        accent="#fb923c" />
+              <StatCard icon={Users}      label="Peers"              value={peerCount.toLocaleString('en-US')}                            sub="connected"                                                            accent="#6ec6ff" />
+              <StatCard icon={Cpu}        label="Active Miners"      value={activeMiners.toLocaleString('en-US')}                         sub="recent blocks"                                                        accent="#fb923c" />
             </>
           )}
         </div>
@@ -805,8 +805,8 @@ export default function Explorer() {
             right={
               blocks.length > 0 ? (
                 <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10, color: 'rgba(110,198,255,0.35)', whiteSpace: 'nowrap' }}>
-                  {blocks.length.toLocaleString()} loaded
-                  {oldestLoaded !== undefined && ` · #${oldestLoaded.toLocaleString()}–#${newestLoaded?.toLocaleString()}`}
+                  {blocks.length.toLocaleString('en-US')} loaded
+                  {oldestLoaded !== undefined && ` · #${oldestLoaded.toLocaleString('en-US')}–#${newestLoaded?.toLocaleString('en-US')}`}
                 </span>
               ) : undefined
             }
@@ -865,7 +865,7 @@ export default function Explorer() {
               <div className="mt-3 flex flex-col items-center gap-1.5">
                 {reachedGenesis ? (
                   <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.22)', fontFamily: '"JetBrains Mono", monospace' }}>
-                    All {blocks.length.toLocaleString()} blocks loaded — from genesis to tip
+                    All {blocks.length.toLocaleString('en-US')} blocks loaded — from genesis to tip
                   </p>
                 ) : (
                   <button
@@ -882,7 +882,7 @@ export default function Explorer() {
                   >
                     {loadingMore
                       ? <><RefreshCw size={11} className="animate-spin" /> Loading older blocks…</>
-                      : <>Load older blocks {blockCursor !== null && blockCursor > 0 ? `(next: #${blockCursor.toLocaleString()})` : ''}</>
+                      : <>Load older blocks {blockCursor !== null && blockCursor > 0 ? `(next: #${blockCursor.toLocaleString('en-US')})` : ''}</>
                     }
                   </button>
                 )}
@@ -927,7 +927,7 @@ export default function Explorer() {
               <div className="flex items-center gap-2.5 mb-3">
                 <Clock size={14} style={{ color: '#fbbf24' }} />
                 <span style={{ fontFamily: '"Space Grotesk", sans-serif', fontSize: 14, fontWeight: 700, color: '#fbbf24' }}>
-                  Block #{pendingBlock.height.toLocaleString()} not yet available
+                  Block #{pendingBlock.height.toLocaleString('en-US')} not yet available
                 </span>
               </div>
               <p className="text-sm text-white/60 leading-relaxed mb-5">

@@ -191,9 +191,9 @@ export default function TxDetailModal({ tx, onClose }: { tx: Transaction; onClos
 
   const blockTime     = blockData?.header?.time;
   const timeStr       = blockTime
-    ? new Date(blockTime * 1000).toLocaleString()
+    ? new Date(blockTime * 1000).toLocaleString('en-US')
     : (tx.timestamp && tx.timestamp > 0)
-      ? new Date(tx.timestamp * 1000).toLocaleString()
+      ? new Date(tx.timestamp * 1000).toLocaleString('en-US')
       : '—';
 
   const isCoinbase    = !!txData?.is_coinbase;
@@ -301,7 +301,7 @@ export default function TxDetailModal({ tx, onClose }: { tx: Transaction; onClos
                 </DetailRow>
                 <DetailRow label="Confirmations">
                   <MonoValue color={isConfirmed ? 'rgba(255,255,255,0.85)' : '#fbbf24'}>
-                    {confirmations.toLocaleString()}
+                    {confirmations.toLocaleString('en-US')}
                   </MonoValue>
                 </DetailRow>
                 <DetailRow label="Time"><PlainValue>{timeStr}</PlainValue></DetailRow>
@@ -326,7 +326,7 @@ export default function TxDetailModal({ tx, onClose }: { tx: Transaction; onClos
                       onMouseLeave={(e) => (e.currentTarget.style.color = '#6ec6ff')}
                       title="Open this block in Explorer"
                     >
-                      #{txHeight.toLocaleString()}
+                      #{txHeight.toLocaleString('en-US')}
                       <ExternalLink size={11} />
                     </button>
                   </DetailRow>
@@ -394,7 +394,7 @@ export default function TxDetailModal({ tx, onClose }: { tx: Transaction; onClos
                 )}
                 {tx.fee != null && (
                   <DetailRow label="Fee">
-                    <MonoValue>{tx.fee.toLocaleString()} sats</MonoValue>
+                    <MonoValue>{tx.fee.toLocaleString('en-US')} sats</MonoValue>
                   </DetailRow>
                 )}
                 {tx.address && !isCoinbase && (

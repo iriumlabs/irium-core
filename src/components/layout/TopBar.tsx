@@ -150,7 +150,7 @@ const TopBar = memo(function TopBar() {
                 transition={{ duration: 0.18, ease: 'easeOut' }}
                 className="block"
               >
-                #{nodeStatus.height.toLocaleString()}
+                #{nodeStatus.height.toLocaleString('en-US')}
               </motion.span>
             </AnimatePresence>
             <span style={{ color: 'rgba(238,240,255,0.15)' }}>·</span>

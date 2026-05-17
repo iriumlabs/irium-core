@@ -285,7 +285,7 @@ function anonymizePeer(p: PeerInfo, i: number) {
   const portMatch = p.multiaddr?.match(/\/tcp\/(\d+)/);
   const port = portMatch?.[1];
   const live = p.source === 'live' || p.dialable === true;
-  const heightStr = p.height ? ` · #${p.height.toLocaleString()}` : '';
+  const heightStr = p.height ? ` · #${p.height.toLocaleString('en-US')}` : '';
   return {
     label: `Peer ${i + 1}${port ? ` (port ${port})` : ''}`,
     live,
@@ -749,7 +749,7 @@ export default function Dashboard() {
                       Searching for peers…
                     </p>
                     <p className="text-xs mt-0.5" style={{ color: 'rgba(238,240,255,0.55)' }}>
-                      Block #{nodeStatus.height.toLocaleString()} · iriumd is discovering the network. If stuck, try Clear &amp; Restart.
+                      Block #{nodeStatus.height.toLocaleString('en-US')} · iriumd is discovering the network. If stuck, try Clear &amp; Restart.
                     </p>
                   </div>
                 </div>
@@ -810,10 +810,10 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-display font-bold" style={{ color: '#fbbf24' }}>
-                      Sync stalled — {(nodeStatus.network_tip - nodeStatus.height).toLocaleString()} blocks behind
+                      Sync stalled — {(nodeStatus.network_tip - nodeStatus.height).toLocaleString('en-US')} blocks behind
                     </p>
                     <p className="text-xs mt-0.5" style={{ color: 'rgba(238,240,255,0.55)' }}>
-                      Block #{nodeStatus.height.toLocaleString()} / #{nodeStatus.network_tip.toLocaleString()} · Chain state may be corrupted. Clear &amp; Restart to resync from scratch.
+                      Block #{nodeStatus.height.toLocaleString('en-US')} / #{nodeStatus.network_tip.toLocaleString('en-US')} · Chain state may be corrupted. Clear &amp; Restart to resync from scratch.
                     </p>
                   </div>
                 </div>
@@ -983,13 +983,13 @@ export default function Dashboard() {
                   transition={{ duration: 0.2 }}
                   className="font-bold text-white inline-block"
                 >
-                  #{nodeStatus?.height?.toLocaleString() ?? '—'}
+                  #{nodeStatus?.height?.toLocaleString('en-US') ?? '—'}
                 </motion.span>
               </AnimatePresence>
               {/* Show network tip when syncing behind */}
               {nodeStatus?.running && nodeStatus.network_tip > 0 && nodeStatus.height < nodeStatus.network_tip && (
                 <span className="text-white/30 text-xs ml-1">
-                  / {nodeStatus.network_tip.toLocaleString()}
+                  / {nodeStatus.network_tip.toLocaleString('en-US')}
                 </span>
               )}
             </span>
@@ -1001,7 +1001,7 @@ export default function Dashboard() {
               <span className="text-indigo-400/70 text-xs animate-pulse">Connecting to peers…</span>
             ) : !nodeStatus.synced ? (
               <span className="text-amber-400/70 text-xs">
-                Syncing {nodeStatus.height.toLocaleString()} / {nodeStatus.network_tip.toLocaleString()}
+                Syncing {nodeStatus.height.toLocaleString('en-US')} / {nodeStatus.network_tip.toLocaleString('en-US')}
               </span>
             ) : (
               <span className="font-mono text-xs text-white/35 truncate min-w-0">
@@ -1043,9 +1043,9 @@ export default function Dashboard() {
                   !nodeStatus?.running
                     ? 'Node offline'
                     : !nodeStatus.synced
-                      ? `Catching up · #${(nodeStatus.height ?? 0).toLocaleString()}${
+                      ? `Catching up · #${(nodeStatus.height ?? 0).toLocaleString('en-US')}${
                           nodeStatus.network_tip
-                            ? ` / #${nodeStatus.network_tip.toLocaleString()}`
+                            ? ` / #${nodeStatus.network_tip.toLocaleString('en-US')}`
                             : ''
                         }`
                       : balance
@@ -1059,12 +1059,12 @@ export default function Dashboard() {
               />
               <StatCard
                 title="Block Height"
-                value={heightCount.toLocaleString()}
+                value={heightCount.toLocaleString('en-US')}
                 sub={
                   !nodeStatus?.running
                     ? 'Node offline'
                     : !nodeStatus.synced
-                    ? `Syncing — ${nodeStatus.height.toLocaleString()} / ${nodeStatus.network_tip > 0 ? nodeStatus.network_tip.toLocaleString() : '?'}`
+                    ? `Syncing — ${nodeStatus.height.toLocaleString('en-US')} / ${nodeStatus.network_tip > 0 ? nodeStatus.network_tip.toLocaleString('en-US') : '?'}`
                     : heightLastChanged && (Date.now() - heightLastChanged) > 30 * 60 * 1000 && (nodeStatus?.peers ?? 0) > 0
                     ? `At tip · no new blocks (${Math.round((Date.now() - heightLastChanged) / 60000)}m)`
                     : 'At chain tip'
@@ -1142,7 +1142,7 @@ export default function Dashboard() {
                                 : <span className="text-white/25">No</span>}
                             </td>
                             <td className="py-1.5 pr-4 font-mono text-white/45">
-                              {p.height ? `#${p.height.toLocaleString()}` : '—'}
+                              {p.height ? `#${p.height.toLocaleString('en-US')}` : '—'}
                             </td>
                             <td className="py-1.5 text-white/35">
                               {p.last_seen ? timeAgo(p.last_seen) : '—'}
@@ -1367,7 +1367,7 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
     if (isCoinbase) {
       if (tx.address) parts.push(`Miner: ${shortMid(tx.address, 6, 4)}`);
     } else if (isSend) {
-      if (tx.fee != null && tx.fee > 0) parts.push(`Fee: ${tx.fee.toLocaleString()} sats`);
+      if (tx.fee != null && tx.fee > 0) parts.push(`Fee: ${tx.fee.toLocaleString('en-US')} sats`);
       parts.push(`TXID: ${shortMid(tx.txid, 8, 5)}`);
     } else {
       parts.push(`TXID: ${shortMid(tx.txid, 8, 5)}`);
@@ -1405,7 +1405,7 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
                   style={{ color: '#6ec6ff' }}
                   title="Open in Explorer"
                 >
-                  Block #{tx.height.toLocaleString()}
+                  Block #{tx.height.toLocaleString('en-US')}
                 </button>
               </>
             )}

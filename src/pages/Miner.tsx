@@ -164,7 +164,7 @@ function FoundBlocksList() {
                   style={{ color: '#34d399', fontFamily: '"JetBrains Mono", monospace' }}
                   title={`Block height ${b.height}`}
                 >
-                  #{b.height.toLocaleString()}
+                  #{b.height.toLocaleString('en-US')}
                 </span>
                 <span
                   className="font-mono truncate flex-1"
@@ -395,7 +395,7 @@ function CpuMinerTab() {
                   className="font-mono font-bold text-base tracking-tight"
                   style={{ color: '#6ec6ff', fontFamily: '"JetBrains Mono", monospace' }}
                 >
-                  Mining block #{(netInfo.height + 1).toLocaleString()}
+                  Mining block #{(netInfo.height + 1).toLocaleString('en-US')}
                 </span>
               </div>
 
@@ -751,7 +751,7 @@ function GpuMinerTab() {
                   className="font-mono font-bold text-base tracking-tight"
                   style={{ color: '#6ec6ff', fontFamily: '"JetBrains Mono", monospace' }}
                 >
-                  Mining block #{(netInfo.height + 1).toLocaleString()}
+                  Mining block #{(netInfo.height + 1).toLocaleString('en-US')}
                 </span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -1273,7 +1273,7 @@ function StratumTab() {
       {/* Pool diff & hashrate when connected */}
       {status?.connected && (
         <div className="grid grid-cols-2 gap-3">
-          <StatCard label="Pool Difficulty" value={status.pool_diff ? status.pool_diff.toLocaleString() : '—'} color="#fbbf24" icon={Target} />
+          <StatCard label="Pool Difficulty" value={status.pool_diff ? status.pool_diff.toLocaleString('en-US') : '—'} color="#fbbf24" icon={Target} />
           <StatCard label="Pool Hashrate"   value={status.pool_hashrate_khs ? `${(status.pool_hashrate_khs / 1000).toFixed(1)} MH/s` : '—'} color="#A78BFA" icon={Gauge} />
         </div>
       )}

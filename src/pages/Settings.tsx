@@ -294,7 +294,7 @@ export default function Settings() {
       setRpcOk(true);
       const height = resp.data?.height;
       if (typeof height === "number") {
-        toast.success(`Connected to node at height ${height.toLocaleString()}`);
+        toast.success(`Connected to node at height ${height.toLocaleString('en-US')}`);
       } else {
         toast.success('Connected to node successfully');
       }

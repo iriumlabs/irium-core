@@ -69,7 +69,7 @@ function SyncProgressBanner() {
                 </span>
                 {tip > 0 && (
                   <span style={{ color: 'rgba(238,240,255,0.35)', fontFamily: '"JetBrains Mono", monospace' }}>
-                    #{height.toLocaleString()} / #{tip.toLocaleString()} · {peers}p
+                    #{height.toLocaleString('en-US')} / #{tip.toLocaleString('en-US')} · {peers}p
                   </span>
                 )}
                 {tip === 0 && peers > 0 && (
