@@ -1,6 +1,6 @@
 [package]
 name = "irium-core"
-version = "1.0.25"
+version = "1.0.26"
 description = "Irium Core - Full Node Desktop Wallet"
 authors = ["Irium Labs"]
 license = "MIT"
