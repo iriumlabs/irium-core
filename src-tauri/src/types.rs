@@ -254,6 +254,12 @@ pub struct Offer {
     // binary emits this field directly; it represents the block height at
     // which the offer auto-expires. UI uses it to render time-to-expiry.
     pub timeout_height: Option<u64>,
+    // BUG 2 fix: where the offer came from. The wallet binary's offer-list
+    // marks local-disk offers as 'local' and feed-fetched offers as
+    // 'remote:<feed-url>'. Surfaced to the frontend so the Marketplace UI
+    // can gate the Delete button — only locally-created offers have a
+    // file on disk that the shell's offer_remove can delete.
+    pub source: Option<String>,
 }
 
 impl From<RawOffer> for Offer {
@@ -270,6 +276,7 @@ impl From<RawOffer> for Offer {
             reputation: None,
             risk_signal: None,
             timeout_height: r.timeout_height,
+            source: r.source,
         }
     }
 }

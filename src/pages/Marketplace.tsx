@@ -68,6 +68,13 @@ async function openSavePicker(opts: { defaultName: string; extensions: string[];
 function OfferCard({ offer, onTake, onOpenDetail, onExport, onDelete, isOnline }: { offer: Offer; onTake: () => void; onOpenDetail: () => void; onExport?: () => void; onDelete?: () => void; isOnline: boolean }) {
   const navigate = useNavigate();
   const score = offer.reputation?.score ?? 0;
+  // BUG 2 fix: only local offers can be deleted — remote offers (fetched
+  // from another seller's feed) have no local file under ~/.irium/offers/
+  // for the backend to remove. The wallet binary marks local offers with
+  // source = 'local' and remote ones with source = 'remote:<feed-url>'.
+  // When source is missing we conservatively treat the offer as local
+  // (covers older offer files written before this field was tracked).
+  const isLocalOffer = !offer.source || offer.source === 'local';
   const riskBadge =
     offer.risk_signal === 'low'
       ? 'badge-success'
@@ -170,7 +177,10 @@ function OfferCard({ offer, onTake, onOpenDetail, onExport, onDelete, isOnline }
           <Download size={13} />
         </button>
       )}
-      {onDelete && (!offer.status || offer.status === 'open') && (
+      {/* BUG 2 fix: Delete only renders for local offers. Remote offers
+          show no action — there's nothing to delete locally; the seller's
+          own node holds the canonical record. */}
+      {onDelete && isLocalOffer && (!offer.status || offer.status === 'open') && (
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
           title="Delete this offer from your local store"
@@ -178,6 +188,14 @@ function OfferCard({ offer, onTake, onOpenDetail, onExport, onDelete, isOnline }
         >
           <Trash2 size={13} />
         </button>
+      )}
+      {onDelete && !isLocalOffer && (
+        <span
+          title="This offer is from another seller and cannot be deleted from your local store."
+          className="text-[10px] text-white/25 flex-shrink-0 px-1"
+        >
+          remote
+        </span>
       )}
       <button
         onClick={(e) => {
