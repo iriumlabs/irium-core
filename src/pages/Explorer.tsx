@@ -368,9 +368,12 @@ export default function Explorer() {
     // openBlockHeight: deep-link from the Miner page's Found Blocks list.
     // When present, mount-effect below opens BlockDetailModal directly.
     openBlockHeight?: number;
-    // openBlockData: full block object pre-fetched by the Miner page via
-    // fetch_block_details. When present, used directly — no extra RPC call.
-    openBlockData?: ExplorerBlock;
+    // openBlockData: partial block object forwarded by the Miner page. Only
+    // height/time/reward_sats are guaranteed; header fields (hash, prev_hash,
+    // etc) may be absent if record_found_block's async fetch hadn't completed
+    // yet at click time. If hash is missing the mount-effect refetches via
+    // rpc.block before opening the modal so the user never sees stale "—"s.
+    openBlockData?: Partial<ExplorerBlock>;
   } | null;
   const [searchTab,    setSearchTab]    = useState<SearchTab>(navState?.searchTab ?? 'block');
   const [searchQ,      setSearchQ]      = useState(navState?.searchQ ?? '');
@@ -388,10 +391,13 @@ export default function Explorer() {
 
   // Option C deep-link — when arriving via navigate('/explorer', { state:
   // { openBlockHeight: N, openBlockData: {...} } }) from Miner.tsx's Found
-  // Blocks list. If openBlockData is present, use it directly (no extra RPC
-  // call — the Miner page already fetched it via fetch_block_details). If
-  // only openBlockHeight is present, fetch from iriumd as a fallback,
-  // extracting fields from the nested "header" sub-object that iriumd uses.
+  // Blocks list. If openBlockData carries a non-empty hash we trust it and
+  // open the modal directly. Otherwise (the common case from the Miner page
+  // since Fix 4 — only height/time/reward_sats are forwarded) we always
+  // fetch fresh data via rpc.block so the modal can render hash, prev_hash,
+  // merkle_root, bits, nonce, and miner_address. The reward_sats forwarded
+  // by Miner is merged onto the fetched block so the modal can fall back to
+  // it if iriumd doesn't surface a reward field directly.
   // The consumed ref guards against StrictMode's double-invoke and stale
   // location.state. window.history.replaceState clears state so back/forward
   // navigation doesn't re-open the modal.
@@ -404,8 +410,8 @@ export default function Explorer() {
     window.history.replaceState({}, '');
 
     const passedBlock = navState?.openBlockData;
-    if (passedBlock) {
-      setSelectedBlock(passedBlock);
+    if (passedBlock && passedBlock.hash) {
+      setSelectedBlock(passedBlock as ExplorerBlock);
       return;
     }
 
@@ -425,11 +431,12 @@ export default function Explorer() {
           hash:         str(hdr.hash) || str(raw.hash),
           prev_hash:    str(hdr.prev_hash) || str(raw.prev_hash) || str(raw.previousblockhash) || str(raw.previous_block_hash),
           merkle_root:  str(hdr.merkle_root) || str(raw.merkle_root) || str(raw.merkleroot),
-          time:         num(hdr.time) || num(raw.time),
+          time:         num(hdr.time) || num(raw.time) || (passedBlock?.time ?? 0),
           tx_count:     num(raw.tx_count) || num(raw.n_tx) || (txArr ? txArr.length : 0),
           bits:         str(hdr.bits) || str(raw.bits),
           nonce:        typeof hdr.nonce === 'number' ? hdr.nonce : (typeof raw.nonce === 'number' ? raw.nonce : undefined),
-          miner_address: str(raw.miner_address) || str(raw.miner),
+          miner_address: str(raw.miner_address) || str(raw.miner) || passedBlock?.miner_address,
+          reward_sats:  passedBlock?.reward_sats,
         };
         setSelectedBlock(block);
       } catch { /* block not found / node offline — silent */ }

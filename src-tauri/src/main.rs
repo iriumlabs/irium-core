@@ -3703,6 +3703,7 @@ fn record_found_block(
         merkle_root: String::new(),
         bits: String::new(),
         nonce: 0,
+        miner_address: None,
     };
     if let Ok(mut list) = found_blocks.lock() {
         if list.iter().any(|b| b.height == height) {
@@ -3729,6 +3730,7 @@ struct BlockDetails {
     merkle_root: String,
     bits: String,
     nonce: u64,
+    miner_address: Option<String>,
 }
 
 // Fetch block details for a freshly-mined block from iriumd. The endpoint
@@ -3763,6 +3765,14 @@ async fn fetch_block_details(rpc_url: &str, height: u64) -> Option<BlockDetails>
         .unwrap_or_default();
     let nonce = hdr["nonce"].as_u64().unwrap_or(0);
 
+    // miner_address — top-level on the block JSON, several aliases observed
+    // across iriumd versions; first non-empty wins.
+    let miner_address = json["miner_address"].as_str()
+        .or_else(|| json["miner"].as_str())
+        .or_else(|| json["coinbase_address"].as_str())
+        .filter(|s| !s.is_empty())
+        .map(String::from);
+
     // Direct reward fields — first match wins.
     let mut reward_sats = 0u64;
     for field in &["reward", "block_reward", "subsidy", "coinbase_reward", "coinbase_value", "miner_reward"] {
@@ -3791,7 +3801,7 @@ async fn fetch_block_details(rpc_url: &str, height: u64) -> Option<BlockDetails>
         }
     }
 
-    Some(BlockDetails { reward_sats, hash, prev_hash, merkle_root, bits, nonce })
+    Some(BlockDetails { reward_sats, hash, prev_hash, merkle_root, bits, nonce, miner_address })
 }
 
 // Patch all detail fields of the most-recent matching entry. We scan from
@@ -3813,6 +3823,11 @@ fn update_block_details(
             b.merkle_root = details.merkle_root;
             b.bits        = details.bits;
             b.nonce       = details.nonce;
+            // Only overwrite miner_address when the RPC actually returned one
+            // — otherwise a later empty fetch would clobber a good value.
+            if details.miner_address.is_some() {
+                b.miner_address = details.miner_address;
+            }
         }
     }
 }
@@ -3871,13 +3886,26 @@ async fn start_miner(
             // hashrate regex, so the order doesn't shadow either signal.
             if let Some((height, hash)) = parse_block_found(&line) {
                 record_found_block(&blocks_found_ref, &found_blocks_ref, height, hash);
-                // Fire-and-forget detail fetch — fills reward_sats, hash,
-                // prev_hash, merkle_root, bits, and nonce on the entry we
-                // just pushed. If the RPC fails all fields stay at their
-                // zero-value defaults and the UI shows "—".
+                // Fire-and-forget detail fetch with three attempts. The first
+                // parse_block_found match for a given height usually arrives
+                // before the miner has submitted the block to iriumd (CPU
+                // text mode emits "Mined block at height N" BEFORE the
+                // submit_block_to_node call). Retries at +3s and +13s give
+                // iriumd time to commit the block to its chain DB and the
+                // index to become queryable via /rpc/block?height=N.
                 let fb_for_reward = Arc::clone(&found_blocks_ref);
                 let rpc_for_reward = rpc_url_for_reward.clone();
                 tauri::async_runtime::spawn(async move {
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                        update_block_details(&fb_for_reward, height, details);
+                        return;
+                    }
+                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                        update_block_details(&fb_for_reward, height, details);
+                        return;
+                    }
+                    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
                     if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
                         update_block_details(&fb_for_reward, height, details);
                     }
@@ -4138,9 +4166,25 @@ async fn start_gpu_miner(
             };
             if let Some((height, hash)) = parse_block_found(&line) {
                 record_found_block(&blocks_found_ref, &found_blocks_ref, height, hash);
+                // Retry pattern mirrors the CPU loop: pre-submit fetches fail
+                // until iriumd has indexed the block. The new GPU miner emits
+                // a "[GPU] Block accepted by node at height N!" line after
+                // submit_block returns, so even without retries we'd usually
+                // get one good fetch — the retries are belt-and-braces against
+                // a slow iriumd or transient RPC error.
                 let fb_for_reward = Arc::clone(&found_blocks_ref);
                 let rpc_for_reward = rpc_url_for_reward.clone();
                 tauri::async_runtime::spawn(async move {
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                        update_block_details(&fb_for_reward, height, details);
+                        return;
+                    }
+                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                        update_block_details(&fb_for_reward, height, details);
+                        return;
+                    }
+                    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
                     if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
                         update_block_details(&fb_for_reward, height, details);
                     }

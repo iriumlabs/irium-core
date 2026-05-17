@@ -141,16 +141,17 @@ function FoundBlocksList() {
                 onClick={() => navigate('/explorer', {
                   state: {
                     openBlockHeight: b.height,
+                    // Pass only the fields we know are reliable on FoundBlock
+                    // (height/time/reward_sats are populated unconditionally
+                    // by record_found_block). Header fields (hash, prev_hash,
+                    // merkle_root, bits, nonce, miner_address) may be empty
+                    // due to a transient fetch_block_details failure — the
+                    // Explorer's mount-effect detects a missing hash and
+                    // refetches via rpc_get_block, guaranteeing fresh data.
                     openBlockData: {
                       height:       b.height,
-                      hash:         b.hash,
-                      prev_hash:    b.prev_hash,
-                      merkle_root:  b.merkle_root,
                       time:         b.timestamp,
-                      tx_count:     0,
-                      bits:         b.bits || undefined,
-                      nonce:        b.nonce || undefined,
-                      miner_address: undefined,
+                      reward_sats:  b.reward_sats,
                     },
                   },
                 })}

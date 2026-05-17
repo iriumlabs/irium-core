@@ -434,6 +434,7 @@ export interface FoundBlock {
   merkle_root: string;
   bits: string;
   nonce: number;
+  miner_address?: string;
 }
 
 export interface StratumStatus {
@@ -771,6 +772,12 @@ export interface ExplorerBlock {
   merkle_root?: string;
   bits?: string;
   nonce?: number;
+  // Optional override for the height-based blockReward() formula. Currently
+  // populated only when arriving via the Miner page's Found Blocks list
+  // (which forwards FoundBlock.reward_sats from the backend). Unused by the
+  // modal today — kept for parity with the source object so we don't drop
+  // it on the deep-link hop.
+  reward_sats?: number;
 }
 
 export interface NetworkHashrateInfo {
