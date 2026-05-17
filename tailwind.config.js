@@ -104,5 +104,9 @@ export default {
       },
     },
   },
-  plugins: [],
+  // tailwindcss-rtl: wraps directional utilities (pl-*, pr-*, ml-*, mr-*,
+  // text-left/right, etc.) so they auto-flip when the nearest ancestor has
+  // dir="rtl". App.tsx sets <html dir="rtl"> for Arabic; everything below it
+  // gets mirrored without per-component changes. LTR languages are untouched.
+  plugins: [require('tailwindcss-rtl')],
 };

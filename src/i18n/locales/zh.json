@@ -1,0 +1,727 @@
+{
+  "_meta": {
+    "status": "needs_translation",
+    "review_needed": true,
+    "language": "中文",
+    "english_name": "Chinese (Simplified)",
+    "direction": "ltr"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "retry": "Retry",
+    "back": "Back",
+    "next": "Next",
+    "continue": "Continue",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "remove": "Remove",
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "error": "Error",
+    "success": "Success",
+    "settings_saved": "Settings saved",
+    "copy": "Copy",
+    "copy_address": "Copy address",
+    "copy_hash": "Copy hash",
+    "copy_id": "Copy ID",
+    "copy_txid": "Copy transaction ID",
+    "open_in_explorer": "Open in Explorer",
+    "no_data": "No data",
+    "yes": "Yes",
+    "no": "No",
+    "submit": "Submit",
+    "search": "Search",
+    "clear": "Clear",
+    "dismiss": "Dismiss",
+    "create": "Create",
+    "import": "Import",
+    "export": "Export"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "wallet": "Wallet",
+    "miner": "Mining",
+    "explorer": "Explorer",
+    "settlement": "Settlement",
+    "marketplace": "Marketplace",
+    "agreements": "Agreements",
+    "reputation": "Reputation",
+    "settings": "Settings",
+    "logs": "Logs",
+    "help": "Help"
+  },
+  "topbar": {
+    "block_height": "Block height",
+    "peers_connected": "Connected peers",
+    "starting_node": "Starting node…",
+    "node_offline": "Node offline",
+    "notifications": "Notifications",
+    "no_notifications": "No notifications yet"
+  },
+  "status_bar": {
+    "height_label": "Height",
+    "peers_label": "Peers",
+    "synced": "Synced",
+    "syncing": "Syncing"
+  },
+  "node_status": {
+    "running": "Node Running",
+    "stopped": "Node Stopped",
+    "starting": "Starting…",
+    "syncing": "Syncing blockchain…",
+    "connecting_peers": "Connecting to peers…",
+    "offline_banner_text": "Node is offline. Start the node to use this page."
+  },
+  "errors": {
+    "boundary_title": "Something went wrong",
+    "boundary_message": "An unexpected error occurred while rendering this page. The error has been logged.",
+    "boundary_reload": "Reload app",
+    "node_offline_short": "Node offline"
+  },
+  "settings": {
+    "page_title": "Settings",
+    "sections": {
+      "node_connection": "Node Connection",
+      "wallet": "Wallet",
+      "display": "Display",
+      "language": "Language",
+      "network": "Network",
+      "security": "Security",
+      "connection_diagnostics": "Connection Diagnostics",
+      "recent_errors": "Recent Errors",
+      "about": "About",
+      "node_source": "Node Source",
+      "node_data": "Node Data",
+      "developer": "Developer"
+    },
+    "language_selector": {
+      "label": "Display language",
+      "description": "Choose the language for menus, labels, and messages. Persists across restarts. Node and miner log output remain in English."
+    },
+    "fields": {
+      "rpc_url": "RPC URL",
+      "wallet_file_path": "Wallet file path",
+      "data_directory": "Data directory",
+      "auto_start_node": "Auto-start node",
+      "minimize_to_tray": "Minimize to tray",
+      "currency_display": "Currency display",
+      "theme": "Theme",
+      "external_ip": "External IP",
+      "theme_description": "App color palette — applies instantly",
+      "currency_description": "How to show Irium amounts throughout the app",
+      "minimize_description": "Keep node running when the window is closed"
+    },
+    "buttons": {
+      "test_connection": "Test connection",
+      "detect_ip": "Detect",
+      "retry_upnp": "Retry UPnP port mapping",
+      "clear_chain_state": "Clear chain state",
+      "reset_onboarding": "Reset onboarding",
+      "check_for_updates": "Check for updates",
+      "install_update": "Install update",
+      "pull_node_update": "Pull node update",
+      "copy_diagnostics": "Copy report",
+      "run_diagnostics": "Run diagnostics",
+      "type_reset_to_confirm": "Type RESET to confirm"
+    },
+    "toasts": {
+      "connected_at_height": "Connected to node at height {{height}}",
+      "connected_no_height": "Connected to node successfully",
+      "diagnostics_failed": "Diagnostics failed",
+      "report_copied": "Report copied to clipboard",
+      "reset_reloading": "Reset to defaults — reloading…",
+      "latest_version": "You are on the latest version",
+      "could_not_restart": "Could not restart",
+      "update_available": "Update available: v{{version}}",
+      "update_check_failed": "Update check failed",
+      "node_update_available": "Node update available — {{count}} commit(s) behind",
+      "node_up_to_date": "Node source is up to date",
+      "node_update_check_failed": "Node update check failed",
+      "pulled_rebuild": "Pulled {{commit}} — rebuild binaries to apply",
+      "pull_failed": "Pull failed",
+      "type_reset_to_confirm": "Type RESET in the field to confirm",
+      "clear_state_failed": "Failed to clear chain state — check node is stopped and try again",
+      "chain_state_cleared": "Chain state cleared — restarting node from scratch…",
+      "node_restarting": "Node restarting…",
+      "detected_ip": "Detected IP: {{ip}} — settings auto-saved",
+      "detection_failed": "Detection failed",
+      "upnp_mapped": "UPnP mapped TCP 38291 — external IP: {{ip}}",
+      "upnp_failed_router": "UPnP failed — router may not support it or port is already mapped",
+      "upnp_failed": "UPnP failed",
+      "could_not_open_browser": "Could not open browser",
+      "onboarding_reset": "Onboarding reset — restart the app to see the wizard"
+    }
+  },
+  "dashboard": {
+    "page_title": "Dashboard",
+    "stats": {
+      "confirmed_balance": "Confirmed Balance",
+      "block_height": "Block Height",
+      "peers": "Peers",
+      "syncing": "Syncing"
+    },
+    "activity": {
+      "title": "Recent Activity",
+      "empty_chart": "No transaction history yet",
+      "empty_tx_list": "No transactions yet",
+      "load_error": "Could not load recent transactions",
+      "last_n_txs": "Last 10 txs"
+    },
+    "operation_banner": {
+      "starting": "Starting node",
+      "clearing": "Clearing & restarting",
+      "connected": "Connected",
+      "connected_with_peers": "Connected to {{count}} peer(s)"
+    },
+    "section_titles": {
+      "recent_transactions": "Recent Transactions"
+    },
+    "banners": {
+      "no_peers_searching": "Searching for peers…",
+      "sync_stall": "Sync stalled — {{count}} blocks behind",
+      "height_warning": "Block height hasn't changed for {{minutes}} minutes",
+      "dismiss": "Dismiss"
+    }
+  },
+  "wallet": {
+    "page_title": "Wallet",
+    "tabs": {
+      "addresses": "Addresses",
+      "transactions": "Transactions",
+      "security": "Security"
+    },
+    "addresses": {
+      "section_title": "Addresses",
+      "no_addresses": "No addresses yet",
+      "add_address": "Add address",
+      "show_qr": "Show QR code",
+      "set_as_primary": "Set as primary",
+      "hide_address": "Hide address (stays in wallet file, can be unhidden later)",
+      "unhide_address": "Unhide this address",
+      "rename_wallet_file": "Rename wallet file",
+      "delete_wallet_file": "Permanently delete this wallet file",
+      "manage_wallets": "Manage wallets",
+      "manage_description": "Wallet files, import, hidden addresses"
+    },
+    "send": {
+      "title": "Send IRM",
+      "to_address_label": "To Address",
+      "to_address_placeholder": "Q… or P… address",
+      "amount_label": "Amount (IRM)",
+      "amount_placeholder": "0.0000",
+      "amount_in_sats": "= {{sats}} sats",
+      "available_balance": "Available: {{amount}}",
+      "no_spendable_funds": "No spendable funds",
+      "insufficient_funds": "Insufficient funds. You have {{available}} available.",
+      "estimated_fee": "Estimated fee: ~1,000 sats",
+      "security_note": "Transactions are secured by your private key signature, not mining. No PoW required to send.",
+      "review_button": "Review →",
+      "confirm_send": "Confirm send",
+      "sending": "Sending…",
+      "send_success": "Transaction sent",
+      "addr_invalid_prefix": "Address must start with Q or P",
+      "addr_invalid_length": "Invalid address length",
+      "addr_invalid_chars": "Invalid character in address",
+      "enter_positive_amount": "Enter a valid positive amount",
+      "errors": {
+        "insufficient": "You do not have enough IRM to complete this transaction. Check your balance and try a smaller amount.",
+        "unconfirmed": "Your funds are not yet confirmed. Wait for at least 1 confirmation before sending.",
+        "double_spend": "This transaction conflicts with another pending transaction. Please wait and try again.",
+        "generic": "Transaction could not be broadcast. Please check that the node is online and try again.",
+        "fallback": "Transaction failed. Please try again."
+      }
+    },
+    "receive": {
+      "title": "Receive IRM",
+      "scan_qr_hint": "Scan this QR code or copy the address below"
+    },
+    "security": {
+      "section_title": "Security",
+      "show_recovery_phrase": "Show Recovery Phrase",
+      "export_wif": "Export WIF key",
+      "export_backup": "Export Backup File",
+      "import_seed": "Import Seed Phrase",
+      "import_wif": "Import WIF Key",
+      "import_backup": "Import Backup File",
+      "loading_seed": "Loading…",
+      "exporting_wif": "Exporting…",
+      "seed_modal_title": "Your recovery phrase",
+      "seed_modal_warning": "Write this down on paper. Anyone with these 24 words can spend your funds.",
+      "wif_label": "WIF private key",
+      "backup_warning": "This file contains all your private keys. Store it securely."
+    },
+    "transactions": {
+      "section_title": "Transactions",
+      "no_transactions": "No transactions yet",
+      "load_error": "Could not load transactions",
+      "filter_placeholder": "Filter by txid or address…",
+      "confirmations": "{{count}} confirmations",
+      "pending": "Pending",
+      "received": "Received",
+      "sent": "Sent"
+    },
+    "toasts": {
+      "send_success": "Sent — txid {{txid}}",
+      "address_copied": "Address copied",
+      "txid_copied": "Transaction ID copied",
+      "address_added": "Address added",
+      "address_hidden": "Address hidden",
+      "address_unhidden": "Address restored",
+      "wallet_renamed": "Wallet renamed",
+      "rename_failed": "Rename failed: {{reason}}",
+      "delete_failed": "Delete failed: {{reason}}",
+      "switched_to": "Switched to {{name}}",
+      "switch_failed": "Failed to switch: {{reason}}",
+      "wallet_created": "Wallet created",
+      "wallet_imported": "Wallet imported",
+      "wif_exported": "WIF key exported to {{path}}",
+      "backup_exported": "Backup saved to {{path}}"
+    }
+  },
+  "agreements": {
+    "page_title": "Agreements",
+    "tabs": {
+      "all": "All",
+      "active": "Active",
+      "pending": "Pending",
+      "completed": "Completed",
+      "disputed": "Disputed"
+    },
+    "empty_state": {
+      "no_agreements": "No agreements yet",
+      "create_cta": "Create your first agreement →"
+    },
+    "card": {
+      "amount_label": "Amount",
+      "buyer_label": "Buyer",
+      "seller_label": "Seller",
+      "agreement_hash": "Agreement Hash",
+      "agreement_id": "Agreement ID",
+      "friendly_name_placeholder": "Friendly name (e.g. \"Laptop from John\")",
+      "save_label": "Save label",
+      "audit_modal_open": "Agreement Audit"
+    },
+    "actions": {
+      "fund": "Fund escrow",
+      "release": "Release",
+      "refund": "Refund",
+      "dispute": "Open dispute",
+      "submit_proof": "Submit proof",
+      "verify_signatures": "Verify signatures",
+      "sign_agreement": "Sign agreement",
+      "delete": "Delete"
+    },
+    "proof_modal": {
+      "title": "Submit proof",
+      "tab_create": "Create from Evidence",
+      "tab_upload": "Upload",
+      "proof_type": "Proof type",
+      "attested_by": "Attested By",
+      "attested_by_placeholder": "Your wallet address",
+      "attested_by_hint": "Pre-filled with your selected wallet address.",
+      "evidence_summary": "Evidence Summary",
+      "evidence_placeholder": "e.g. Payment of $50 received via bank transfer, reference #12345.",
+      "submit_button": "Submit proof",
+      "submitting": "Submitting…"
+    },
+    "toasts": {
+      "agreement_signed": "Agreement signed.",
+      "label_saved": "Label saved",
+      "fund_success": "Escrow funded — txid {{txid}}",
+      "release_success": "Released — txid {{txid}}",
+      "refund_success": "Refunded — txid {{txid}}",
+      "dispute_opened": "Dispute opened",
+      "proof_submitted": "Proof submitted",
+      "delete_success": "Agreement deleted"
+    },
+    "refund": {
+      "blocked_default": "Refund eligibility unknown",
+      "blocked_reason": "Refund not available: {{reason}}",
+      "timeout_not_reached": "Timeout not yet reached"
+    }
+  },
+  "settlement": {
+    "page_title": "Settlement",
+    "hub": {
+      "total_agreements": "Total Agreements",
+      "pending_proofs": "Pending Proofs",
+      "total_volume": "Total Volume",
+      "recent_agreements": "Recent Agreements",
+      "load_error_title": "Couldn't load agreements",
+      "empty_state": "You haven't created any agreements yet.",
+      "create_first": "Create your first agreement →",
+      "create_offer": "Create offer"
+    },
+    "templates": {
+      "otc": "OTC Trade",
+      "freelance": "Freelance",
+      "milestone": "Milestone",
+      "deposit": "Security Deposit",
+      "merchant_delayed": "Merchant Delayed",
+      "contractor": "Contractor Milestones"
+    },
+    "wizard": {
+      "step_template": "Choose Settlement Type",
+      "step_form": "Fill Details",
+      "step_review": "Review",
+      "step_success": "Agreement Created",
+      "review_title": "Review Details",
+      "confirm_create": "Create agreement",
+      "creating": "Creating…",
+      "fields": {
+        "party_a": "Party A",
+        "party_b": "Party B",
+        "amount_irm": "Amount (IRM)",
+        "deadline_hours": "Deadline (hours)",
+        "cooldown_hours": "Cool-down Window (hours)",
+        "milestones": "Number of Milestones",
+        "scope": "Work Scope (optional)",
+        "scope_placeholder": "Describe the deliverables...",
+        "asset_reference": "Asset Reference (optional)",
+        "asset_placeholder": "e.g. BTC, ETH, USDT...",
+        "payment_method": "Payment Method (optional)",
+        "payment_placeholder": "e.g. Bank transfer, PayPal...",
+        "memo": "Memo (optional)",
+        "memo_otc_placeholder": "Trade description...",
+        "memo_merchant_placeholder": "Order description..."
+      }
+    },
+    "seller_dashboard": "Seller Dashboard",
+    "buyer_dashboard": "Buyer Dashboard",
+    "seller_status_unavailable": "Seller status unavailable.",
+    "buyer_status_unavailable": "Buyer status unavailable.",
+    "toasts": {
+      "fee_unavailable": "Fee estimate unavailable",
+      "agreement_created": "Agreement created — id {{id}}"
+    }
+  },
+  "marketplace": {
+    "page_title": "Marketplace",
+    "tagline": "Browse and post settlement offers on the Irium peer-to-peer network.",
+    "tabs": {
+      "browse": "Browse",
+      "my_offers": "My Offers",
+      "feeds": "Feeds"
+    },
+    "filters": {
+      "search_placeholder": "Search offers…",
+      "min_amount": "Min IRM",
+      "max_amount": "Max IRM",
+      "payment_method": "Payment method"
+    },
+    "create_offer": {
+      "title": "Create Sell Offer",
+      "how_works_title": "How OTC selling works",
+      "how_works_step_1": "You create this offer (the IRM is locked in escrow now).",
+      "how_works_step_2": "A buyer funds the escrow with their IRM share.",
+      "how_works_step_3": "Buyer pays you off-chain using the instructions below.",
+      "how_works_step_4": "You confirm payment received.",
+      "how_works_step_5": "Escrow releases the IRM to the buyer.",
+      "escrow_note": "On-chain escrow protects both sides — neither of you can disappear with the money.",
+      "fields": {
+        "amount_label": "IRM to Sell",
+        "amount_hint": "This amount will be deducted from your wallet and locked in escrow.",
+        "seller_address_label": "Seller Address (optional)",
+        "seller_address_placeholder": "Optional · leave blank for wallet default",
+        "seller_address_hint": "Pre-filled from your selected wallet address. Must be an address whose key your wallet holds.",
+        "min_trade_label": "Minimum trade amount (optional)",
+        "min_trade_placeholder": "e.g. 0.1 (buyers cannot take less than this)",
+        "min_trade_hint": "Leave blank if you'll accept any size. Communicated to buyers via the offer description.",
+        "payment_method_label": "How should buyer pay you?",
+        "payment_method_placeholder": "e.g. Bank Transfer, PayPal, USDT, BTC, Cash",
+        "payment_method_hint": "Short label that helps buyers filter offers — pick the rail they should use.",
+        "price_label": "Price or exchange rate (optional)",
+        "price_placeholder": "e.g. Market rate + 2%, $0.05 per IRM",
+        "payment_details_label": "Your payment details (what to send to you)",
+        "payment_details_hint": "The buyer sees these instructions after the escrow is funded. Be specific — wrong details mean lost time.",
+        "custom_id_label": "Custom Offer ID (optional)",
+        "custom_id_placeholder": "my-offer-001 (auto-generated if empty)"
+      },
+      "submit": "Create Offer",
+      "creating": "Creating…",
+      "confirm_large_amount": "You're about to lock {{amount}} IRM in escrow.\n\nThis is a large amount. Confirm you typed the decimal correctly.",
+      "remote_label": "remote",
+      "remote_tooltip": "This offer is from another seller and cannot be deleted from your local store.",
+      "delete_tooltip": "Delete this offer from your local store"
+    },
+    "take_offer": {
+      "title": "Take Offer",
+      "completed_trades": "Completed trades",
+      "take_button": "Take offer",
+      "taking": "Taking…"
+    },
+    "feeds": {
+      "discover_button": "Discover feeds",
+      "discover_tooltip": "Ask the wallet binary to discover seller feeds on the network",
+      "already_added": "Already added",
+      "add_feed": "Add feed"
+    },
+    "toasts": {
+      "offer_created": "Offer created: {{id}}",
+      "offer_taken": "Offer taken — agreement {{id}}",
+      "feed_added": "Feed added",
+      "min_must_be_positive": "Minimum trade amount must be a positive number",
+      "min_cannot_exceed": "Minimum cannot exceed the offer amount",
+      "amount_exceeds_supply": "Amount cannot exceed {{max}} IRM (total supply)"
+    }
+  },
+  "miner": {
+    "page_title": "Mining",
+    "tabs": {
+      "cpu": "CPU",
+      "gpu": "GPU",
+      "stratum": "Stratum Pool",
+      "asic": "ASIC & External Miner Support"
+    },
+    "configuration": "Configuration",
+    "configure_hint": "Configure your address below and start mining",
+    "block_time": "Block time",
+    "stats": {
+      "hashrate": "Hashrate",
+      "est_block_time": "Est. Block Time",
+      "blocks_found": "Blocks Found",
+      "uptime": "Uptime",
+      "difficulty": "Difficulty",
+      "temperature": "Temperature",
+      "power": "Power"
+    },
+    "buttons": {
+      "start_mining": "Start mining",
+      "stop_mining": "Stop mining",
+      "confirm_stop": "Confirm stop?",
+      "connect_pool": "Connect to pool",
+      "disconnect": "Disconnect",
+      "confirm_disconnect": "Confirm disconnect?",
+      "detect_gpus": "Detect GPUs"
+    },
+    "fields": {
+      "mining_address_label": "Mining address",
+      "mining_address_placeholder": "Paste your Irium mining address (Q... or P...)",
+      "threads_label": "Threads",
+      "stratum_url_label": "Pool URL",
+      "stratum_url_placeholder": "stratum+tcp://pool.example.com:3333",
+      "stratum_worker_label": "Worker",
+      "stratum_worker_hint": "Format: your_wallet_address.worker_id (e.g. Pxxx…xxxx.rig1)",
+      "stratum_password_label": "Pool password (usually \"x\")",
+      "devices_label": "Devices (multi-GPU)"
+    },
+    "found_blocks": {
+      "section_title": "Found Blocks",
+      "empty": "No blocks found yet in this session.",
+      "open_in_explorer_tooltip": "Open this block in the Explorer"
+    },
+    "shares": {
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "ratio": "Ratio"
+    },
+    "asic_info": {
+      "headline": "Connect your ASIC or GPU to a mining pool via Stratum",
+      "after_install": "After installing, restart Irium Core."
+    },
+    "toasts": {
+      "miner_started": "CPU miner started",
+      "miner_stopped": "Miner stopped",
+      "miner_address_required": "Mining address required",
+      "miner_address_invalid": "Invalid address — must start with Q or P",
+      "stratum_connected": "Connected to pool",
+      "stratum_disconnected": "Disconnected from pool"
+    }
+  },
+  "onboarding": {
+    "splash_title": "Irium Core",
+    "splash_subtitle": "Loading…",
+    "steps": {
+      "welcome": "Welcome",
+      "network_bootstrap": "Network Bootstrap",
+      "network_sync": "Network Sync",
+      "create_wallet": "Create Wallet",
+      "backup_secure": "Backup & Secure",
+      "import_wallet": "Import Wallet"
+    },
+    "welcome": {
+      "title": "Welcome to Irium",
+      "subtitle": "A full-node desktop wallet for the Irium blockchain.",
+      "create_new": "Create New Wallet",
+      "import_existing": "Import Existing"
+    },
+    "network": {
+      "block_height": "Block height",
+      "connected_peers": "Connected peers",
+      "blockchain_fully_synced": "Blockchain fully synced",
+      "syncing": "Syncing…"
+    },
+    "wallet_create": {
+      "generating": "Generating wallet…",
+      "show_recovery": "Show recovery phrase",
+      "i_wrote_it_down": "I wrote it down",
+      "continue_to_wallet": "Continue to Wallet"
+    },
+    "import": {
+      "tab_mnemonic": "Recovery phrase",
+      "tab_wif": "WIF key",
+      "tab_backup": "Backup file",
+      "mnemonic_placeholder": "BIP39 recovery phrase separated by spaces.",
+      "wif_placeholder": "5J… or K… or L…",
+      "import_button": "Import wallet"
+    }
+  },
+  "reputation": {
+    "page_title": "Reputation",
+    "search_placeholder": "Q-prefix address or 64-hex public key…",
+    "no_address_queried": "No address queried yet",
+    "search_above": "Search for a seller above",
+    "search_second": "Search for a second seller to compare",
+    "compare_tooltip": "Compare two sellers side by side",
+    "recent_lookups": "Recent lookups",
+    "stats": {
+      "completed_trades": "Completed",
+      "disputed_trades": "Disputed",
+      "default_trades": "Defaults",
+      "satisfied": "Satisfied"
+    },
+    "record_outcome": {
+      "button": "Record Outcome",
+      "title": "Just traded with this seller?",
+      "response_time_label": "Proof response time (optional, seconds)",
+      "response_time_placeholder": "e.g. 3600 for 1 hour"
+    },
+    "risk": {
+      "high_disputes": "More than 10% of this seller's agreements ended in dispute. Inspect their dispute history before trading.",
+      "sybil_detected": "Detected agreements where buyer and seller appear to share a key derivation root. Inflated counts here may indicate fake reputation building."
+    }
+  },
+  "explorer": {
+    "page_title": "Explorer",
+    "search_tabs": {
+      "block": "Block",
+      "tx": "Transaction",
+      "address": "Address"
+    },
+    "stats": {
+      "block_height": "Block Height",
+      "circulating_supply": "Circulating Supply",
+      "peers": "Peers",
+      "active_miners": "Active Miners",
+      "next_halving": "Next halving: #{{height}}",
+      "chain_tip": "chain tip",
+      "tip_height": "tip #{{height}}"
+    },
+    "blocks_table": {
+      "height": "Height",
+      "hash": "Hash",
+      "time": "Time",
+      "miner": "Miner",
+      "tx_count": "Tx count",
+      "reward": "Reward",
+      "estimated_suffix": "(estimated)",
+      "estimated_tooltip": "Estimated from launch halving schedule — iriumd does not expose a parsed reward field per block",
+      "all_loaded": "All {{count}} blocks loaded — from genesis to tip",
+      "loaded_range": "{{count}} loaded · #{{from}}–#{{to}}"
+    },
+    "block_modal": {
+      "label_height": "Height",
+      "label_hash": "Hash",
+      "label_prev_hash": "Prev Hash",
+      "label_merkle": "Merkle Root",
+      "label_time": "Time",
+      "label_reward": "Reward",
+      "label_transactions": "Transactions",
+      "label_bits": "Bits",
+      "label_nonce": "Nonce",
+      "label_miner": "Miner",
+      "pending_title": "Block #{{height}} not yet available",
+      "pending_body": "The node may still be indexing this block. Click to retry — the lookup runs again after 5 seconds.",
+      "retrying": "Retrying in 5s…"
+    },
+    "toasts": {
+      "block_not_found": "Block {{height}} not found on the node",
+      "block_load_error": "Couldn't load block {{height}}: {{reason}}"
+    }
+  },
+  "help": {
+    "page_title": "Help & About",
+    "subtitle": "App information, documentation, and FAQ.",
+    "sections": {
+      "specs": "Network specs",
+      "links": "Resources",
+      "faq": "Frequently asked questions",
+      "agreements": "Agreement lifecycle",
+      "reputation": "Building your reputation",
+      "feeds": "Feed Registry",
+      "disputes": "Disputes",
+      "importing_agreements": "Importing agreements",
+      "funding": "Funding as a buyer",
+      "creating_agreement_seller": "Creating an agreement (Seller flow)"
+    },
+    "common_mistake": "Common mistake:"
+  },
+  "wizards": {
+    "buyer": {
+      "page_title": "Take an Offer",
+      "step_choose": "Choose Settlement Type",
+      "step_find": "Find Offer",
+      "step_review": "Review Offer",
+      "step_fund": "Fund Escrow",
+      "step_monitor": "Monitor Agreement",
+      "browse_marketplace": "Browse Marketplace",
+      "or_use_specific": "Or use a specific offer",
+      "offer_id_label": "Offer ID",
+      "offer_id_placeholder": "offer_…",
+      "find_offer_hint": "Find an offer from the network",
+      "review_intro": "Confirm the details before taking the offer",
+      "amount_to_lock": "Amount to Lock",
+      "agreement_id_label": "Agreement ID",
+      "lock_payment_hint": "Lock your payment in the escrow contract"
+    },
+    "seller": {
+      "page_title": "Create an Offer",
+      "step_choose": "Choose Settlement Type",
+      "step_create": "Create Your Offer",
+      "step_agreements": "Agreements",
+      "intro": "Define what you're selling and the price",
+      "fields": {
+        "amount_label": "Amount (IRM)",
+        "offer_id_label": "Offer ID",
+        "seller_address_label": "Seller Address",
+        "seller_address_hint": "Auto-detected from your wallet. Buyers will send payment here.",
+        "expires_label": "Expiry (blocks)",
+        "expires_hint": "Offer expires this many blocks from now (~10 min/block)",
+        "payment_method_label": "Payment Method",
+        "payment_method_placeholder": "bank transfer, cash, crypto…",
+        "price_note_label": "Price Note",
+        "price_note_placeholder": "e.g. 'BTC only, instant settlement'",
+        "payment_instructions_label": "Payment Instructions",
+        "payment_instructions_placeholder": "Bank details, crypto address, or other instructions for the buyer…"
+      }
+    }
+  },
+  "logs": {
+    "page_title": "Node Logs",
+    "filter_placeholder": "Filter logs…",
+    "clear_display": "Clear display",
+    "scroll_to_bottom": "Scroll to bottom",
+    "no_logs": "No logs yet"
+  },
+  "modals": {
+    "tx_detail": {
+      "title": "Transaction",
+      "label_amount": "Amount",
+      "label_fee": "Fee",
+      "label_block": "Block",
+      "label_confirmations": "Confirmations",
+      "label_time": "Time",
+      "label_addresses": "Addresses",
+      "label_inputs": "Inputs",
+      "label_outputs": "Outputs",
+      "label_raw": "Raw transaction",
+      "copy_txid": "Copy transaction ID"
+    },
+    "qr": {
+      "title": "Address QR",
+      "tap_to_copy": "Tap to copy"
+    }
+  }
+}
