@@ -2790,7 +2790,16 @@ async fn offer_remove(state: State<'_, AppState>, offer_id: String) -> Result<bo
         .unwrap_or_else(|| dirs::home_dir().unwrap_or_default().join(".irium"));
     let offers_dir = irium_dir.join("offers");
     if !offers_dir.exists() {
-        return Err("Offers directory not found".to_string());
+        // BUG 2 fix: previously surfaced as a developer-flavoured
+        // "Offers directory not found" — confusing for users who tried to
+        // delete a remote offer (one fetched from another seller's feed,
+        // which never creates a local file). The Marketplace UI now hides
+        // the Delete button for remote offers, but the backend message
+        // here is the safety-net when that gate is bypassed.
+        return Err(
+            "This offer was received from the network and cannot be deleted locally. \
+             Only offers you created can be deleted.".to_string()
+        );
     }
     let entries = std::fs::read_dir(&offers_dir)
         .map_err(|e| format!("Cannot read offers directory: {}", e))?;

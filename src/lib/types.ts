@@ -202,6 +202,11 @@ export interface Offer {
   // API.md §Marketplace L612. Optional because not every offer source
   // (e.g. an offer authored in an older binary) includes it.
   timeout_height?: number;
+  // BUG 2 fix: 'local' for offers the user created on this machine (a JSON
+  // file exists under ~/.irium/offers/), 'remote:<feed-url>' for offers
+  // fetched from another seller's feed. Used by the Marketplace UI to gate
+  // the Delete button — only local offers have a file to remove.
+  source?: string;
 }
 
 export interface CreateOfferParams {
