@@ -154,7 +154,11 @@ function BlockDetailModal({ block, onClose }: { block: ExplorerBlock; onClose: (
     { label: 'Prev Hash',   value: block.prev_hash || '—',                                                mono: true,  copy: !!block.prev_hash },
     { label: 'Merkle Root', value: block.merkle_root || '—',                                              mono: true,  copy: !!block.merkle_root },
     { label: 'Time',        value: block.time ? new Date(block.time * 1000).toLocaleString() : '—',      mono: false, copy: false },
-    { label: 'Reward',      value: blockReward(block.height),                                             mono: true,  copy: false, color: '#34d399' },
+    // H-13/L-12: Reward is computed client-side from a hardcoded halving formula
+    // (HALVING_INTERVAL = 50_000, initial = 50 IRM). iriumd doesn't currently
+    // expose a parsed reward per block, so this is an estimate based on the
+    // launch consensus parameters. The "(estimated)" label makes that explicit.
+    { label: 'Reward',      value: `${blockReward(block.height)} (estimated)`,                            mono: true,  copy: false, color: '#34d399' },
     { label: 'Transactions',value: String(block.tx_count),                                                mono: true,  copy: false },
     { label: 'Bits',        value: block.bits || '—',                                                     mono: true,  copy: false },
     { label: 'Nonce',       value: block.nonce != null ? String(block.nonce) : '—',                       mono: true,  copy: false },
@@ -337,8 +341,12 @@ function BlockRow({ block, onClick }: { block: ExplorerBlock; onClick: () => voi
       </td>
       {/* Reward */}
       <td className="pl-2 pr-4 py-2.5 text-right whitespace-nowrap">
-        <span style={{ fontSize: 11, color: '#34d399', fontVariantNumeric: 'tabular-nums', fontFamily: '"JetBrains Mono", monospace' }}>
+        <span
+          style={{ fontSize: 11, color: '#34d399', fontVariantNumeric: 'tabular-nums', fontFamily: '"JetBrains Mono", monospace' }}
+          title="Estimated from launch halving schedule — iriumd does not expose a parsed reward field per block"
+        >
           {blockReward(block.height)}
+          <span style={{ color: 'rgba(255,255,255,0.30)', marginLeft: 4 }}>~</span>
         </span>
       </td>
     </motion.tr>

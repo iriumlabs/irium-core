@@ -13,9 +13,9 @@ import { useStore } from '../lib/store';
 const SPECS = [
   { label: 'Network',              value: 'Mainnet' },
   { label: 'Coin',                 value: 'IRM' },
-  { label: 'Max Supply',           value: '100,000,000 IRM' },
-  { label: 'Block Time',           value: '~13 minutes (live average, see Dashboard for current rate)' },
-  { label: 'Block Reward',         value: '50 IRM (Early Miner Era)' },
+  { label: 'Max Supply',           value: '100,000,000 IRM (at launch)' },
+  { label: 'Block Time',           value: '~10 minutes target (at launch — see Dashboard for live network rate)' },
+  { label: 'Block Reward',         value: '50 IRM at launch (Early Miner Era — halves on schedule)' },
   { label: 'Consensus',            value: 'SHA-256d Proof of Work' },
   { label: 'Difficulty Algorithm', value: 'LWMA-144' },
   { label: 'Address Prefix',       value: 'P / Q' },

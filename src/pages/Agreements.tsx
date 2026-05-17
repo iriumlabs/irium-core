@@ -890,7 +890,12 @@ function AgreementCard({
   // Proof-finality warning: only meaningful once the backend has told us
   // release is eligible AND we know proof_final/proof_depth. If either is
   // unknown, we don't warn — UX is honest about its uncertainty.
-  const finalityDepth = 6; // matches IRIUM_PROOF_FINALITY_DEPTH default
+  // M-17 / L-12: Proof-finality depth is a consensus parameter, not exposed
+  // by any iriumd RPC endpoint yet. Hardcoded to match
+  // IRIUM_PROOF_FINALITY_DEPTH (=6) from the irium-source settlement module
+  // at launch. If consensus changes this value, update here AND request an
+  // iriumd `/rpc/chain_params` endpoint so this becomes live data.
+  const finalityDepth = 6;
   const showFinalityWarning =
     !!a.release_eligible &&
     statusInfo !== undefined &&

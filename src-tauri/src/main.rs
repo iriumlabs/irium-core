@@ -2915,19 +2915,37 @@ async fn agreement_list(state: State<'_, AppState>) -> Result<Vec<Agreement>, St
 
     let mut agreements: Vec<Agreement> = Vec::new();
 
-    // Pull from stored raw agreements
+    // C-3 / M-8 fix: previously buyer/seller/amount were always None/0.
+    // The saved agreement file at `path` is an AgreementObject; the on-disk
+    // field names are `payer` / `payee` / `total_amount` (NOT the audit's
+    // assumed buyer/seller/amount). We load each file and parse those.
+    // `status: "open"` was a misleading hardcode — we now use "unknown"
+    // because chain status requires a per-entry `agreement-status` RPC
+    // call which is too expensive to fan out across the list (the
+    // Agreements UI fetches per-entry status on card expand).
     for a in response.stored_raw_agreements.unwrap_or_default() {
+        let (buyer, seller, amount, template, created_at) = a.path.as_ref()
+            .and_then(|p| std::fs::read_to_string(p).ok())
+            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+            .map(|v| (
+                v["payer"].as_str().map(String::from),
+                v["payee"].as_str().map(String::from),
+                v["total_amount"].as_u64().unwrap_or(0),
+                v["template_type"].as_str().map(String::from),
+                v["creation_time"].as_i64(),
+            ))
+            .unwrap_or((None, None, 0, None, None));
         agreements.push(Agreement {
             id: a.agreement_id,
             hash: Some(a.agreement_hash),
-            template: None,
-            buyer: None,
-            seller: None,
-            amount: 0,
-            status: "open".to_string(),
+            template,
+            buyer,
+            seller,
+            amount,
+            status: "unknown".to_string(),
             proof_status: None,
             release_eligible: None,
-            created_at: None,
+            created_at,
             deadline: None,
             policy: None,
         });
@@ -2940,26 +2958,54 @@ async fn agreement_list(state: State<'_, AppState>) -> Result<Vec<Agreement>, St
 async fn agreement_show(state: State<'_, AppState>, agreement_id: String) -> Result<Agreement, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
     let output = run_wallet_cmd(
         vec!["agreement-inspect".to_string(), agreement_id.clone(), "--json".to_string()],
-        wallet_path, data_dir,
+        wallet_path.clone(), data_dir.clone(),
     ).await?;
 
     let raw: serde_json::Value = serde_json::from_str(&output)
         .map_err(|e| format!("Parse error: {}", e))?;
 
+    // C-2 fix: agreement-inspect emits `{agreement_hash, agreement: {...}}`
+    // where the inner object holds payer / payee / total_amount / template_type.
+    // The old code read from `raw["parties"]["buyer"]["addr"]` and
+    // `raw["amount_satoshis"]` — neither field exists on this binary's output,
+    // so buyer/seller/amount silently came back as None/0.
+    let ag = &raw["agreement"];
+
+    // C-2 fix: real status. Previously hardcoded to "open" regardless of
+    // chain state. Now calls `agreement-status` (the same wallet subcommand
+    // the agreement_status Tauri command uses) and falls back to "unknown"
+    // if the RPC is unreachable so the rest of the agreement still renders.
+    let status = match run_wallet_cmd_with_rpc(
+        vec!["agreement-status".to_string(), agreement_id.clone(), "--json".to_string()],
+        wallet_path, data_dir, rpc_url,
+    ).await {
+        Ok(out) => serde_json::from_str::<serde_json::Value>(&out)
+            .ok()
+            .and_then(|v| v["status"].as_str().map(String::from))
+            .unwrap_or_else(|| "unknown".to_string()),
+        Err(_) => "unknown".to_string(),
+    };
+
     Ok(Agreement {
-        id: raw["agreement_id"].as_str().unwrap_or(&agreement_id).to_string(),
+        id: ag["agreement_id"].as_str()
+            .or_else(|| raw["agreement_id"].as_str())
+            .unwrap_or(&agreement_id)
+            .to_string(),
         hash: raw["agreement_hash"].as_str().map(String::from),
-        template: raw["agreement_type"].as_str().map(String::from),
-        buyer: raw["parties"]["buyer"]["addr"].as_str().map(String::from),
-        seller: raw["parties"]["seller"]["addr"].as_str().map(String::from),
-        amount: raw["amount_satoshis"].as_u64().unwrap_or(0),
-        status: "open".to_string(),
+        template: ag["template_type"].as_str().map(String::from),
+        buyer: ag["payer"].as_str().map(String::from),
+        seller: ag["payee"].as_str().map(String::from),
+        amount: ag["total_amount"].as_u64().unwrap_or(0),
+        status,
         proof_status: None,
         release_eligible: None,
-        created_at: raw["creation_time"].as_i64(),
+        // creation_time lives inside the nested agreement object, same as
+        // payer/payee/total_amount — was previously read from the wrong path.
+        created_at: ag["creation_time"].as_i64(),
         deadline: None,
         policy: None,
     })
