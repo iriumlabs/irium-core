@@ -787,7 +787,7 @@ export default function Reputation() {
                   Recent Window
                   {data.recent.window != null && (
                     <span className="ml-1 text-white/30 normal-case tracking-normal">
-                      · last {data.recent.window.toLocaleString()} blocks ({blocksToReadable(data.recent.window, minutesPerBlock)})
+                      · last {data.recent.window.toLocaleString('en-US')} blocks ({blocksToReadable(data.recent.window, minutesPerBlock)})
                     </span>
                   )}
                 </p>

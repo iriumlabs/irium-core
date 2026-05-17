@@ -149,7 +149,7 @@ function validateStep0(id: TemplateId, form: FormState): Record<string, string> 
   }
   const amt = parseFloat(form.amountIrm);
   if (!form.amountIrm.trim() || isNaN(amt) || amt <= 0) errs.amountIrm = 'Enter a positive amount';
-  else if (amt > MAX_IRM_SUPPLY) errs.amountIrm = `Amount cannot exceed ${MAX_IRM_SUPPLY.toLocaleString()} IRM (total supply)`;
+  else if (amt > MAX_IRM_SUPPLY) errs.amountIrm = `Amount cannot exceed ${MAX_IRM_SUPPLY.toLocaleString('en-US')} IRM (total supply)`;
   if (id === 'milestone' || id === 'contractor') {
     const mc = parseInt(form.milestoneCount);
     if (isNaN(mc) || mc < 2 || mc > 20) errs.milestoneCount = 'Between 2 and 20';
@@ -176,7 +176,7 @@ function getReviewRows(id: TemplateId, form: FormState): Array<{ label: string; 
   const rows: Array<{ label: string; value: string; highlight?: boolean }> = [
     { label: labels.partyA, value: form.partyA || '—' },
     { label: labels.partyB, value: form.partyB || '—' },
-    { label: 'Amount', value: form.amountIrm ? `${form.amountIrm} IRM (${amountSats.toLocaleString()} sats)` : '—', highlight: true },
+    { label: 'Amount', value: form.amountIrm ? `${form.amountIrm} IRM (${amountSats.toLocaleString('en-US')} sats)` : '—', highlight: true },
   ];
   if (id !== 'milestone' && id !== 'contractor') rows.push({ label: 'Deadline', value: `${form.deadlineHours}h` });
   if ((id === 'freelance' || id === 'contractor') && form.scope) rows.push({ label: 'Scope', value: form.scope });
@@ -259,7 +259,7 @@ function PreviewCard({
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-white/40">Sats</span>
-                <span className="font-mono text-white/50">{amtSats.toLocaleString()}</span>
+                <span className="font-mono text-white/50">{amtSats.toLocaleString('en-US')}</span>
               </div>
               {feeRate > 0 && (
                 <div className="flex justify-between text-xs">
@@ -809,7 +809,7 @@ export default function SettlementPage() {
       `Irium ${t.name} Agreement`,
       `ID: ${result.agreement_id}`,
       result.hash ? `Hash: ${result.hash}` : '',
-      `Amount: ${form.amountIrm} IRM (${amtSats.toLocaleString()} sats)`,
+      `Amount: ${form.amountIrm} IRM (${amtSats.toLocaleString('en-US')} sats)`,
       ...getReviewRows(selectedTemplate, form)
         .filter(r => !['Amount'].includes(r.label) && r.value !== '—')
         .map(r => `${r.label}: ${r.value}`),
@@ -1189,7 +1189,7 @@ export default function SettlementPage() {
                       <div className="flex items-center justify-between mt-1">
                         {form.amountIrm && parseFloat(form.amountIrm) > 0 && (
                           <span className="text-xs text-white/30 font-mono">
-                            {Math.round(parseFloat(form.amountIrm) * SATS_PER_IRM).toLocaleString()} sats
+                            {Math.round(parseFloat(form.amountIrm) * SATS_PER_IRM).toLocaleString('en-US')} sats
                           </span>
                         )}
                         {feeRate > 0 && (
@@ -1781,7 +1781,7 @@ function InvoiceModal({ recipient, amountIrm, reference, onClose }: InvoiceModal
               {invoice.expires_height != null && (
                 <div className="flex justify-between">
                   <span className="text-white/40">Expires (height)</span>
-                  <span className="font-mono text-white/70">#{Number(invoice.expires_height).toLocaleString()}</span>
+                  <span className="font-mono text-white/70">#{Number(invoice.expires_height).toLocaleString('en-US')}</span>
                 </div>
               )}
             </div>

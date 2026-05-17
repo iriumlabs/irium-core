@@ -162,7 +162,7 @@ const StatusBar = memo(function StatusBar() {
                   exit={{ y: -8, opacity: 0 }}
                   transition={{ duration: 0.22 }}
                 >
-                  {height.toLocaleString()}
+                  {height.toLocaleString('en-US')}
                 </motion.span>
               </AnimatePresence>
             </div>

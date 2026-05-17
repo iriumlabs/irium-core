@@ -913,7 +913,11 @@ export function formatIRM(sats: number, decimals = 4): string {
 }
 
 export function formatSats(sats: number): string {
-  return `${sats.toLocaleString()} sats`;
+  // Locale arg forces US-style 1,000,000,000 grouping. Without it the
+  // grouping inherits the user's system locale, which on Indian locales
+  // produces 1,00,00,00,000 (the indic crore/lakh grouping) — confusing
+  // for a financial display where reproducibility across users matters.
+  return `${sats.toLocaleString('en-US')} sats`;
 }
 
 export function truncateHash(hash: string, len = 8): string {

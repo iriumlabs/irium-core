@@ -2200,7 +2200,7 @@ function ImportInvoiceModal({ onClose, onUseInvoice }: ImportInvoiceModalProps) 
               {parsed.expires_height != null && (
                 <div className="flex justify-between">
                   <span className="text-white/40">Expires (height)</span>
-                  <span className="font-mono text-white/70">#{parsed.expires_height.toLocaleString()}</span>
+                  <span className="font-mono text-white/70">#{parsed.expires_height.toLocaleString('en-US')}</span>
                 </div>
               )}
             </div>
@@ -2484,7 +2484,7 @@ function AuditModal({ agreementId, agreementHash, onClose }: AuditModalProps) {
                       <div key={i} className="glass rounded-lg p-2.5 text-xs flex items-center justify-between">
                         <span className="font-mono text-white/70">{String(kind)}</span>
                         {ev.height != null && (
-                          <span className="font-mono text-white/40">#{Number(ev.height).toLocaleString()}</span>
+                          <span className="font-mono text-white/40">#{Number(ev.height).toLocaleString('en-US')}</span>
                         )}
                       </div>
                     );

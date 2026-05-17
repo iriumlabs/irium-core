@@ -370,6 +370,8 @@ function CreateOfferModal({
     amount: '',
     desc: '',
     paymentMethod: '',
+    paymentInstructions: '',
+    minAmount: '',
     id: '',
     // Pre-fill with the currently selected wallet address. Blank is accepted —
     // the backend falls back to the wallet's first derived address.
@@ -392,22 +394,45 @@ function CreateOfferModal({
       return;
     }
     if (amt > MAX_OFFER_IRM) {
-      toast.error(`Amount cannot exceed ${MAX_OFFER_IRM.toLocaleString()} IRM (total supply)`);
+      toast.error(`Amount cannot exceed ${MAX_OFFER_IRM.toLocaleString('en-US')} IRM (total supply)`);
       return;
+    }
+    // Validate min amount if provided.
+    let minAmt: number | null = null;
+    if (form.minAmount.trim()) {
+      minAmt = parseFloat(form.minAmount);
+      if (isNaN(minAmt) || minAmt <= 0) {
+        toast.error('Minimum trade amount must be a positive number');
+        return;
+      }
+      if (minAmt > amt) {
+        toast.error('Minimum cannot exceed the offer amount');
+        return;
+      }
     }
     if (amt > CONFIRM_OFFER_IRM) {
       const ok = window.confirm(
-        `You're about to lock ${amt.toLocaleString()} IRM in escrow.\n\nThis is a large amount. Confirm you typed the decimal correctly.`
+        `You're about to lock ${amt.toLocaleString('en-US')} IRM in escrow.\n\nThis is a large amount. Confirm you typed the decimal correctly.`
       );
       if (!ok) return;
     }
     setLoading(true);
     try {
       const trimmedSeller = form.sellerAddress.trim();
+      // Min trade amount isn't a typed field on CreateOfferParams yet —
+      // surface it inside the description so buyers see it. When iriumd
+      // adds a min_amount field we can promote this to a typed parameter.
+      const descParts: string[] = [];
+      if (minAmt !== null && minAmt > 0) {
+        descParts.push(`Min trade: ${minAmt.toLocaleString('en-US')} IRM`);
+      }
+      if (form.desc.trim()) descParts.push(form.desc.trim());
+      const finalDesc = descParts.length > 0 ? descParts.join(' · ') : undefined;
       const result = await offers.create({
         amount_sats: Math.round(amt * SATS_PER_IRM),
-        description: form.desc || undefined,
+        description: finalDesc,
         payment_method: form.paymentMethod || undefined,
+        payment_instructions: form.paymentInstructions || undefined,
         offer_id: form.id || undefined,
         seller_address: trimmedSeller.length > 0 ? trimmedSeller : undefined,
       });
@@ -446,18 +471,39 @@ function CreateOfferModal({
             </button>
           </div>
 
-          {/* Escrow notice */}
+          {/* How OTC selling works — five-step explainer above the form. */}
           <div
-            className="flex items-start gap-2 px-3 py-2.5 rounded-xl mb-5 text-xs"
+            className="rounded-xl mb-3 px-3.5 py-3 text-xs"
+            style={{
+              background: 'rgba(110,198,255,0.06)',
+              border: '1px solid rgba(110,198,255,0.18)',
+              color: 'rgba(238,240,255,0.55)',
+            }}
+          >
+            <div className="font-semibold mb-1.5" style={{ color: 'rgba(238,240,255,0.85)' }}>
+              How OTC selling works
+            </div>
+            <ol className="space-y-0.5 list-decimal list-inside leading-relaxed">
+              <li>You create this offer (the IRM is locked in escrow now).</li>
+              <li>A buyer funds the escrow with their IRM share.</li>
+              <li>Buyer pays you off-chain using the instructions below.</li>
+              <li>You confirm payment received.</li>
+              <li>Escrow releases the IRM to the buyer.</li>
+            </ol>
+          </div>
+
+          {/* Escrow notice — kept as a tighter confirmation row. */}
+          <div
+            className="flex items-start gap-2 px-3 py-2 rounded-xl mb-5 text-[11px]"
             style={{
               background: 'rgba(110,198,255,0.08)',
               border: '1px solid rgba(110,198,255,0.20)',
               color: 'rgba(238,240,255,0.55)',
             }}
           >
-            <span style={{ color: '#A78BFA', flexShrink: 0, fontSize: 14 }}>🔒</span>
+            <span style={{ color: '#A78BFA', flexShrink: 0, fontSize: 13 }}>🔒</span>
             <span>
-              The IRM amount is <strong style={{ color: 'rgba(238,240,255,0.8)' }}>locked in on-chain escrow</strong> the moment your offer is created. When a buyer takes the offer and their payment proof is accepted, the funds are automatically released to them.
+              <strong style={{ color: 'rgba(238,240,255,0.8)' }}>On-chain escrow</strong> protects both sides — neither of you can disappear with the money.
             </span>
           </div>
 
@@ -493,10 +539,37 @@ function CreateOfferModal({
               </p>
             </div>
             <div>
-              <label className="label">Price / Notes (optional)</label>
+              <label className="label">Minimum trade amount (optional)</label>
               <input
                 className="input"
-                placeholder="e.g. 1 IRM = $0.50 USD via PayPal"
+                type="number"
+                min="0"
+                step="0.0001"
+                placeholder="e.g. 0.1 (buyers cannot take less than this)"
+                value={form.minAmount}
+                onChange={(e) => setForm((f) => ({ ...f, minAmount: e.target.value }))}
+              />
+              <p className="text-[11px] text-white/30 mt-1">
+                Leave blank if you'll accept any size. Communicated to buyers via the offer description.
+              </p>
+            </div>
+            <div>
+              <label className="label">How should buyer pay you?</label>
+              <input
+                className="input"
+                placeholder="e.g. Bank Transfer, PayPal, USDT, BTC, Cash"
+                value={form.paymentMethod}
+                onChange={(e) => setForm((f) => ({ ...f, paymentMethod: e.target.value }))}
+              />
+              <p className="text-[11px] text-white/30 mt-1">
+                Short label that helps buyers filter offers — pick the rail they should use.
+              </p>
+            </div>
+            <div>
+              <label className="label">Price or exchange rate (optional)</label>
+              <input
+                className="input"
+                placeholder="e.g. Market rate + 2%, $0.05 per IRM"
                 maxLength={500}
                 value={form.desc}
                 onChange={(e) => setForm((f) => ({ ...f, desc: e.target.value }))}
@@ -509,13 +582,22 @@ function CreateOfferModal({
               )}
             </div>
             <div>
-              <label className="label">Payment Method (optional)</label>
-              <input
-                className="input"
-                placeholder="bank-transfer, crypto, etc."
-                value={form.paymentMethod}
-                onChange={(e) => setForm((f) => ({ ...f, paymentMethod: e.target.value }))}
+              <label className="label">Your payment details (what to send to you)</label>
+              <textarea
+                className="input h-24 resize-none"
+                placeholder={`e.g. Bank: IBAN DE89 3704 0044 0532 0130 00\n     Name: John Smith\nOR: Send USDT (TRC20) to TQrZ9...wpkX\nOR: PayPal: seller@example.com`}
+                maxLength={1000}
+                value={form.paymentInstructions}
+                onChange={(e) => setForm((f) => ({ ...f, paymentInstructions: e.target.value }))}
               />
+              <p className="text-[11px] text-white/30 mt-1">
+                The buyer sees these instructions <strong style={{ color: 'rgba(238,240,255,0.6)' }}>after the escrow is funded</strong>. Be specific — wrong details mean lost time.
+              </p>
+              {form.paymentInstructions.length > 800 && (
+                <p className="text-xs mt-1" style={{ color: form.paymentInstructions.length >= 1000 ? '#f87171' : 'rgba(255,255,255,0.30)' }}>
+                  {form.paymentInstructions.length}/1000
+                </p>
+              )}
             </div>
             <div>
               <label className="label">Custom Offer ID (optional)</label>
@@ -1416,7 +1498,7 @@ function OfferDetailModal({
               {formatIRM(offer.amount)}
             </div>
             <div className="text-xs text-white/40 mt-1 font-mono">
-              {offer.amount.toLocaleString()} sats
+              {offer.amount.toLocaleString('en-US')} sats
             </div>
           </div>
 
@@ -1439,7 +1521,7 @@ function OfferDetailModal({
             {offer.timeout_height != null && (
               <div>
                 <p className="text-white/40 uppercase tracking-wider mb-1">Timeout Height</p>
-                <p className="font-mono text-white/80">#{offer.timeout_height.toLocaleString()}</p>
+                <p className="font-mono text-white/80">#{offer.timeout_height.toLocaleString('en-US')}</p>
               </div>
             )}
             {offer.created_at && (

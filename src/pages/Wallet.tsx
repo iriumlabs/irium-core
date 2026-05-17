@@ -1328,7 +1328,7 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
     if (isCoinbase) {
       if (tx.address) parts.push(`Miner: ${shortMid(tx.address, 6, 4)}`);
     } else if (isSend) {
-      if (tx.fee != null && tx.fee > 0) parts.push(`Fee: ${tx.fee.toLocaleString()} sats`);
+      if (tx.fee != null && tx.fee > 0) parts.push(`Fee: ${tx.fee.toLocaleString('en-US')} sats`);
       parts.push(`TXID: ${shortMid(tx.txid, 8, 5)}`);
     } else {
       parts.push(`TXID: ${shortMid(tx.txid, 8, 5)}`);
@@ -1366,7 +1366,7 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
                   style={{ color: '#6ec6ff' }}
                   title="Open in Explorer"
                 >
-                  Block #{tx.height.toLocaleString()}
+                  Block #{tx.height.toLocaleString('en-US')}
                 </button>
               </>
             )}

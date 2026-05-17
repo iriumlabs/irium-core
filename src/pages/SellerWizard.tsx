@@ -310,7 +310,7 @@ export default function SellerWizard() {
                   />
                   {amountIrm && parseFloat(amountIrm) > 0 && (
                     <p className="text-xs text-white/30 font-mono">
-                      {Math.round(parseFloat(amountIrm) * SATS_PER_IRM).toLocaleString()} sats
+                      {Math.round(parseFloat(amountIrm) * SATS_PER_IRM).toLocaleString('en-US')} sats
                     </p>
                   )}
                 </div>

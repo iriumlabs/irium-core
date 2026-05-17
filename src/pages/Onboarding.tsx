@@ -979,9 +979,9 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
             animate={{ y: 0, opacity: 1 }}
             className="font-mono font-semibold text-white"
           >
-            {h.toLocaleString()}
+            {h.toLocaleString('en-US')}
             {tip > 0 && (
-              <span style={{ color: 'rgba(238,240,255,0.35)' }}> / {tip.toLocaleString()}</span>
+              <span style={{ color: 'rgba(238,240,255,0.35)' }}> / {tip.toLocaleString('en-US')}</span>
             )}
           </motion.span>
         </div>
