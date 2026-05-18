@@ -35,9 +35,9 @@
     "search": "Mencari",
     "clear": "Jernih",
     "dismiss": "Membubarkan",
-    "create": "Create",
-    "import": "Import",
-    "export": "Export"
+    "create": "Membuat",
+    "import": "Impor",
+    "export": "Ekspor"
   },
   "nav": {
     "dashboard": "Dasbor",
@@ -1208,7 +1208,29 @@
     },
     "tabs": {
       "overview": "Ringkasan",
-      "rich_list": "Daftar Kaya"
+      "rich_list": "Daftar Kaya",
+      "pool_stats": "Statistik Kolam Renang"
+    },
+    "pool_stats": {
+      "title": "Kolam Resmi Irium",
+      "subtitle": "Status langsung pool.iriumlabs.org",
+      "total_miners": "Total Penambang Aktif",
+      "asic_miners": "Penambang ASIC",
+      "cpu_gpu_miners": "Penambang CPU / GPU",
+      "total_blocks_found": "Blok Ditemukan",
+      "asic_port": "Pelabuhan ASIC {{port}}",
+      "cpu_gpu_port": "Port CPU/GPU {{port}}",
+      "integrity": "Integritas",
+      "integrity_healthy": "Sehat",
+      "integrity_unknown": "Tidak dikenal",
+      "last_updated": "Terakhir diperbarui {{ago}}",
+      "refresh": "Menyegarkan",
+      "refreshing": "Menyegarkan…",
+      "loading": "Memuat statistik kumpulan…",
+      "load_error": "Tidak dapat memuat statistik kumpulan — proxy mungkin tidak dapat dijangkau",
+      "empty": "Statistik kumpulan tidak tersedia",
+      "accepted_shares": "Saham yang diterima",
+      "rejected_shares": "Saham yang ditolak"
     },
     "richlist": {
       "title": "Pemegang IRM Teratas",

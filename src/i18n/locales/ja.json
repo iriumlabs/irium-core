@@ -1208,7 +1208,29 @@
     },
     "tabs": {
       "overview": "概要",
-      "rich_list": "リッチリスト"
+      "rich_list": "リッチリスト",
+      "pool_stats": "プールの統計"
+    },
+    "pool_stats": {
+      "title": "アイリウム公式プール",
+      "subtitle": "pool.iriumlabs.org のライブステータス",
+      "total_miners": "アクティブなマイナーの合計",
+      "asic_miners": "ASICマイナー",
+      "cpu_gpu_miners": "CPU / GPU マイナー",
+      "total_blocks_found": "ブロックが見つかりました",
+      "asic_port": "ASIC ポート {{port}}",
+      "cpu_gpu_port": "CPU/GPU ポート {{port}}",
+      "integrity": "誠実さ",
+      "integrity_healthy": "健康",
+      "integrity_unknown": "未知",
+      "last_updated": "最終更新日 {{ago}}",
+      "refresh": "リフレッシュ",
+      "refreshing": "爽やか…",
+      "loading": "プール統計を読み込んでいます…",
+      "load_error": "プール統計をロードできませんでした - プロキシに到達できない可能性があります",
+      "empty": "プールの統計情報は利用できません",
+      "accepted_shares": "引受株式数",
+      "rejected_shares": "拒否された株式"
     },
     "richlist": {
       "title": "トップ IRM ホルダー",

@@ -940,8 +940,12 @@
       "gpu_started": "GPU矿机启动",
       "gpu_stopped": "GPU 矿工已停止",
       "pool_url_required": "需要池 URL",
+      "pool_url_invalid": "池 URL 无效。格式：stratum+tcp://pool.example.com:3333",
       "worker_required": "需要工人姓名",
-      "connecting_to_pool": "正在连接到泳池..."
+      "connecting_to_pool": "正在连接到泳池...",
+      "pool_disconnected_reconnecting": "池已断开连接 — 正在重新连接...",
+      "pool_connection_lost": "池连接丢失。请重新连接。",
+      "pool_error": "池错误：{{message}}"
     },
     "page_subtitle": "SHA-256d · CPU · GPU · ASIC 池支持",
     "tooltips": {
@@ -1204,7 +1208,29 @@
     },
     "tabs": {
       "overview": "概述",
-      "rich_list": "富豪榜"
+      "rich_list": "富豪榜",
+      "pool_stats": "池统计"
+    },
+    "pool_stats": {
+      "title": "Irium 官方池",
+      "subtitle": "pool.iriumlabs.org 的实时状态",
+      "total_miners": "活跃矿工总数",
+      "asic_miners": "ASIC 矿工",
+      "cpu_gpu_miners": "CPU / GPU 矿工",
+      "total_blocks_found": "找到块",
+      "asic_port": "ASIC 端口 {{port}}",
+      "cpu_gpu_port": "CPU/GPU 端口 {{port}}",
+      "integrity": "正直",
+      "integrity_healthy": "健康",
+      "integrity_unknown": "未知",
+      "last_updated": "最后更新{{ago}}",
+      "refresh": "刷新",
+      "refreshing": "清爽…",
+      "loading": "正在加载池统计信息...",
+      "load_error": "无法加载池统计信息 - 代理可能无法访问",
+      "empty": "池统计数据不可用",
+      "accepted_shares": "接受的股份",
+      "rejected_shares": "拒绝股票"
     },
     "richlist": {
       "title": "顶级 IRM 持有者",
@@ -1343,7 +1369,7 @@
       "q9": "如何连接矿池？",
       "a9": "进入“挖矿”页面，选择“地层矿池”选项卡。输入矿池 URL stratum+tcp://pool.iriumlabs.org:3333（适用于 ASIC/modern 矿工）或 stratum+tcp://pool.iriumlabs.org:3335（适用于 CPU/GPU 矿工）。您的用户名应该是您的 IRM 地址，后跟工作人员名称，例如 PwjVf7nY19UWW2i9HCEPyZt81975M6iKdW.worker1。",
       "q10": "macOS 表示 Irium Core 已损坏或被隔离。我该如何修复它？",
-      "a10": "macOS 隔离从 App Store 外部下载的应用程序。要解决此问题：（1）打开终端； (2) 运行： xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app — 这将从整个应用程序包中删除隔离标志。如果仍然看到“损坏”，请运行：codesign --force --deep --sign - /Applications/Irium\\ Core.app，然后重新启动。首次启动可能需要 10-20 秒，同时 Gatekeeper 重新验证签名。如果 iriumd 本身被隔离（您在日志中看到“iriumd 已损坏”），请运行： xattr -d com.apple.quarantine ~/.irium/binaries/iriumd 以仅取消隔离节点二进制文件。",
+      "a10": "macOS 隔离从 App Store 外部下载的应用程序。要解决此问题：（1）打开终端； (2) 运行： xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app — 这将从整个应用程序包中删除隔离标志。如果仍然看到“损坏”，请运行：codesign --force --deep --sign - /Applications/Irium\\ Core.app，然后重新启动。首次启动可能需要 10-20 秒，同时 Gatekeeper 重新验证签名。如果 iriumd 本身被隔离（您在日志中看到“iriumd 已损坏”），请运行： xattr -d com.apple.quarantine ~/.irium/binaries/iriumd 以仅取消��离节点二进制文件。",
       "q11": "我的节点有隔离的块。我该如何恢复？",
       "a11": "iriumd 隔离它无法验证的块文件（通常是在写入过程中崩溃或重组损坏之后）。隔离的块位于 ~/.irium/blocks/orphaned_<timestamp>/ 中。您可以从上面的隔离块恢复部分清除它们（首先停止节点）。节点将在下次启动时自动从对等方重新获取丢失的块。如果重新同步卡在相同的高度，请使用“设置”→“清除链状态”以从创世开始进行干净的重新同步（您的钱包和协议将被保留）。"
     },

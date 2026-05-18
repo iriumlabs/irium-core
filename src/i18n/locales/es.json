@@ -940,8 +940,12 @@
       "gpu_started": "Minero GPU iniciado",
       "gpu_stopped": "Minero de GPU detenido",
       "pool_url_required": "Se requiere URL del grupo",
+      "pool_url_invalid": "URL del grupo no válida. Formato: estrato+tcp://pool.example.com:3333",
       "worker_required": "Nombre del trabajador requerido",
-      "connecting_to_pool": "Conectándose a la piscina…"
+      "connecting_to_pool": "Conectándose a la piscina…",
+      "pool_disconnected_reconnecting": "Piscina desconectada - reconectándose...",
+      "pool_connection_lost": "Se perdió la conexión a la piscina. Por favor vuelva a conectarse.",
+      "pool_error": "Error de grupo: {{message}}"
     },
     "page_subtitle": "SHA-256d · CPU · GPU · Soporte de grupo ASIC",
     "tooltips": {
@@ -1204,7 +1208,29 @@
     },
     "tabs": {
       "overview": "Descripción general",
-      "rich_list": "Lista rica"
+      "rich_list": "Lista rica",
+      "pool_stats": "Estadísticas del grupo"
+    },
+    "pool_stats": {
+      "title": "Piscina Oficial Irium",
+      "subtitle": "Estado en vivo de pool.iriumlabs.org",
+      "total_miners": "Total de mineros activos",
+      "asic_miners": "Mineros ASIC",
+      "cpu_gpu_miners": "Mineros de CPU/GPU",
+      "total_blocks_found": "Bloques encontrados",
+      "asic_port": "Puerto ASIC {{port}}",
+      "cpu_gpu_port": "Puerto CPU/GPU {{port}}",
+      "integrity": "Integridad",
+      "integrity_healthy": "Saludable",
+      "integrity_unknown": "Desconocido",
+      "last_updated": "Última actualización {{ago}}",
+      "refresh": "Refrescar",
+      "refreshing": "Refrescante…",
+      "loading": "Cargando estadísticas del grupo...",
+      "load_error": "No se pudieron cargar las estadísticas del grupo: es posible que no se pueda acceder al proxy",
+      "empty": "Estadísticas del grupo no disponibles",
+      "accepted_shares": "Acciones aceptadas",
+      "rejected_shares": "Acciones rechazadas"
     },
     "richlist": {
       "title": "Principales titulares de IRM",

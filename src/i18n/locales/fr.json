@@ -940,8 +940,12 @@
       "gpu_started": "Le mineur GPU a démarré",
       "gpu_stopped": "Le mineur GPU s'est arrêté",
       "pool_url_required": "URL du pool requise",
+      "pool_url_invalid": "Invalid pool URL. Format : strate+tcp://pool.example.com:3333",
       "worker_required": "Nom du travailleur requis",
-      "connecting_to_pool": "Connexion à la piscine…"
+      "connecting_to_pool": "Connexion à la piscine…",
+      "pool_disconnected_reconnecting": "Piscine déconnectée – reconnexion…",
+      "pool_connection_lost": "Connexion à la piscine perdue. Veuillez vous reconnecter.",
+      "pool_error": "Erreur de pool : {{message}}"
     },
     "page_subtitle": "SHA-256d · CPU · GPU · Prise en charge du pool ASIC",
     "tooltips": {
@@ -1204,7 +1208,29 @@
     },
     "tabs": {
       "overview": "Aperçu",
-      "rich_list": "Liste riche"
+      "rich_list": "Liste riche",
+      "pool_stats": "Statistiques de la piscine"
+    },
+    "pool_stats": {
+      "title": "Piscine officielle Irium",
+      "subtitle": "Statut en direct de pool.iriumlabs.org",
+      "total_miners": "Total des mineurs actifs",
+      "asic_miners": "Mineurs ASIC",
+      "cpu_gpu_miners": "Mineurs CPU/GPU",
+      "total_blocks_found": "Blocs trouvés",
+      "asic_port": "Port ASIC {{port}}",
+      "cpu_gpu_port": "Port CPU/GPU {{port}}",
+      "integrity": "Intégrité",
+      "integrity_healthy": "En bonne santé",
+      "integrity_unknown": "Inconnu",
+      "last_updated": "Dernière mise à jour {{ago}}",
+      "refresh": "Rafraîchir",
+      "refreshing": "Rafraîchissant…",
+      "loading": "Chargement des statistiques du pool…",
+      "load_error": "Impossible de charger les statistiques du pool : le proxy est peut-être inaccessible",
+      "empty": "Statistiques de la piscine indisponibles",
+      "accepted_shares": "Actions acceptées",
+      "rejected_shares": "Actions rejetées"
     },
     "richlist": {
       "title": "Meilleurs détenteurs d'IRM",

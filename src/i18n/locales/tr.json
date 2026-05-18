@@ -940,8 +940,12 @@
       "gpu_started": "GPU madencisi başlatıldı",
       "gpu_stopped": "GPU madencisi durduruldu",
       "pool_url_required": "Havuz URL'si gerekli",
+      "pool_url_invalid": "Geçersiz havuz URL'si. Biçim: stratum+tcp://pool.example.com:3333",
       "worker_required": "Çalışan adı gerekli",
-      "connecting_to_pool": "Havuza bağlanılıyor…"
+      "connecting_to_pool": "Havuza bağlanılıyor…",
+      "pool_disconnected_reconnecting": "Havuzun bağlantısı kesildi — yeniden bağlanılıyor…",
+      "pool_connection_lost": "Havuz bağlantısı kesildi. Lütfen yeniden bağlanın.",
+      "pool_error": "Havuz hatası: {{message}}"
     },
     "page_subtitle": "SHA-256d · CPU · GPU · ASIC havuz desteği",
     "tooltips": {
@@ -1204,7 +1208,29 @@
     },
     "tabs": {
       "overview": "Genel Bakış",
-      "rich_list": "Zengin Liste"
+      "rich_list": "Zengin Liste",
+      "pool_stats": "Havuz İstatistikleri"
+    },
+    "pool_stats": {
+      "title": "Irium Resmi Havuzu",
+      "subtitle": "Pool.iriumlabs.org'un canlı durumu",
+      "total_miners": "Toplam Aktif Madenciler",
+      "asic_miners": "ASIC Madencileri",
+      "cpu_gpu_miners": "CPU / GPU Madencileri",
+      "total_blocks_found": "Bulunan Bloklar",
+      "asic_port": "ASIC bağlantı noktası {{port}}",
+      "cpu_gpu_port": "CPU/GPU bağlantı noktası {{port}}",
+      "integrity": "Bütünlük",
+      "integrity_healthy": "Sağlıklı",
+      "integrity_unknown": "Bilinmiyor",
+      "last_updated": "Son güncelleme {{ago}}",
+      "refresh": "Yenile",
+      "refreshing": "Yenileniyor…",
+      "loading": "Havuz istatistikleri yükleniyor…",
+      "load_error": "Havuz istatistikleri yüklenemedi — proxy'ye ulaşılamıyor olabilir",
+      "empty": "Havuz istatistikleri kullanılamıyor",
+      "accepted_shares": "Kabul edilen paylaşımlar",
+      "rejected_shares": "Reddedilen paylaşımlar"
     },
     "richlist": {
       "title": "En İyi IRM Sahipleri",

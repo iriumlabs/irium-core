@@ -940,8 +940,12 @@
       "gpu_started": "بدأ منجم GPU",
       "gpu_stopped": "توقف عامل منجم GPU",
       "pool_url_required": "مطلوب عنوان URL للمجمع",
+      "pool_url_invalid": "عنوان URL للمجمع غير صالح. التنسيق: طبقة+tcp://pool.example.com:3333",
       "worker_required": "مطلوب اسم العامل",
-      "connecting_to_pool": "جارٍ الاتصال بالمسبح…"
+      "connecting_to_pool": "جارٍ الاتصال بالمسبح…",
+      "pool_disconnected_reconnecting": "تم قطع اتصال التجمع — جارٍ إعادة الاتصال…",
+      "pool_connection_lost": "تم فقدان اتصال المسبح. يرجى إعادة الاتصال.",
+      "pool_error": "خطأ في التجمع: {{message}}"
     },
     "page_subtitle": "SHA-256d · وحدة المعالجة المركزية · وحدة معالجة الرسومات · دعم تجمع ASIC",
     "tooltips": {
@@ -1204,7 +1208,29 @@
     },
     "tabs": {
       "overview": "ملخص",
-      "rich_list": "قائمة الأغنياء"
+      "rich_list": "قائمة الأغنياء",
+      "pool_stats": "إحصائيات البلياردو"
+    },
+    "pool_stats": {
+      "title": "مسبح إيريوم الرسمي",
+      "subtitle": "الحالة المباشرة لـpool.iriumlabs.org",
+      "total_miners": "إجمالي عمال المناجم النشطين",
+      "asic_miners": "عمال المناجم ASIC",
+      "cpu_gpu_miners": "عمال المناجم وحدة المعالجة المركزية / GPU",
+      "total_blocks_found": "تم العثور على الكتل",
+      "asic_port": "منفذ أسيك {{port}}",
+      "cpu_gpu_port": "منفذ وحدة المعالجة المركزية/وحدة معالجة الرسومات {{port}}",
+      "integrity": "نزاهة",
+      "integrity_healthy": "صحيح",
+      "integrity_unknown": "مجهول",
+      "last_updated": "آخر تحديث {{ago}}",
+      "refresh": "ينعش",
+      "refreshing": "منعش…",
+      "loading": "جارٍ تحميل إحصائيات المجموعة…",
+      "load_error": "تعذر تحميل إحصائيات المجموعة — ربما لا يمكن الوصول إلى الوكيل",
+      "empty": "إحصائيات التجمع غير متوفرة",
+      "accepted_shares": "الاسهم المقبولة",
+      "rejected_shares": "الاسهم المرفوضة"
     },
     "richlist": {
       "title": "أعلى حاملي IRM",

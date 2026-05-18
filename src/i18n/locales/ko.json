@@ -1208,7 +1208,29 @@
     },
     "tabs": {
       "overview": "개요",
-      "rich_list": "리치리스트"
+      "rich_list": "리치리스트",
+      "pool_stats": "풀 통계"
+    },
+    "pool_stats": {
+      "title": "이리움 공식 풀",
+      "subtitle": "pool.iriumlabs.org의 실시간 상태",
+      "total_miners": "총 활성 채굴자",
+      "asic_miners": "ASIC 채굴기",
+      "cpu_gpu_miners": "CPU / GPU 채굴자",
+      "total_blocks_found": "발견된 블록",
+      "asic_port": "ASIC 포트 {{port}}",
+      "cpu_gpu_port": "CPU/GPU 포트 {{port}}",
+      "integrity": "진실성",
+      "integrity_healthy": "건강한",
+      "integrity_unknown": "알려지지 않은",
+      "last_updated": "마지막 업데이트: {{ago}}",
+      "refresh": "새로 고치다",
+      "refreshing": "상쾌하다…",
+      "loading": "풀 통계 로드 중…",
+      "load_error": "풀 통계를 로드할 수 없습니다. 프록시에 연결하지 못할 수 있습니다.",
+      "empty": "풀 통계를 사용할 수 없습니다.",
+      "accepted_shares": "승인된 주식",
+      "rejected_shares": "거부된 주식"
     },
     "richlist": {
       "title": "상단 IRM 홀더",

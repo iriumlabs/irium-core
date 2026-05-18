@@ -1208,7 +1208,29 @@
     },
     "tabs": {
       "overview": "Tổng quan",
-      "rich_list": "Danh sách phong phú"
+      "rich_list": "Danh sách phong phú",
+      "pool_stats": "Thống kê hồ bơi"
+    },
+    "pool_stats": {
+      "title": "Bể bơi chính thức của Irium",
+      "subtitle": "Trạng thái trực tiếp của pool.iriumlabs.org",
+      "total_miners": "Tổng số thợ mỏ đang hoạt động",
+      "asic_miners": "Máy khai thác ASIC",
+      "cpu_gpu_miners": "Công cụ khai thác CPU / GPU",
+      "total_blocks_found": "Khối được tìm thấy",
+      "asic_port": "Cổng ASIC {{port}}",
+      "cpu_gpu_port": "Cổng CPU/GPU {{port}}",
+      "integrity": "Chính trực",
+      "integrity_healthy": "Khỏe mạnh",
+      "integrity_unknown": "Không xác định",
+      "last_updated": "Cập nhật lần cuối {{ago}}",
+      "refresh": "Làm cho khỏe lại",
+      "refreshing": "Đang làm mới…",
+      "loading": "Đang tải số liệu thống kê nhóm…",
+      "load_error": "Không thể tải số liệu thống kê nhóm - proxy có thể không truy cập được",
+      "empty": "Không có số liệu thống kê về nhóm",
+      "accepted_shares": "Chia sẻ được chấp nhận",
+      "rejected_shares": "Cổ phiếu bị từ chối"
     },
     "richlist": {
       "title": "Những người nắm giữ IRM hàng đầu",
