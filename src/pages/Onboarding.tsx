@@ -500,6 +500,7 @@ function StepRail({ current, showStep5 }: { current: number; showStep5: boolean 
 
 // ─── Step 1: Binary Check ─────────────────────────────────────────────────────
 function StepBinaryCheck({ onNext }: { onNext: () => void }) {
+  const { t } = useTranslation();
   const [checking, setChecking] = useState(true);
   const [result, setResult]     = useState<BinaryCheckResult | null>(null);
 
@@ -533,7 +534,7 @@ function StepBinaryCheck({ onNext }: { onNext: () => void }) {
 
   return (
     <motion.div key="bin-check" {...fadeIn}>
-      <h2 className="font-display font-bold text-2xl mb-1.5 gradient-text">System Check</h2>
+      <h2 className="font-display font-bold text-2xl mb-1.5 gradient-text">{t('onboarding.system_check_title')}</h2>
       <p className="text-sm mb-6" style={{ color: 'rgba(238,240,255,0.45)' }}>
         Verifying required node binaries are present on this machine.
       </p>
@@ -593,6 +594,7 @@ function StepBinaryCheck({ onNext }: { onNext: () => void }) {
 
 // ─── Step 2: Bootstrap ────────────────────────────────────────────────────────
 function StepBootstrap({ onNext }: { onNext: () => void }) {
+  const { t } = useTranslation();
   const [lines, setLines] = useState<string[]>([]);
   const [done, setDone]   = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -633,7 +635,7 @@ function StepBootstrap({ onNext }: { onNext: () => void }) {
 
   return (
     <motion.div key="bootstrap" {...fadeIn}>
-      <h2 className="font-display font-bold text-2xl mb-1.5 gradient-text">Network Bootstrap</h2>
+      <h2 className="font-display font-bold text-2xl mb-1.5 gradient-text">{t('onboarding.steps.network_bootstrap')}</h2>
       <p className="text-sm mb-6" style={{ color: 'rgba(238,240,255,0.45)' }}>
         Configuring seed nodes, trust anchors, and genesis block.
       </p>
@@ -719,6 +721,7 @@ function isValidIpPort(input: string): boolean {
 
 // ─── Step 3: Network Sync ─────────────────────────────────────────────────────
 function StepNetworkSync({ onNext }: { onNext: () => void }) {
+  const { t } = useTranslation();
   const rpcUrl = useStore((s) => s.settings.rpc_url) || 'http://127.0.0.1:38300';
   const [nodeStarted, setNodeStarted] = useState(false);
   const [startError, setStartError]   = useState<string | null>(null);
@@ -894,7 +897,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
 
   return (
     <motion.div key="sync" {...fadeIn}>
-      <h2 className="font-display font-bold text-2xl mb-1.5 gradient-text">Network Sync</h2>
+      <h2 className="font-display font-bold text-2xl mb-1.5 gradient-text">{t('onboarding.steps.network_sync')}</h2>
       <p className="text-sm mb-6" style={{ color: 'rgba(238,240,255,0.45)' }}>
         Loading local blockchain data and connecting to the Irium P2P network.
       </p>
@@ -1217,6 +1220,7 @@ function StepWalletSetup({
   onCreated:  (r: WalletCreateResult) => void;
   onImported: () => void;
 }) {
+  const { t } = useTranslation();
   const updateSettings = useStore((s) => s.updateSettings);
   const [flow, setFlow]           = useState<WalletFlow>('choose');
   const [importTab, setImportTab] = useState<ImportTab>('mnemonic');
@@ -1242,15 +1246,15 @@ function StepWalletSetup({
     if (!val) return;
 
     if (importTab === 'mnemonic' && val.split(/\s+/).length < 12) {
-      toast.error('Enter at least 12 seed words.');
+      toast.error(t('onboarding.toasts.need_12_seed_words'));
       return;
     }
     if (importTab === 'wif' && val.length < 51) {
-      toast.error('WIF key should be at least 51 characters.');
+      toast.error(t('onboarding.toasts.wif_min_length'));
       return;
     }
     if (importTab === 'privkey' && !/^[0-9a-fA-F]{64}$/.test(val)) {
-      toast.error('Private key must be 64 hex characters.');
+      toast.error(t('onboarding.toasts.priv_key_hex'));
       return;
     }
 
@@ -1339,7 +1343,7 @@ function StepWalletSetup({
             <CheckCircle2 size={18} style={{ color: '#34d399' }} />
           </div>
           <div>
-            <h2 className="font-display font-bold text-2xl gradient-text leading-none">Wallet Restored</h2>
+            <h2 className="font-display font-bold text-2xl gradient-text leading-none">{t('onboarding.wallet_restored')}</h2>
             <p className="text-xs mt-1.5" style={{ color: 'rgba(238,240,255,0.50)' }}>
               Your wallet has been imported successfully.
             </p>
@@ -1455,7 +1459,7 @@ function StepWalletSetup({
 
     return (
       <motion.div key="import" {...fadeIn}>
-        <h2 className="font-display font-bold text-2xl mb-1.5 gradient-text">Import Wallet</h2>
+        <h2 className="font-display font-bold text-2xl mb-1.5 gradient-text">{t('onboarding.steps.import_wallet')}</h2>
         <p className="text-sm mb-5" style={{ color: 'rgba(238,240,255,0.50)' }}>
           Choose your restore method below.
         </p>
@@ -1540,7 +1544,7 @@ function StepWalletSetup({
         >
           <Shield size={17} style={{ color: '#6ec6ff' }} />
         </div>
-        <h2 className="font-display font-bold text-2xl gradient-text">Wallet Setup</h2>
+        <h2 className="font-display font-bold text-2xl gradient-text">{t('onboarding.wallet_setup')}</h2>
       </div>
       <p className="text-sm mb-7" style={{ color: 'rgba(238,240,255,0.50)' }}>
         Create a fresh HD wallet or restore from an existing wallet.
@@ -1805,6 +1809,7 @@ function StepBackupSecure({
   walletData: WalletCreateResult;
   onComplete: () => void;
 }) {
+  const { t } = useTranslation();
   const [revealed, setRevealed]   = useState<Set<string>>(new Set());
   const [confirmed, setConfirmed] = useState<Set<string>>(new Set());
 
@@ -1865,7 +1870,7 @@ function StepBackupSecure({
         >
           <Shield size={18} style={{ color: '#fff' }} />
         </div>
-        <h2 className="font-display font-bold text-2xl gradient-text">Backup &amp; Secure</h2>
+        <h2 className="font-display font-bold text-2xl gradient-text">{t('onboarding.steps.backup_secure')}</h2>
       </div>
       <p className="text-sm mb-4" style={{ color: 'rgba(238,240,255,0.45)' }}>
         This information is shown <strong className="text-white">one time only</strong>. Store every item offline before continuing.

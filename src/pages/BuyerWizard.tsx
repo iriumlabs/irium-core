@@ -416,7 +416,7 @@ export default function BuyerWizard() {
                 <p className="text-xs text-white/35 font-semibold uppercase tracking-wider">Or use a specific offer</p>
 
                 <div className="space-y-1">
-                  <label className="label">Offer ID</label>
+                  <label className="label">{t('wizards.buyer.offer_id_label')}</label>
                   <input
                     className="input"
                     placeholder="offer_..."
@@ -551,7 +551,7 @@ export default function BuyerWizard() {
                 <>
                   <div className="flex items-center justify-between">
                     <div>
-                      <h2 className="font-display font-bold text-xl text-white">Monitor Agreement</h2>
+                      <h2 className="font-display font-bold text-xl text-white">{t('wizards.buyer.monitor_title')}</h2>
                       <p className="text-white/40 text-sm mt-1">Waiting for seller to deliver and submit proof</p>
                     </div>
                     {polling && <RefreshCw size={14} className="animate-spin text-white/30" />}

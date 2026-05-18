@@ -894,10 +894,17 @@
       "threads_label": "线程数",
       "stratum_url_label": "矿池网址",
       "stratum_url_placeholder": "层+tcp://pool.example.com:3333",
-      "stratum_worker_label": "工人",
+      "stratum_worker_label": "工人姓名",
       "stratum_worker_hint": "格式：your_wallet_address.worker_id（例如 Pxxx…xxxx.rig1）",
       "stratum_password_label": "池密码（通常为“x”）",
-      "devices_label": "设备（多 GPU）"
+      "devices_label": "设备（多 GPU）",
+      "threads_label_full": "线程 — {{current}}（共 {{max}} 核心{{suffix}}）",
+      "threads_running_suffix": "（跑步）",
+      "opencl_platform": "OpenCL 平台",
+      "device": "设备",
+      "gpu_address_placeholder": "普…",
+      "intensity_label": "强度 — {{value}}%",
+      "pool_preset": "池预设"
     },
     "found_blocks": {
       "section_title": "找到的方块",
@@ -919,9 +926,22 @@
       "miner_address_required": "需要挖矿地址",
       "miner_address_invalid": "地址无效 — 必须以 Q 或 P 开头",
       "stratum_connected": "连接到池",
-      "stratum_disconnected": "与池断开连接"
+      "stratum_disconnected": "与池断开连接",
+      "address_copied": "地址已复制",
+      "tip_hash_copied": "已复制提示哈希值",
+      "failed_detect_gpus": "无法检测到 GPU",
+      "gpu_started": "GPU矿机启动",
+      "gpu_stopped": "GPU 矿工已停止",
+      "pool_url_required": "需要池 URL",
+      "worker_required": "需要工人姓名",
+      "connecting_to_pool": "正在连接到泳池..."
     },
-    "page_subtitle": "SHA-256d · CPU · GPU · ASIC 池支持"
+    "page_subtitle": "SHA-256d · CPU · GPU · ASIC 池支持",
+    "tooltips": {
+      "copy_address": "复制地址",
+      "copy_full_hash": "复制完整哈希值"
+    },
+    "pool_configuration": "池配置"
   },
   "onboarding": {
     "splash_title": "铱核",
@@ -959,6 +979,14 @@
       "mnemonic_placeholder": "BIP39 恢复短语以空格分隔。",
       "wif_placeholder": "5J…或K…或L…",
       "import_button": "导入钱包"
+    },
+    "system_check_title": "系统检查",
+    "wallet_restored": "钱包已恢复",
+    "wallet_setup": "钱包设置",
+    "toasts": {
+      "need_12_seed_words": "输入至少 12 个种子词。",
+      "wif_min_length": "WIF 密钥应至少为 51 个字符。",
+      "priv_key_hex": "私钥必须是 64 个十六进制字符。"
     }
   },
   "reputation": {
@@ -987,7 +1015,14 @@
     },
     "page_subtitle": "查询任何 Irium 地址或公钥的链上信誉评分。",
     "outcome_recorded": "为该卖家记录“{{choice}}”",
-    "failed_to_record": "未能记录结果"
+    "failed_to_record": "未能记录结果",
+    "tooltips": {
+      "help": "声誉帮助"
+    },
+    "compare_placeholder": "第二个卖家的 Q 前缀地址或 64 进制公钥...",
+    "warnings": {
+      "few_completed": "卖家完成的协议少于 3 个——他们的分数是临时的，他们可能是为了提高声誉而创建的新身份。"
+    }
   },
   "explorer": {
     "page_title": "探险家",
@@ -1003,7 +1038,13 @@
       "active_miners": "活跃矿工",
       "next_halving": "下一次减半：#{{height}}",
       "chain_tip": "链尖",
-      "tip_height": "提示#{{height}}"
+      "tip_height": "提示#{{height}}",
+      "network_hashrate": "网络算力",
+      "difficulty_lwma": "难度（LWMA）",
+      "pow_sub": "工作量证明",
+      "lwma_sub": "LWMA-144目标",
+      "connected_sub": "已连接",
+      "recent_blocks_sub": "最近的区块"
     },
     "blocks_table": {
       "height": "高度",
@@ -1035,6 +1076,21 @@
     "toasts": {
       "block_not_found": "在节点上找不到块 {{height}}",
       "block_load_error": "无法加载块 {{height}}: {{reason}}"
+    },
+    "page_title_block_explorer": "区块浏览器",
+    "live_badge": "居住",
+    "synced": "已同步",
+    "sync_suffix": "同步",
+    "loading_chain": "正在加载链数据...",
+    "node_offline_hint": "节点离线 — 在仪表板上启动节点",
+    "start_node_hint": "在仪表板上启动节点以查看网络统计信息",
+    "section_search": "搜索",
+    "section_blocks": "积木",
+    "look_up": "抬头",
+    "search_results": {
+      "block": "区块详情",
+      "tx": "交易",
+      "address": "地址信息"
     }
   },
   "help": {
@@ -1078,7 +1134,8 @@
       "refunded": "已退款至您的钱包",
       "settlement_hub": "结算中心",
       "review_offer_title": "审核报价",
-      "fund_title": "资金托管"
+      "fund_title": "资金托管",
+      "monitor_title": "监控协议"
     },
     "seller": {
       "page_title": "创建报价",
@@ -1101,7 +1158,9 @@
         "payment_instructions_placeholder": "银行详细信息、加密货币地址或买家的其他说明……"
       },
       "offer_exported": "导出报价",
-      "offer_id_copied": "优惠 ID 已复制"
+      "offer_id_copied": "优惠 ID 已复制",
+      "create_your_offer": "创建您的报价",
+      "share_your_offer": "分享您的报价"
     }
   },
   "logs": {

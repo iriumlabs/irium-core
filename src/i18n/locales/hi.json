@@ -889,15 +889,22 @@
       "detect_gpus": "जीपीयू का पता लगाएं"
     },
     "fields": {
-      "mining_address_label": "खनन का पता",
+      "mining_address_label": "खनन पता",
       "mining_address_placeholder": "अपना इरियम खनन पता चिपकाएँ (Q... या P...)",
       "threads_label": "धागे",
       "stratum_url_label": "पूल यूआरएल",
       "stratum_url_placeholder": "स्ट्रेटम+tcp://pool.example.com:3333",
-      "stratum_worker_label": "मज़दूर",
+      "stratum_worker_label": "कार्यकर्ता का नाम",
       "stratum_worker_hint": "प्रारूप: your_wallet_address.worker_id (उदा. Pxxx…xxxx.rig1)",
       "stratum_password_label": "पूल पासवर्ड (आमतौर पर \"x\")",
-      "devices_label": "डिवाइस (मल्टी-जीपीयू)"
+      "devices_label": "डिवाइस (मल्टी-जीपीयू)",
+      "threads_label_full": "धागे - {{max}} कोर के {{current}}{{suffix}}",
+      "threads_running_suffix": "(दौड़ना)",
+      "opencl_platform": "ओपनसीएल प्लेटफार्म",
+      "device": "उपकरण",
+      "gpu_address_placeholder": "पी…",
+      "intensity_label": "तीव्रता - {{value}}%",
+      "pool_preset": "पूल प्रीसेट"
     },
     "found_blocks": {
       "section_title": "ब्लॉक मिले",
@@ -919,9 +926,22 @@
       "miner_address_required": "खनन पता आवश्यक है",
       "miner_address_invalid": "अमान्य पता - Q या P से शुरू होना चाहिए",
       "stratum_connected": "पूल से जुड़ा है",
-      "stratum_disconnected": "पूल से अलग कर दिया गया"
+      "stratum_disconnected": "पूल से अलग कर दिया गया",
+      "address_copied": "पता कॉपी किया गया",
+      "tip_hash_copied": "टिप हैश कॉपी किया गया",
+      "failed_detect_gpus": "GPU का पता लगाने में विफल",
+      "gpu_started": "जीपीयू माइनर प्रारंभ हुआ",
+      "gpu_stopped": "जीपीयू माइनर बंद हो गया",
+      "pool_url_required": "पूल यूआरएल आवश्यक है",
+      "worker_required": "कार्यकर्ता का नाम आवश्यक है",
+      "connecting_to_pool": "पूल से कनेक्ट हो रहा है…"
     },
-    "page_subtitle": "SHA-256d · सीपीयू · जीपीयू · एएसआईसी पूल समर्थन"
+    "page_subtitle": "SHA-256d · सीपीयू · जीपीयू · एएसआईसी पूल समर्थन",
+    "tooltips": {
+      "copy_address": "पता कॉपी करें",
+      "copy_full_hash": "पूर्ण हैश कॉपी करें"
+    },
+    "pool_configuration": "पूल विन्यास"
   },
   "onboarding": {
     "splash_title": "इरियम कोर",
@@ -959,6 +979,14 @@
       "mnemonic_placeholder": "BIP39 पुनर्प्राप्ति वाक्यांश रिक्त स्थान द्वारा अलग किया गया।",
       "wif_placeholder": "5J… या K… या L…",
       "import_button": "बटुआ आयात करें"
+    },
+    "system_check_title": "सिस्टम जांच",
+    "wallet_restored": "बटुआ पुनर्स्थापित किया गया",
+    "wallet_setup": "वॉलेट सेटअप",
+    "toasts": {
+      "need_12_seed_words": "कम से कम 12 बीज शब्द दर्ज करें.",
+      "wif_min_length": "WIF कुंजी कम से कम 51 अक्षर की होनी चाहिए.",
+      "priv_key_hex": "निजी कुंजी 64 हेक्स वर्ण की होनी चाहिए."
     }
   },
   "reputation": {
@@ -982,12 +1010,19 @@
       "response_time_placeholder": "जैसे 1 घंटे के लिए 3600 रु"
     },
     "risk": {
-      "high_disputes": "इस विक्रेता के 10% से अधिक समझौते विवाद में समाप्त हो गए। व्यापार करने से पहले उनके विवाद इतिहास का निरीक्षण करें।",
+      "high_disputes": "More than 10% of this seller's agreements ended in dispute. Inspect their dispute history before trading.",
       "sybil_detected": "ऐसे समझौतों का पता चला जहां खरीदार और विक्रेता एक प्रमुख व्युत्पत्ति जड़ साझा करते प्रतीत होते हैं। यहां बढ़ी हुई संख्या नकली प्रतिष्ठा निर्माण का संकेत दे सकती है।"
     },
     "page_subtitle": "किसी भी इरियम पते या सार्वजनिक कुंजी के लिए ऑन-चेन प्रतिष्ठा स्कोर को क्वेरी करें।",
     "outcome_recorded": "इस विक्रेता के लिए \"{{choice}}\" रिकॉर्ड किया गया",
-    "failed_to_record": "परिणाम रिकॉर्ड करने में विफल"
+    "failed_to_record": "परिणाम रिकॉर्ड करने में विफल",
+    "tooltips": {
+      "help": "प्रतिष्ठा सहायता"
+    },
+    "compare_placeholder": "दूसरे विक्रेता का क्यू-उपसर्ग पता या 64-हेक्स पबकी...",
+    "warnings": {
+      "few_completed": "विक्रेता के पास 3 से कम पूर्ण अनुबंध हैं - उनका स्कोर अनंतिम है और वे प्रतिष्ठा बढ़ाने के लिए बनाई गई एक नई पहचान हो सकते हैं।"
+    }
   },
   "explorer": {
     "page_title": "एक्सप्लोरर",
@@ -1003,7 +1038,13 @@
       "active_miners": "सक्रिय खनिक",
       "next_halving": "अगला पड़ाव: #{{height}}",
       "chain_tip": "चेन टिप",
-      "tip_height": "टिप #{{height}}"
+      "tip_height": "टिप #{{height}}",
+      "network_hashrate": "नेटवर्क हैशरेट",
+      "difficulty_lwma": "कठिनाई (एलडब्ल्यूएमए)",
+      "pow_sub": "-का-प्रमाण काम",
+      "lwma_sub": "एलडब्ल्यूएमए-144 लक्ष्य",
+      "connected_sub": "जुड़े हुए",
+      "recent_blocks_sub": "हाल के ब्लॉक"
     },
     "blocks_table": {
       "height": "ऊंचाई",
@@ -1035,6 +1076,21 @@
     "toasts": {
       "block_not_found": "ब्लॉक {{height}} नोड पर नहीं मिला",
       "block_load_error": "ब्लॉक {{height}} लोड नहीं हो सका: {{reason}}"
+    },
+    "page_title_block_explorer": "एक्सप्लोरर को ब्लॉक करें",
+    "live_badge": "रहना",
+    "synced": "सिंक किया गया",
+    "sync_suffix": "साथ-साथ करना",
+    "loading_chain": "श्रृंखला डेटा लोड हो रहा है...",
+    "node_offline_hint": "नोड ऑफ़लाइन - डैशबोर्ड पर नोड प्रारंभ करें",
+    "start_node_hint": "नेटवर्क आँकड़े देखने के लिए डैशबोर्ड पर नोड प्रारंभ करें",
+    "section_search": "खोज",
+    "section_blocks": "ब्लाकों",
+    "look_up": "ऊपर देखो",
+    "search_results": {
+      "block": "ब्लॉक विवरण",
+      "tx": "लेन-देन",
+      "address": "पते की जानकारी"
     }
   },
   "help": {
@@ -1078,7 +1134,8 @@
       "refunded": "आपके बटुए में वापस कर दिया गया",
       "settlement_hub": "सेटलमेंट हब",
       "review_offer_title": "प्रस्ताव की समीक्षा करें",
-      "fund_title": "फंड एस्क्रो"
+      "fund_title": "फंड एस्क्रो",
+      "monitor_title": "मॉनिटर समझौता"
     },
     "seller": {
       "page_title": "एक प्रस्ताव बनाएं",
@@ -1101,7 +1158,9 @@
         "payment_instructions_placeholder": "खरीदार के लिए बैंक विवरण, क्रिप्टो पता, या अन्य निर्देश…"
       },
       "offer_exported": "प्रस्ताव निर्यात किया गया",
-      "offer_id_copied": "ऑफ़र आईडी कॉपी की गई"
+      "offer_id_copied": "ऑफ़र आईडी कॉपी की गई",
+      "create_your_offer": "अपना प्रस्ताव बनाएं",
+      "share_your_offer": "अपना प्रस्ताव साझा करें"
     }
   },
   "logs": {

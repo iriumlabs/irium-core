@@ -894,10 +894,17 @@
       "threads_label": "المواضيع",
       "stratum_url_label": "عنوان URL للمجمع",
       "stratum_url_placeholder": "طبقة+tcp://pool.example.com:3333",
-      "stratum_worker_label": "عامل",
+      "stratum_worker_label": "اسم العامل",
       "stratum_worker_hint": "التنسيق: your_wallet_address.worker_id (على سبيل المثال، Pxxx…xxxx.rig1)",
       "stratum_password_label": "كلمة مرور المجمع (عادةً \"x\")",
-      "devices_label": "الأجهزة (وحدة معالجة الرسومات المتعددة)"
+      "devices_label": "الأجهزة (وحدة معالجة الرسومات المتعددة)",
+      "threads_label_full": "المواضيع - {{current}} من {{max}} النوى{{suffix}}",
+      "threads_running_suffix": "(جري)",
+      "opencl_platform": "منصة OpenCL",
+      "device": "جهاز",
+      "gpu_address_placeholder": "ص…",
+      "intensity_label": "الشدة — {{value}}%",
+      "pool_preset": "إعداد مسبق للمسبح"
     },
     "found_blocks": {
       "section_title": "تم العثور على كتل",
@@ -919,9 +926,22 @@
       "miner_address_required": "مطلوب عنوان التعدين",
       "miner_address_invalid": "عنوان غير صالح — يجب أن يبدأ بـ Q أو P",
       "stratum_connected": "متصل بالمسبح",
-      "stratum_disconnected": "منفصل عن حمام السباحة"
+      "stratum_disconnected": "منفصل عن حمام السباحة",
+      "address_copied": "تم نسخ العنوان",
+      "tip_hash_copied": "تم نسخ تجزئة النصيحة",
+      "failed_detect_gpus": "فشل في الكشف عن وحدات معالجة الرسومات",
+      "gpu_started": "بدأ منجم GPU",
+      "gpu_stopped": "توقف عامل منجم GPU",
+      "pool_url_required": "مطلوب عنوان URL للمجمع",
+      "worker_required": "مطلوب اسم العامل",
+      "connecting_to_pool": "جارٍ الاتصال بالمسبح…"
     },
-    "page_subtitle": "SHA-256d · وحدة المعالجة المركزية · وحدة معالجة الرسومات · دعم تجمع ASIC"
+    "page_subtitle": "SHA-256d · وحدة المعالجة المركزية · وحدة معالجة الرسومات · دعم تجمع ASIC",
+    "tooltips": {
+      "copy_address": "انسخ العنوان",
+      "copy_full_hash": "نسخ التجزئة الكاملة"
+    },
+    "pool_configuration": "تكوين المجمع"
   },
   "onboarding": {
     "splash_title": "الايريوم كور",
@@ -959,6 +979,14 @@
       "mnemonic_placeholder": "عبارة استرداد BIP39 مفصولة بمسافات.",
       "wif_placeholder": "5J... أو K... أو L...",
       "import_button": "استيراد المحفظة"
+    },
+    "system_check_title": "فحص النظام",
+    "wallet_restored": "تمت استعادة المحفظة",
+    "wallet_setup": "إعداد المحفظة",
+    "toasts": {
+      "need_12_seed_words": "أدخل ما لا يقل عن 12 كلمة أولية.",
+      "wif_min_length": "يجب أن يكون مفتاح WIF 51 حرفًا على الأقل.",
+      "priv_key_hex": "يجب أن يتكون المفتاح الخاص من 64 حرفًا سداسيًا عشريًا."
     }
   },
   "reputation": {
@@ -987,7 +1015,14 @@
     },
     "page_subtitle": "الاستعلام عن نقاط السمعة الموجودة على السلسلة لأي عنوان Irium أو مفتاح عام.",
     "outcome_recorded": "تم تسجيل \"{{choice}}\" لهذا البائع",
-    "failed_to_record": "فشل في تسجيل النتيجة"
+    "failed_to_record": "فشل في تسجيل النتيجة",
+    "tooltips": {
+      "help": "مساعدة السمعة"
+    },
+    "compare_placeholder": "عنوان بادئة Q للبائع الثاني أو مفتاح عمومي مكون من 64 سداسيًا...",
+    "warnings": {
+      "few_completed": "لدى البائع أقل من 3 اتفاقيات مكتملة - درجاتها مؤقتة ويمكن أن تكون هوية جديدة تم إنشاؤها لتضخيم السمعة."
+    }
   },
   "explorer": {
     "page_title": "إكسبلورر",
@@ -1003,7 +1038,13 @@
       "active_miners": "عمال المناجم النشطين",
       "next_halving": "النصف التالي: #{{height}}",
       "chain_tip": "نصيحة السلسلة",
-      "tip_height": "نصيحة #{{height}}"
+      "tip_height": "نصيحة #{{height}}",
+      "network_hashrate": "معدل تجزئة الشبكة",
+      "difficulty_lwma": "الصعوبة (LWMA)",
+      "pow_sub": "إثبات العمل",
+      "lwma_sub": "هدف LWMA-144",
+      "connected_sub": "متصل",
+      "recent_blocks_sub": "الكتل الأخيرة"
     },
     "blocks_table": {
       "height": "ارتفاع",
@@ -1035,6 +1076,21 @@
     "toasts": {
       "block_not_found": "لم يتم العثور على الكتلة {{height}} في العقدة",
       "block_load_error": "تعذر تحميل الكتلة {{height}}: {{reason}}"
+    },
+    "page_title_block_explorer": "كتلة اكسبلورر",
+    "live_badge": "يعيش",
+    "synced": "متزامنة",
+    "sync_suffix": "مزامنة",
+    "loading_chain": "جارٍ تحميل بيانات السلسلة...",
+    "node_offline_hint": "العقدة غير متصلة بالإنترنت — ابدأ العقدة على لوحة المعلومات",
+    "start_node_hint": "ابدأ العقدة على لوحة المعلومات لرؤية إحصائيات الشبكة",
+    "section_search": "يبحث",
+    "section_blocks": "كتل",
+    "look_up": "ابحث عن",
+    "search_results": {
+      "block": "تفاصيل الكتلة",
+      "tx": "عملية",
+      "address": "معلومات العنوان"
     }
   },
   "help": {
@@ -1078,7 +1134,8 @@
       "refunded": "ردها إلى محفظتك",
       "settlement_hub": "محور التسوية",
       "review_offer_title": "مراجعة العرض",
-      "fund_title": "ضمان الصندوق"
+      "fund_title": "ضمان الصندوق",
+      "monitor_title": "اتفاقية المراقبة"
     },
     "seller": {
       "page_title": "إنشاء عرض",
@@ -1101,7 +1158,9 @@
         "payment_instructions_placeholder": "التفاصيل المصرفية أو عنوان التشفير أو تعليمات أخرى للمشتري ..."
       },
       "offer_exported": "تم تصدير العرض",
-      "offer_id_copied": "تم نسخ معرف العرض"
+      "offer_id_copied": "تم نسخ معرف العرض",
+      "create_your_offer": "قم بإنشاء العرض الخاص بك",
+      "share_your_offer": "شارك عرضك"
     }
   },
   "logs": {

@@ -82,7 +82,7 @@
     "peers_label": "ピア",
     "synced": "同期済み",
     "syncing": "同期中",
-    "tip_copied": "ヒントのハッシュがコピーされました",
+    "tip_copied": "チップハッシュがコピーされました",
     "copy_failed": "コピーに失敗しました",
     "mainnet": "メインネット",
     "synced_lower": "同期された",
@@ -889,15 +889,22 @@
       "detect_gpus": "GPUの検出"
     },
     "fields": {
-      "mining_address_label": "採掘住所",
+      "mining_address_label": "マイニングアドレス",
       "mining_address_placeholder": "Irium マイニングアドレス (Q... または P...) を貼り付けてください。",
       "threads_label": "スレッド",
       "stratum_url_label": "プールURL",
       "stratum_url_placeholder": "層+tcp://pool.example.com:3333",
-      "stratum_worker_label": "ワーカー",
+      "stratum_worker_label": "作業者名",
       "stratum_worker_hint": "形式: your_wallet_address.worker_id (例: Pxxx…xxxx.rig1)",
       "stratum_password_label": "プールのパスワード (通常は「x」)",
-      "devices_label": "デバイス (マルチ GPU)"
+      "devices_label": "デバイス (マルチ GPU)",
+      "threads_label_full": "スレッド — {{current}} / {{max}} コア{{suffix}}",
+      "threads_running_suffix": "（走っている）",
+      "opencl_platform": "OpenCLプラットフォーム",
+      "device": "デバイス",
+      "gpu_address_placeholder": "パ…",
+      "intensity_label": "強度 — {{value}}%",
+      "pool_preset": "プールプリセット"
     },
     "found_blocks": {
       "section_title": "見つかったブロック",
@@ -919,9 +926,22 @@
       "miner_address_required": "マイニングアドレスが必要です",
       "miner_address_invalid": "無効なアドレス - Q または P で始まる必要があります",
       "stratum_connected": "プールに接続されています",
-      "stratum_disconnected": "プールから切断されました"
+      "stratum_disconnected": "プールから切断されました",
+      "address_copied": "アドレスをコピーしました",
+      "tip_hash_copied": "チップハッシュがコピーされました",
+      "failed_detect_gpus": "GPUの検出に失敗しました",
+      "gpu_started": "GPUマイナーが開始されました",
+      "gpu_stopped": "GPUマイナーが停止しました",
+      "pool_url_required": "プールの URL が必要です",
+      "worker_required": "作業者名は必須です",
+      "connecting_to_pool": "プールに接続中…"
     },
-    "page_subtitle": "SHA-256d・CPU・GPU・ASICプールのサポート"
+    "page_subtitle": "SHA-256d・CPU・GPU・ASICプールのサポート",
+    "tooltips": {
+      "copy_address": "アドレスをコピーする",
+      "copy_full_hash": "完全なハッシュをコピーする"
+    },
+    "pool_configuration": "プール構成"
   },
   "onboarding": {
     "splash_title": "アイリウムコア",
@@ -959,6 +979,14 @@
       "mnemonic_placeholder": "スペースで区切られた BIP39 リカバリ フレーズ。",
       "wif_placeholder": "5J…またはK…またはL…",
       "import_button": "インポートウォレット"
+    },
+    "system_check_title": "システムチェック",
+    "wallet_restored": "ウォレットが復元されました",
+    "wallet_setup": "ウォレットのセットアップ",
+    "toasts": {
+      "need_12_seed_words": "少なくとも 12 個のシードワードを入力してください。",
+      "wif_min_length": "WIF キーは少なくとも 51 文字である必要があります。",
+      "priv_key_hex": "秘密キーは 64 桁の 16 進文字である必要があります。"
     }
   },
   "reputation": {
@@ -987,7 +1015,14 @@
     },
     "page_subtitle": "Irium アドレスまたは公開キーのオンチェーン レピュテーション スコアをクエリします。",
     "outcome_recorded": "この販売者に対して「{{choice}}」を記録しました",
-    "failed_to_record": "結果の記録に失敗しました"
+    "failed_to_record": "結果の記録に失敗しました",
+    "tooltips": {
+      "help": "評判のヘルプ"
+    },
+    "compare_placeholder": "2 番目の販売者の Q プレフィックス アドレスまたは 64 進数の公開鍵…",
+    "warnings": {
+      "few_completed": "販売者が完了した契約は 3 つ未満です。スコアは暫定的なものであり、評判を高めるために作成された新しいアイデンティティである可能性があります。"
+    }
   },
   "explorer": {
     "page_title": "エクスプローラ",
@@ -1003,7 +1038,13 @@
       "active_miners": "アクティブなマイナー",
       "next_halving": "次の半分: #{{height}}",
       "chain_tip": "チェーンチップ",
-      "tip_height": "ヒント #{{height}}"
+      "tip_height": "ヒント #{{height}}",
+      "network_hashrate": "ネットワークハッシュレート",
+      "difficulty_lwma": "難易度 (LWMA)",
+      "pow_sub": "作業証明",
+      "lwma_sub": "LWMA-144 ターゲット",
+      "connected_sub": "接続されています",
+      "recent_blocks_sub": "最近のブロック"
     },
     "blocks_table": {
       "height": "身長",
@@ -1035,6 +1076,21 @@
     "toasts": {
       "block_not_found": "ブロック {{height}} がノード上に見つかりません",
       "block_load_error": "ブロック {{height}} をロードできませんでした: {{reason}}"
+    },
+    "page_title_block_explorer": "ブロックエクスプローラー",
+    "live_badge": "ライブ",
+    "synced": "同期された",
+    "sync_suffix": "同期する",
+    "loading_chain": "チェーンデータをロード中…",
+    "node_offline_hint": "ノードがオフライン - ダッシュボードでノードを開始します",
+    "start_node_hint": "ダッシュボードでノードを起動してネットワーク統計を確認します",
+    "section_search": "検索",
+    "section_blocks": "ブロック",
+    "look_up": "見上げる",
+    "search_results": {
+      "block": "ブロックの詳細",
+      "tx": "取引",
+      "address": "住所情報"
     }
   },
   "help": {
@@ -1078,7 +1134,8 @@
       "refunded": "ウォレットに返金されました",
       "settlement_hub": "決済ハブ",
       "review_offer_title": "オファーをレビューする",
-      "fund_title": "ファンドエスクロー"
+      "fund_title": "ファンドエスクロー",
+      "monitor_title": "モニター契約"
     },
     "seller": {
       "page_title": "オファーを作成する",
@@ -1101,7 +1158,9 @@
         "payment_instructions_placeholder": "銀行の詳細、暗号通貨アドレス、または購入者向けのその他の指示…"
       },
       "offer_exported": "オファーがエクスポートされました",
-      "offer_id_copied": "オファーIDがコピーされました"
+      "offer_id_copied": "オファーIDがコピーされました",
+      "create_your_offer": "オファーを作成する",
+      "share_your_offer": "オファーを共有する"
     }
   },
   "logs": {

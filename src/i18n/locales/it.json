@@ -894,10 +894,17 @@
       "threads_label": "Discussioni",
       "stratum_url_label": "URL del pool",
       "stratum_url_placeholder": "strato+tcp://pool.example.com:3333",
-      "stratum_worker_label": "Lavoratore",
+      "stratum_worker_label": "Nome del lavoratore",
       "stratum_worker_hint": "Formato: your_wallet_address.worker_id (ad esempio Pxxx…xxxx.rig1)",
       "stratum_password_label": "Password del pool (solitamente \"x\")",
-      "devices_label": "Dispositivi (multi-GPU)"
+      "devices_label": "Dispositivi (multi-GPU)",
+      "threads_label_full": "Thread: {{current}} di {{max}} core{{suffix}}",
+      "threads_running_suffix": "(corsa)",
+      "opencl_platform": "Piattaforma OpenCL",
+      "device": "Dispositivo",
+      "gpu_address_placeholder": "P…",
+      "intensity_label": "Intensità — {{value}}%",
+      "pool_preset": "Preimpostazione della piscina"
     },
     "found_blocks": {
       "section_title": "Blocchi trovati",
@@ -919,9 +926,22 @@
       "miner_address_required": "È richiesto l'indirizzo minerario",
       "miner_address_invalid": "Indirizzo non valido: deve iniziare con Q o P",
       "stratum_connected": "Collegato alla piscina",
-      "stratum_disconnected": "Disconnesso dalla piscina"
+      "stratum_disconnected": "Disconnesso dalla piscina",
+      "address_copied": "Indirizzo copiato",
+      "tip_hash_copied": "Hash del suggerimento copiato",
+      "failed_detect_gpus": "Impossibile rilevare le GPU",
+      "gpu_started": "Avviato il GPU Miner",
+      "gpu_stopped": "Il minatore GPU si è fermato",
+      "pool_url_required": "URL del pool obbligatorio",
+      "worker_required": "Nome del lavoratore obbligatorio",
+      "connecting_to_pool": "Connessione alla piscina..."
     },
-    "page_subtitle": "SHA-256d · CPU · GPU · Supporto pool ASIC"
+    "page_subtitle": "SHA-256d · CPU · GPU · Supporto pool ASIC",
+    "tooltips": {
+      "copy_address": "Copia indirizzo",
+      "copy_full_hash": "Copia l'hash completo"
+    },
+    "pool_configuration": "Configurazione della piscina"
   },
   "onboarding": {
     "splash_title": "Nucleo d'Irio",
@@ -959,6 +979,14 @@
       "mnemonic_placeholder": "Frase di ripristino BIP39 separata da spazi.",
       "wif_placeholder": "5J… o K… o L…",
       "import_button": "Importa portafoglio"
+    },
+    "system_check_title": "Controllo del sistema",
+    "wallet_restored": "Portafoglio restaurato",
+    "wallet_setup": "Configurazione del portafoglio",
+    "toasts": {
+      "need_12_seed_words": "Inserisci almeno 12 parole chiave.",
+      "wif_min_length": "La chiave WIF deve contenere almeno 51 caratteri.",
+      "priv_key_hex": "La chiave privata deve contenere 64 caratteri esadecimali."
     }
   },
   "reputation": {
@@ -987,7 +1015,14 @@
     },
     "page_subtitle": "Interroga il punteggio di reputazione on-chain per qualsiasi indirizzo Irium o chiave pubblica.",
     "outcome_recorded": "Registrato \"{{choice}}\" per questo venditore",
-    "failed_to_record": "Impossibile registrare il risultato"
+    "failed_to_record": "Impossibile registrare il risultato",
+    "tooltips": {
+      "help": "Aiuto per la reputazione"
+    },
+    "compare_placeholder": "Indirizzo con prefisso Q o pubkey di 64 esadecimali del secondo venditore...",
+    "warnings": {
+      "few_completed": "Il venditore ha meno di 3 accordi completati: il loro punteggio è provvisorio e potrebbero essere una nuova identità creata per gonfiare la reputazione."
+    }
   },
   "explorer": {
     "page_title": "Esploratore",
@@ -1003,7 +1038,13 @@
       "active_miners": "Minatori attivi",
       "next_halving": "Prossimo dimezzamento: #{{height}}",
       "chain_tip": "punta della catena",
-      "tip_height": "suggerimento n.{{height}}"
+      "tip_height": "suggerimento n.{{height}}",
+      "network_hashrate": "Hashrate di rete",
+      "difficulty_lwma": "Difficoltà (LWMA)",
+      "pow_sub": "prova di lavoro",
+      "lwma_sub": "Obiettivo LWMA-144",
+      "connected_sub": "collegato",
+      "recent_blocks_sub": "blocchi recenti"
     },
     "blocks_table": {
       "height": "Altezza",
@@ -1035,6 +1076,21 @@
     "toasts": {
       "block_not_found": "Blocco {{height}} non trovato sul nodo",
       "block_load_error": "Impossibile caricare il blocco {{height}}: {{reason}}"
+    },
+    "page_title_block_explorer": "Esplora blocchi",
+    "live_badge": "VIVERE",
+    "synced": "sincronizzato",
+    "sync_suffix": "sincronizzare",
+    "loading_chain": "Caricamento dei dati della catena…",
+    "node_offline_hint": "Nodo offline: avvia il nodo sulla Dashboard",
+    "start_node_hint": "Avvia il nodo sulla Dashboard per visualizzare le statistiche di rete",
+    "section_search": "Ricerca",
+    "section_blocks": "Blocchi",
+    "look_up": "Cercare",
+    "search_results": {
+      "block": "Dettagli blocco",
+      "tx": "Transazione",
+      "address": "Informazioni sull'indirizzo"
     }
   },
   "help": {
@@ -1078,7 +1134,8 @@
       "refunded": "Rimborsato sul tuo portafoglio",
       "settlement_hub": "Centro di insediamento",
       "review_offer_title": "Offerta di revisione",
-      "fund_title": "Deposito di fondi"
+      "fund_title": "Deposito di fondi",
+      "monitor_title": "Monitorare l'accordo"
     },
     "seller": {
       "page_title": "Crea un'offerta",
@@ -1101,7 +1158,9 @@
         "payment_instructions_placeholder": "Coordinate bancarie, indirizzo crittografico o altre istruzioni per l'acquirente..."
       },
       "offer_exported": "Offerta esportata",
-      "offer_id_copied": "ID offerta copiato"
+      "offer_id_copied": "ID offerta copiato",
+      "create_your_offer": "Crea la tua offerta",
+      "share_your_offer": "Condividi la tua offerta"
     }
   },
   "logs": {

@@ -587,7 +587,7 @@
       "funds_released": "Serbest bırakılan fonlar · txid: {{txid}}",
       "release_failed": "Serbest bırakma başarısız oldu",
       "escrow_funded": "Emanet fonlu · txid: {{txid}}",
-      "funding_failed": "Finansman başarısız oldu",
+      "funding_failed": "Funding failed",
       "agreement_imported": "Sözleşme içe aktarıldı: {{id}}",
       "invoice_parse_warning": "İçe aktarıldı ancak önceden doldurma için fatura alanları ayrıştırılamadı",
       "invoice_imported": "Fatura içe aktarıldı",
@@ -889,15 +889,22 @@
       "detect_gpus": "GPU'ları tespit et"
     },
     "fields": {
-      "mining_address_label": "Madencilik adresi",
+      "mining_address_label": "Madencilik Adresi",
       "mining_address_placeholder": "Irium madenciliği adresinizi yapıştırın (Q... veya P...)",
       "threads_label": "Konular",
       "stratum_url_label": "Havuz URL'si",
       "stratum_url_placeholder": "tabaka+tcp://havuz.example.com:3333",
-      "stratum_worker_label": "İşçi",
+      "stratum_worker_label": "Çalışan Adı",
       "stratum_worker_hint": "Format: cüzdan_adresiniz.işçi_kimliği (örn. Pxxx…xxxx.rig1)",
       "stratum_password_label": "Havuz şifresi (genellikle \"x\")",
-      "devices_label": "Cihazlar (çoklu GPU)"
+      "devices_label": "Cihazlar (çoklu GPU)",
+      "threads_label_full": "Konular — {{current}} / {{max}} çekirdek{{suffix}}",
+      "threads_running_suffix": "(koşma)",
+      "opencl_platform": "OpenCL Platformu",
+      "device": "Cihaz",
+      "gpu_address_placeholder": "P…",
+      "intensity_label": "Yoğunluk — {{value}}%",
+      "pool_preset": "Havuz Ön Ayarı"
     },
     "found_blocks": {
       "section_title": "Bulunan Bloklar",
@@ -919,9 +926,22 @@
       "miner_address_required": "Madencilik adresi gerekli",
       "miner_address_invalid": "Geçersiz adres — Q veya P ile başlamalıdır",
       "stratum_connected": "Havuza bağlı",
-      "stratum_disconnected": "Havuz bağlantısı kesildi"
+      "stratum_disconnected": "Havuz bağlantısı kesildi",
+      "address_copied": "Adres kopyalandı",
+      "tip_hash_copied": "İpucu karması kopyalandı",
+      "failed_detect_gpus": "GPU'lar algılanamadı",
+      "gpu_started": "GPU madencisi başlatıldı",
+      "gpu_stopped": "GPU madencisi durduruldu",
+      "pool_url_required": "Havuz URL'si gerekli",
+      "worker_required": "Çalışan adı gerekli",
+      "connecting_to_pool": "Havuza bağlanılıyor…"
     },
-    "page_subtitle": "SHA-256d · CPU · GPU · ASIC havuz desteği"
+    "page_subtitle": "SHA-256d · CPU · GPU · ASIC havuz desteği",
+    "tooltips": {
+      "copy_address": "Adresi kopyala",
+      "copy_full_hash": "Karmanın tamamını kopyala"
+    },
+    "pool_configuration": "Havuz Yapılandırması"
   },
   "onboarding": {
     "splash_title": "İryum Çekirdeği",
@@ -959,6 +979,14 @@
       "mnemonic_placeholder": "BIP39 kurtarma ifadesi boşluklarla ayrılmıştır.",
       "wif_placeholder": "5J… veya K… veya L…",
       "import_button": "Cüzdanı içe aktar"
+    },
+    "system_check_title": "Sistem Kontrolü",
+    "wallet_restored": "Cüzdan Geri Yüklendi",
+    "wallet_setup": "Cüzdan Kurulumu",
+    "toasts": {
+      "need_12_seed_words": "En az 12 başlangıç ​​kelime girin.",
+      "wif_min_length": "WIF anahtarı en az 51 karakter olmalıdır.",
+      "priv_key_hex": "Özel anahtar 64 onaltılık karakterden oluşmalıdır."
     }
   },
   "reputation": {
@@ -987,7 +1015,14 @@
     },
     "page_subtitle": "Herhangi bir Irium adresi veya genel anahtar için zincir üstü itibar puanını sorgulayın.",
     "outcome_recorded": "Bu satıcı için \"{{choice}}\" kaydedildi",
-    "failed_to_record": "Sonuç kaydedilemedi"
+    "failed_to_record": "Sonuç kaydedilemedi",
+    "tooltips": {
+      "help": "İtibar yardımı"
+    },
+    "compare_placeholder": "İkinci satıcının Q-önek adresi veya 64-hex pubkey'i…",
+    "warnings": {
+      "few_completed": "Satıcının tamamlanmış sözleşme sayısı 3'ten azdır; bunların puanları geçicidir ve itibarı artırmak için oluşturulmuş yeni bir kimlik olabilirler."
+    }
   },
   "explorer": {
     "page_title": "Kaşif",
@@ -1003,7 +1038,13 @@
       "active_miners": "Aktif Madenciler",
       "next_halving": "Sonraki yarılanma: #{{height}}",
       "chain_tip": "zincir ucu",
-      "tip_height": "ipucu #{{height}}"
+      "tip_height": "ipucu #{{height}}",
+      "network_hashrate": "Ağ Hash Oranı",
+      "difficulty_lwma": "Zorluk (LWMA)",
+      "pow_sub": "iş kanıtı",
+      "lwma_sub": "LWMA-144 hedefi",
+      "connected_sub": "bağlı",
+      "recent_blocks_sub": "son bloklar"
     },
     "blocks_table": {
       "height": "Yükseklik",
@@ -1035,6 +1076,21 @@
     "toasts": {
       "block_not_found": "Düğümde {{height}} bloğu bulunamadı",
       "block_load_error": "{{height}} bloğu yüklenemedi: {{reason}}"
+    },
+    "page_title_block_explorer": "Blok Gezgini",
+    "live_badge": "CANLI",
+    "synced": "senkronize edildi",
+    "sync_suffix": "senkronizasyon",
+    "loading_chain": "Zincir verileri yükleniyor…",
+    "node_offline_hint": "Düğüm çevrimdışı — Düğümü Kontrol Panelinde başlatın",
+    "start_node_hint": "Ağ istatistiklerini görmek için Kontrol Panelinde düğümü başlatın",
+    "section_search": "Aramak",
+    "section_blocks": "Bloklar",
+    "look_up": "Bakmak",
+    "search_results": {
+      "block": "Blok Ayrıntıları",
+      "tx": "İşlem",
+      "address": "Adres Bilgileri"
     }
   },
   "help": {
@@ -1078,7 +1134,8 @@
       "refunded": "Cüzdanınıza iade edildi",
       "settlement_hub": "Yerleşim Merkezi",
       "review_offer_title": "Teklifi İncele",
-      "fund_title": "Fon Emanet"
+      "fund_title": "Fon Emanet",
+      "monitor_title": "Sözleşmeyi İzle"
     },
     "seller": {
       "page_title": "Teklif Oluştur",
@@ -1101,7 +1158,9 @@
         "payment_instructions_placeholder": "Alıcıya yönelik banka bilgileri, kripto adresi veya diğer talimatlar…"
       },
       "offer_exported": "Teklif dışa aktarıldı",
-      "offer_id_copied": "Teklif kimliği kopyalandı"
+      "offer_id_copied": "Teklif kimliği kopyalandı",
+      "create_your_offer": "Teklifinizi Oluşturun",
+      "share_your_offer": "Teklifinizi Paylaşın"
     }
   },
   "logs": {

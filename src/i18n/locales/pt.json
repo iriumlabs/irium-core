@@ -894,10 +894,17 @@
       "threads_label": "Tópicos",
       "stratum_url_label": "URL do conjunto",
       "stratum_url_placeholder": "estrato+tcp://pool.example.com:3333",
-      "stratum_worker_label": "Trabalhador",
+      "stratum_worker_label": "Nome do trabalhador",
       "stratum_worker_hint": "Formato: your_wallet_address.worker_id (por exemplo, Pxxx…xxxx.rig1)",
       "stratum_password_label": "Senha do pool (geralmente \"x\")",
-      "devices_label": "Dispositivos (multi-GPU)"
+      "devices_label": "Dispositivos (multi-GPU)",
+      "threads_label_full": "Threads — {{current}} de {{max}} núcleos{{suffix}}",
+      "threads_running_suffix": "(correndo)",
+      "opencl_platform": "Plataforma OpenCL",
+      "device": "Dispositivo",
+      "gpu_address_placeholder": "P…",
+      "intensity_label": "Intensidade — {{value}}%",
+      "pool_preset": "Predefinição de pool"
     },
     "found_blocks": {
       "section_title": "Blocos encontrados",
@@ -919,9 +926,22 @@
       "miner_address_required": "Endereço de mineração necessário",
       "miner_address_invalid": "Endereço inválido — deve começar com Q ou P",
       "stratum_connected": "Conectado à piscina",
-      "stratum_disconnected": "Desconectado da piscina"
+      "stratum_disconnected": "Desconectado da piscina",
+      "address_copied": "Endereço copiado",
+      "tip_hash_copied": "Hash de dica copiado",
+      "failed_detect_gpus": "Falha ao detectar GPUs",
+      "gpu_started": "Mineiro de GPU iniciado",
+      "gpu_stopped": "Mineiro GPU parado",
+      "pool_url_required": "URL do pool obrigatório",
+      "worker_required": "Nome do trabalhador obrigatório",
+      "connecting_to_pool": "Conectando à piscina…"
     },
-    "page_subtitle": "SHA-256d · CPU · GPU · Suporte a pool ASIC"
+    "page_subtitle": "SHA-256d · CPU · GPU · Suporte a pool ASIC",
+    "tooltips": {
+      "copy_address": "Copiar endereço",
+      "copy_full_hash": "Copie o hash completo"
+    },
+    "pool_configuration": "Configuração do pool"
   },
   "onboarding": {
     "splash_title": "Núcleo de Írio",
@@ -959,6 +979,14 @@
       "mnemonic_placeholder": "Frase de recuperação BIP39 separada por espaços.",
       "wif_placeholder": "5J… ou K… ou L…",
       "import_button": "Importar carteira"
+    },
+    "system_check_title": "Verificação do sistema",
+    "wallet_restored": "Carteira restaurada",
+    "wallet_setup": "Configuração da carteira",
+    "toasts": {
+      "need_12_seed_words": "Insira pelo menos 12 palavras-semente.",
+      "wif_min_length": "A chave WIF deve ter pelo menos 51 caracteres.",
+      "priv_key_hex": "A chave privada deve ter 64 caracteres hexadecimais."
     }
   },
   "reputation": {
@@ -987,7 +1015,14 @@
     },
     "page_subtitle": "Consulte a pontuação de reputação na cadeia para qualquer endereço Irium ou chave pública.",
     "outcome_recorded": "Gravado \"{{choice}}\" para este vendedor",
-    "failed_to_record": "Falha ao registrar o resultado"
+    "failed_to_record": "Falha ao registrar o resultado",
+    "tooltips": {
+      "help": "Ajuda de reputação"
+    },
+    "compare_placeholder": "Endereço de prefixo Q do segundo vendedor ou pubkey de 64 hexadecimais…",
+    "warnings": {
+      "few_completed": "O vendedor tem menos de três contratos concluídos — sua pontuação é provisória e pode ser uma nova identidade criada para aumentar a reputação."
+    }
   },
   "explorer": {
     "page_title": "Explorador",
@@ -1003,7 +1038,13 @@
       "active_miners": "Mineiros ativos",
       "next_halving": "Próxima metade: #{{height}}",
       "chain_tip": "ponta da corrente",
-      "tip_height": "dica #{{height}}"
+      "tip_height": "dica #{{height}}",
+      "network_hashrate": "Taxa de hash da rede",
+      "difficulty_lwma": "Dificuldade (LWMA)",
+      "pow_sub": "prova de trabalho",
+      "lwma_sub": "Alvo LWMA-144",
+      "connected_sub": "conectado",
+      "recent_blocks_sub": "blocos recentes"
     },
     "blocks_table": {
       "height": "Altura",
@@ -1035,6 +1076,21 @@
     "toasts": {
       "block_not_found": "Bloco {{height}} não encontrado no nó",
       "block_load_error": "Não foi possível carregar o bloco {{height}}: {{reason}}"
+    },
+    "page_title_block_explorer": "Explorador de blocos",
+    "live_badge": "AO VIVO",
+    "synced": "sincronizado",
+    "sync_suffix": "sincronizar",
+    "loading_chain": "Carregando dados da cadeia…",
+    "node_offline_hint": "Nó offline – inicie o nó no Dashboard",
+    "start_node_hint": "Inicie o nó no Dashboard para ver as estatísticas da rede",
+    "section_search": "Procurar",
+    "section_blocks": "Blocos",
+    "look_up": "Olhe para cima",
+    "search_results": {
+      "block": "Detalhes do bloco",
+      "tx": "Transação",
+      "address": "Informações de endereço"
     }
   },
   "help": {
@@ -1078,7 +1134,8 @@
       "refunded": "Reembolsado para sua carteira",
       "settlement_hub": "Centro de Liquidação",
       "review_offer_title": "Revisão da oferta",
-      "fund_title": "Garantia de fundos"
+      "fund_title": "Garantia de fundos",
+      "monitor_title": "Contrato de Monitoramento"
     },
     "seller": {
       "page_title": "Crie uma oferta",
@@ -1101,7 +1158,9 @@
         "payment_instructions_placeholder": "Dados bancários, endereço criptográfico ou outras instruções para o comprador…"
       },
       "offer_exported": "Oferta exportada",
-      "offer_id_copied": "ID da oferta copiado"
+      "offer_id_copied": "ID da oferta copiado",
+      "create_your_offer": "Crie sua oferta",
+      "share_your_offer": "Compartilhe sua oferta"
     }
   },
   "logs": {

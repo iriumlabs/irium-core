@@ -106,6 +106,7 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
 // location.state.openBlockHeight, which opens BlockDetailModal on the
 // Explorer page (see Explorer.tsx Option C deep-link useEffect).
 function FoundBlocksList() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [blocks, setBlocks] = useState<FoundBlock[]>([]);
 
@@ -158,7 +159,7 @@ function FoundBlocksList() {
                 })}
                 className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs cursor-pointer hover:bg-white/5 transition-colors"
                 style={{ background: 'rgba(110,198,255,0.04)', border: '1px solid rgba(110,198,255,0.10)' }}
-                title="Open this block in the Explorer"
+                title={t('miner.found_blocks.open_in_explorer_tooltip')}
               >
                 <span
                   className="font-mono font-semibold flex-shrink-0"
@@ -204,6 +205,7 @@ function FoundBlocksList() {
 // ── CPU MINER TAB ─────────────────────────────────────────────
 
 function CpuMinerTab() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   // Status, history, and core count come from the global store so navigating
   // away and back doesn't reset the hashrate chart or status badges. The
@@ -270,12 +272,12 @@ function CpuMinerTab() {
 
   const handleStart = async () => {
     const addr = address.trim();
-    if (!addr) { toast.error('Mining address required'); return; }
-    if (!/^[QP]/.test(addr)) { toast.error('Invalid address — must start with Q or P'); return; }
+    if (!addr) { toast.error(t('miner.toasts.miner_address_required')); return; }
+    if (!/^[QP]/.test(addr)) { toast.error(t('miner.toasts.miner_address_invalid')); return; }
     setStartLoading(true);
     try {
       await miner.start(addr, threads);
-      toast.success('CPU miner started');
+      toast.success(t('miner.toasts.miner_started'));
     } catch (e) { toast.error(String(e)); }
     finally { setStartLoading(false); }
   };
@@ -284,7 +286,7 @@ function CpuMinerTab() {
     setShowStopConfirm(false);
     try {
       await miner.stop();
-      toast.success('Miner stopped');
+      toast.success(t('miner.toasts.miner_stopped'));
       resetMinerHistory();
     } catch (e) { toast.error(String(e)); }
   };
@@ -338,11 +340,11 @@ function CpuMinerTab() {
                       onClick={() => {
                         if (status?.address) {
                           navigator.clipboard.writeText(status.address);
-                          toast.success('Address copied');
+                          toast.success(t('miner.toasts.address_copied'));
                         }
                       }}
                       className="text-white/40 hover:text-white/85 transition-colors flex-shrink-0"
-                      title="Copy address"
+                      title={t('miner.tooltips.copy_address')}
                     >
                       <Copy size={12} />
                     </button>
@@ -415,10 +417,10 @@ function CpuMinerTab() {
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(netInfo.tip_hash);
-                        toast.success('Tip hash copied');
+                        toast.success(t('miner.toasts.tip_hash_copied'));
                       }}
                       className="text-white/40 hover:text-white/85 transition-colors flex-shrink-0"
-                      title="Copy full hash"
+                      title={t('miner.tooltips.copy_full_hash')}
                     >
                       <Copy size={11} />
                     </button>
@@ -510,14 +512,14 @@ function CpuMinerTab() {
 
       {/* Config */}
       <div className="card p-5 space-y-4">
-        <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>Configuration</h3>
+        <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>{t('miner.configuration')}</h3>
 
         <div>
-          <label className="label">Mining Address</label>
+          <label className="label">{t('miner.fields.mining_address_label')}</label>
           <input
             value={address}
             onChange={e => setAddress(e.target.value)}
-            placeholder="Paste your Irium mining address (Q... or P...)"
+            placeholder={t('miner.fields.mining_address_placeholder')}
             className="input"
           />
           <button onClick={() => navigate('/wallet')} className="mt-1.5 flex items-center gap-1 text-xs transition-colors" style={{ color: '#6ec6ff' }}>
@@ -526,7 +528,7 @@ function CpuMinerTab() {
         </div>
 
         <div>
-          <label className="label">Threads — {displayThreads} of {maxThreads} cores{status?.running ? ' (running)' : ''}</label>
+          <label className="label">{t('miner.fields.threads_label_full', { current: displayThreads, max: maxThreads, suffix: status?.running ? ' ' + t('miner.fields.threads_running_suffix') : '' })}</label>
           <input
             type="range" min={1} max={maxThreads} value={displayThreads}
             onChange={e => { setThreads(parseInt(e.target.value)); setThreadsTouched(true); }}
@@ -590,6 +592,7 @@ function CpuMinerTab() {
 // ── GPU MINER TAB ─────────────────────────────────────────────
 
 function GpuMinerTab() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const status              = useStore((s) => s.gpuMinerStatus);
   const history             = useStore((s) => s.gpuMinerHistory);
@@ -620,7 +623,7 @@ function GpuMinerTab() {
       if (openModal) setShowModal(true);
     } catch {
       setGpuPlatforms([]);
-      if (openModal) toast.error('Failed to detect GPUs');
+      if (openModal) toast.error(t('miner.toasts.failed_detect_gpus'));
     } finally {
       setDetecting(false);
     }
@@ -671,8 +674,8 @@ function GpuMinerTab() {
 
   const handleStart = async () => {
     const addr = address.trim();
-    if (!addr) { toast.error('Mining address required'); return; }
-    if (!/^[QP]/.test(addr)) { toast.error('Invalid address — must start with Q or P'); return; }
+    if (!addr) { toast.error(t('miner.toasts.miner_address_required')); return; }
+    if (!/^[QP]/.test(addr)) { toast.error(t('miner.toasts.miner_address_invalid')); return; }
     setStartLoading(true);
     try {
       const platformSel = (gpuPlatforms && gpuPlatforms.length > 0)
@@ -681,7 +684,7 @@ function GpuMinerTab() {
       const deviceIdxs = selectedDeviceIdxs.length > 0 ? selectedDeviceIdxs : [0];
       if (selectedDeviceIdxs.length === 0) toast('No device selected — using default device 0', { icon: '⚠️' });
       await gpuMiner.start(addr, platformSel, deviceIdxs, intensity);
-      toast.success('GPU miner started');
+      toast.success(t('miner.toasts.gpu_started'));
     } catch (e) {
       const msg = String(e);
       if (msg.includes('already running')) { toast.error(msg); } else { setShowOpenCLError(true); }
@@ -693,7 +696,7 @@ function GpuMinerTab() {
     setShowStopConfirm(false);
     try {
       await gpuMiner.stop();
-      toast.success('GPU miner stopped');
+      toast.success(t('miner.toasts.gpu_stopped'));
       resetGpuMinerHistory();
     } catch (e) { toast.error(String(e)); }
   };
@@ -768,10 +771,10 @@ function GpuMinerTab() {
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(netInfo.tip_hash);
-                        toast.success('Tip hash copied');
+                        toast.success(t('miner.toasts.tip_hash_copied'));
                       }}
                       className="text-white/40 hover:text-white/85 transition-colors flex-shrink-0"
-                      title="Copy full hash"
+                      title={t('miner.tooltips.copy_full_hash')}
                     >
                       <Copy size={11} />
                     </button>
@@ -852,7 +855,7 @@ function GpuMinerTab() {
       <div className="card p-5 space-y-4">
         {/* Header row with Detect button */}
         <div className="flex items-center justify-between">
-          <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>Configuration</h3>
+          <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>{t('miner.configuration')}</h3>
           <button
             onClick={() => handleDetect(true)}
             disabled={detecting}
@@ -898,7 +901,7 @@ function GpuMinerTab() {
           <>
             {/* ── Platform dropdown ── */}
             <div>
-              <label className="label">OpenCL Platform</label>
+              <label className="label">{t('miner.fields.opencl_platform')}</label>
               <div className="relative">
                 <select
                   value={selectedPlatformIdx}
@@ -924,7 +927,7 @@ function GpuMinerTab() {
             {selectedPlatform && selectedPlatform.devices.length > 1 ? (
               /* Multi-GPU: checkboxes */
               <div>
-                <label className="label">Devices (multi-GPU)</label>
+                <label className="label">{t('miner.fields.devices_label')}</label>
                 <div className="space-y-2">
                   {selectedPlatform.devices.map((d) => {
                     const checked = selectedDeviceIdxs.includes(d.index);
@@ -959,7 +962,7 @@ function GpuMinerTab() {
             ) : selectedPlatform?.devices.length === 1 ? (
               /* Single device: just show the name */
               <div>
-                <label className="label">Device</label>
+                <label className="label">{t('miner.fields.device')}</label>
                 <div
                   className="flex items-center gap-2 rounded-lg px-3 py-2"
                   style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
@@ -974,8 +977,8 @@ function GpuMinerTab() {
 
         {/* Mining address */}
         <div>
-          <label className="label">Mining Address</label>
-          <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="P…" className="input" />
+          <label className="label">{t('miner.fields.mining_address_label')}</label>
+          <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t('miner.fields.gpu_address_placeholder')} className="input" />
           <button onClick={() => navigate('/wallet')} className="mt-1.5 flex items-center gap-1 text-xs transition-colors" style={{ color: '#6ec6ff' }}>
             View wallet <ArrowRight size={11} />
           </button>
@@ -983,7 +986,7 @@ function GpuMinerTab() {
 
         {/* Intensity */}
         <div>
-          <label className="label">Intensity — {intensity}%</label>
+          <label className="label">{t('miner.fields.intensity_label', { value: intensity })}</label>
           <input
             type="range" min={10} max={100} step={5} value={intensity}
             onChange={(e) => setIntensity(parseInt(e.target.value))}
@@ -1175,6 +1178,7 @@ const PRESET_POOLS = [
 ];
 
 function StratumTab() {
+  const { t } = useTranslation();
   // Status comes from the global poll, so connection state survives nav.
   const status = useStore((s) => s.stratumStatus);
 
@@ -1190,12 +1194,12 @@ function StratumTab() {
   const loading = status === null;
 
   const handleConnect = async () => {
-    if (!poolUrl.trim()) { toast.error('Pool URL required'); return; }
-    if (!worker.trim()) { toast.error('Worker name required'); return; }
+    if (!poolUrl.trim()) { toast.error(t('miner.toasts.pool_url_required')); return; }
+    if (!worker.trim()) { toast.error(t('miner.toasts.worker_required')); return; }
     setConnectLoading(true);
     try {
       await stratum.connect(poolUrl.trim(), worker.trim(), password || 'x');
-      toast.success('Connecting to pool…');
+      toast.success(t('miner.toasts.connecting_to_pool'));
     } catch (e) { toast.error(String(e)); }
     finally { setConnectLoading(false); }
   };
@@ -1204,7 +1208,7 @@ function StratumTab() {
     setShowDisconnectConfirm(false);
     try {
       await stratum.disconnect();
-      toast.success('Disconnected from pool');
+      toast.success(t('miner.toasts.stratum_disconnected'));
     } catch (e) { toast.error(String(e)); }
   };
 
@@ -1281,11 +1285,11 @@ function StratumTab() {
 
       {/* Config */}
       <div className="card p-5 space-y-4">
-        <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>Pool Configuration</h3>
+        <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>{t('miner.pool_configuration')}</h3>
 
         {/* Preset buttons */}
         <div>
-          <label className="label">Pool Preset</label>
+          <label className="label">{t('miner.fields.pool_preset')}</label>
           <div className="flex gap-2 flex-wrap">
             {PRESET_POOLS.map((p, i) => (
               <button
@@ -1309,20 +1313,20 @@ function StratumTab() {
 
         {/* Pool URL */}
         <div>
-          <label className="label">Pool URL</label>
+          <label className="label">{t('miner.fields.stratum_url_label')}</label>
           <input value={poolUrl} onChange={e => { setPoolUrl(e.target.value); setSelectedPreset(3); }} placeholder="stratum+tcp://pool.example.com:3333" className="input" />
         </div>
 
         {/* Worker */}
         <div>
-          <label className="label">Worker Name</label>
+          <label className="label">{t('miner.fields.stratum_worker_label')}</label>
           <input value={worker} onChange={e => setWorker(e.target.value)} placeholder="walletAddress.workerName" className="input" />
           <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Format: your_wallet_address.worker_id (e.g. Pxxx…xxxx.rig1)</p>
         </div>
 
         {/* Password */}
         <div>
-          <label className="label">Pool password (usually "x")</label>
+          <label className="label">{t('miner.fields.stratum_password_label')}</label>
           <input value={password} onChange={e => setPassword(e.target.value)} placeholder="x" className="input" />
           <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Leave blank to use "x" (the default for most pools)</p>
         </div>

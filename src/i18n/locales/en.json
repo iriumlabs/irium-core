@@ -887,15 +887,22 @@
       "detect_gpus": "Detect GPUs"
     },
     "fields": {
-      "mining_address_label": "Mining address",
+      "mining_address_label": "Mining Address",
       "mining_address_placeholder": "Paste your Irium mining address (Q... or P...)",
       "threads_label": "Threads",
       "stratum_url_label": "Pool URL",
       "stratum_url_placeholder": "stratum+tcp://pool.example.com:3333",
-      "stratum_worker_label": "Worker",
+      "stratum_worker_label": "Worker Name",
       "stratum_worker_hint": "Format: your_wallet_address.worker_id (e.g. Pxxx…xxxx.rig1)",
       "stratum_password_label": "Pool password (usually \"x\")",
-      "devices_label": "Devices (multi-GPU)"
+      "devices_label": "Devices (multi-GPU)",
+      "threads_label_full": "Threads — {{current}} of {{max}} cores{{suffix}}",
+      "threads_running_suffix": "(running)",
+      "opencl_platform": "OpenCL Platform",
+      "device": "Device",
+      "gpu_address_placeholder": "P…",
+      "intensity_label": "Intensity — {{value}}%",
+      "pool_preset": "Pool Preset"
     },
     "found_blocks": {
       "section_title": "Found Blocks",
@@ -917,9 +924,22 @@
       "miner_address_required": "Mining address required",
       "miner_address_invalid": "Invalid address — must start with Q or P",
       "stratum_connected": "Connected to pool",
-      "stratum_disconnected": "Disconnected from pool"
+      "stratum_disconnected": "Disconnected from pool",
+      "address_copied": "Address copied",
+      "tip_hash_copied": "Tip hash copied",
+      "failed_detect_gpus": "Failed to detect GPUs",
+      "gpu_started": "GPU miner started",
+      "gpu_stopped": "GPU miner stopped",
+      "pool_url_required": "Pool URL required",
+      "worker_required": "Worker name required",
+      "connecting_to_pool": "Connecting to pool…"
     },
-    "page_subtitle": "SHA-256d · CPU · GPU · ASIC pool support"
+    "page_subtitle": "SHA-256d · CPU · GPU · ASIC pool support",
+    "tooltips": {
+      "copy_address": "Copy address",
+      "copy_full_hash": "Copy full hash"
+    },
+    "pool_configuration": "Pool Configuration"
   },
   "onboarding": {
     "splash_title": "Irium Core",
@@ -957,6 +977,14 @@
       "mnemonic_placeholder": "BIP39 recovery phrase separated by spaces.",
       "wif_placeholder": "5J… or K… or L…",
       "import_button": "Import wallet"
+    },
+    "system_check_title": "System Check",
+    "wallet_restored": "Wallet Restored",
+    "wallet_setup": "Wallet Setup",
+    "toasts": {
+      "need_12_seed_words": "Enter at least 12 seed words.",
+      "wif_min_length": "WIF key should be at least 51 characters.",
+      "priv_key_hex": "Private key must be 64 hex characters."
     }
   },
   "reputation": {
@@ -985,7 +1013,14 @@
     },
     "page_subtitle": "Query the on-chain reputation score for any Irium address or public key.",
     "outcome_recorded": "Recorded \"{{choice}}\" for this seller",
-    "failed_to_record": "Failed to record outcome"
+    "failed_to_record": "Failed to record outcome",
+    "tooltips": {
+      "help": "Reputation help"
+    },
+    "compare_placeholder": "Second seller's Q-prefix address or 64-hex pubkey…",
+    "warnings": {
+      "few_completed": "Seller has fewer than 3 completed agreements — their score is provisional and they could be a new identity created to inflate reputation."
+    }
   },
   "explorer": {
     "page_title": "Explorer",
@@ -1001,7 +1036,13 @@
       "active_miners": "Active Miners",
       "next_halving": "Next halving: #{{height}}",
       "chain_tip": "chain tip",
-      "tip_height": "tip #{{height}}"
+      "tip_height": "tip #{{height}}",
+      "network_hashrate": "Network Hashrate",
+      "difficulty_lwma": "Difficulty (LWMA)",
+      "pow_sub": "proof-of-work",
+      "lwma_sub": "LWMA-144 target",
+      "connected_sub": "connected",
+      "recent_blocks_sub": "recent blocks"
     },
     "blocks_table": {
       "height": "Height",
@@ -1033,6 +1074,21 @@
     "toasts": {
       "block_not_found": "Block {{height}} not found on the node",
       "block_load_error": "Couldn't load block {{height}}: {{reason}}"
+    },
+    "page_title_block_explorer": "Block Explorer",
+    "live_badge": "LIVE",
+    "synced": "synced",
+    "sync_suffix": "sync",
+    "loading_chain": "Loading chain data…",
+    "node_offline_hint": "Node offline — start node on Dashboard",
+    "start_node_hint": "Start the node on the Dashboard to see network stats",
+    "section_search": "Search",
+    "section_blocks": "Blocks",
+    "look_up": "Look up",
+    "search_results": {
+      "block": "Block Details",
+      "tx": "Transaction",
+      "address": "Address Info"
     }
   },
   "help": {
@@ -1076,7 +1132,8 @@
       "refunded": "Refunded to your wallet",
       "settlement_hub": "Settlement Hub",
       "review_offer_title": "Review Offer",
-      "fund_title": "Fund Escrow"
+      "fund_title": "Fund Escrow",
+      "monitor_title": "Monitor Agreement"
     },
     "seller": {
       "page_title": "Create an Offer",
@@ -1099,7 +1156,9 @@
         "payment_instructions_placeholder": "Bank details, crypto address, or other instructions for the buyer…"
       },
       "offer_exported": "Offer exported",
-      "offer_id_copied": "Offer ID copied"
+      "offer_id_copied": "Offer ID copied",
+      "create_your_offer": "Create Your Offer",
+      "share_your_offer": "Share Your Offer"
     }
   },
   "logs": {

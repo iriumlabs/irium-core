@@ -894,10 +894,17 @@
       "threads_label": "Sujets",
       "stratum_url_label": "URL du pool",
       "stratum_url_placeholder": "strate+tcp://pool.example.com:3333",
-      "stratum_worker_label": "Travailleur",
+      "stratum_worker_label": "Nom du travailleur",
       "stratum_worker_hint": "Format : your_wallet_address.worker_id (par exemple Pxxx…xxxx.rig1)",
       "stratum_password_label": "Mot de passe du pool (généralement \"x\")",
-      "devices_label": "Appareils (multi-GPU)"
+      "devices_label": "Appareils (multi-GPU)",
+      "threads_label_full": "Fils — {{current}} sur {{max}} cœurs{{suffix}}",
+      "threads_running_suffix": "(en cours d'exécution)",
+      "opencl_platform": "Plateforme OpenCL",
+      "device": "Appareil",
+      "gpu_address_placeholder": "P…",
+      "intensity_label": "Intensité — {{value}}%",
+      "pool_preset": "Préréglage de piscine"
     },
     "found_blocks": {
       "section_title": "Blocs trouvés",
@@ -919,9 +926,22 @@
       "miner_address_required": "Adresse minière requise",
       "miner_address_invalid": "Adresse invalide – doit commencer par Q ou P",
       "stratum_connected": "Connecté à la piscine",
-      "stratum_disconnected": "Déconnecté de la piscine"
+      "stratum_disconnected": "Déconnecté de la piscine",
+      "address_copied": "Adresse copiée",
+      "tip_hash_copied": "Hachage de pointe copié",
+      "failed_detect_gpus": "Échec de la détection des GPU",
+      "gpu_started": "Le mineur GPU a démarré",
+      "gpu_stopped": "Le mineur GPU s'est arrêté",
+      "pool_url_required": "URL du pool requise",
+      "worker_required": "Nom du travailleur requis",
+      "connecting_to_pool": "Connexion à la piscine…"
     },
-    "page_subtitle": "SHA-256d · CPU · GPU · Prise en charge du pool ASIC"
+    "page_subtitle": "SHA-256d · CPU · GPU · Prise en charge du pool ASIC",
+    "tooltips": {
+      "copy_address": "Copier l'adresse",
+      "copy_full_hash": "Copier le hachage complet"
+    },
+    "pool_configuration": "Configuration du pool"
   },
   "onboarding": {
     "splash_title": "Noyau d'Irium",
@@ -959,6 +979,14 @@
       "mnemonic_placeholder": "Phrase de récupération BIP39 séparée par des espaces.",
       "wif_placeholder": "5J… ou K… ou L…",
       "import_button": "Importer un portefeuille"
+    },
+    "system_check_title": "Vérification du système",
+    "wallet_restored": "Portefeuille restauré",
+    "wallet_setup": "Configuration du portefeuille",
+    "toasts": {
+      "need_12_seed_words": "Entrez au moins 12 mots de départ.",
+      "wif_min_length": "La clé WIF doit comporter au moins 51 caractères.",
+      "priv_key_hex": "La clé privée doit comporter 64 caractères hexadécimaux."
     }
   },
   "reputation": {
@@ -987,7 +1015,14 @@
     },
     "page_subtitle": "Interrogez le score de réputation en chaîne pour n’importe quelle adresse ou clé publique Irium.",
     "outcome_recorded": "\"{{choice}}\" enregistré pour ce vendeur",
-    "failed_to_record": "Échec de l'enregistrement du résultat"
+    "failed_to_record": "Échec de l'enregistrement du résultat",
+    "tooltips": {
+      "help": "Aide à la réputation"
+    },
+    "compare_placeholder": "Adresse du préfixe Q du deuxième vendeur ou clé publique de 64 hexadécimaux…",
+    "warnings": {
+      "few_completed": "Le vendeur a moins de trois accords conclus : leur score est provisoire et il pourrait s'agir d'une nouvelle identité créée pour gonfler sa réputation."
+    }
   },
   "explorer": {
     "page_title": "Explorateur",
@@ -1003,7 +1038,13 @@
       "active_miners": "Mineurs actifs",
       "next_halving": "Prochaine réduction de moitié : #{{height}}",
       "chain_tip": "bout de chaîne",
-      "tip_height": "conseil n°{{height}}"
+      "tip_height": "conseil n°{{height}}",
+      "network_hashrate": "Taux de hachage du réseau",
+      "difficulty_lwma": "Difficulté (LWMA)",
+      "pow_sub": "preuve de travail",
+      "lwma_sub": "Cible LWMA-144",
+      "connected_sub": "connecté",
+      "recent_blocks_sub": "blocs récents"
     },
     "blocks_table": {
       "height": "Hauteur",
@@ -1035,6 +1076,21 @@
     "toasts": {
       "block_not_found": "Bloc {{height}} introuvable sur le nœud",
       "block_load_error": "Impossible de charger le bloc {{height}} : {{reason}}"
+    },
+    "page_title_block_explorer": "Explorateur de blocs",
+    "live_badge": "EN DIRECT",
+    "synced": "synchronisé",
+    "sync_suffix": "synchroniser",
+    "loading_chain": "Chargement des données de la chaîne…",
+    "node_offline_hint": "Nœud hors ligne : démarrer le nœud sur le tableau de bord",
+    "start_node_hint": "Démarrez le nœud sur le tableau de bord pour voir les statistiques du réseau",
+    "section_search": "Recherche",
+    "section_blocks": "Blocs",
+    "look_up": "Chercher",
+    "search_results": {
+      "block": "Détails du bloc",
+      "tx": "Transaction",
+      "address": "Informations sur l'adresse"
     }
   },
   "help": {
@@ -1078,7 +1134,8 @@
       "refunded": "Remboursé sur votre portefeuille",
       "settlement_hub": "Centre de règlement",
       "review_offer_title": "Examiner l'offre",
-      "fund_title": "Fonds séquestre"
+      "fund_title": "Fonds séquestre",
+      "monitor_title": "Accord de surveillance"
     },
     "seller": {
       "page_title": "Créer une offre",
@@ -1101,7 +1158,9 @@
         "payment_instructions_placeholder": "Coordonnées bancaires, adresse crypto, ou autres instructions pour l’acheteur…"
       },
       "offer_exported": "Offre exportée",
-      "offer_id_copied": "ID de l'offre copié"
+      "offer_id_copied": "ID de l'offre copié",
+      "create_your_offer": "Créez votre offre",
+      "share_your_offer": "Partagez votre offre"
     }
   },
   "logs": {

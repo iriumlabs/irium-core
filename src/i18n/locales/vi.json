@@ -894,10 +894,17 @@
       "threads_label": "chủ đề",
       "stratum_url_label": "URL nhóm",
       "stratum_url_placeholder": "tầng+tcp://pool.example.com:3333",
-      "stratum_worker_label": "Công nhân",
+      "stratum_worker_label": "Tên công nhân",
       "stratum_worker_hint": "Định dạng: your_wallet_address.worker_id (ví dụ: Pxxx…xxxx.rig1)",
       "stratum_password_label": "Mật khẩu nhóm (thường là \"x\")",
-      "devices_label": "Thiết bị (đa GPU)"
+      "devices_label": "Thiết bị (đa GPU)",
+      "threads_label_full": "Chủ đề — {{current}} trong số {{max}} lõi{{suffix}}",
+      "threads_running_suffix": "(đang chạy)",
+      "opencl_platform": "Nền tảng OpenCL",
+      "device": "Thiết bị",
+      "gpu_address_placeholder": "P…",
+      "intensity_label": "Cường độ — {{value}}%",
+      "pool_preset": "Đặt trước hồ bơi"
     },
     "found_blocks": {
       "section_title": "Khối tìm thấy",
@@ -919,9 +926,22 @@
       "miner_address_required": "Cần có địa chỉ khai thác",
       "miner_address_invalid": "Địa chỉ không hợp lệ - phải bắt đầu bằng Q hoặc P",
       "stratum_connected": "Đã kết nối với hồ bơi",
-      "stratum_disconnected": "Đã ngắt kết nối khỏi hồ bơi"
+      "stratum_disconnected": "Đã ngắt kết nối khỏi hồ bơi",
+      "address_copied": "Đã sao chép địa chỉ",
+      "tip_hash_copied": "Đã sao chép hàm băm mẹo",
+      "failed_detect_gpus": "Không phát hiện được GPU",
+      "gpu_started": "Công cụ khai thác GPU đã bắt đầu",
+      "gpu_stopped": "Công cụ khai thác GPU đã dừng",
+      "pool_url_required": "Yêu cầu URL nhóm",
+      "worker_required": "Cần có tên công nhân",
+      "connecting_to_pool": "Đang kết nối với hồ bơi…"
     },
-    "page_subtitle": "SHA-256d · CPU · GPU · Hỗ trợ nhóm ASIC"
+    "page_subtitle": "SHA-256d · CPU · GPU · Hỗ trợ nhóm ASIC",
+    "tooltips": {
+      "copy_address": "Sao chép địa chỉ",
+      "copy_full_hash": "Sao chép toàn bộ hàm băm"
+    },
+    "pool_configuration": "Cấu hình nhóm"
   },
   "onboarding": {
     "splash_title": "lõi irium",
@@ -959,6 +979,14 @@
       "mnemonic_placeholder": "Cụm từ khôi phục BIP39 được phân tách bằng dấu cách.",
       "wif_placeholder": "5J… hay K… hay L…",
       "import_button": "Nhập ví"
+    },
+    "system_check_title": "Kiểm tra hệ thống",
+    "wallet_restored": "Đã khôi phục ví",
+    "wallet_setup": "Thiết lập ví",
+    "toasts": {
+      "need_12_seed_words": "Nhập ít nhất 12 từ giống.",
+      "wif_min_length": "Khóa WIF phải có ít nhất 51 ký tự.",
+      "priv_key_hex": "Khóa riêng phải có 64 ký tự hex."
     }
   },
   "reputation": {
@@ -987,7 +1015,14 @@
     },
     "page_subtitle": "Truy vấn điểm danh tiếng trên chuỗi cho bất kỳ địa chỉ Irium hoặc khóa chung nào.",
     "outcome_recorded": "Đã ghi \"{{choice}}\" cho người bán này",
-    "failed_to_record": "Không thể ghi lại kết quả"
+    "failed_to_record": "Không thể ghi lại kết quả",
+    "tooltips": {
+      "help": "Trợ giúp danh tiếng"
+    },
+    "compare_placeholder": "Địa chỉ tiền tố Q của người bán thứ hai hoặc mã khóa công khai 64-hex…",
+    "warnings": {
+      "few_completed": "Người bán có ít hơn 3 thỏa thuận đã hoàn tất — điểm của họ chỉ là tạm thời và họ có thể là danh tính mới được tạo ra để nâng cao danh tiếng."
+    }
   },
   "explorer": {
     "page_title": "Nhà thám hiểm",
@@ -1003,7 +1038,13 @@
       "active_miners": "Công cụ khai thác đang hoạt động",
       "next_halving": "Giảm một nửa tiếp theo: #{{height}}",
       "chain_tip": "đầu chuỗi",
-      "tip_height": "mẹo #{{height}}"
+      "tip_height": "mẹo #{{height}}",
+      "network_hashrate": "Tốc độ băm mạng",
+      "difficulty_lwma": "Độ khó (LWMA)",
+      "pow_sub": "bằng chứng công việc",
+      "lwma_sub": "Mục tiêu LWMA-144",
+      "connected_sub": "đã kết nối",
+      "recent_blocks_sub": "khối gần đây"
     },
     "blocks_table": {
       "height": "Chiều cao",
@@ -1035,6 +1076,21 @@
     "toasts": {
       "block_not_found": "Không tìm thấy khối {{height}} trên nút",
       "block_load_error": "Không thể tải khối {{height}}: {{reason}}"
+    },
+    "page_title_block_explorer": "Khối thám hiểm",
+    "live_badge": "SỐNG",
+    "synced": "đã đồng bộ hóa",
+    "sync_suffix": "đồng bộ hóa",
+    "loading_chain": "Đang tải dữ liệu chuỗi…",
+    "node_offline_hint": "Nút ngoại tuyến - nút bắt đầu trên Trang tổng quan",
+    "start_node_hint": "Khởi động nút trên Bảng điều khiển để xem số liệu thống kê mạng",
+    "section_search": "Tìm kiếm",
+    "section_blocks": "Khối",
+    "look_up": "Tra cứu",
+    "search_results": {
+      "block": "Chi tiết khối",
+      "tx": "Giao dịch",
+      "address": "Thông tin địa chỉ"
     }
   },
   "help": {
@@ -1078,7 +1134,8 @@
       "refunded": "Đã hoàn tiền vào ví của bạn",
       "settlement_hub": "Trung tâm định cư",
       "review_offer_title": "Xem lại ưu đãi",
-      "fund_title": "Ký quỹ quỹ"
+      "fund_title": "Ký quỹ quỹ",
+      "monitor_title": "Giám sát thỏa thuận"
     },
     "seller": {
       "page_title": "Tạo một ưu đãi",
@@ -1101,7 +1158,9 @@
         "payment_instructions_placeholder": "Chi tiết ngân hàng, địa chỉ tiền điện tử hoặc các hướng dẫn khác dành cho người mua…"
       },
       "offer_exported": "Đã xuất phiếu mua hàng",
-      "offer_id_copied": "Đã sao chép ID ưu đãi"
+      "offer_id_copied": "Đã sao chép ID ưu đãi",
+      "create_your_offer": "Tạo ưu đãi của bạn",
+      "share_your_offer": "Chia sẻ ưu đãi của bạn"
     }
   },
   "logs": {

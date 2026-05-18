@@ -894,10 +894,17 @@
       "threads_label": "Темы",
       "stratum_url_label": "URL-адрес пула",
       "stratum_url_placeholder": "стратум+tcp://pool.example.com:3333",
-      "stratum_worker_label": "Рабочий",
+      "stratum_worker_label": "Имя работника",
       "stratum_worker_hint": "Формат: адрес_вашего_кошелька.идентификатор_работника (например, Pxxx…xxxx.rig1).",
       "stratum_password_label": "Пароль пула (обычно «x»)",
-      "devices_label": "Устройства (многочиповые процессоры)"
+      "devices_label": "Устройства (многочиповые процессоры)",
+      "threads_label_full": "Потоки — {{current}} из {{max}} ядер{{suffix}}",
+      "threads_running_suffix": "(бег)",
+      "opencl_platform": "Платформа OpenCL",
+      "device": "Устройство",
+      "gpu_address_placeholder": "П…",
+      "intensity_label": "Интенсивность — {{value}}%",
+      "pool_preset": "Предварительная настройка бассейна"
     },
     "found_blocks": {
       "section_title": "Найденные блоки",
@@ -919,9 +926,22 @@
       "miner_address_required": "Требуется адрес для майнинга",
       "miner_address_invalid": "Неверный адрес — должен начинаться с Q или P.",
       "stratum_connected": "Подключено к пулу",
-      "stratum_disconnected": "Отключено от бассейна"
+      "stratum_disconnected": "Отключено от бассейна",
+      "address_copied": "Адрес скопирован",
+      "tip_hash_copied": "Хэш подсказки скопирован.",
+      "failed_detect_gpus": "Не удалось обнаружить графические процессоры",
+      "gpu_started": "Майнер на GPU запущен",
+      "gpu_stopped": "GPU-майнер остановлен",
+      "pool_url_required": "Требуется URL-адрес пула",
+      "worker_required": "Требуется имя работника",
+      "connecting_to_pool": "Подключение к бассейну…"
     },
-    "page_subtitle": "SHA-256d · ЦП · ГП · Поддержка пула ASIC"
+    "page_subtitle": "SHA-256d · ЦП · ГП · Поддержка пула ASIC",
+    "tooltips": {
+      "copy_address": "Копировать адрес",
+      "copy_full_hash": "Скопировать полный хэш"
+    },
+    "pool_configuration": "Конфигурация пула"
   },
   "onboarding": {
     "splash_title": "Ириевое ядро",
@@ -959,6 +979,14 @@
       "mnemonic_placeholder": "Фраза восстановления BIP39, разделенная пробелами.",
       "wif_placeholder": "5J… или K… или L…",
       "import_button": "Импортировать кошелек"
+    },
+    "system_check_title": "Проверка системы",
+    "wallet_restored": "Кошелек восстановлен",
+    "wallet_setup": "Настройка кошелька",
+    "toasts": {
+      "need_12_seed_words": "Введите не менее 12 исходных слов.",
+      "wif_min_length": "Ключ WIF должен содержать не менее 51 символа.",
+      "priv_key_hex": "Закрытый ключ должен состоять из 64 шестнадцатеричных символов."
     }
   },
   "reputation": {
@@ -987,7 +1015,14 @@
     },
     "page_subtitle": "Запросите оценку репутации в сети для любого адреса или открытого ключа Irium.",
     "outcome_recorded": "Записано «{{choice}}» для этого продавца",
-    "failed_to_record": "Не удалось записать результат"
+    "failed_to_record": "Не удалось записать результат",
+    "tooltips": {
+      "help": "Помощь репутации"
+    },
+    "compare_placeholder": "Адрес второго продавца с префиксом Q или 64-шестнадцатеричный публичный ключ…",
+    "warnings": {
+      "few_completed": "У продавца менее трех завершенных договоров — их оценка является предварительной и может представлять собой новую личность, созданную для повышения репутации."
+    }
   },
   "explorer": {
     "page_title": "Исследователь",
@@ -1003,7 +1038,13 @@
       "active_miners": "Активные майнеры",
       "next_halving": "Следующее сокращение пополам: #{{height}}",
       "chain_tip": "кончик цепи",
-      "tip_height": "совет №{{height}}"
+      "tip_height": "совет №{{height}}",
+      "network_hashrate": "Хешрейт сети",
+      "difficulty_lwma": "Сложность (LWMA)",
+      "pow_sub": "доказательство работы",
+      "lwma_sub": "Мишень LWMA-144",
+      "connected_sub": "подключен",
+      "recent_blocks_sub": "последние блоки"
     },
     "blocks_table": {
       "height": "Высота",
@@ -1035,6 +1076,21 @@
     "toasts": {
       "block_not_found": "Блок {{height}} не найден на узле",
       "block_load_error": "Не удалось загрузить блок {{height}}: {{reason}}."
+    },
+    "page_title_block_explorer": "Блок-проводник",
+    "live_badge": "ЖИТЬ",
+    "synced": "синхронизировано",
+    "sync_suffix": "синхронизировать",
+    "loading_chain": "Загрузка данных цепочки…",
+    "node_offline_hint": "Узел в автономном режиме — запустить узел на панели управления.",
+    "start_node_hint": "Запустите узел на панели мониторинга, чтобы просмотреть статистику сети.",
+    "section_search": "Поиск",
+    "section_blocks": "Блоки",
+    "look_up": "Искать",
+    "search_results": {
+      "block": "Детали блока",
+      "tx": "Сделка",
+      "address": "Информация об адресе"
     }
   },
   "help": {
@@ -1078,7 +1134,8 @@
       "refunded": "Возврат на ваш кошелек",
       "settlement_hub": "Расчетный центр",
       "review_offer_title": "Обзор предложения",
-      "fund_title": "Фонд Эскроу"
+      "fund_title": "Фонд Эскроу",
+      "monitor_title": "Мониторинг соглашения"
     },
     "seller": {
       "page_title": "Создать предложение",
@@ -1101,7 +1158,9 @@
         "payment_instructions_placeholder": "Банковские реквизиты, криптоадрес или другие инструкции для покупателя…"
       },
       "offer_exported": "Предложение экспортировано",
-      "offer_id_copied": "Идентификатор предложения скопирован."
+      "offer_id_copied": "Идентификатор предложения скопирован.",
+      "create_your_offer": "Создайте свое предложение",
+      "share_your_offer": "Поделитесь своим предложением"
     }
   },
   "logs": {

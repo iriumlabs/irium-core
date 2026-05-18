@@ -894,10 +894,17 @@
       "threads_label": "Themen",
       "stratum_url_label": "Pool-URL",
       "stratum_url_placeholder": "stratum+tcp://pool.example.com:3333",
-      "stratum_worker_label": "Arbeitnehmer",
+      "stratum_worker_label": "Name des Arbeiters",
       "stratum_worker_hint": "Format: your_wallet_address.worker_id (z. B. Pxxx…xxxx.rig1)",
       "stratum_password_label": "Pool-Passwort (normalerweise „x“)",
-      "devices_label": "Geräte (Multi-GPU)"
+      "devices_label": "Geräte (Multi-GPU)",
+      "threads_label_full": "Threads – {{current}} von {{max}} Kernen{{suffix}}",
+      "threads_running_suffix": "(läuft)",
+      "opencl_platform": "OpenCL-Plattform",
+      "device": "Gerät",
+      "gpu_address_placeholder": "P…",
+      "intensity_label": "Intensität – {{value}}%",
+      "pool_preset": "Pool-Voreinstellung"
     },
     "found_blocks": {
       "section_title": "Gefundene Blöcke",
@@ -919,9 +926,22 @@
       "miner_address_required": "Mining-Adresse erforderlich",
       "miner_address_invalid": "Ungültige Adresse – muss mit Q oder P beginnen",
       "stratum_connected": "Mit Pool verbunden",
-      "stratum_disconnected": "Vom Pool getrennt"
+      "stratum_disconnected": "Vom Pool getrennt",
+      "address_copied": "Adresse kopiert",
+      "tip_hash_copied": "Tipp-Hash kopiert",
+      "failed_detect_gpus": "GPUs konnten nicht erkannt werden",
+      "gpu_started": "GPU-Miner gestartet",
+      "gpu_stopped": "GPU-Miner gestoppt",
+      "pool_url_required": "Pool-URL erforderlich",
+      "worker_required": "Name des Arbeiters erforderlich",
+      "connecting_to_pool": "Verbindung zum Pool…"
     },
-    "page_subtitle": "SHA-256d · CPU · GPU · ASIC-Pool-Unterstützung"
+    "page_subtitle": "SHA-256d · CPU · GPU · ASIC-Pool-Unterstützung",
+    "tooltips": {
+      "copy_address": "Adresse kopieren",
+      "copy_full_hash": "Vollständigen Hash kopieren"
+    },
+    "pool_configuration": "Poolkonfiguration"
   },
   "onboarding": {
     "splash_title": "Irium-Kern",
@@ -959,6 +979,14 @@
       "mnemonic_placeholder": "Durch Leerzeichen getrennte BIP39-Wiederherstellungsphrase.",
       "wif_placeholder": "5J… oder K… oder L…",
       "import_button": "Wallet importieren"
+    },
+    "system_check_title": "Systemprüfung",
+    "wallet_restored": "Brieftasche restauriert",
+    "wallet_setup": "Wallet-Einrichtung",
+    "toasts": {
+      "need_12_seed_words": "Geben Sie mindestens 12 Startwörter ein.",
+      "wif_min_length": "Der WIF-Schlüssel sollte mindestens 51 Zeichen lang sein.",
+      "priv_key_hex": "Der private Schlüssel muss 64 Hexadezimalzeichen lang sein."
     }
   },
   "reputation": {
@@ -987,7 +1015,14 @@
     },
     "page_subtitle": "Fragen Sie den On-Chain-Reputationsfaktor für jede Irium-Adresse oder jeden öffentlichen Schlüssel ab.",
     "outcome_recorded": "Für diesen Verkäufer wurde „{{choice}}“ aufgezeichnet",
-    "failed_to_record": "Das Ergebnis konnte nicht aufgezeichnet werden"
+    "failed_to_record": "Das Ergebnis konnte nicht aufgezeichnet werden",
+    "tooltips": {
+      "help": "Reputationshilfe"
+    },
+    "compare_placeholder": "Q-Präfix-Adresse oder 64-Hex-Pubkey des zweiten Verkäufers…",
+    "warnings": {
+      "few_completed": "Der Verkäufer hat weniger als drei abgeschlossene Vereinbarungen – seine Bewertung ist vorläufig und es könnte sich um eine neue Identität handeln, die geschaffen wurde, um den Ruf aufzublähen."
+    }
   },
   "explorer": {
     "page_title": "Forscher",
@@ -1003,7 +1038,13 @@
       "active_miners": "Aktive Bergleute",
       "next_halving": "Nächste Halbierung: #{{height}}",
       "chain_tip": "Kettenspitze",
-      "tip_height": "Tipp #{{height}}"
+      "tip_height": "Tipp #{{height}}",
+      "network_hashrate": "Netzwerk-Hashrate",
+      "difficulty_lwma": "Schwierigkeit (LWMA)",
+      "pow_sub": "Arbeitsnachweis",
+      "lwma_sub": "LWMA-144-Ziel",
+      "connected_sub": "verbunden",
+      "recent_blocks_sub": "Aktuelle Blöcke"
     },
     "blocks_table": {
       "height": "Höhe",
@@ -1035,6 +1076,21 @@
     "toasts": {
       "block_not_found": "Block {{height}} wurde auf dem Knoten nicht gefunden",
       "block_load_error": "Block {{height}} konnte nicht geladen werden: {{reason}}"
+    },
+    "page_title_block_explorer": "Block-Explorer",
+    "live_badge": "LIVE",
+    "synced": "synchronisiert",
+    "sync_suffix": "synchronisieren",
+    "loading_chain": "Kettendaten werden geladen…",
+    "node_offline_hint": "Knoten offline – Knoten im Dashboard starten",
+    "start_node_hint": "Starten Sie den Knoten im Dashboard, um Netzwerkstatistiken anzuzeigen",
+    "section_search": "Suchen",
+    "section_blocks": "Blöcke",
+    "look_up": "Nachschlagen",
+    "search_results": {
+      "block": "Blockdetails",
+      "tx": "Transaktion",
+      "address": "Adressinformationen"
     }
   },
   "help": {
@@ -1078,7 +1134,8 @@
       "refunded": "Rückerstattung auf Ihr Portemonnaie",
       "settlement_hub": "Siedlungszentrum",
       "review_offer_title": "Bewertungsangebot",
-      "fund_title": "Fonds-Treuhandkonto"
+      "fund_title": "Fonds-Treuhandkonto",
+      "monitor_title": "Überwachungsvereinbarung"
     },
     "seller": {
       "page_title": "Erstellen Sie ein Angebot",
@@ -1101,7 +1158,9 @@
         "payment_instructions_placeholder": "Bankdaten, Krypto-Adresse oder andere Anweisungen für den Käufer…"
       },
       "offer_exported": "Angebot exportiert",
-      "offer_id_copied": "Angebots-ID kopiert"
+      "offer_id_copied": "Angebots-ID kopiert",
+      "create_your_offer": "Erstellen Sie Ihr Angebot",
+      "share_your_offer": "Teilen Sie Ihr Angebot"
     }
   },
   "logs": {

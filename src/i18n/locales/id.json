@@ -889,15 +889,22 @@
       "detect_gpus": "Deteksi GPU"
     },
     "fields": {
-      "mining_address_label": "Alamat penambangan",
+      "mining_address_label": "Alamat Penambangan",
       "mining_address_placeholder": "Rekatkan alamat penambangan Irium Anda (Q... atau P...)",
       "threads_label": "benang",
       "stratum_url_label": "URL kumpulan",
       "stratum_url_placeholder": "lapisan+tcp://pool.example.com:3333",
-      "stratum_worker_label": "Pekerja",
+      "stratum_worker_label": "Nama Pekerja",
       "stratum_worker_hint": "Format: your_wallet_address.worker_id (misalnya Pxxx…xxxx.rig1)",
       "stratum_password_label": "Kata sandi kumpulan (biasanya \"x\")",
-      "devices_label": "Perangkat (multi-GPU)"
+      "devices_label": "Perangkat (multi-GPU)",
+      "threads_label_full": "Utas — {{current}} dari {{max}} inti{{suffix}}",
+      "threads_running_suffix": "(berlari)",
+      "opencl_platform": "Platform OpenCL",
+      "device": "Perangkat",
+      "gpu_address_placeholder": "P…",
+      "intensity_label": "Intensitas — {{value}}%",
+      "pool_preset": "Prasetel Kolam Renang"
     },
     "found_blocks": {
       "section_title": "Blok yang Ditemukan",
@@ -919,9 +926,22 @@
       "miner_address_required": "Alamat penambangan diperlukan",
       "miner_address_invalid": "Alamat tidak valid — harus dimulai dengan Q atau P",
       "stratum_connected": "Terhubung ke kolam renang",
-      "stratum_disconnected": "Terputus dari kolam"
+      "stratum_disconnected": "Terputus dari kolam",
+      "address_copied": "Alamat disalin",
+      "tip_hash_copied": "Tip hash disalin",
+      "failed_detect_gpus": "Gagal mendeteksi GPU",
+      "gpu_started": "Penambang GPU dimulai",
+      "gpu_stopped": "Penambang GPU berhenti",
+      "pool_url_required": "URL kumpulan diperlukan",
+      "worker_required": "Nama pekerja diperlukan",
+      "connecting_to_pool": "Menghubungkan ke kolam…"
     },
-    "page_subtitle": "SHA-256d · CPU · GPU · Dukungan kumpulan ASIC"
+    "page_subtitle": "SHA-256d · CPU · GPU · Dukungan kumpulan ASIC",
+    "tooltips": {
+      "copy_address": "Salin alamat",
+      "copy_full_hash": "Salin hash lengkap"
+    },
+    "pool_configuration": "Konfigurasi Kolam"
   },
   "onboarding": {
     "splash_title": "Inti Irium",
@@ -959,6 +979,14 @@
       "mnemonic_placeholder": "Frasa pemulihan BIP39 dipisahkan dengan spasi.",
       "wif_placeholder": "5J… atau K… atau L…",
       "import_button": "Impor dompet"
+    },
+    "system_check_title": "Pemeriksaan Sistem",
+    "wallet_restored": "Dompet Dipulihkan",
+    "wallet_setup": "Pengaturan Dompet",
+    "toasts": {
+      "need_12_seed_words": "Masukkan setidaknya 12 kata unggulan.",
+      "wif_min_length": "Kunci WIF minimal harus terdiri dari 51 karakter.",
+      "priv_key_hex": "Kunci pribadi harus terdiri dari 64 karakter hex."
     }
   },
   "reputation": {
@@ -987,7 +1015,14 @@
     },
     "page_subtitle": "Kueri skor reputasi on-chain untuk alamat Irium atau kunci publik apa pun.",
     "outcome_recorded": "Tercatat \"{{choice}}\" untuk penjual ini",
-    "failed_to_record": "Gagal mencatat hasil"
+    "failed_to_record": "Gagal mencatat hasil",
+    "tooltips": {
+      "help": "Bantuan reputasi"
+    },
+    "compare_placeholder": "Alamat awalan Q penjual kedua atau kunci pub 64 hex…",
+    "warnings": {
+      "few_completed": "Penjual memiliki kurang dari 3 perjanjian yang telah diselesaikan — skornya bersifat sementara dan dapat menjadi identitas baru yang dibuat untuk meningkatkan reputasi."
+    }
   },
   "explorer": {
     "page_title": "Penjelajah",
@@ -1003,7 +1038,13 @@
       "active_miners": "Penambang Aktif",
       "next_halving": "Pembagian dua berikutnya: #{{height}}",
       "chain_tip": "ujung rantai",
-      "tip_height": "tip #{{height}}"
+      "tip_height": "tip #{{height}}",
+      "network_hashrate": "Hashrate Jaringan",
+      "difficulty_lwma": "Kesulitan (LWMA)",
+      "pow_sub": "bukti kerja",
+      "lwma_sub": "sasaran LWMA-144",
+      "connected_sub": "terhubung",
+      "recent_blocks_sub": "blok baru-baru ini"
     },
     "blocks_table": {
       "height": "Tinggi",
@@ -1035,6 +1076,21 @@
     "toasts": {
       "block_not_found": "Blok {{height}} tidak ditemukan di node",
       "block_load_error": "Tidak dapat memuat blok {{height}}: {{reason}}"
+    },
+    "page_title_block_explorer": "Blokir Penjelajah",
+    "live_badge": "HIDUP",
+    "synced": "disinkronkan",
+    "sync_suffix": "sinkronisasi",
+    "loading_chain": "Memuat data rantai…",
+    "node_offline_hint": "Node offline — memulai node di Dashboard",
+    "start_node_hint": "Mulai node di Dasbor untuk melihat statistik jaringan",
+    "section_search": "Mencari",
+    "section_blocks": "Blok",
+    "look_up": "Menengadah",
+    "search_results": {
+      "block": "Detail Blokir",
+      "tx": "Transaksi",
+      "address": "Info Alamat"
     }
   },
   "help": {
@@ -1078,7 +1134,8 @@
       "refunded": "Dikembalikan ke dompet Anda",
       "settlement_hub": "Pusat Pemukiman",
       "review_offer_title": "Tinjau Penawaran",
-      "fund_title": "Penampungan Dana"
+      "fund_title": "Penampungan Dana",
+      "monitor_title": "Perjanjian Pantau"
     },
     "seller": {
       "page_title": "Buat Penawaran",
@@ -1101,7 +1158,9 @@
         "payment_instructions_placeholder": "Detail bank, alamat kripto, atau instruksi lain untuk pembeli…"
       },
       "offer_exported": "Penawaran diekspor",
-      "offer_id_copied": "ID Penawaran disalin"
+      "offer_id_copied": "ID Penawaran disalin",
+      "create_your_offer": "Buat Penawaran Anda",
+      "share_your_offer": "Bagikan Penawaran Anda"
     }
   },
   "logs": {
