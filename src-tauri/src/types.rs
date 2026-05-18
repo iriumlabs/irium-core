@@ -586,6 +586,27 @@ pub struct NetworkHashrateInfo {
     pub height: Option<u64>,
 }
 
+// Rich-list passthrough types — mirror the shape of /rpc/richlist on iriumd.
+// `balance_irm` and `percentage` are f64 conveniences; clients should use
+// `balance_sats` and total_supply_sats for any exact arithmetic.
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+pub struct RichListEntry {
+    pub rank: u32,
+    pub address: String,
+    pub balance_sats: u64,
+    pub balance_irm: f64,
+    pub utxo_count: u32,
+    pub percentage: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct RichListResponse {
+    pub count: usize,
+    pub total_supply_sats: u64,
+    pub generated_at_height: u64,
+    pub entries: Vec<RichListEntry>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GpuMinerStatus {
     pub running: bool,

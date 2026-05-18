@@ -1198,6 +1198,30 @@
       "block": "Block Details",
       "tx": "Transaction",
       "address": "Address Info"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "rich_list": "Rich List"
+    },
+    "richlist": {
+      "title": "Top IRM Holders",
+      "subtitle": "Ranked by spendable balance on the current chain tip",
+      "total_supply": "Total supply",
+      "at_height": "at height #{{height}}",
+      "showing_top": "Showing top {{count}}",
+      "col_rank": "Rank",
+      "col_address": "Address",
+      "col_balance_irm": "Balance (IRM)",
+      "col_percentage": "% of Supply",
+      "col_utxos": "UTXOs",
+      "you_badge": "You",
+      "refresh": "Refresh",
+      "loading": "Loading rich list…",
+      "load_more": "Load top 500",
+      "load_more_loading": "Loading top 500…",
+      "load_error": "Failed to load rich list: {{reason}}",
+      "empty": "No P2PKH balances on chain yet.",
+      "node_offline_hint": "Start the node on the Dashboard to load the rich list."
     }
   },
   "help": {
