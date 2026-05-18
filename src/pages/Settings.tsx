@@ -482,7 +482,11 @@ export default function Settings() {
   const handleResetClick = () => {
     const hasCustomWallet = !!local.wallet_path;
     if (confirmReset) {
-      if (hasCustomWallet && resetInput !== 'RESET') {
+      // Trim whitespace so a pasted "RESET " (trailing space) still passes.
+      // toUpperCase() runs on the input's onChange but doesn't trim — without
+      // this the user types RESET, clicks confirm, and nothing happens because
+      // ` RESET` / `RESET ` silently fails the strict equality check.
+      if (hasCustomWallet && resetInput.trim() !== 'RESET') {
         toast.error(t('settings.toasts.type_reset_to_confirm'));
         return;
       }
@@ -493,7 +497,12 @@ export default function Settings() {
       setConfirmReset(true);
       setResetInput('');
       if (confirmResetTimerRef.current) clearTimeout(confirmResetTimerRef.current);
-      confirmResetTimerRef.current = setTimeout(() => { setConfirmReset(false); setResetInput(''); }, 10000);
+      // 30s — old 10s window expired before users finished reading the warning
+      // and typing RESET, which silently reverted confirmReset to false and
+      // hid the input. Long enough for a deliberate confirmation, short enough
+      // that an accidentally-clicked button doesn't leave the page in a
+      // confirm-armed state indefinitely.
+      confirmResetTimerRef.current = setTimeout(() => { setConfirmReset(false); setResetInput(''); }, 30000);
     }
   };
 
@@ -1495,6 +1504,16 @@ export default function Settings() {
                   placeholder={t('settings.action_bar.reset_placeholder')}
                   value={resetInput}
                   onChange={(e) => setResetInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    // Enter submits when the confirmation has been typed
+                    // correctly. Without this the user has to type RESET
+                    // and then physically click the button again, which is
+                    // unintuitive — typing RESET feels like the action.
+                    if (e.key === 'Enter' && resetInput.trim() === 'RESET') {
+                      e.preventDefault();
+                      handleResetClick();
+                    }
+                  }}
                   autoFocus
                 />
               </div>
