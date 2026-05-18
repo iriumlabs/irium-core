@@ -913,11 +913,35 @@ export function IRMToSats(irm: number): number {
 }
 
 /**
- * Format a sats amount as an IRM string with significant-digit-only
- * decimals. Trailing zeros are stripped and the decimal point is omitted
- * entirely when the value is a whole number. The thousands separator is
- * preserved on the integer part.
+ * Resolve the user's preferred amount display unit from persisted Settings.
  *
+ * Reads localStorage directly rather than importing the zustand store to
+ * avoid a circular dependency (store.ts already imports from this file).
+ * Components that need their formatted output to react to a Settings toggle
+ * must subscribe to `useStore((s) => s.settings)` (App.tsx already does, so
+ * the entire tree re-renders on toggle — no per-component change needed).
+ */
+function readCurrencyPreference(): 'IRM' | 'sats' {
+  try {
+    const raw = localStorage.getItem('irium_core_settings');
+    // Fast string check avoids JSON.parse on every formatIRM call. The
+    // preference value is always one of the two literal strings, so a
+    // substring match is unambiguous.
+    if (raw && raw.includes('"currency_display":"sats"')) return 'sats';
+  } catch {
+    // localStorage unavailable (SSR, locked-down browser) — fall back to IRM
+  }
+  return 'IRM';
+}
+
+/**
+ * Format a sats amount as an IRM string with significant-digit-only
+ * decimals — OR as a raw "N sats" string when the user has chosen the
+ * sats display unit in Settings. Trailing zeros are stripped and the
+ * decimal point is omitted entirely when the IRM value is a whole number.
+ * The thousands separator is preserved on the integer part.
+ *
+ * IRM mode (default):
  *   50_00000000      → "50 IRM"
  *   24_199_00000000  → "24,199 IRM"
  *   24_199_50000000  → "24,199.5 IRM"
@@ -925,11 +949,25 @@ export function IRMToSats(irm: number): number {
  *   10000            → "0.0001 IRM"
  *   0                → "0 IRM"
  *
- * `decimals` caps the maximum significant fractional digits (default 4 to
- * preserve the historic display); values are not rounded — they're shown
- * at full precision up to that cap and then trimmed.
+ * sats mode (Settings → Currency display = "sats"):
+ *   50_00000000      → "5,000,000,000 sats"
+ *   10000            → "10,000 sats"
+ *   0                → "0 sats"
+ *
+ * `decimals` caps the maximum significant fractional digits in IRM mode
+ * (default 4 to preserve the historic display); ignored in sats mode since
+ * sats are always whole numbers on-chain. Values are not rounded — they're
+ * shown at full precision up to that cap and then trimmed.
  */
 export function formatIRM(sats: number, decimals = 4): string {
+  if (readCurrencyPreference() === 'sats') {
+    // sats are u64 on-chain; floor any fractional inputs (defensive — should
+    // never happen from on-chain data, but UI math may pass intermediate
+    // floats). Negative values come through unchanged so the caller's sign
+    // semantics survive.
+    const n = Number.isFinite(sats) ? Math.trunc(sats) : 0;
+    return `${n.toLocaleString('en-US')} sats`;
+  }
   const irm = satsToIRM(sats);
   const [intRaw, fracRaw = ''] = irm.toFixed(decimals).split('.');
   // Trim trailing zeros from the fractional part. If nothing remains,

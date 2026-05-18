@@ -895,6 +895,7 @@
       "address_picker_other": "Other address…",
       "address_picker_no_wallets": "No wallet addresses — choose Other",
       "address_picker_custom_placeholder": "Enter any P or Q address",
+      "address_invalid_inline": "Invalid address. Must start with P or Q",
       "threads_label": "Threads",
       "stratum_url_label": "Pool URL",
       "stratum_url_placeholder": "stratum+tcp://pool.example.com:3333",
