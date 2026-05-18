@@ -491,7 +491,7 @@
       "txid_copied": "Transaction ID copied",
       "address_added": "Address added",
       "address_hidden": "Address hidden",
-      "address_unhidden": "Address restored",
+      "address_unhidden": "Address unhidden",
       "wallet_renamed": "Wallet renamed",
       "rename_failed": "Rename failed: {{reason}}",
       "delete_failed": "Delete failed: {{reason}}",
@@ -505,7 +505,19 @@
       "failed_load_addresses": "Failed to load addresses",
       "failed_load_transactions": "Failed to load transactions",
       "node_must_be_online": "Node must be online to send transactions",
-      "set_as_primary": "Set as primary"
+      "set_as_primary": "Set as primary",
+      "no_address_returned": "No address returned",
+      "no_seed_backup": "This wallet has no seed backup — use WIF Key or Export Backup File instead",
+      "no_address_loaded": "No address loaded",
+      "restored_backup": "Wallet restored from backup",
+      "wif_saved": "WIF key saved",
+      "need_12_words": "Enter at least 12 mnemonic words",
+      "enter_wif": "Enter a WIF key",
+      "imported_successfully": "Wallet imported successfully",
+      "copied": "Copied",
+      "recovery_copied": "Recovery phrase copied",
+      "wif_copied": "WIF copied",
+      "name_invalid_chars": "Wallet name cannot contain: / \\ : * ? \" < > |"
     }
   },
   "agreements": {
@@ -532,14 +544,14 @@
       "audit_modal_open": "Agreement Audit"
     },
     "actions": {
-      "fund": "Fund escrow",
-      "release": "Release",
-      "refund": "Refund",
-      "dispute": "Open dispute",
-      "submit_proof": "Submit proof",
-      "verify_signatures": "Verify signatures",
-      "sign_agreement": "Sign agreement",
-      "delete": "Delete"
+      "action_required_sign": "Action required: Sign Agreement",
+      "open_dispute": "Open Dispute",
+      "awaiting_resolver": "Awaiting Resolver",
+      "view_audit": "View Audit",
+      "share_text": "Share Text",
+      "delete": "Delete",
+      "submitting": "Submitting…",
+      "sign": "Sign"
     },
     "proof_modal": {
       "title": "Submit proof",
@@ -561,14 +573,130 @@
       "release_success": "Released — txid {{txid}}",
       "refund_success": "Refunded — txid {{txid}}",
       "dispute_opened": "Dispute opened",
-      "proof_submitted": "Proof submitted",
+      "proof_submitted": "Proof submitted: {{id}}",
       "delete_success": "Agreement deleted",
-      "failed_load": "Failed to load agreements"
+      "failed_load": "Failed to load agreements",
+      "delete_failed": "Delete failed: {{reason}}",
+      "refund_initiated": "Refund initiated",
+      "refund_failed": "Refund failed",
+      "pack_exported": "Agreement pack exported to {{path}}",
+      "copied": "Copied",
+      "submission_failed": "Submission failed",
+      "funds_released": "Funds released · txid: {{txid}}",
+      "release_failed": "Release failed",
+      "escrow_funded": "Escrow funded · txid: {{txid}}",
+      "funding_failed": "Funding failed",
+      "agreement_imported": "Agreement imported: {{id}}",
+      "invoice_parse_warning": "Imported, but could not parse invoice fields for prefill",
+      "invoice_imported": "Invoice imported",
+      "failed_open_dispute": "Failed to open dispute",
+      "signature_valid": "Signature valid (signer {{signer}})",
+      "signature_invalid": "Signature invalid: {{reason}}",
+      "agreement_signed_short": "Agreement signed.",
+      "sign_failed": "Sign failed"
     },
     "refund": {
       "blocked_default": "Refund eligibility unknown",
       "blocked_reason": "Refund not available: {{reason}}",
       "timeout_not_reached": "Timeout not yet reached"
+    },
+    "page_subtitle": "On-chain settlement agreements",
+    "tooltips": {
+      "help": "Agreements help",
+      "import_invoice": "Import a payment invoice JSON and create an agreement from it",
+      "clear_search": "Clear search",
+      "choose_save_location": "Choose save location",
+      "you_are_buyer": "Your selected wallet address is this agreement's buyer",
+      "you_are_seller": "Your selected wallet address is this agreement's seller",
+      "copy_full_hash": "Copy full agreement hash",
+      "submit_proof_delivery": "Submit your proof of delivery",
+      "resolver_required": "A resolver attestation is required to settle this dispute. Contact your designated resolver.",
+      "deadline_passed": "This agreement's deadline has passed without resolution.",
+      "share_text": "Copy a plain-text summary of this agreement to clipboard",
+      "delete_local": "Delete this agreement from your local store. The counterparty's copy is not affected.",
+      "save_friendly_name": "Save a friendly name for this agreement (stored locally)",
+      "verify_signature_file": "Verify a signature file (.sig or .json) against this agreement"
+    },
+    "buttons": {
+      "import_invoice": "Import Invoice",
+      "import_pack": "Import Pack",
+      "browse": "Browse",
+      "delete_agreement": "Delete Agreement"
+    },
+    "page_views": {
+      "agreements": "Agreements",
+      "disputes": "Disputes"
+    },
+    "status_filters": {
+      "all": "All",
+      "pending": "Pending",
+      "open": "Open",
+      "funded": "Funded",
+      "released": "Released",
+      "refunded": "Refunded"
+    },
+    "proof_types": {
+      "delivery_confirmed": "Delivery Confirmed",
+      "payment_received": "Payment Received",
+      "otc_release": "OTC Release",
+      "milestone_complete": "Milestone Complete"
+    },
+    "search_placeholder": "Search by ID, buyer/seller address, or label…",
+    "role_badges": {
+      "buyer": "You are: Buyer",
+      "seller": "You are: Seller"
+    },
+    "labels": {
+      "hash": "Hash:",
+      "release_reason": "Release reason:",
+      "proof_not_final": "Proof not yet final",
+      "agreement_hash": "Agreement Hash",
+      "proof_type": "Proof Type",
+      "attested_by": "Attested By",
+      "evidence_summary": "Evidence Summary",
+      "proof_file": "Proof File",
+      "create_from_evidence": "Create from Evidence",
+      "secret_preimage": "Secret Preimage (hex)",
+      "pack_file": "Pack File",
+      "invoice_file": "Invoice File",
+      "invoice_id": "Invoice ID",
+      "recipient": "Recipient",
+      "amount": "Amount",
+      "reference": "Reference",
+      "expires_height": "Expires (height)",
+      "dispute_reason": "Reason (optional)",
+      "agreement": "Agreement",
+      "txid": "Txid",
+      "value": "Value",
+      "policy": "Policy",
+      "signatures": "Signatures",
+      "buyer": "Buyer",
+      "seller": "Seller",
+      "signer_wallet": "Signer wallet address",
+      "role": "Role:",
+      "reason": "Reason:"
+    },
+    "placeholders": {
+      "your_wallet_address": "Your wallet address",
+      "secret_preimage": "Optional · 64-character hex",
+      "dispute_reason": "Describe what went wrong — this is shared with the resolver."
+    },
+    "modals": {
+      "submit_proof_title": "Submit Proof",
+      "import_pack_title": "Import Agreement Pack",
+      "import_invoice_title": "Import Invoice",
+      "open_dispute_title": "Open Dispute?",
+      "audit_title": "Agreement Audit",
+      "sign_title": "Sign Agreement"
+    },
+    "audit": {
+      "fetching": "Fetching audit record…"
+    },
+    "empty": {
+      "no_signatures": "No signatures verified yet. Use the button above to verify one.",
+      "no_wallet_addresses": "No wallet addresses",
+      "no_disputes": "No disputes.",
+      "disputes_offline": "(Node is offline — dispute list may be unavailable.)"
     }
   },
   "settlement": {
@@ -614,7 +742,9 @@
         "payment_placeholder": "e.g. Bank transfer, PayPal...",
         "memo": "Memo (optional)",
         "memo_otc_placeholder": "Trade description...",
-        "memo_merchant_placeholder": "Order description..."
+        "memo_merchant_placeholder": "Order description...",
+        "total_escrow_hours": "Total Escrow Window (hours)",
+        "party_placeholder": "Q... or P..."
       }
     },
     "seller_dashboard": "Seller Dashboard",
@@ -623,9 +753,23 @@
     "buyer_status_unavailable": "Buyer status unavailable.",
     "toasts": {
       "fee_unavailable": "Fee estimate unavailable",
-      "agreement_created": "Agreement created!"
+      "agreement_created": "Agreement created!",
+      "invoice_loaded": "Invoice loaded — review and confirm",
+      "summary_copied": "Summary copied",
+      "payload_copied": "Payload copied",
+      "copied": "Copied",
+      "invoice_json_copied": "Invoice JSON copied",
+      "invoice_saved": "Invoice saved to {{path}}",
+      "save_failed": "Save failed: {{reason}}"
     },
-    "page_title_hub": "Settlement Hub"
+    "page_title_hub": "Settlement Hub",
+    "tooltips": {
+      "help": "Settlement help"
+    },
+    "review_agreement": "Review Agreement",
+    "modals": {
+      "payment_invoice": "Payment Invoice"
+    }
   },
   "marketplace": {
     "page_title": "Marketplace",
@@ -680,7 +824,8 @@
       "title": "Take Offer",
       "completed_trades": "Completed trades",
       "take_button": "Take offer",
-      "taking": "Taking…"
+      "taking": "Taking…",
+      "title_modal": "Take This Offer"
     },
     "feeds": {
       "discover_button": "Discover feeds",
@@ -695,7 +840,21 @@
       "min_must_be_positive": "Minimum trade amount must be a positive number",
       "min_cannot_exceed": "Minimum cannot exceed the offer amount",
       "amount_exceeds_supply": "Amount cannot exceed {{max}} IRM (total supply)",
-      "failed_to_load": "Failed to load offers: {{reason}}"
+      "failed_to_load": "Failed to load offers: {{reason}}",
+      "enter_positive_amount": "Enter a positive amount",
+      "failed_load_my": "Failed to load your offers: {{reason}}",
+      "failed_load_feeds": "Failed to load feeds: {{reason}}",
+      "failed_add_feed": "Failed to add feed: {{reason}}",
+      "feed_removed": "Feed removed",
+      "failed_remove_feed": "Failed to remove feed: {{reason}}",
+      "offer_exported": "Offer exported to {{path}}",
+      "export_failed": "Export failed: {{reason}}",
+      "offer_deleted": "Offer deleted",
+      "delete_failed": "Delete failed: {{reason}}",
+      "offer_imported": "Offer imported",
+      "import_failed": "Import failed: {{reason}}",
+      "sync_failed": "Sync failed: {{reason}}",
+      "default_feeds_added": "Default feeds added"
     }
   },
   "miner": {

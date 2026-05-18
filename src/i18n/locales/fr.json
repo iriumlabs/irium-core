@@ -431,7 +431,7 @@
       "manage_description": "Fichiers de portefeuille, importation, adresses cachées"
     },
     "send": {
-      "title": "Envoyer IRM",
+      "title": "Envoyer un IRM",
       "to_address_label": "À adresser",
       "to_address_placeholder": "Adresse Q… ou P…",
       "amount_label": "Montant (IRM)",
@@ -451,7 +451,7 @@
       "addr_invalid_chars": "Caractère invalide dans l'adresse",
       "enter_positive_amount": "Entrez un montant positif valide",
       "errors": {
-        "insufficient": "Vous ne disposez pas de suffisamment d'IRM pour finaliser cette transaction. Vérifiez votre solde et essayez un montant plus petit.",
+        "insufficient": "Vous n'avez pas assez d'IRM pour finaliser cette transaction. Vérifiez votre solde et essayez un montant plus petit.",
         "unconfirmed": "Vos fonds ne sont pas encore confirmés. Attendez au moins 1 confirmation avant d'envoyer.",
         "double_spend": "Cette transaction est en conflit avec une autre transaction en attente. Veuillez patienter et réessayer.",
         "generic": "La transaction n'a pas pu être diffusée. Veuillez vérifier que le nœud est en ligne et réessayer.",
@@ -459,7 +459,7 @@
       }
     },
     "receive": {
-      "title": "Recevoir IRM",
+      "title": "Recevez IRM",
       "scan_qr_hint": "Scannez ce QR code ou copiez l'adresse ci-dessous"
     },
     "security": {
@@ -534,14 +534,14 @@
       "audit_modal_open": "Vérification de l'accord"
     },
     "actions": {
-      "fund": "Fonds séquestre",
-      "release": "Libérer",
-      "refund": "Remboursement",
-      "dispute": "Litige ouvert",
-      "submit_proof": "Soumettre une preuve",
-      "verify_signatures": "Vérifier les signatures",
-      "sign_agreement": "Signer l'accord",
-      "delete": "Supprimer"
+      "action_required_sign": "Action requise : signer l'accord",
+      "open_dispute": "Litige ouvert",
+      "awaiting_resolver": "En attente du résolveur",
+      "view_audit": "Afficher l'audit",
+      "share_text": "Partager du texte",
+      "delete": "Supprimer",
+      "submitting": "Soumission…",
+      "sign": "Signe"
     },
     "proof_modal": {
       "title": "Soumettre une preuve",
@@ -563,14 +563,130 @@
       "release_success": "Libéré — txid {{txid}}",
       "refund_success": "Remboursé — txid {{txid}}",
       "dispute_opened": "Litige ouvert",
-      "proof_submitted": "Preuve soumise",
+      "proof_submitted": "Preuve soumise : {{id}}",
       "delete_success": "Accord supprimé",
-      "failed_load": "Échec du chargement des accords"
+      "failed_load": "Échec du chargement des accords",
+      "delete_failed": "Échec de la suppression : {{reason}}",
+      "refund_initiated": "Remboursement initié",
+      "refund_failed": "Le remboursement a échoué",
+      "pack_exported": "Pack d'accords exporté vers {{path}}",
+      "copied": "Copié",
+      "submission_failed": "Échec de la soumission",
+      "funds_released": "Fonds débloqués · txid : {{txid}}",
+      "release_failed": "La version a échoué",
+      "escrow_funded": "Financé par séquestre · txid : {{txid}}",
+      "funding_failed": "Le financement a échoué",
+      "agreement_imported": "Accord importé : {{id}}",
+      "invoice_parse_warning": "Importé, mais impossible d'analyser les champs de facture pour le pré-remplissage",
+      "invoice_imported": "Facture importée",
+      "failed_open_dispute": "Échec de l'ouverture du litige",
+      "signature_valid": "Signature valide (signataire {{signer}})",
+      "signature_invalid": "Signature invalide : {{reason}}",
+      "agreement_signed_short": "Accord signé.",
+      "sign_failed": "Échec de la signature"
     },
     "refund": {
       "blocked_default": "Éligibilité au remboursement inconnue",
       "blocked_reason": "Remboursement non disponible : {{reason}}",
       "timeout_not_reached": "Le délai d'attente n'est pas encore atteint"
+    },
+    "page_subtitle": "Accords de règlement en chaîne",
+    "tooltips": {
+      "help": "Les accords aident",
+      "import_invoice": "Importez une facture de paiement JSON et créez un accord à partir de celle-ci",
+      "clear_search": "Effacer la recherche",
+      "choose_save_location": "Choisissez l'emplacement de sauvegarde",
+      "you_are_buyer": "L'adresse de votre portefeuille sélectionnée est l'acheteur de cet accord",
+      "you_are_seller": "L'adresse de votre portefeuille sélectionnée est celle du vendeur de cet accord",
+      "copy_full_hash": "Copier le hachage complet de l'accord",
+      "submit_proof_delivery": "Soumettez votre preuve de livraison",
+      "resolver_required": "Une attestation de résolveur est requise pour régler ce litige. Contactez votre résolveur désigné.",
+      "deadline_passed": "La date limite de cet accord est dépassée sans résolution.",
+      "share_text": "Copiez un résumé en texte brut de cet accord dans le presse-papiers",
+      "delete_local": "Supprimez cet accord de votre magasin local. La copie de la contrepartie n'est pas affectée.",
+      "save_friendly_name": "Enregistrez un nom convivial pour cet accord (stocké localement)",
+      "verify_signature_file": "Vérifier un fichier de signature (.sig ou .json) par rapport à cet accord"
+    },
+    "buttons": {
+      "import_invoice": "Importer une facture",
+      "import_pack": "Pack d'importation",
+      "browse": "Parcourir",
+      "delete_agreement": "Supprimer l'accord"
+    },
+    "page_views": {
+      "agreements": "Accords",
+      "disputes": "Litiges"
+    },
+    "status_filters": {
+      "all": "Tous",
+      "pending": "En attente",
+      "open": "Ouvrir",
+      "funded": "Financé",
+      "released": "Libéré",
+      "refunded": "Remboursé"
+    },
+    "proof_types": {
+      "delivery_confirmed": "Livraison confirmée",
+      "payment_received": "Paiement reçu",
+      "otc_release": "Libération de gré à gré",
+      "milestone_complete": "Jalon terminé"
+    },
+    "search_placeholder": "Recherche par identifiant, adresse acheteur/vendeur ou étiquette…",
+    "role_badges": {
+      "buyer": "Vous êtes : Acheteur",
+      "seller": "Vous êtes : Vendeur"
+    },
+    "labels": {
+      "hash": "Hacher:",
+      "release_reason": "Raison de la libération :",
+      "proof_not_final": "Preuve pas encore définitive",
+      "agreement_hash": "Hachage d'accord",
+      "proof_type": "Type de preuve",
+      "attested_by": "Attesté par",
+      "evidence_summary": "Résumé des preuves",
+      "proof_file": "Dossier de preuve",
+      "create_from_evidence": "Créer à partir de preuves",
+      "secret_preimage": "Préimage secrète (hexadécimal)",
+      "pack_file": "Fichier de pack",
+      "invoice_file": "Fichier de facture",
+      "invoice_id": "Numéro de facture",
+      "recipient": "Destinataire",
+      "amount": "Montant",
+      "reference": "Référence",
+      "expires_height": "Expire (hauteur)",
+      "dispute_reason": "Raison (facultatif)",
+      "agreement": "Accord",
+      "txid": "Txid",
+      "value": "Valeur",
+      "policy": "Politique",
+      "signatures": "Signature",
+      "buyer": "Acheteur",
+      "seller": "Vendeur",
+      "signer_wallet": "Adresse du portefeuille du signataire",
+      "role": "Rôle:",
+      "reason": "Raison:"
+    },
+    "placeholders": {
+      "your_wallet_address": "L'adresse de votre portefeuille",
+      "secret_preimage": "Facultatif · 64 caractères hexadécimaux",
+      "dispute_reason": "Décrivez ce qui n'a pas fonctionné - ceci est partagé avec le résolveur."
+    },
+    "modals": {
+      "submit_proof_title": "Soumettre une preuve",
+      "import_pack_title": "Pack d'accord d'importation",
+      "import_invoice_title": "Importer une facture",
+      "open_dispute_title": "Litige ouvert ?",
+      "audit_title": "Vérification de l'accord",
+      "sign_title": "Signer un accord"
+    },
+    "audit": {
+      "fetching": "Récupération du dossier d'audit…"
+    },
+    "empty": {
+      "no_signatures": "Aucune signature vérifiée pour l'instant. Utilisez le bouton ci-dessus pour en vérifier un.",
+      "no_wallet_addresses": "Aucune adresse de portefeuille",
+      "no_disputes": "Aucun litige.",
+      "disputes_offline": "(Le nœud est hors ligne : la liste de contestation peut être indisponible.)"
     }
   },
   "settlement": {
@@ -640,13 +756,13 @@
     "filters": {
       "search_placeholder": "Rechercher des offres…",
       "min_amount": "Min. IRM",
-      "max_amount": "IRM maximum",
+      "max_amount": "Max IRM",
       "payment_method": "Mode de paiement"
     },
     "create_offer": {
       "title": "Créer une offre de vente",
       "how_works_title": "Comment fonctionne la vente OTC",
-      "how_works_step_1": "Vous créez cette offre (l'IRM est désormais bloqué sous séquestre).",
+      "how_works_step_1": "Vous créez cette offre (l'IRM est désormais bloqué en séquestre).",
       "how_works_step_2": "Un acheteur finance le séquestre avec sa part IRM.",
       "how_works_step_3": "L'acheteur vous paie hors chaîne en suivant les instructions ci-dessous.",
       "how_works_step_4": "Vous confirmez le paiement reçu.",
@@ -665,7 +781,7 @@
         "payment_method_placeholder": "par ex. Virement bancaire, PayPal, USDT, BTC, espèces",
         "payment_method_hint": "Étiquette courte qui aide les acheteurs à filtrer les offres : choisissez le rail qu'ils doivent utiliser.",
         "price_label": "Prix ​​ou taux de change (facultatif)",
-        "price_placeholder": "par ex. Taux du marché + 2 %, 0,05 $ par IRM",
+        "price_placeholder": "par ex. Taux du marché + 2 %, 0,05 $ par IRM",
         "payment_details_label": "Vos détails de paiement (quoi vous envoyer)",
         "payment_details_hint": "L'acheteur voit ces instructions une fois le dépôt fiduciaire financé. Soyez précis : des détails erronés signifient une perte de temps.",
         "custom_id_label": "ID d'offre personnalisé (facultatif)",
@@ -696,7 +812,7 @@
       "feed_added": "Flux ajouté",
       "min_must_be_positive": "Le montant minimum d'échange doit être un nombre positif",
       "min_cannot_exceed": "Le minimum ne peut pas dépasser le montant de l'offre",
-      "amount_exceeds_supply": "Le montant ne peut pas dépasser {{max}} IRM (approvisionnement total)",
+      "amount_exceeds_supply": "Le montant ne peut pas dépasser {{max}} IRM (offre totale)",
       "failed_to_load": "Échec du chargement des offres : {{reason}}"
     }
   },

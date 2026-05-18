@@ -434,7 +434,7 @@
       "title": "Enviar IRM",
       "to_address_label": "A la dirección",
       "to_address_placeholder": "Dirección Q… o P…",
-      "amount_label": "Monto (IRM)",
+      "amount_label": "Importe (IRM)",
       "amount_placeholder": "0.0000",
       "amount_in_sats": "= {{sats}} sats",
       "available_balance": "Disponible: {{amount}}",
@@ -459,7 +459,7 @@
       }
     },
     "receive": {
-      "title": "Recibir IRM",
+      "title": "Recibe IRM",
       "scan_qr_hint": "Escanee este código QR o copie la dirección a continuación"
     },
     "security": {
@@ -534,14 +534,14 @@
       "audit_modal_open": "Auditoría de acuerdos"
     },
     "actions": {
-      "fund": "depósito de fondos",
-      "release": "Liberar",
-      "refund": "Reembolso",
-      "dispute": "Disputa abierta",
-      "submit_proof": "Enviar prueba",
-      "verify_signatures": "Verificar firmas",
-      "sign_agreement": "firmar acuerdo",
-      "delete": "Borrar"
+      "action_required_sign": "Acción requerida: firmar el acuerdo",
+      "open_dispute": "Disputa abierta",
+      "awaiting_resolver": "Esperando resolución",
+      "view_audit": "Ver auditoría",
+      "share_text": "Compartir texto",
+      "delete": "Borrar",
+      "submitting": "Sumisión…",
+      "sign": "Firmar"
     },
     "proof_modal": {
       "title": "Enviar prueba",
@@ -563,14 +563,130 @@
       "release_success": "Publicado - txid {{txid}}",
       "refund_success": "Reembolsado - txid {{txid}}",
       "dispute_opened": "Disputa abierta",
-      "proof_submitted": "Prueba presentada",
+      "proof_submitted": "Prueba enviada: {{id}}",
       "delete_success": "Acuerdo eliminado",
-      "failed_load": "No se pudieron cargar los acuerdos"
+      "failed_load": "No se pudieron cargar los acuerdos",
+      "delete_failed": "Error al eliminar: {{reason}}",
+      "refund_initiated": "Reembolso iniciado",
+      "refund_failed": "Reembolso fallido",
+      "pack_exported": "Paquete de acuerdos exportado a {{path}}",
+      "copied": "Copiado",
+      "submission_failed": "Envío fallido",
+      "funds_released": "Fondos liberados · txid: {{txid}}",
+      "release_failed": "Liberación fallida",
+      "escrow_funded": "Fideicomiso financiado · txid: {{txid}}",
+      "funding_failed": "Financiamiento fallido",
+      "agreement_imported": "Acuerdo importado: {{id}}",
+      "invoice_parse_warning": "Se importó, pero no se pudieron analizar los campos de la factura para completarlos previamente",
+      "invoice_imported": "Factura importada",
+      "failed_open_dispute": "No se pudo abrir la disputa",
+      "signature_valid": "Firma válida (firmante {{signer}})",
+      "signature_invalid": "Firma no válida: {{reason}}",
+      "agreement_signed_short": "Acuerdo firmado.",
+      "sign_failed": "Error al firmar"
     },
     "refund": {
       "blocked_default": "Se desconoce la elegibilidad para el reembolso",
       "blocked_reason": "Reembolso no disponible: {{reason}}",
       "timeout_not_reached": "Aún no se ha alcanzado el tiempo de espera"
+    },
+    "page_subtitle": "Acuerdos de liquidación en cadena",
+    "tooltips": {
+      "help": "Los acuerdos ayudan",
+      "import_invoice": "Importe una factura de pago JSON y cree un acuerdo a partir de ella",
+      "clear_search": "Borrar búsqueda",
+      "choose_save_location": "Elige la ubicación para guardar",
+      "you_are_buyer": "La dirección de su billetera seleccionada es la del comprador de este acuerdo.",
+      "you_are_seller": "La dirección de su billetera seleccionada es la del vendedor de este acuerdo.",
+      "copy_full_hash": "Copiar el hash del acuerdo completo",
+      "submit_proof_delivery": "Envíe su comprobante de entrega",
+      "resolver_required": "Se requiere una certificación de resolución para resolver esta disputa. Póngase en contacto con su solucionador designado.",
+      "deadline_passed": "El plazo de este acuerdo ha transcurrido sin resolución.",
+      "share_text": "Copie un resumen en texto plano de este acuerdo al portapapeles",
+      "delete_local": "Elimina este acuerdo de tu tienda local. La copia de la contraparte no se ve afectada.",
+      "save_friendly_name": "Guarde un nombre descriptivo para este acuerdo (almacenado localmente)",
+      "verify_signature_file": "Verificar un archivo de firma (.sig o .json) con este acuerdo"
+    },
+    "buttons": {
+      "import_invoice": "Importar factura",
+      "import_pack": "Paquete de importación",
+      "browse": "Navegar",
+      "delete_agreement": "Eliminar acuerdo"
+    },
+    "page_views": {
+      "agreements": "Acuerdos",
+      "disputes": "Disputas"
+    },
+    "status_filters": {
+      "all": "Todo",
+      "pending": "Pendiente",
+      "open": "Abierto",
+      "funded": "Fundado",
+      "released": "Liberado",
+      "refunded": "Reintegrado"
+    },
+    "proof_types": {
+      "delivery_confirmed": "Entrega confirmada",
+      "payment_received": "Pago recibido",
+      "otc_release": "Lanzamiento sin receta",
+      "milestone_complete": "Hito completado"
+    },
+    "search_placeholder": "Busque por ID, dirección del comprador/vendedor o etiqueta...",
+    "role_badges": {
+      "buyer": "Usted es: Comprador",
+      "seller": "Eres: Vendedor"
+    },
+    "labels": {
+      "hash": "Picadillo:",
+      "release_reason": "Motivo de liberación:",
+      "proof_not_final": "Prueba aún no definitiva",
+      "agreement_hash": "Hash de acuerdo",
+      "proof_type": "Tipo de prueba",
+      "attested_by": "Atestiguado por",
+      "evidence_summary": "Resumen de evidencia",
+      "proof_file": "Archivo de prueba",
+      "create_from_evidence": "Crear a partir de evidencia",
+      "secret_preimage": "Preimagen secreta (hexadecimal)",
+      "pack_file": "Empaquetar archivo",
+      "invoice_file": "Archivo de factura",
+      "invoice_id": "ID de factura",
+      "recipient": "Beneficiario",
+      "amount": "Cantidad",
+      "reference": "Referencia",
+      "expires_height": "Caduca (altura)",
+      "dispute_reason": "Razón (opcional)",
+      "agreement": "Acuerdo",
+      "txid": "Txid",
+      "value": "Valor",
+      "policy": "Política",
+      "signatures": "Firmas",
+      "buyer": "Comprador",
+      "seller": "Vendedor",
+      "signer_wallet": "Dirección de la billetera del firmante",
+      "role": "Role:",
+      "reason": "Razón:"
+    },
+    "placeholders": {
+      "your_wallet_address": "La dirección de tu billetera",
+      "secret_preimage": "Opcional · Hexadecimal de 64 caracteres",
+      "dispute_reason": "Describe lo que salió mal; esto se comparte con el solucionador."
+    },
+    "modals": {
+      "submit_proof_title": "Enviar prueba",
+      "import_pack_title": "Paquete de acuerdo de importación",
+      "import_invoice_title": "Importar factura",
+      "open_dispute_title": "¿Disputa abierta?",
+      "audit_title": "Auditoría de acuerdos",
+      "sign_title": "firmar acuerdo"
+    },
+    "audit": {
+      "fetching": "Obteniendo registro de auditoría..."
+    },
+    "empty": {
+      "no_signatures": "Aún no se han verificado firmas. Utilice el botón de arriba para verificar uno.",
+      "no_wallet_addresses": "Sin direcciones de billetera",
+      "no_disputes": "Sin disputas.",
+      "disputes_offline": "(El nodo está fuera de línea; es posible que la lista de disputas no esté disponible)."
     }
   },
   "settlement": {
@@ -604,7 +720,7 @@
       "fields": {
         "party_a": "Partido A",
         "party_b": "Partido B",
-        "amount_irm": "Monto (IRM)",
+        "amount_irm": "Importe (IRM)",
         "deadline_hours": "Plazo (horas)",
         "cooldown_hours": "Ventana de enfriamiento (horas)",
         "milestones": "Número de hitos",
@@ -639,21 +755,21 @@
     },
     "filters": {
       "search_placeholder": "Buscar ofertas…",
-      "min_amount": "IRM mín.",
-      "max_amount": "IRM máx.",
+      "min_amount": "Mínimo IRM",
+      "max_amount": "Máximo IRM",
       "payment_method": "Método de pago"
     },
     "create_offer": {
       "title": "Crear oferta de venta",
       "how_works_title": "Cómo funciona la venta OTC",
       "how_works_step_1": "Usted crea esta oferta (el IRM ahora está bloqueado en depósito de garantía).",
-      "how_works_step_2": "Un comprador financia el depósito en garantía con su participación en IRM.",
+      "how_works_step_2": "Un comprador financia el depósito en garantía con su acción de IRM.",
       "how_works_step_3": "El comprador le paga fuera de la cadena siguiendo las instrucciones a continuación.",
       "how_works_step_4": "Confirmas el pago recibido.",
-      "how_works_step_5": "El depósito en garantía libera el IRM al comprador.",
+      "how_works_step_5": "El depósito de garantía libera el IRM al comprador.",
       "escrow_note": "El depósito en garantía en cadena protege a ambas partes: ninguno de los dos puede desaparecer con el dinero.",
       "fields": {
-        "amount_label": "IRM para vender",
+        "amount_label": "IRM para Vender",
         "amount_hint": "Esta cantidad se deducirá de su billetera y se bloqueará en un depósito de garantía.",
         "seller_address_label": "Dirección del vendedor (opcional)",
         "seller_address_placeholder": "Opcional · dejar en blanco para el valor predeterminado de la billetera",
@@ -665,7 +781,7 @@
         "payment_method_placeholder": "p.ej. Transferencia bancaria, PayPal, USDT, BTC, efectivo",
         "payment_method_hint": "Etiqueta corta que ayuda a los compradores a filtrar ofertas: elegir el carril que deben utilizar.",
         "price_label": "Precio o tipo de cambio (opcional)",
-        "price_placeholder": "p.ej. Tasa de mercado + 2%, $0,05 por IRM",
+        "price_placeholder": "p.ej. Tasa de mercado + 2%, $0.05 por IRM",
         "payment_details_label": "Tus datos de pago (qué enviarte)",
         "payment_details_hint": "El comprador ve estas instrucciones después de que se financie el depósito en garantía. Sea específico: los detalles incorrectos significan pérdida de tiempo.",
         "custom_id_label": "ID de oferta personalizada (opcional)",
@@ -673,7 +789,7 @@
       },
       "submit": "Crear oferta",
       "creating": "Creando…",
-      "confirm_large_amount": "Está a punto de bloquear {{amount}} IRM en depósito de garantía.\n\nEsta es una gran cantidad. Confirma que has escrito el decimal correctamente.",
+      "confirm_large_amount": "Estás a punto de bloquear {{amount}} IRM en depósito de garantía.\n\nEsta es una gran cantidad. Confirma que has escrito el decimal correctamente.",
       "remote_label": "remoto",
       "remote_tooltip": "Esta oferta es de otro vendedor y no se puede eliminar de su tienda local.",
       "delete_tooltip": "Elimina esta oferta de tu tienda local"
@@ -928,7 +1044,7 @@
       "step_agreements": "Acuerdos",
       "intro": "Define lo que vendes y el precio.",
       "fields": {
-        "amount_label": "Monto (IRM)",
+        "amount_label": "Importe (IRM)",
         "offer_id_label": "ID de oferta",
         "seller_address_label": "Dirección del vendedor",
         "seller_address_hint": "Detectado automáticamente desde su billetera. Los compradores enviarán el pago aquí.",

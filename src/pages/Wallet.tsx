@@ -238,7 +238,7 @@ export default function WalletPage() {
     setAddingAddress(true);
     try {
       const newAddr = await wallet.newAddress();
-      if (!newAddr) { toast.error('No address returned'); return; }
+      if (!newAddr) { toast.error(t('wallet.toasts.no_address_returned')); return; }
       // Pull the WIF for the new address (best-effort)
       let wif: string | undefined;
       try { wif = await wallet.readWif(newAddr) ?? undefined; } catch { /* ok */ }
@@ -324,7 +324,7 @@ export default function WalletPage() {
     } catch (e) {
       const msg = String(e).toLowerCase();
       if (msg.includes('seed') || msg.includes('no seed') || msg.includes('not found') || msg.includes('mnemonic')) {
-        toast.error('This wallet has no seed backup — use WIF Key or Export Backup File instead');
+        toast.error(t('wallet.toasts.no_seed_backup'));
       } else {
         toast.error(String(e));
       }
@@ -339,7 +339,7 @@ export default function WalletPage() {
     // following the active selection is the least-surprising behaviour
     // (the hero and Transactions list already scope to this address).
     const selectedAddr = addresses[activeAddrIdx]?.address;
-    if (!selectedAddr) { toast.error('No address loaded'); return; }
+    if (!selectedAddr) { toast.error(t('wallet.toasts.no_address_loaded')); return; }
     setExportingSecurityWif(true);
     try {
       const outPath = await saveDialog({
@@ -1062,7 +1062,7 @@ export default function WalletPage() {
                       setRestoringBackup(true);
                       try {
                         await wallet.restoreBackup(restoreBackupPath);
-                        toast.success('Wallet restored from backup');
+                        toast.success(t('wallet.toasts.restored_backup'));
                         setShowRestoreBackupConfirm(false);
                         loadData();
                       } catch (e) {
@@ -1443,6 +1443,7 @@ function CreateWalletModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<CreateWalletTab>(restrictToImport ? 'import' : defaultTab);
   const [importMethod, setImportMethod] = useState<ImportMethod>(defaultImportTab);
 
@@ -1542,7 +1543,7 @@ function CreateWalletModal({
       });
       if (!outPath) return;
       await wallet.exportWif(createResult.address, outPath as string);
-      toast.success('WIF key saved');
+      toast.success(t('wallet.toasts.wif_saved'));
     } catch (e) {
       toast.error(String(e));
     } finally {
@@ -1556,10 +1557,10 @@ function CreateWalletModal({
       let resolvedPath: string | null = null;
       if (importMethod === 'mnemonic') {
         const words = mnemonic.trim();
-        if (words.split(/\s+/).length < 12) { toast.error("Enter at least 12 mnemonic words"); setImporting(false); return; }
+        if (words.split(/\s+/).length < 12) { toast.error(t('wallet.toasts.need_12_words')); setImporting(false); return; }
         resolvedPath = await wallet.importMnemonic(words);
       } else {
-        if (!wif.trim()) { toast.error("Enter a WIF key"); setImporting(false); return; }
+        if (!wif.trim()) { toast.error(t('wallet.toasts.enter_wif')); setImporting(false); return; }
         resolvedPath = await wallet.importWif(wif.trim());
       }
       if (typeof resolvedPath === 'string' && resolvedPath.length > 0 && resolvedPath.endsWith('.json')) {
@@ -1574,7 +1575,7 @@ function CreateWalletModal({
       } else if (resolvedPath) {
         throw new Error(`Wallet binary returned invalid path: ${resolvedPath}`);
       }
-      toast.success("Wallet imported successfully");
+      toast.success(t('wallet.toasts.imported_successfully'));
       onSuccess();
     } catch (e) {
       toast.error(String(e));
@@ -1676,7 +1677,7 @@ function CreateWalletModal({
                       <div className="flex items-center gap-2 p-3 rounded-lg bg-white/5 border border-white/5">
                         <span className="font-mono text-xs text-white/80 break-all flex-1">{createResult.address}</span>
                         <button
-                          onClick={() => { navigator.clipboard.writeText(createResult.address); toast.success("Copied"); }}
+                          onClick={() => { navigator.clipboard.writeText(createResult.address); toast.success(t('wallet.toasts.copied')); }}
                           className="btn-ghost p-1 text-white/30 hover:text-white flex-shrink-0"
                         >
                           <Copy size={11} />
@@ -1712,7 +1713,7 @@ function CreateWalletModal({
                         </div>
                         {!mnemonicBlurred && (
                           <button
-                            onClick={() => { navigator.clipboard.writeText(mnemonicWords.join(' ')); toast.success('Recovery phrase copied'); }}
+                            onClick={() => { navigator.clipboard.writeText(mnemonicWords.join(' ')); toast.success(t('wallet.toasts.recovery_copied')); }}
                             className="btn-ghost flex items-center gap-2 text-white/40 hover:text-white mt-1"
                           >
                             <Copy size={11} /> Copy Phrase
@@ -1732,7 +1733,7 @@ function CreateWalletModal({
                           <div className={clsx("flex items-center gap-2 p-3 rounded-lg bg-white/5 border border-white/5 transition-all duration-300", wifBlurred && "blur-sm select-none pointer-events-none")}>
                             <span className="font-mono text-xs text-white/80 break-all flex-1">{wifValue}</span>
                             <button
-                              onClick={() => { navigator.clipboard.writeText(wifValue); toast.success("WIF copied"); }}
+                              onClick={() => { navigator.clipboard.writeText(wifValue); toast.success(t('wallet.toasts.wif_copied')); }}
                               className="btn-ghost p-1 text-white/30 hover:text-white flex-shrink-0"
                             >
                               <Copy size={11} />
@@ -2309,7 +2310,7 @@ function NewAddressModal({
               )}
               {revealWif && (
                 <button
-                  onClick={() => { navigator.clipboard.writeText(info.wif!); toast.success('WIF copied'); }}
+                  onClick={() => { navigator.clipboard.writeText(info.wif!); toast.success(t('wallet.toasts.wif_copied')); }}
                   className="btn-ghost text-xs gap-1.5"
                 >
                   <Copy size={12} /> Copy WIF
@@ -2506,7 +2507,7 @@ function ManageWalletsPanel({
     const trimmed = name.trim();
     if (!trimmed) return;
     if (/[/\\:*?"<>|]/.test(trimmed)) {
-      toast.error('Wallet name cannot contain: / \\ : * ? " < > |');
+      toast.error(t('wallet.toasts.name_invalid_chars'));
       return;
     }
     const currentName = path.split(/[\\/]/).pop()?.replace(/\.json$/i, '') ?? '';
@@ -2997,7 +2998,7 @@ function ManageWalletsPanel({
                       <div className="font-mono text-[11px] text-white/65 break-all leading-relaxed">{addr}</div>
                     </div>
                     <button
-                      onClick={() => { onUnhide(addr); toast.success('Address unhidden'); }}
+                      onClick={() => { onUnhide(addr); toast.success(t('wallet.toasts.address_unhidden')); }}
                       className="btn-ghost text-[10px] py-1 px-2 gap-1 flex-shrink-0"
                       style={{ color: '#6ec6ff' }}
                       title="Unhide this address"

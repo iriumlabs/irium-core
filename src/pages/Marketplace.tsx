@@ -227,6 +227,7 @@ function TakeOfferModal({
   onSuccess: () => void;
   isOnline: boolean;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [takingOffer, setTakingOffer] = useState(false);
   // Buyer-address override. Pre-filled with the currently selected wallet
@@ -292,7 +293,7 @@ function TakeOfferModal({
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between mb-5">
-            <h2 className="font-display font-bold text-lg text-white">Take This Offer</h2>
+            <h2 className="font-display font-bold text-lg text-white">{t('marketplace.take_offer.title_modal')}</h2>
             <button onClick={onClose} className="btn-ghost text-white/40 p-1">
               <X size={16} />
             </button>
@@ -410,7 +411,7 @@ function CreateOfferModal({
     if (!form.amount) return;
     const amt = parseFloat(form.amount);
     if (isNaN(amt) || amt <= 0) {
-      toast.error('Enter a positive amount');
+      toast.error(t('marketplace.toasts.enter_positive_amount'));
       return;
     }
     if (amt > MAX_OFFER_IRM) {
@@ -422,11 +423,11 @@ function CreateOfferModal({
     if (form.minAmount.trim()) {
       minAmt = parseFloat(form.minAmount);
       if (isNaN(minAmt) || minAmt <= 0) {
-        toast.error('Minimum trade amount must be a positive number');
+        toast.error(t('marketplace.toasts.min_must_be_positive'));
         return;
       }
       if (minAmt > amt) {
-        toast.error('Minimum cannot exceed the offer amount');
+        toast.error(t('marketplace.toasts.min_cannot_exceed'));
         return;
       }
     }
@@ -485,7 +486,7 @@ function CreateOfferModal({
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between mb-2">
-            <h2 className="font-display font-bold text-lg text-white">Create Sell Offer</h2>
+            <h2 className="font-display font-bold text-lg text-white">{t('marketplace.create_offer.title')}</h2>
             <button onClick={onClose} className="btn-ghost text-white/40 p-1">
               <X size={16} />
             </button>
@@ -724,7 +725,7 @@ export default function MarketplacePage() {
       setMyOffers(data);
     } catch (e) {
       if (nodeStatus?.running) {
-        toast.error('Failed to load your offers: ' + String(e));
+        toast.error(t('marketplace.toasts.failed_load_my', { reason: String(e) }));
       }
     } finally {
       setLoading(false);
@@ -738,7 +739,7 @@ export default function MarketplacePage() {
       setFeedList(data);
     } catch (e) {
       if (nodeStatus?.running) {
-        toast.error('Failed to load feeds: ' + String(e));
+        toast.error(t('marketplace.toasts.failed_load_feeds', { reason: String(e) }));
       }
     } finally {
       setLoading(false);
@@ -780,18 +781,18 @@ export default function MarketplacePage() {
       setShowAddFeed(false);
       await loadFeeds();
     } catch (e) {
-      toast.error('Failed to add feed: ' + String(e));
+      toast.error(t('marketplace.toasts.failed_add_feed', { reason: String(e) }));
     }
   };
 
   const handleRemoveFeed = async (url: string) => {
     try {
       await feeds.remove(url);
-      toast.success('Feed removed');
+      toast.success(t('marketplace.toasts.feed_removed'));
       setRemovingFeed(null);
       await loadFeeds();
     } catch (e) {
-      toast.error('Failed to remove feed: ' + String(e));
+      toast.error(t('marketplace.toasts.failed_remove_feed', { reason: String(e) }));
     }
   };
 
@@ -805,20 +806,20 @@ export default function MarketplacePage() {
     if (!path) return;
     try {
       await offers.export(offerId, path);
-      toast.success('Offer exported to ' + path);
+      toast.success(t('marketplace.toasts.offer_exported', { path }));
     } catch (e) {
-      toast.error('Export failed: ' + String(e));
+      toast.error(t('marketplace.toasts.export_failed', { reason: String(e) }));
     }
   };
 
   const handleDeleteOffer = async (offer: Offer) => {
     try {
       await offers.remove(offer.id);
-      toast.success('Offer deleted');
+      toast.success(t('marketplace.toasts.offer_deleted'));
       setShowDeleteOfferModal(null);
       await loadMyOffers();
     } catch (e) {
-      toast.error('Delete failed: ' + String(e));
+      toast.error(t('marketplace.toasts.delete_failed', { reason: String(e) }));
     }
   };
 
@@ -830,10 +831,10 @@ export default function MarketplacePage() {
     if (!path) return;
     try {
       await offers.import(path);
-      toast.success('Offer imported');
+      toast.success(t('marketplace.toasts.offer_imported'));
       await loadMyOffers();
     } catch (e) {
-      toast.error('Import failed: ' + String(e));
+      toast.error(t('marketplace.toasts.import_failed', { reason: String(e) }));
     }
   };
 
@@ -846,7 +847,7 @@ export default function MarketplacePage() {
       );
       await loadFeeds();
     } catch (e) {
-      toast.error('Sync failed: ' + String(e));
+      toast.error(t('marketplace.toasts.sync_failed', { reason: String(e) }));
     } finally {
       setSyncing(false);
     }
@@ -888,7 +889,7 @@ export default function MarketplacePage() {
       {/* Page header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="page-title">Marketplace</h1>
+          <h1 className="page-title">{t('marketplace.page_title')}</h1>
           <p className="page-subtitle">Browse and post settlement offers on the Irium peer-to-peer network.</p>
         </div>
         <button
@@ -1252,7 +1253,7 @@ export default function MarketplacePage() {
                 onClick={async () => {
                   try {
                     await feedOps.bootstrap();
-                    toast.success('Default feeds added');
+                    toast.success(t('marketplace.toasts.default_feeds_added'));
                     await loadFeeds();
                   } catch (e) {
                     toast.error('Failed to add default feeds: ' + String(e));
