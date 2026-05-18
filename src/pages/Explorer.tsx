@@ -144,6 +144,7 @@ function StatCardSkeleton() {
 // ── Block detail modal ────────────────────────────────────────
 
 function BlockDetailModal({ block, onClose }: { block: ExplorerBlock; onClose: () => void }) {
+  const { t } = useTranslation();
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handler);
@@ -151,20 +152,20 @@ function BlockDetailModal({ block, onClose }: { block: ExplorerBlock; onClose: (
   }, [onClose]);
 
   const rows = [
-    { label: 'Height',      value: `#${block.height.toLocaleString('en-US')}`,                                   mono: true,  copy: false },
-    { label: 'Hash',        value: block.hash || '—',                                                     mono: true,  copy: !!block.hash },
-    { label: 'Prev Hash',   value: block.prev_hash || '—',                                                mono: true,  copy: !!block.prev_hash },
-    { label: 'Merkle Root', value: block.merkle_root || '—',                                              mono: true,  copy: !!block.merkle_root },
-    { label: 'Time',        value: block.time ? new Date(block.time * 1000).toLocaleString('en-US') : '—',      mono: false, copy: false },
+    { label: t('explorer.block_modal.label_height'),       value: `#${block.height.toLocaleString('en-US')}`,                                   mono: true,  copy: false },
+    { label: t('explorer.block_modal.label_hash'),         value: block.hash || '—',                                                            mono: true,  copy: !!block.hash },
+    { label: t('explorer.block_modal.label_prev_hash'),    value: block.prev_hash || '—',                                                       mono: true,  copy: !!block.prev_hash },
+    { label: t('explorer.block_modal.label_merkle'),       value: block.merkle_root || '—',                                                     mono: true,  copy: !!block.merkle_root },
+    { label: t('explorer.block_modal.label_time'),         value: block.time ? new Date(block.time * 1000).toLocaleString('en-US') : '—',       mono: false, copy: false },
     // H-13/L-12: Reward is computed client-side from a hardcoded halving formula
     // (HALVING_INTERVAL = 50_000, initial = 50 IRM). iriumd doesn't currently
     // expose a parsed reward per block, so this is an estimate based on the
     // launch consensus parameters. The "(estimated)" label makes that explicit.
-    { label: 'Reward',      value: `${blockReward(block.height)} (estimated)`,                            mono: true,  copy: false, color: '#34d399' },
-    { label: 'Transactions',value: String(block.tx_count),                                                mono: true,  copy: false },
-    { label: 'Bits',        value: block.bits || '—',                                                     mono: true,  copy: false },
-    { label: 'Nonce',       value: block.nonce != null ? String(block.nonce) : '—',                       mono: true,  copy: false },
-    { label: 'Miner',       value: block.miner_address || '—',                                            mono: true,  copy: !!block.miner_address },
+    { label: t('explorer.block_modal.label_reward'),       value: t('explorer.block_modal.label_reward_with_estimated', { reward: blockReward(block.height) }), mono: true,  copy: false, color: '#34d399' },
+    { label: t('explorer.block_modal.label_transactions'), value: String(block.tx_count),                                                       mono: true,  copy: false },
+    { label: t('explorer.block_modal.label_bits'),         value: block.bits || '—',                                                            mono: true,  copy: false },
+    { label: t('explorer.block_modal.label_nonce'),        value: block.nonce != null ? String(block.nonce) : '—',                              mono: true,  copy: false },
+    { label: t('explorer.block_modal.label_miner'),        value: block.miner_address || '—',                                                   mono: true,  copy: !!block.miner_address },
   ];
 
   return (
@@ -185,7 +186,7 @@ function BlockDetailModal({ block, onClose }: { block: ExplorerBlock; onClose: (
           <div className="flex items-center gap-2.5">
             <Layers size={14} style={{ color: '#6ec6ff' }} />
             <span style={{ fontFamily: '"Space Grotesk", sans-serif', fontSize: 16, fontWeight: 800, color: '#6ec6ff' }}>
-              Block #{block.height.toLocaleString('en-US')}
+              {t('explorer.block_modal.title_prefix')} #{block.height.toLocaleString('en-US')}
             </span>
           </div>
           <button
@@ -641,21 +642,21 @@ export default function Explorer() {
       if (result && Object.keys(result).length > 0) {
         setSearchResult(result);
       } else {
-        if (searchTab === 'block') setSearchErr('Block not found on chain.');
-        else if (searchTab === 'tx') setSearchErr('Transaction not found.');
-        else setSearchErr('Address not found.');
+        if (searchTab === 'block') setSearchErr(t('explorer.search.errors.block_not_found'));
+        else if (searchTab === 'tx') setSearchErr(t('explorer.search.errors.tx_not_found'));
+        else setSearchErr(t('explorer.search.errors.address_not_found'));
       }
     } catch (err) {
       const msg = String(err).toLowerCase();
       const nodeOffline = msg.includes('network') || msg.includes('connection') || msg.includes('econnrefused') || msg.includes('timeout') || msg.includes('offline');
       if (nodeOffline) {
-        setSearchErr('Cannot reach node — make sure the node is running on the Dashboard.');
+        setSearchErr(t('explorer.search.errors.node_unreachable'));
       } else if (searchTab === 'block') {
-        setSearchErr('Block not found on chain.');
+        setSearchErr(t('explorer.search.errors.block_not_found'));
       } else if (searchTab === 'tx') {
-        setSearchErr('Transaction not found — confirm the txid is correct and the node is fully synced.');
+        setSearchErr(t('explorer.search.errors.tx_not_found_detailed'));
       } else {
-        setSearchErr('Address not found — the node may not yet expose address balance lookup.');
+        setSearchErr(t('explorer.search.errors.address_not_found_detailed'));
       }
     } finally {
       setSearching(false);
@@ -663,9 +664,9 @@ export default function Explorer() {
   };
 
   const searchPlaceholders: Record<SearchTab, string> = {
-    block:   'Block height or hash (e.g. 21000 or 00a3b…)',
-    tx:      'Transaction ID (64-char hex)',
-    address: 'Irium address (e.g. Q… or P…)',
+    block:   t('explorer.search.placeholders.block'),
+    tx:      t('explorer.search.placeholders.tx'),
+    address: t('explorer.search.placeholders.address'),
   };
 
   // ── Render ────────────────────────────────────────────────
@@ -715,7 +716,7 @@ export default function Explorer() {
       </div>
 
       {/* ── Body ─────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
+      <div className="flex-1 overflow-y-auto scroll-visible px-6 py-4 space-y-5">
 
         {/* ── Network Stats ─────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
@@ -809,7 +810,7 @@ export default function Explorer() {
             right={
               blocks.length > 0 ? (
                 <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10, color: 'rgba(110,198,255,0.35)', whiteSpace: 'nowrap' }}>
-                  {blocks.length.toLocaleString('en-US')} loaded
+                  {t('explorer.blocks_table.loaded_short', { count: blocks.length.toLocaleString('en-US') })}
                   {oldestLoaded !== undefined && ` · #${oldestLoaded.toLocaleString('en-US')}–#${newestLoaded?.toLocaleString('en-US')}`}
                 </span>
               ) : undefined
@@ -820,7 +821,7 @@ export default function Explorer() {
             !running ? (
               /* Node offline — don't perpetually skeleton; show clear offline state */
               <div className="py-10 text-center text-sm" style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.07)', borderRadius: 8, color: 'rgba(255,255,255,0.22)' }}>
-                Start the node on the Dashboard to load blocks
+                {t('explorer.empty_states.start_node_for_blocks')}
               </div>
             ) : (
               /* Loading skeleton while node is running but blocks not yet fetched */
@@ -836,7 +837,7 @@ export default function Explorer() {
             )
           ) : blocks.length === 0 ? (
             <div className="py-10 text-center text-sm" style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.07)', borderRadius: 8, color: 'rgba(255,255,255,0.22)' }}>
-              No blocks yet — syncing…
+              {t('explorer.empty_states.no_blocks_syncing')}
             </div>
           ) : (
             <>
@@ -845,12 +846,12 @@ export default function Explorer() {
                 <table className="w-full">
                   <thead>
                     <tr style={{ borderBottom: '1px solid rgba(110,198,255,0.08)', background: 'rgba(0,0,0,0.55)' }}>
-                      <th className="pl-4 pr-2 py-2 text-left" style={TH_STYLE}>Height</th>
-                      <th className="px-2 py-2 text-left" style={TH_STYLE}>Hash</th>
-                      <th className="px-2 py-2 text-left" style={TH_STYLE}>Age</th>
-                      <th className="px-2 py-2 text-center" style={TH_STYLE}>Txs</th>
-                      <th className="px-2 py-2 text-left" style={TH_STYLE}>Miner</th>
-                      <th className="pl-2 pr-4 py-2 text-right" style={TH_STYLE}>Reward</th>
+                      <th className="pl-4 pr-2 py-2 text-left" style={TH_STYLE}>{t('explorer.blocks_table.height')}</th>
+                      <th className="px-2 py-2 text-left" style={TH_STYLE}>{t('explorer.blocks_table.hash')}</th>
+                      <th className="px-2 py-2 text-left" style={TH_STYLE}>{t('explorer.blocks_table.age')}</th>
+                      <th className="px-2 py-2 text-center" style={TH_STYLE}>{t('explorer.blocks_table.txs_short')}</th>
+                      <th className="px-2 py-2 text-left" style={TH_STYLE}>{t('explorer.blocks_table.miner')}</th>
+                      <th className="pl-2 pr-4 py-2 text-right" style={TH_STYLE}>{t('explorer.blocks_table.reward')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -869,7 +870,7 @@ export default function Explorer() {
               <div className="mt-3 flex flex-col items-center gap-1.5">
                 {reachedGenesis ? (
                   <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.22)', fontFamily: '"JetBrains Mono", monospace' }}>
-                    All {blocks.length.toLocaleString('en-US')} blocks loaded — from genesis to tip
+                    {t('explorer.blocks_table.all_loaded', { count: blocks.length.toLocaleString('en-US') })}
                   </p>
                 ) : (
                   <button
@@ -885,8 +886,10 @@ export default function Explorer() {
                     }}
                   >
                     {loadingMore
-                      ? <><RefreshCw size={11} className="animate-spin" /> Loading older blocks…</>
-                      : <>Load older blocks {blockCursor !== null && blockCursor > 0 ? `(next: #${blockCursor.toLocaleString('en-US')})` : ''}</>
+                      ? <><RefreshCw size={11} className="animate-spin" /> {t('explorer.load_more.loading_older')}</>
+                      : <>{blockCursor !== null && blockCursor > 0
+                          ? t('explorer.load_more.older_with_next', { height: blockCursor.toLocaleString('en-US') })
+                          : t('explorer.load_more.older')}</>
                     }
                   </button>
                 )}
@@ -931,11 +934,11 @@ export default function Explorer() {
               <div className="flex items-center gap-2.5 mb-3">
                 <Clock size={14} style={{ color: '#fbbf24' }} />
                 <span style={{ fontFamily: '"Space Grotesk", sans-serif', fontSize: 14, fontWeight: 700, color: '#fbbf24' }}>
-                  Block #{pendingBlock.height.toLocaleString('en-US')} not yet available
+                  {t('explorer.block_modal.pending_title', { height: pendingBlock.height.toLocaleString('en-US') })}
                 </span>
               </div>
               <p className="text-sm text-white/60 leading-relaxed mb-5">
-                The node may still be indexing this block. Click to retry — the lookup runs again after 5 seconds.
+                {t('explorer.block_modal.pending_body')}
               </p>
               <div className="flex items-center gap-3 justify-end">
                 <button
@@ -943,7 +946,7 @@ export default function Explorer() {
                   className="btn-secondary text-xs py-2 px-4"
                   disabled={pendingBlock.retrying}
                 >
-                  Dismiss
+                  {t('explorer.block_modal.dismiss')}
                 </button>
                 <button
                   onClick={handlePendingRetry}
@@ -951,9 +954,9 @@ export default function Explorer() {
                   disabled={pendingBlock.retrying}
                 >
                   {pendingBlock.retrying ? (
-                    <><RefreshCw size={12} className="animate-spin" /> Retrying in 5s…</>
+                    <><RefreshCw size={12} className="animate-spin" /> {t('explorer.block_modal.retrying')}</>
                   ) : (
-                    <><RefreshCw size={12} /> Retry</>
+                    <><RefreshCw size={12} /> {t('explorer.block_modal.retry')}</>
                   )}
                 </button>
               </div>

@@ -45,30 +45,32 @@ function useCountUp(target: number, duration: number, active: boolean): number {
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
+// Risk slug -> visual styling. Label resolved via t() at the call site using
+// reputation.risk_labels.<slug> so the visible text translates with the UI.
 const RISK_CONFIG: Record<
   string,
-  { label: string; color: string; icon: typeof ShieldCheck; bg: string }
+  { labelKey: string; color: string; icon: typeof ShieldCheck; bg: string }
 > = {
   low: {
-    label: "Low Risk",
+    labelKey: "reputation.risk_labels.low",
     color: "text-emerald-400",
     icon: ShieldCheck,
     bg: "bg-emerald-500/10 border-emerald-500/30",
   },
   medium: {
-    label: "Medium Risk",
+    labelKey: "reputation.risk_labels.medium",
     color: "text-amber-400",
     icon: AlertTriangle,
     bg: "bg-amber-500/10 border-amber-500/30",
   },
   high: {
-    label: "High Risk",
+    labelKey: "reputation.risk_labels.high",
     color: "text-rose-400",
     icon: ShieldAlert,
     bg: "bg-rose-500/10 border-rose-500/30",
   },
   unknown: {
-    label: "Unknown",
+    labelKey: "reputation.risk_labels.unknown",
     color: "text-white/40",
     icon: User,
     bg: "bg-white/5 border-white/10",
@@ -80,13 +82,15 @@ const RISK_CONFIG: Record<
 // ~13 min). Now derived from iriumd's /rpc/network_hashrate.avg_block_time
 // at mount, with a 13-min fallback if the RPC is unreachable.
 const FALLBACK_MINUTES_PER_BLOCK = 13;
-function blocksToReadable(blocks: number, minutesPerBlock: number): string {
+// t passed in so units localize. Each branch uses a distinct interpolation
+// key so plurals work later if a locale needs them.
+function blocksToReadable(blocks: number, minutesPerBlock: number, t: (k: string, o?: Record<string, unknown>) => string): string {
   const minutes = blocks * minutesPerBlock;
-  if (minutes < 120) return `~${Math.round(minutes)} minutes`;
+  if (minutes < 120) return t('reputation.time_units.minutes', { count: Math.round(minutes) });
   const hours = minutes / 60;
-  if (hours < 48) return `~${Math.round(hours)} hours`;
+  if (hours < 48) return t('reputation.time_units.hours', { count: Math.round(hours) });
   const days = hours / 24;
-  return `~${Math.round(days)} days`;
+  return t('reputation.time_units.days', { count: Math.round(days) });
 }
 
 // ─── Animation variants ───────────────────────────────────────────────────────
@@ -107,6 +111,7 @@ const itemVariants = {
 // seller has no trade history on this node — show a neutral grey ring with
 // "—" instead of a misleading 0/red score.
 function ScoreRing({ score, active, hasData = true }: { score: number; active: boolean; hasData?: boolean }) {
+  const { t } = useTranslation();
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const pct = Math.max(0, Math.min(1, score / 100));
@@ -152,7 +157,7 @@ function ScoreRing({ score, active, hasData = true }: { score: number; active: b
           {hasData ? displayScore : "—"}
         </span>
         <span className="text-xs text-white/40 font-mono">
-          {hasData ? "% success" : "no data"}
+          {hasData ? t('reputation.score_success_suffix') : t('reputation.score_no_data')}
         </span>
       </div>
     </div>
@@ -219,19 +224,19 @@ function SellerProfileBlock({ data, resultVisible }: { data: ReputationData; res
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-medium ${risk.bg} ${risk.color}`}
               >
                 <risk.icon size={13} />
-                {risk.label}
+                {t(risk.labelKey)}
               </motion.div>
             ) : (
               <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-medium ${risk.bg} ${risk.color}`}>
                 <risk.icon size={13} />
-                {risk.label}
+                {t(risk.labelKey)}
               </div>
             )}
           </div>
 
           <div className="flex-1 min-w-0 space-y-3">
             <div>
-              <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Address</p>
+              <p className="text-xs text-white/40 uppercase tracking-wider mb-1">{t('reputation.labels.address')}</p>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm text-white break-all">{data.seller}</span>
                 <button onClick={copyAddr} className="text-white/40 hover:text-white shrink-0">
@@ -246,7 +251,7 @@ function SellerProfileBlock({ data, resultVisible }: { data: ReputationData; res
                   className="badge badge-warning text-xs px-2 py-0.5 inline-flex items-center gap-1"
                   title={t('reputation.warnings.few_completed')}
                 >
-                  <AlertTriangle size={11} /> Sybil-suppressed
+                  <AlertTriangle size={11} /> {t('reputation.labels.sybil_suppressed_badge')}
                 </span>
               )}
               {data.self_trade_count > 0 && (
@@ -254,7 +259,7 @@ function SellerProfileBlock({ data, resultVisible }: { data: ReputationData; res
                   className="badge badge-warning text-xs px-2 py-0.5"
                   title={t('reputation.risk.sybil_detected')}
                 >
-                  Self-trades: {data.self_trade_count}
+                  {t('reputation.labels.self_trades_badge', { count: data.self_trade_count })}
                 </span>
               )}
               {data.dispute_rate && parseFloat(data.dispute_rate) >= 10 && (
@@ -262,7 +267,7 @@ function SellerProfileBlock({ data, resultVisible }: { data: ReputationData; res
                   className="badge badge-warning text-xs px-2 py-0.5"
                   title={t('reputation.risk.high_disputes')}
                 >
-                  High disputes: {data.dispute_rate}%
+                  {t('reputation.labels.high_disputes_badge', { rate: data.dispute_rate })}
                 </span>
               )}
             </div>
@@ -278,16 +283,16 @@ function SellerProfileBlock({ data, resultVisible }: { data: ReputationData; res
         className="grid grid-cols-2 sm:grid-cols-4 gap-3"
       >
         <motion.div variants={itemVariants}>
-          <StatCard label="Total Agreements" rawValue={data.total_agreements} icon={Hash} active={resultVisible} />
+          <StatCard label={t('reputation.stats.total_agreements')} rawValue={data.total_agreements} icon={Hash} active={resultVisible} />
         </motion.div>
         <motion.div variants={itemVariants}>
-          <StatCard label="Satisfied Trades" rawValue={data.satisfied ?? 0} sub="Released successfully" icon={CheckCircle} active={resultVisible} />
+          <StatCard label={t('reputation.stats.satisfied_trades')} rawValue={data.satisfied ?? 0} sub={t('reputation.stats.satisfied_sub')} icon={CheckCircle} active={resultVisible} />
         </motion.div>
         <motion.div variants={itemVariants}>
-          <StatCard label="Defaults" rawValue={data.defaults ?? 0} sub="Failed obligations" icon={XCircle} active={resultVisible} />
+          <StatCard label={t('reputation.stats.defaults')} rawValue={data.defaults ?? 0} sub={t('reputation.stats.defaults_sub')} icon={XCircle} active={resultVisible} />
         </motion.div>
         <motion.div variants={itemVariants}>
-          <StatCard label="Success Rate" value={data.success_rate ? `${data.success_rate}%` : "—"} sub="Lifetime" icon={Activity} active={resultVisible} />
+          <StatCard label={t('reputation.stats.success_rate')} value={data.success_rate ? `${data.success_rate}%` : "—"} sub={t('reputation.stats.success_rate_sub')} icon={Activity} active={resultVisible} />
         </motion.div>
       </motion.div>
     </div>
@@ -494,14 +499,14 @@ export default function Reputation() {
           disabled={!query.trim() || loading}
           className="btn-primary px-5 py-2 text-sm disabled:opacity-50 shrink-0"
         >
-          {loading ? "Looking up…" : "Look Up"}
+          {loading ? t('reputation.looking_up') : t('reputation.look_up')}
         </button>
         <button
           onClick={() => setCompareMode((v) => !v)}
           title={t('reputation.compare_tooltip')}
           className={`btn-secondary px-4 py-2 text-sm shrink-0 ${compareMode ? 'bg-irium-500/30 border-irium-500/40 text-irium-200' : ''}`}
         >
-          Compare
+          {t('reputation.compare_button')}
         </button>
       </div>
 
@@ -530,7 +535,7 @@ export default function Reputation() {
             disabled={!secondQuery.trim() || secondLoading}
             className="btn-primary px-5 py-2 text-sm disabled:opacity-50 shrink-0"
           >
-            {secondLoading ? "Looking up…" : "Look Up"}
+            {secondLoading ? t('reputation.looking_up') : t('reputation.look_up')}
           </button>
         </div>
       )}
@@ -538,7 +543,7 @@ export default function Reputation() {
       {/* Recent lookups — clickable chips, click pre-fills and submits. */}
       {recentLookups.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap text-xs">
-          <span className="text-white/40 uppercase tracking-wider">Recent lookups</span>
+          <span className="text-white/40 uppercase tracking-wider">{t('reputation.recent_lookups')}</span>
           {recentLookups.map((addr) => (
             <button
               key={addr}
@@ -569,24 +574,24 @@ export default function Reputation() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="space-y-4">
             {loading ? (
-              <div className="card p-6 text-center text-white/30 text-sm">Loading…</div>
+              <div className="card p-6 text-center text-white/30 text-sm">{t('reputation.loading_short')}</div>
             ) : error ? (
               <div className="card border-rose-500/30 bg-rose-500/5 p-4 text-rose-400 text-sm">{error}</div>
             ) : resultVisible && data ? (
               <SellerProfileBlock data={data} resultVisible={resultVisible} />
             ) : (
-              <div className="card p-6 text-center text-white/30 text-sm">Search for a seller above</div>
+              <div className="card p-6 text-center text-white/30 text-sm">{t('reputation.search_above')}</div>
             )}
           </div>
           <div className="space-y-4">
             {secondLoading ? (
-              <div className="card p-6 text-center text-white/30 text-sm">Loading…</div>
+              <div className="card p-6 text-center text-white/30 text-sm">{t('reputation.loading_short')}</div>
             ) : secondError ? (
               <div className="card border-rose-500/30 bg-rose-500/5 p-4 text-rose-400 text-sm">{secondError}</div>
             ) : secondResultVisible && secondData ? (
               <SellerProfileBlock data={secondData} resultVisible={secondResultVisible} />
             ) : (
-              <div className="card p-6 text-center text-white/30 text-sm">Search for a second seller to compare</div>
+              <div className="card p-6 text-center text-white/30 text-sm">{t('reputation.search_second')}</div>
             )}
           </div>
         </div>
@@ -621,9 +626,9 @@ export default function Reputation() {
               <Star size={28} className="text-irium-500" />
             </div>
             <div>
-              <p className="text-white font-semibold">No address queried yet</p>
+              <p className="text-white font-semibold">{t('reputation.no_address_queried')}</p>
               <p className="text-sm text-white/40 mt-1">
-                Enter a seller's Q-prefix address or public key to check their trade history, completion rate, and risk level before you trade with them.
+                {t('reputation.no_address_hint')}
               </p>
             </div>
           </motion.div>
@@ -655,14 +660,14 @@ export default function Reputation() {
                       className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-medium ${risk.bg} ${risk.color}`}
                     >
                       <risk.icon size={13} />
-                      {risk.label}
+                      {t(risk.labelKey)}
                     </motion.div>
                   ) : (
                     <div
                       className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-medium ${risk.bg} ${risk.color}`}
                     >
                       <risk.icon size={13} />
-                      {risk.label}
+                      {t(risk.labelKey)}
                     </div>
                   )}
                 </div>
@@ -671,7 +676,7 @@ export default function Reputation() {
                 <div className="flex-1 min-w-0 space-y-3">
                   <div>
                     <p className="text-xs text-white/40 uppercase tracking-wider mb-1">
-                      Address
+                      {t('reputation.labels.address')}
                     </p>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-sm text-white break-all">{data.seller}</span>
@@ -694,7 +699,7 @@ export default function Reputation() {
                         className="badge badge-warning text-xs px-2 py-0.5 inline-flex items-center gap-1"
                         title={t('reputation.warnings.few_completed')}
                       >
-                        <AlertTriangle size={11} /> Sybil-suppressed
+                        <AlertTriangle size={11} /> {t('reputation.labels.sybil_suppressed_badge')}
                       </span>
                     )}
                     {data.self_trade_count > 0 && (
@@ -702,7 +707,7 @@ export default function Reputation() {
                         className="badge badge-warning text-xs px-2 py-0.5"
                         title={t('reputation.risk.sybil_detected')}
                       >
-                        Self-trades: {data.self_trade_count}
+                        {t('reputation.labels.self_trades_badge', { count: data.self_trade_count })}
                       </span>
                     )}
                     {data.dispute_rate && parseFloat(data.dispute_rate) >= 10 && (
@@ -710,7 +715,7 @@ export default function Reputation() {
                         className="badge badge-warning text-xs px-2 py-0.5"
                         title={t('reputation.risk.high_disputes')}
                       >
-                        High disputes: {data.dispute_rate}%
+                        {t('reputation.labels.high_disputes_badge', { rate: data.dispute_rate })}
                       </span>
                     )}
                   </div>
@@ -728,7 +733,7 @@ export default function Reputation() {
             >
               <motion.div variants={itemVariants}>
                 <StatCard
-                  label="Total Agreements"
+                  label={t('reputation.stats.total_agreements')}
                   rawValue={data.total_agreements}
                   icon={Hash}
                   active={resultVisible}
@@ -736,27 +741,27 @@ export default function Reputation() {
               </motion.div>
               <motion.div variants={itemVariants}>
                 <StatCard
-                  label="Satisfied Trades"
+                  label={t('reputation.stats.satisfied_trades')}
                   rawValue={data.satisfied ?? 0}
-                  sub="Released successfully"
+                  sub={t('reputation.stats.satisfied_sub')}
                   icon={CheckCircle}
                   active={resultVisible}
                 />
               </motion.div>
               <motion.div variants={itemVariants}>
                 <StatCard
-                  label="Defaults"
+                  label={t('reputation.stats.defaults')}
                   rawValue={data.defaults ?? 0}
-                  sub="Failed obligations"
+                  sub={t('reputation.stats.defaults_sub')}
                   icon={XCircle}
                   active={resultVisible}
                 />
               </motion.div>
               <motion.div variants={itemVariants}>
                 <StatCard
-                  label="Success Rate"
+                  label={t('reputation.stats.success_rate')}
                   value={data.success_rate ? `${data.success_rate}%` : "—"}
-                  sub="Lifetime"
+                  sub={t('reputation.stats.success_rate_sub')}
                   icon={Activity}
                   active={resultVisible}
                 />
@@ -768,16 +773,16 @@ export default function Reputation() {
                 reputation DB via reputation_record_outcome. */}
             <div className="card p-4 flex items-center justify-between gap-3">
               <div className="text-xs">
-                <p className="text-white font-semibold">Just traded with this seller?</p>
+                <p className="text-white font-semibold">{t('reputation.record_outcome.title')}</p>
                 <p className="text-white/40 mt-0.5">
-                  Record the outcome to your local reputation database. Future lookups will reflect it.
+                  {t('reputation.record_outcome.title_body')}
                 </p>
               </div>
               <button
                 onClick={() => setShowOutcomeModal(true)}
                 className="btn-secondary text-xs py-1.5 px-3 flex-shrink-0"
               >
-                Record Outcome
+                {t('reputation.record_outcome.button')}
               </button>
             </div>
 
@@ -787,33 +792,36 @@ export default function Reputation() {
             {recentRiskConfig && (
               <div className="card p-4">
                 <p className="text-xs text-white/40 uppercase tracking-wider mb-3">
-                  Recent Window
+                  {t('reputation.recent_window.title')}
                   {data.recent.window != null && (
                     <span className="ml-1 text-white/30 normal-case tracking-normal">
-                      · last {data.recent.window.toLocaleString('en-US')} blocks ({blocksToReadable(data.recent.window, minutesPerBlock)})
+                      {t('reputation.recent_window.last_blocks', {
+                        count: data.recent.window.toLocaleString('en-US'),
+                        duration: blocksToReadable(data.recent.window, minutesPerBlock, t),
+                      })}
                     </span>
                   )}
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                   <div>
-                    <div className="text-white/40 uppercase tracking-wider mb-1">Satisfied</div>
+                    <div className="text-white/40 uppercase tracking-wider mb-1">{t('reputation.recent_window.satisfied')}</div>
                     <div className="font-mono text-white">{data.recent.satisfied ?? "—"}</div>
                   </div>
                   <div>
-                    <div className="text-white/40 uppercase tracking-wider mb-1">Defaults</div>
+                    <div className="text-white/40 uppercase tracking-wider mb-1">{t('reputation.recent_window.defaults')}</div>
                     <div className="font-mono text-white">{data.recent.defaults ?? "—"}</div>
                   </div>
                   <div>
-                    <div className="text-white/40 uppercase tracking-wider mb-1">Success Rate</div>
+                    <div className="text-white/40 uppercase tracking-wider mb-1">{t('reputation.recent_window.success_rate')}</div>
                     <div className="font-mono text-white">
                       {data.recent.success_rate ? `${data.recent.success_rate}%` : "—"}
                     </div>
                   </div>
                   <div>
-                    <div className="text-white/40 uppercase tracking-wider mb-1">Risk</div>
+                    <div className="text-white/40 uppercase tracking-wider mb-1">{t('reputation.recent_window.risk')}</div>
                     <div className={`inline-flex items-center gap-1 ${recentRiskConfig.color}`}>
                       <recentRiskConfig.icon size={11} />
-                      {recentRiskConfig.label}
+                      {t(recentRiskConfig.labelKey)}
                     </div>
                   </div>
                 </div>
@@ -850,11 +858,13 @@ export default function Reputation() {
 // buyers record about them (per WHITEPAPER §10 L645-660: "no central
 // reputation server, no shared reputation ledger").
 
-const OUTCOMES: { value: ReputationOutcome; label: string; color: string; sub: string }[] = [
-  { value: 'satisfied', label: 'Satisfied', color: '#10b981', sub: 'Trade completed successfully' },
-  { value: 'failed',    label: 'Failed',    color: '#f43f5e', sub: 'Counterparty did not perform'    },
-  { value: 'disputed',  label: 'Disputed',  color: '#f59e0b', sub: 'Required a resolver attestation'  },
-  { value: 'timeout',   label: 'Timeout',   color: '#a78bfa', sub: 'Deadline passed without resolution' },
+// Outcome metadata. `labelKey` and `subKey` are resolved through t() in the
+// modal so the visible text matches the active locale.
+const OUTCOMES: { value: ReputationOutcome; labelKey: string; color: string; subKey: string }[] = [
+  { value: 'satisfied', labelKey: 'reputation.outcomes.satisfied', color: '#10b981', subKey: 'reputation.outcomes.satisfied_sub' },
+  { value: 'failed',    labelKey: 'reputation.outcomes.failed',    color: '#f43f5e', subKey: 'reputation.outcomes.failed_sub'    },
+  { value: 'disputed',  labelKey: 'reputation.outcomes.disputed',  color: '#f59e0b', subKey: 'reputation.outcomes.disputed_sub'  },
+  { value: 'timeout',   labelKey: 'reputation.outcomes.timeout',   color: '#a78bfa', subKey: 'reputation.outcomes.timeout_sub'   },
 ];
 
 function OutcomeModal({
@@ -913,14 +923,16 @@ function OutcomeModal({
         className="card w-full max-w-md p-6 rounded-2xl"
       >
         <div className="mb-2">
-          <h2 className="font-display font-bold text-lg text-white">{t('reputation.record_outcome.title')}</h2>
+          <h2 className="font-display font-bold text-lg text-white">{t('reputation.record_outcome.modal_title')}</h2>
           <p className="text-xs text-white/40 mt-0.5">
-            with <span className="font-mono text-white/60">{truncated}</span>
+            {t('reputation.record_outcome.with_seller')} <span className="font-mono text-white/60">{truncated}</span>
           </p>
         </div>
 
         <p className="text-xs text-white/50 mb-4">
-          This adds to your <strong className="text-white/70">local</strong> reputation database. Only you see it. Sellers can request a signed export later if both parties agree.
+          {t('reputation.record_outcome.local_db_note_before')}
+          <strong className="text-white/70">{t('reputation.record_outcome.local_db_note_emphasis')}</strong>
+          {t('reputation.record_outcome.local_db_note_after')}
         </p>
 
         <div className="space-y-2 mb-4">
@@ -946,9 +958,9 @@ function OutcomeModal({
                 />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-display font-semibold" style={{ color: selected ? o.color : 'rgba(238,240,255,0.8)' }}>
-                    {o.label}
+                    {t(o.labelKey)}
                   </div>
-                  <div className="text-[11px] text-white/40">{o.sub}</div>
+                  <div className="text-[11px] text-white/40">{t(o.subKey)}</div>
                 </div>
               </button>
             );
@@ -962,24 +974,24 @@ function OutcomeModal({
             min="0"
             value={proofResponseSecs}
             onChange={(e) => setProofResponseSecs(e.target.value)}
-            placeholder="e.g. 3600 for 1 hour"
+            placeholder={t('reputation.record_outcome.response_time_placeholder')}
             className="input text-xs"
           />
           <p className="text-[11px] text-white/30 mt-1">
-            How long from funding to proof submission. Used for the avg_proof_response_secs reputation signal.
+            {t('reputation.record_outcome.response_time_hint')}
           </p>
         </div>
 
         <div className="flex gap-3">
           <button onClick={onClose} className="btn-secondary flex-1 justify-center">
-            Cancel
+            {t('reputation.record_outcome.cancel')}
           </button>
           <button
             onClick={handleConfirm}
             disabled={!choice || submitting}
             className="btn-primary flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {submitting ? 'Recording…' : 'Record Outcome'}
+            {submitting ? t('reputation.record_outcome.recording') : t('reputation.record_outcome.submit')}
           </button>
         </div>
       </motion.div>

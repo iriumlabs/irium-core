@@ -17,8 +17,12 @@ import { SATS_PER_IRM } from '../lib/types';
 // Step 0 = Choose Type, then create + share. The seller's job ends at the
 // Share step — once the buyer takes the offer an agreement is automatically
 // created and visible on the Agreements page. Proof submission and release
-// happen there, not in this wizard.
+// happen there, not in this wizard. Step labels drive only the dots-progress
+// UI (loop index, not rendered), so the array stays English.
 const STEPS = ['Choose Type', 'Create Offer', 'Share Offer'];
+// Payment-method autocomplete suggestions. These are free-text suggestions
+// that get sent verbatim as the offer's payment_method field, so they stay
+// English — they're a hint, not a constrained vocabulary.
 const PAYMENT_SUGGESTIONS = ['bank transfer', 'cash', 'crypto', 'PayPal', 'wire transfer', 'other'];
 
 // Settlement type the seller is initiating. The offer-create binary command
@@ -26,19 +30,21 @@ const PAYMENT_SUGGESTIONS = ['bank transfer', 'cash', 'crypto', 'PayPal', 'wire 
 // offer description so buyers see what kind of trade this is.
 type TemplateId = 'otc' | 'freelance' | 'milestone' | 'deposit';
 
+// Template metadata. nameKey/descKey resolve through t() in the render so the
+// card title/description follow the active locale.
 const TEMPLATES: ReadonlyArray<{
   id: TemplateId;
-  name: string;
-  desc: string;
+  nameKey: string;
+  descKey: string;
   Icon: React.ElementType;
   iconBg: string;
   iconColor: string;
   glowBg: string;
 }> = [
-  { id: 'otc',       name: 'OTC Trade',  desc: 'Peer-to-peer trade with escrow', Icon: ArrowLeftRight, iconBg: 'bg-irium-500/20', iconColor: 'text-irium-400', glowBg: 'bg-irium-500' },
-  { id: 'freelance', name: 'Freelance',  desc: 'Contractor milestone payment',   Icon: Briefcase,      iconBg: 'bg-blue-500/20',  iconColor: 'text-blue-400',  glowBg: 'bg-blue-500'  },
-  { id: 'milestone', name: 'Milestone',  desc: 'Multi-stage project payment',    Icon: Target,         iconBg: 'bg-green-500/20', iconColor: 'text-green-400', glowBg: 'bg-green-500' },
-  { id: 'deposit',   name: 'Deposit',    desc: 'Collateral deposit escrow',      Icon: Landmark,       iconBg: 'bg-amber-500/20', iconColor: 'text-amber-400', glowBg: 'bg-amber-500' },
+  { id: 'otc',       nameKey: 'wizards.templates.otc_name',       descKey: 'wizards.templates.otc_desc',       Icon: ArrowLeftRight, iconBg: 'bg-irium-500/20', iconColor: 'text-irium-400', glowBg: 'bg-irium-500' },
+  { id: 'freelance', nameKey: 'wizards.templates.freelance_name', descKey: 'wizards.templates.freelance_desc', Icon: Briefcase,      iconBg: 'bg-blue-500/20',  iconColor: 'text-blue-400',  glowBg: 'bg-blue-500'  },
+  { id: 'milestone', nameKey: 'wizards.templates.milestone_name', descKey: 'wizards.templates.milestone_desc', Icon: Target,         iconBg: 'bg-green-500/20', iconColor: 'text-green-400', glowBg: 'bg-green-500' },
+  { id: 'deposit',   nameKey: 'wizards.templates.deposit_name',   descKey: 'wizards.templates.deposit_desc',   Icon: Landmark,       iconBg: 'bg-amber-500/20', iconColor: 'text-amber-400', glowBg: 'bg-amber-500' },
 ];
 
 export default function SellerWizard() {
@@ -82,18 +88,18 @@ export default function SellerWizard() {
     const n = parseInt(blocks);
     if (isNaN(n) || n <= 0) return '';
     const mins = n * 10;
-    if (mins < 60) return `~${mins} min`;
+    if (mins < 60) return t('wizards.seller.est_time_min', { minutes: mins });
     const hrs = (mins / 60).toFixed(1);
-    return `~${hrs} hr`;
+    return t('wizards.seller.est_time_hr', { hours: hrs });
   };
 
   const handleCreateOffer = async () => {
     if (!amountIrm || isNaN(parseFloat(amountIrm)) || parseFloat(amountIrm) <= 0) {
-      setError('Enter a valid amount');
+      setError(t('wizards.seller.errors.valid_amount'));
       return;
     }
     if (!paymentMethod.trim()) {
-      setError('Payment method is required');
+      setError(t('wizards.seller.errors.payment_required'));
       return;
     }
     setError('');
@@ -101,8 +107,10 @@ export default function SellerWizard() {
     try {
       // Prefix the chosen template label into description so buyers see what
       // kind of settlement this is — the offer-create binary command has no
-      // typed template field of its own.
-      const tmplLabel = TEMPLATES.find((t) => t.id === template)?.name;
+      // typed template field of its own. Use the localized template name from
+      // the selected template's nameKey so the visible label matches the UI.
+      const tmpl = TEMPLATES.find((tpl) => tpl.id === template);
+      const tmplLabel = tmpl ? t(tmpl.nameKey) : undefined;
       const userNote = priceNote.trim();
       const description = tmplLabel
         ? (userNote ? `[${tmplLabel}] ${userNote}` : `[${tmplLabel}]`)
@@ -116,7 +124,7 @@ export default function SellerWizard() {
         description,
       };
       const res = await offers.create(params);
-      if (!res) throw new Error('No response from node');
+      if (!res) throw new Error(t('wizards.seller.errors.no_response'));
       setOfferResult(res);
       setStep(2);
     } catch (e) {
@@ -165,7 +173,7 @@ export default function SellerWizard() {
         <div className="flex items-center gap-4 mb-6">
           <button onClick={handleBack} className="btn-ghost flex items-center gap-2 text-white/50 hover:text-white">
             <ArrowLeft size={16} />
-            {step === 0 ? 'Settlement Hub' : 'Back'}
+            {step === 0 ? t('wizards.buyer.settlement_hub') : t('common.back')}
           </button>
           <div className="ml-auto flex items-center gap-2">
             {STEPS.map((s, i) => (
@@ -199,31 +207,31 @@ export default function SellerWizard() {
               <div>
                 <h2 className="font-display font-bold text-xl text-white">{t('wizards.seller.step_choose')}</h2>
                 <p className="text-white/40 text-sm mt-1">
-                  Pick the template that best describes what you are selling. This becomes part of the offer your buyer sees.
+                  {t('wizards.seller.step_choose_subtitle')}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {TEMPLATES.map((t) => {
-                  const selected = template === t.id;
+                {TEMPLATES.map((tpl) => {
+                  const selected = template === tpl.id;
                   return (
                     <motion.button
-                      key={t.id}
+                      key={tpl.id}
                       type="button"
                       whileHover={{ scale: 1.02, y: -2 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => setTemplate(t.id)}
+                      onClick={() => setTemplate(tpl.id)}
                       className={`card-interactive p-6 text-left flex flex-col gap-3 relative overflow-hidden transition-colors ${
                         selected ? 'ring-2 ring-irium-500/60 bg-irium-500/[0.04]' : ''
                       }`}
                     >
-                      <div className={`absolute top-4 right-4 w-20 h-20 rounded-full blur-2xl opacity-25 ${t.glowBg}`} />
-                      <div className={`p-3 rounded-xl w-fit ${t.iconBg}`}>
-                        <t.Icon size={20} className={t.iconColor} />
+                      <div className={`absolute top-4 right-4 w-20 h-20 rounded-full blur-2xl opacity-25 ${tpl.glowBg}`} />
+                      <div className={`p-3 rounded-xl w-fit ${tpl.iconBg}`}>
+                        <tpl.Icon size={20} className={tpl.iconColor} />
                       </div>
                       <div>
-                        <div className="font-display font-bold text-lg text-white">{t.name}</div>
-                        <div className="text-white/45 text-sm mt-1">{t.desc}</div>
+                        <div className="font-display font-bold text-lg text-white">{t(tpl.nameKey)}</div>
+                        <div className="text-white/45 text-sm mt-1">{t(tpl.descKey)}</div>
                       </div>
                       {selected && (
                         <div className="absolute top-3 left-3 w-5 h-5 rounded-full bg-irium-500 flex items-center justify-center">
@@ -241,8 +249,8 @@ export default function SellerWizard() {
                 className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {template
-                  ? `Continue with ${TEMPLATES.find((t) => t.id === template)?.name} →`
-                  : 'Select a template to continue'}
+                  ? t('wizards.common.continue_with', { name: t(TEMPLATES.find((tpl) => tpl.id === template)!.nameKey) })
+                  : t('wizards.common.select_template_continue')}
               </button>
             </motion.div>
           )}
@@ -260,7 +268,7 @@ export default function SellerWizard() {
               <div className="flex-1 overflow-y-auto p-6 space-y-5 min-h-0">
                 <div>
                   <h2 className="font-display font-bold text-xl text-white">{t('wizards.seller.create_your_offer')}</h2>
-                  <p className="text-white/40 text-sm mt-1">Define what you're selling and the price</p>
+                  <p className="text-white/40 text-sm mt-1">{t('wizards.seller.intro')}</p>
                 </div>
 
                 {/* Seller Address */}
@@ -278,7 +286,7 @@ export default function SellerWizard() {
                           this the list rendered white-on-white on Windows. */}
                       {addresses.length === 0 && (
                         <option value="" style={{ background: '#0f0f23', color: '#eef0ff' }}>
-                          No wallet addresses found
+                          {t('wizards.seller.fields.no_wallet_addresses')}
                         </option>
                       )}
                       {addresses.map((a) => (
@@ -293,7 +301,7 @@ export default function SellerWizard() {
                     </select>
                     <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
                   </div>
-                  <p className="text-xs text-white/25">Auto-detected from your wallet. Buyers will send payment here.</p>
+                  <p className="text-xs text-white/25">{t('wizards.seller.fields.seller_address_hint')}</p>
                 </div>
 
                 {/* Amount — matches the Settlement.tsx OTC wizard treatment
@@ -306,13 +314,13 @@ export default function SellerWizard() {
                     type="number"
                     min="0"
                     step="0.0001"
-                    placeholder="0.0000"
+                    placeholder={t('wizards.seller.fields.amount_placeholder')}
                     value={amountIrm}
                     onChange={(e) => { setAmountIrm(e.target.value); setError(''); }}
                   />
                   {amountIrm && parseFloat(amountIrm) > 0 && (
                     <p className="text-xs text-white/30 font-mono">
-                      {Math.round(parseFloat(amountIrm) * SATS_PER_IRM).toLocaleString('en-US')} sats
+                      {t('wizards.seller.fields.sats_preview', { sats: Math.round(parseFloat(amountIrm) * SATS_PER_IRM).toLocaleString('en-US') })}
                     </p>
                   )}
                 </div>
@@ -323,7 +331,7 @@ export default function SellerWizard() {
                   <input
                     list="payment-suggestions"
                     className={`input ${error && !paymentMethod ? 'border-red-500/50' : ''}`}
-                    placeholder="bank transfer, cash, crypto…"
+                    placeholder={t('wizards.seller.fields.payment_method_placeholder')}
                     value={paymentMethod}
                     onChange={(e) => { setPaymentMethod(e.target.value); setError(''); }}
                   />
@@ -334,13 +342,13 @@ export default function SellerWizard() {
 
                 {/* Timeout in blocks */}
                 <div className="space-y-1">
-                  <label className="label">Timeout <span className="text-white/25">(blocks)</span></label>
+                  <label className="label">{t('wizards.seller.fields.timeout_label')} <span className="text-white/25">{t('wizards.seller.fields.timeout_unit')}</span></label>
                   <div className="flex items-center gap-3">
                     <input
                       className="input flex-1"
                       type="number"
                       min="1"
-                      placeholder="1000"
+                      placeholder={t('wizards.seller.fields.timeout_placeholder')}
                       value={timeoutBlocks}
                       onChange={(e) => setTimeoutBlocks(e.target.value)}
                     />
@@ -348,15 +356,15 @@ export default function SellerWizard() {
                       <span className="text-xs text-white/35 flex-shrink-0">{estTime(timeoutBlocks)}</span>
                     )}
                   </div>
-                  <p className="text-xs text-white/25">Offer expires this many blocks from now (~10 min/block)</p>
+                  <p className="text-xs text-white/25">{t('wizards.seller.fields.expires_hint')}</p>
                 </div>
 
                 {/* Price Note */}
                 <div className="space-y-1">
-                  <label className="label">Price Note <span className="text-white/25">(optional)</span></label>
+                  <label className="label">{t('wizards.seller.fields.price_note_label')} <span className="text-white/25">{t('wizards.seller.fields.price_note_optional')}</span></label>
                   <input
                     className="input"
-                    placeholder="e.g. 'BTC only, instant settlement'"
+                    placeholder={t('wizards.seller.fields.price_note_placeholder')}
                     value={priceNote}
                     onChange={(e) => setPriceNote(e.target.value)}
                   />
@@ -364,7 +372,7 @@ export default function SellerWizard() {
 
                 {/* Payment Instructions */}
                 <div className="space-y-1">
-                  <label className="label">Payment Instructions <span className="text-white/25">(optional)</span></label>
+                  <label className="label">{t('wizards.seller.fields.payment_instructions_label')} <span className="text-white/25">{t('wizards.seller.fields.payment_instructions_optional')}</span></label>
                   <textarea
                     className="input resize-none"
                     rows={3}
@@ -384,7 +392,7 @@ export default function SellerWizard() {
                 )}
                 <button onClick={handleCreateOffer} disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
                   {loading ? <Loader2 size={15} className="animate-spin" /> : null}
-                  Create Offer
+                  {t('wizards.seller.create_offer_button')}
                 </button>
               </div>
             </motion.div>
@@ -400,40 +408,45 @@ export default function SellerWizard() {
             <motion.div key="s2-share" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="card p-6 space-y-5">
               <div>
                 <h2 className="font-display font-bold text-xl text-white">{t('wizards.seller.share_your_offer')}</h2>
-                <p className="text-white/40 text-sm mt-1">Send the offer ID or file to your buyer</p>
+                <p className="text-white/40 text-sm mt-1">{t('wizards.seller.share_intro')}</p>
               </div>
 
               <div className="p-4 rounded-xl bg-white/5 space-y-2">
-                <div className="text-xs text-white/35">Offer ID</div>
+                <div className="text-xs text-white/35">{t('wizards.seller.offer_id_heading')}</div>
                 <div className="font-mono text-sm text-white break-all">{offerResult.id}</div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <button onClick={handleCopyOfferId} className="btn-secondary flex items-center justify-center gap-2">
-                  <Copy size={14} />Copy ID
+                  <Copy size={14} />{t('wizards.seller.copy_id')}
                 </button>
                 <button onClick={handleExportOffer} className="btn-secondary flex items-center justify-center gap-2">
-                  <Upload size={14} />Export File
+                  <Upload size={14} />{t('wizards.seller.export_file')}
                 </button>
               </div>
 
               {/* Wait-for-buyer note + green check accent. Replaces the old
                   "Buyer Has Taken the Offer →" button which was forcing the
                   seller to manually paste an agreement ID; the agreement
-                  flows in automatically via the local store. */}
+                  flows in automatically via the local store. The localized
+                  copy contains a single literal "<strong>...</strong>" segment
+                  for the "Agreements" emphasis; split into trans + segment
+                  pattern in the JSX so no HTML is injected. */}
               <div className="rounded-xl p-4 flex items-start gap-3" style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.20)' }}>
                 <CheckCircle2 size={18} className="text-green-400 flex-shrink-0 mt-0.5" />
                 <div className="text-xs text-white/65 leading-relaxed">
-                  Share the offer ID with your buyer. When they take the offer, an agreement is created automatically. Check your <span className="font-semibold text-white/85">Agreements</span> page for the new agreement — proof submission and release happen there.
+                  {t('wizards.seller.share_buyer_note_before')}
+                  <span className="font-semibold text-white/85">{t('wizards.seller.share_buyer_note_emphasis')}</span>
+                  {t('wizards.seller.share_buyer_note_after')}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <button onClick={() => navigate('/settlement')} className="btn-secondary w-full">
-                  Done
+                  {t('wizards.seller.done')}
                 </button>
                 <button onClick={() => navigate('/agreements')} className="btn-primary w-full">
-                  View My Agreements →
+                  {t('wizards.seller.view_my_agreements')}
                 </button>
               </div>
             </motion.div>
