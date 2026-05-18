@@ -4841,6 +4841,27 @@ async fn get_network_hashrate(state: State<'_, AppState>) -> Result<NetworkHashr
     })
 }
 
+// get_richlist: thin passthrough to iriumd's /rpc/richlist?limit=N.
+// Default 100, clamped to [1, 500] on the iriumd side. The frontend uses
+// this for the Explorer's Rich List tab; a 10-second timeout is generous
+// for the worst-case full UTXO scan iriumd does on its end.
+#[tauri::command]
+async fn get_richlist(state: State<'_, AppState>, limit: Option<u32>) -> Result<RichListResponse, String> {
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let n = limit.unwrap_or(100).clamp(1, 500);
+    let client = reqwest::Client::new();
+    let resp = client
+        .get(format!("{}/rpc/richlist?limit={}", rpc_url, n))
+        .timeout(Duration::from_secs(10))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        return Err(format!("iriumd /rpc/richlist returned {}", resp.status()));
+    }
+    resp.json::<RichListResponse>().await.map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 async fn rpc_get_offers_feed(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
@@ -6610,6 +6631,7 @@ fn main() {
             rpc_get_address,
             get_recent_blocks,
             get_network_hashrate,
+            get_richlist,
             rpc_get_offers_feed,
             rpc_set_url,
             // Diagnostics

@@ -6,14 +6,15 @@ import toast from 'react-hot-toast';
 import {
   Copy, CheckCircle2, RefreshCw, Search,
   Cpu, Users, Layers, Clock, Activity, Zap, TrendingUp, Coins,
-  Wallet, ArrowRightLeft,
+  Wallet, ArrowRightLeft, Trophy, Medal, Award,
 } from 'lucide-react';
 import { useStore } from '../lib/store';
-import { rpc } from '../lib/tauri';
-import { timeAgo } from '../lib/types';
-import type { ExplorerBlock, NetworkHashrateInfo } from '../lib/types';
+import { rpc, wallet } from '../lib/tauri';
+import { timeAgo, formatIRM, SATS_PER_IRM } from '../lib/types';
+import type { ExplorerBlock, NetworkHashrateInfo, RichListEntry } from '../lib/types';
 
 type SearchTab = 'block' | 'tx' | 'address';
+type PageTab = 'overview' | 'rich_list';
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -357,12 +358,283 @@ function BlockRow({ block, onClick }: { block: ExplorerBlock; onClick: () => voi
   );
 }
 
+// ── Page tab button — visually heavier than the search tabs so it reads
+//    as a top-level mode switch (Overview / Rich List) rather than a
+//    nested filter inside a panel. Uses the same brand gradient accents
+//    used for the Miner tab strip and Settlement Hub.
+function PageTabBtn({ active, onClick, icon: Icon, label }: { active: boolean; onClick: () => void; icon: React.ElementType; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-all"
+      style={{
+        borderRadius: 8,
+        background: active
+          ? 'linear-gradient(135deg, rgba(110,198,255,0.20) 0%, rgba(167,139,250,0.14) 100%)'
+          : 'transparent',
+        color: active ? '#d4eeff' : 'rgba(255,255,255,0.35)',
+        border: active ? '1px solid rgba(110,198,255,0.40)' : '1px solid rgba(255,255,255,0.06)',
+        fontFamily: '"Space Grotesk", sans-serif',
+        letterSpacing: '0.04em',
+      }}
+    >
+      <Icon size={13} />
+      {label}
+    </button>
+  );
+}
+
+// ── Rich List section ────────────────────────────────────────
+//
+// Renders /rpc/richlist passthrough results as a ranked table with rank
+// 1-3 medals, a "You" badge for any address belonging to the local
+// wallet, and a single "Load top 500" expansion. Fetches on mount and
+// whenever the user clicks Refresh — never polls (the rich list is
+// expensive enough server-side that constant polling would be wasteful
+// and the data only changes meaningfully across many blocks anyway).
+
+function rankAccent(rank: number): { color: string; Icon: React.ElementType | null } {
+  if (rank === 1) return { color: '#fbbf24', Icon: Trophy };  // gold
+  if (rank === 2) return { color: '#cbd5e1', Icon: Medal  };  // silver
+  if (rank === 3) return { color: '#fb923c', Icon: Award  };  // bronze
+  return { color: 'rgba(255,255,255,0.30)', Icon: null };
+}
+
+function shortAddr(a: string): string {
+  return a.length > 18 ? `${a.slice(0, 10)}…${a.slice(-6)}` : a;
+}
+
+function RichListSection({ running }: { running: boolean }) {
+  const { t } = useTranslation();
+  const [entries, setEntries] = useState<RichListEntry[] | null>(null);
+  const [totalSupply, setTotalSupply] = useState<number>(0);
+  const [genHeight, setGenHeight] = useState<number>(0);
+  const [limit, setLimit] = useState<number>(100);
+  const [loading, setLoading] = useState(false);
+  const [loadMoreLoading, setLoadMoreLoading] = useState(false);
+  const [err, setErr] = useState<string>('');
+  // Local wallet addresses — used to flag the "You" badge so the user can
+  // see at a glance whether they appear in the top-N. Fetched once on
+  // mount; wallet additions during the same session are rare enough that
+  // a single fetch is fine.
+  const [myAddrs, setMyAddrs] = useState<Set<string>>(new Set());
+
+  const fetchList = useCallback(async (n: number, secondary: boolean) => {
+    if (secondary) setLoadMoreLoading(true);
+    else setLoading(true);
+    setErr('');
+    try {
+      const result = await rpc.richlist(n);
+      if (!result) throw new Error('empty response');
+      setEntries(result.entries);
+      setTotalSupply(result.total_supply_sats);
+      setGenHeight(result.generated_at_height);
+      setLimit(n);
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      if (secondary) setLoadMoreLoading(false);
+      else setLoading(false);
+    }
+  }, []);
+
+  // Initial load + wallet-addresses fetch run once when this tab mounts.
+  useEffect(() => {
+    if (!running) return;
+    fetchList(100, false);
+    wallet.listAddresses().then((list) => {
+      if (list) setMyAddrs(new Set(list.map((a) => a.address)));
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running]);
+
+  if (!running) {
+    return (
+      <div className="py-10 text-center text-sm" style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.07)', borderRadius: 8, color: 'rgba(255,255,255,0.30)' }}>
+        {t('explorer.richlist.node_offline_hint')}
+      </div>
+    );
+  }
+
+  const totalIrm = totalSupply / SATS_PER_IRM;
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 style={{ fontSize: 16, fontWeight: 800, color: '#d4eeff', fontFamily: '"Space Grotesk", sans-serif', letterSpacing: '0.02em' }}>
+            {t('explorer.richlist.title')}
+          </h2>
+          <p className="mt-1" style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.45)' }}>
+            {t('explorer.richlist.subtitle')}
+          </p>
+          {totalSupply > 0 && (
+            <p className="mt-1" style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, color: 'rgba(110,198,255,0.55)' }}>
+              {t('explorer.richlist.total_supply')}: {formatIRM(totalSupply)} IRM{' '}
+              <span style={{ color: 'rgba(255,255,255,0.30)' }}>{t('explorer.richlist.at_height', { height: genHeight.toLocaleString('en-US') })}</span>
+            </p>
+          )}
+        </div>
+        <button
+          onClick={() => fetchList(limit, false)}
+          disabled={loading}
+          className="btn-secondary text-xs gap-2 flex-shrink-0"
+        >
+          <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+          {t('explorer.richlist.refresh')}
+        </button>
+      </div>
+
+      {/* Error / loading / table */}
+      {err ? (
+        <div className="py-10 text-center text-sm" style={{ background: 'rgba(244,63,94,0.06)', border: '1px solid rgba(244,63,94,0.20)', borderRadius: 8, color: '#fda4af' }}>
+          {t('explorer.richlist.load_error', { reason: err })}
+        </div>
+      ) : loading && !entries ? (
+        <div style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.08)', borderRadius: 8, overflow: 'hidden' }}>
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 px-4 py-3 animate-pulse" style={{ borderBottom: '1px solid rgba(255,255,255,0.025)' }}>
+              <div className="h-3 w-6  rounded" style={{ background: 'rgba(255,255,255,0.05)' }} />
+              <div className="h-3 w-48 rounded" style={{ background: 'rgba(255,255,255,0.04)' }} />
+              <div className="h-3 w-24 rounded ml-auto" style={{ background: 'rgba(255,255,255,0.03)' }} />
+              <div className="h-3 w-16 rounded" style={{ background: 'rgba(255,255,255,0.03)' }} />
+              <div className="h-3 w-12 rounded" style={{ background: 'rgba(255,255,255,0.03)' }} />
+            </div>
+          ))}
+        </div>
+      ) : !entries || entries.length === 0 ? (
+        <div className="py-10 text-center text-sm" style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.07)', borderRadius: 8, color: 'rgba(255,255,255,0.30)' }}>
+          {t('explorer.richlist.empty')}
+        </div>
+      ) : (
+        <>
+          <div style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.13)', borderRadius: 8, overflow: 'hidden' }}>
+            <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(110,198,255,0.08)', background: 'rgba(0,0,0,0.55)' }}>
+                  <th className="pl-4 pr-2 py-2 text-left" style={TH_STYLE}>{t('explorer.richlist.col_rank')}</th>
+                  <th className="px-2 py-2 text-left" style={TH_STYLE}>{t('explorer.richlist.col_address')}</th>
+                  <th className="px-2 py-2 text-right" style={TH_STYLE}>{t('explorer.richlist.col_balance_irm')}</th>
+                  <th className="px-2 py-2 text-right" style={TH_STYLE}>{t('explorer.richlist.col_percentage')}</th>
+                  <th className="pl-2 pr-4 py-2 text-right" style={TH_STYLE}>{t('explorer.richlist.col_utxos')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map((e) => {
+                  const { color: rankColor, Icon: RankIcon } = rankAccent(e.rank);
+                  const isMine = myAddrs.has(e.address);
+                  return (
+                    <tr
+                      key={e.address}
+                      className="group"
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.035)', transition: 'background 0.1s' }}
+                      onMouseEnter={(ev) => { ev.currentTarget.style.background = 'rgba(110,198,255,0.04)'; }}
+                      onMouseLeave={(ev) => { ev.currentTarget.style.background = 'transparent'; }}
+                    >
+                      {/* Rank */}
+                      <td className="pl-4 pr-2 py-2.5 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1" style={{ fontFamily: '"Space Grotesk", sans-serif', fontSize: 13, fontWeight: 800, color: rankColor }}>
+                          {RankIcon && <RankIcon size={12} />}
+                          #{e.rank}
+                        </span>
+                      </td>
+                      {/* Address — truncated, click-to-copy, optional You badge */}
+                      <td className="px-2 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(e.address);
+                              toast.success(t('common.copy'));
+                            }}
+                            title={e.address}
+                            className="font-mono text-left hover:underline"
+                            style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11.5, color: isMine ? '#a78bfa' : 'rgba(255,255,255,0.70)' }}
+                          >
+                            {shortAddr(e.address)}
+                          </button>
+                          {isMine && (
+                            <span
+                              className="px-1.5 py-0.5 text-[9px] font-bold rounded"
+                              style={{ background: 'rgba(167,139,250,0.18)', border: '1px solid rgba(167,139,250,0.40)', color: '#c4b5fd', letterSpacing: '0.08em' }}
+                            >
+                              {t('explorer.richlist.you_badge')}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      {/* Balance (IRM) — exact, derived from balance_sats to avoid f64 loss */}
+                      <td className="px-2 py-2.5 text-right whitespace-nowrap">
+                        <span style={{ fontSize: 12, color: '#34d399', fontFamily: '"JetBrains Mono", monospace', fontVariantNumeric: 'tabular-nums' }}>
+                          {formatIRM(e.balance_sats)}
+                        </span>
+                      </td>
+                      {/* % of supply */}
+                      <td className="px-2 py-2.5 text-right whitespace-nowrap">
+                        <span style={{ fontSize: 11, color: 'rgba(110,198,255,0.75)', fontFamily: '"JetBrains Mono", monospace', fontVariantNumeric: 'tabular-nums' }}>
+                          {e.percentage.toFixed(2)}%
+                        </span>
+                      </td>
+                      {/* UTXO count */}
+                      <td className="pl-2 pr-4 py-2.5 text-right whitespace-nowrap">
+                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.40)', fontFamily: '"JetBrains Mono", monospace', fontVariantNumeric: 'tabular-nums' }}>
+                          {e.utxo_count.toLocaleString('en-US')}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            </div>
+          </div>
+
+          {/* Load more — only offered when the current view is the top-100 page */}
+          <div className="flex flex-col items-center gap-1.5">
+            <p style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10, color: 'rgba(110,198,255,0.35)' }}>
+              {t('explorer.richlist.showing_top', { count: entries.length })}
+            </p>
+            {limit < 500 && (
+              <button
+                onClick={() => fetchList(500, true)}
+                disabled={loadMoreLoading}
+                className="flex items-center gap-2 px-5 py-2 text-xs font-semibold w-full justify-center transition-opacity disabled:opacity-40"
+                style={{
+                  background: 'rgba(110,198,255,0.06)',
+                  border: '1px solid rgba(110,198,255,0.18)',
+                  borderRadius: 7,
+                  color: 'rgba(110,198,255,0.70)',
+                  fontFamily: '"Space Grotesk", sans-serif',
+                }}
+              >
+                {loadMoreLoading
+                  ? <><RefreshCw size={11} className="animate-spin" /> {t('explorer.richlist.load_more_loading')}</>
+                  : t('explorer.richlist.load_more')}
+              </button>
+            )}
+            {totalIrm > 0 && (
+              <span className="sr-only">{`${totalIrm} IRM total supply context for screen readers`}</span>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────
 
 export default function Explorer() {
   const { t } = useTranslation();
   const nodeStatus  = useStore((s) => s.nodeStatus);
   const location    = useLocation();
+
+  // Page-level tab: 'overview' renders the existing stats + search + blocks
+  // table; 'rich_list' swaps the body for the Top Holders table. Tab choice
+  // is local to this page — no deep-link state needed since the body is
+  // cheap to mount/unmount.
+  const [pageTab, setPageTab] = useState<PageTab>('overview');
 
   // Block list state — grows as user loads older blocks
   const [blocks,        setBlocks]        = useState<ExplorerBlock[]>([]);
@@ -718,6 +990,26 @@ export default function Explorer() {
       {/* ── Body ─────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto scroll-visible px-6 py-4 space-y-5">
 
+        {/* ── Page tabs ─────────────────────────────────── */}
+        <div className="flex items-center gap-1.5">
+          <PageTabBtn
+            active={pageTab === 'overview'}
+            onClick={() => setPageTab('overview')}
+            icon={Layers}
+            label={t('explorer.tabs.overview')}
+          />
+          <PageTabBtn
+            active={pageTab === 'rich_list'}
+            onClick={() => setPageTab('rich_list')}
+            icon={Trophy}
+            label={t('explorer.tabs.rich_list')}
+          />
+        </div>
+
+        {/* Rich-list takes over the body when selected. */}
+        {pageTab === 'rich_list' ? <RichListSection running={running} /> : (
+        <>
+
         {/* ── Network Stats ─────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
           {!running ? (
@@ -899,6 +1191,8 @@ export default function Explorer() {
         </div>
 
         <div className="h-3" />
+        </>
+        )}
       </div>
 
       {/* ── Block detail modal ─────────────────────────── */}

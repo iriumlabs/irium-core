@@ -19,6 +19,7 @@ import type {
   DisputeEntry, DisputeOpenResult,
   NetworkMetrics, ExplorerAgreement, ExplorerStats,
   ExplorerNetworkStats, ExplorerPeer, ExplorerBlock, NetworkHashrateInfo,
+  RichListResponse,
   FeedDiscoverResult,
   AgreementSignResult, AgreementVerifySignatureResult,
   AgreementDecryptResult, AgreementStoreListResult,
@@ -549,6 +550,12 @@ export const rpc = {
 
   networkHashrate: () =>
     safeInvoke<NetworkHashrateInfo>('get_network_hashrate'),
+
+  // Top-N IRM holders. Default 100; clamped to [1, 500] in iriumd. The
+  // Tauri command is a 10-second-timeout passthrough — the actual
+  // aggregation is done on the node side under a single chain-lock.
+  richlist: (limit?: number) =>
+    safeInvoke<RichListResponse>('get_richlist', { limit }),
 
   offersFeed: () =>
     safeInvoke<unknown>('rpc_get_offers_feed'),

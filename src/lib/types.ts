@@ -799,6 +799,26 @@ export interface NetworkHashrateInfo {
   height?: number;
 }
 
+// Rich-list passthrough — mirrors iriumd's /rpc/richlist?limit=N response.
+// balance_sats / total_supply_sats are u64 on the wire; carried as `number`
+// here because IRM single-address holdings stay well under 2^53 sats. Use
+// these for exact arithmetic; balance_irm / percentage are f64 conveniences.
+export interface RichListEntry {
+  rank: number;
+  address: string;
+  balance_sats: number;
+  balance_irm: number;
+  utxo_count: number;
+  percentage: number;
+}
+
+export interface RichListResponse {
+  count: number;
+  total_supply_sats: number;
+  generated_at_height: number;
+  entries: RichListEntry[];
+}
+
 // ============================================================
 // FEED OPS
 // ============================================================
