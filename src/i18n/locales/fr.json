@@ -34,7 +34,7 @@
     "submit": "Soumettre",
     "search": "Recherche",
     "clear": "Clair",
-    "dismiss": "Rejeter",
+    "dismiss": "Dismiss",
     "create": "Créer",
     "import": "Importer",
     "export": "Exporter"
@@ -361,7 +361,7 @@
       "no_peers_searching": "À la recherche de pairs…",
       "sync_stall": "Synchronisation bloquée – {{count}} bloque derrière",
       "height_warning": "La hauteur du bloc n'a pas changé depuis {{minutes}} minutes",
-      "dismiss": "Rejeter"
+      "dismiss": "Dismiss"
     },
     "page_subtitle": "Aperçu de la blockchain Irium · en direct",
     "refresh": "Rafraîchir",
@@ -514,8 +514,8 @@
       "restored_backup": "Portefeuille restauré à partir d'une sauvegarde",
       "wif_saved": "Clé WIF enregistrée",
       "need_12_words": "Entrez au moins 12 mots mnémoniques",
-      "enter_wif": "Entrez une clé WIF",
-      "imported_successfully": "Portefeuille importé avec succès",
+      "enter_wif": "Enter a WIF key",
+      "imported_successfully": "Wallet imported successfully",
       "copied": "Copié",
       "recovery_copied": "Phrase de récupération copiée",
       "wif_copied": "WIF copié",
@@ -941,7 +941,11 @@
       "copy_address": "Copier l'adresse",
       "copy_full_hash": "Copier le hachage complet"
     },
-    "pool_configuration": "Configuration du pool"
+    "pool_configuration": "Configuration du pool",
+    "opencl": {
+      "detected_title": "Matériel OpenCL détecté",
+      "none_detected": "Aucun GPU compatible OpenCL détecté"
+    }
   },
   "onboarding": {
     "splash_title": "Noyau d'Irium",
@@ -987,6 +991,15 @@
       "need_12_seed_words": "Entrez au moins 12 mots de départ.",
       "wif_min_length": "La clé WIF doit comporter au moins 51 caractères.",
       "priv_key_hex": "La clé privée doit comporter 64 caractères hexadécimaux."
+    },
+    "labels": {
+      "node_daemon": "Démon de nœud",
+      "running": "En cours d'exécution",
+      "sync_progress": "Progression de la synchronisation",
+      "tip": "Conseil"
+    },
+    "tooltips": {
+      "copy_address": "Copier l'adresse"
     }
   },
   "reputation": {
@@ -1099,14 +1112,17 @@
     "sections": {
       "specs": "Spécifications du réseau",
       "links": "Ressources",
-      "faq": "Questions fréquemment posées",
+      "faq": "FAQ",
       "agreements": "Cycle de vie de l'accord",
       "reputation": "Bâtir votre réputation",
       "feeds": "Registre des flux",
       "disputes": "Litiges",
       "importing_agreements": "Accords d'importation",
       "funding": "Financement en tant qu'acheteur",
-      "creating_agreement_seller": "Création d'un accord (flux vendeur)"
+      "creating_agreement_seller": "Création d'un accord (flux vendeur)",
+      "node_information": "Informations sur le nœud",
+      "privacy_data": "Confidentialité et données",
+      "report_issue": "Signaler un problème"
     },
     "common_mistake": "Erreur courante :"
   },

@@ -941,7 +941,11 @@
       "copy_address": "انسخ العنوان",
       "copy_full_hash": "نسخ التجزئة الكاملة"
     },
-    "pool_configuration": "تكوين المجمع"
+    "pool_configuration": "تكوين المجمع",
+    "opencl": {
+      "detected_title": "تم اكتشاف أجهزة OpenCL",
+      "none_detected": "لم يتم اكتشاف وحدة معالجة رسومات قادرة على استخدام OpenCL"
+    }
   },
   "onboarding": {
     "splash_title": "الايريوم كور",
@@ -987,6 +991,15 @@
       "need_12_seed_words": "أدخل ما لا يقل عن 12 كلمة أولية.",
       "wif_min_length": "يجب أن يكون مفتاح WIF 51 حرفًا على الأقل.",
       "priv_key_hex": "يجب أن يتكون المفتاح الخاص من 64 حرفًا سداسيًا عشريًا."
+    },
+    "labels": {
+      "node_daemon": "عقدة الشيطان",
+      "running": "جري",
+      "sync_progress": "تقدم المزامنة",
+      "tip": "نصيحة"
+    },
+    "tooltips": {
+      "copy_address": "انسخ العنوان"
     }
   },
   "reputation": {
@@ -1099,14 +1112,17 @@
     "sections": {
       "specs": "مواصفات الشبكة",
       "links": "موارد",
-      "faq": "الأسئلة المتداولة",
+      "faq": "التعليمات",
       "agreements": "دورة حياة الاتفاقية",
       "reputation": "بناء سمعتك",
       "feeds": "سجل الأعلاف",
       "disputes": "النزاعات",
       "importing_agreements": "اتفاقيات الاستيراد",
       "funding": "التمويل كمشتري",
-      "creating_agreement_seller": "إنشاء اتفاقية (تدفق البائع)"
+      "creating_agreement_seller": "إنشاء اتفاقية (تدفق البائع)",
+      "node_information": "معلومات العقدة",
+      "privacy_data": "الخصوصية والبيانات",
+      "report_issue": "الإبلاغ عن مشكلة"
     },
     "common_mistake": "خطأ شائع:"
   },

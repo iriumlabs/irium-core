@@ -941,7 +941,11 @@
       "copy_address": "पता कॉपी करें",
       "copy_full_hash": "पूर्ण हैश कॉपी करें"
     },
-    "pool_configuration": "पूल विन्यास"
+    "pool_configuration": "पूल विन्यास",
+    "opencl": {
+      "detected_title": "ओपनसीएल हार्डवेयर का पता चला",
+      "none_detected": "कोई ओपनसीएल-सक्षम जीपीयू नहीं मिला"
+    }
   },
   "onboarding": {
     "splash_title": "इरियम कोर",
@@ -987,6 +991,15 @@
       "need_12_seed_words": "कम से कम 12 बीज शब्द दर्ज करें.",
       "wif_min_length": "WIF कुंजी कम से कम 51 अक्षर की होनी चाहिए.",
       "priv_key_hex": "निजी कुंजी 64 हेक्स वर्ण की होनी चाहिए."
+    },
+    "labels": {
+      "node_daemon": "नोड डेमॉन",
+      "running": "दौड़ना",
+      "sync_progress": "समन्वयन प्रगति",
+      "tip": "बख्शीश"
+    },
+    "tooltips": {
+      "copy_address": "पता कॉपी करें"
     }
   },
   "reputation": {
@@ -1010,7 +1023,7 @@
       "response_time_placeholder": "जैसे 1 घंटे के लिए 3600 रु"
     },
     "risk": {
-      "high_disputes": "More than 10% of this seller's agreements ended in dispute. Inspect their dispute history before trading.",
+      "high_disputes": "इस विक्रेता के 10% से अधिक समझौते विवाद में समाप्त हो गए। व्यापार करने से पहले उनके विवाद इतिहास का निरीक्षण करें।",
       "sybil_detected": "ऐसे समझौतों का पता चला जहां खरीदार और विक्रेता एक प्रमुख व्युत्पत्ति जड़ साझा करते प्रतीत होते हैं। यहां बढ़ी हुई संख्या नकली प्रतिष्ठा निर्माण का संकेत दे सकती है।"
     },
     "page_subtitle": "किसी भी इरियम पते या सार्वजनिक कुंजी के लिए ऑन-चेन प्रतिष्ठा स्कोर को क्वेरी करें।",
@@ -1099,14 +1112,17 @@
     "sections": {
       "specs": "नेटवर्क विशिष्टताएँ",
       "links": "संसाधन",
-      "faq": "अक्सर पूछे जाने वाले प्रश्नों",
+      "faq": "अक्सर पूछे जाने वाले प्रश्न",
       "agreements": "समझौता जीवनचक्र",
       "reputation": "अपनी प्रतिष्ठा बनाना",
       "feeds": "फ़ीड रजिस्ट्री",
       "disputes": "विवादों",
       "importing_agreements": "आयात समझौते",
       "funding": "एक खरीदार के रूप में फंडिंग",
-      "creating_agreement_seller": "एक अनुबंध बनाना (विक्रेता प्रवाह)"
+      "creating_agreement_seller": "एक अनुबंध बनाना (विक्रेता प्रवाह)",
+      "node_information": "नोड सूचना",
+      "privacy_data": "गोपनीयता और डेटा",
+      "report_issue": "किसी समस्या की रिपोर्ट करें"
     },
     "common_mistake": "सामान्य गलती:"
   },

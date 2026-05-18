@@ -516,7 +516,7 @@
       "need_12_words": "Ingrese al menos 12 palabras mnemotécnicas",
       "enter_wif": "Ingrese una clave WIF",
       "imported_successfully": "Cartera importada correctamente",
-      "copied": "Copiado",
+      "copied": "copiado",
       "recovery_copied": "Frase de recuperación copiada",
       "wif_copied": "WIF copiado",
       "name_invalid_chars": "El nombre de la billetera no puede contener: / \\ : * ? \" < > |"
@@ -582,7 +582,7 @@
       "refund_initiated": "Reembolso iniciado",
       "refund_failed": "Reembolso fallido",
       "pack_exported": "Paquete de acuerdos exportado a {{path}}",
-      "copied": "Copiado",
+      "copied": "copiado",
       "submission_failed": "Envío fallido",
       "funds_released": "Fondos liberados · txid: {{txid}}",
       "release_failed": "Liberación fallida",
@@ -759,7 +759,7 @@
       "invoice_loaded": "Factura cargada: revisar y confirmar",
       "summary_copied": "Resumen copiado",
       "payload_copied": "Carga útil copiada",
-      "copied": "Copiado",
+      "copied": "copiado",
       "invoice_json_copied": "Factura JSON copiada",
       "invoice_saved": "Factura guardada en {{path}}",
       "save_failed": "Error al guardar: {{reason}}"
@@ -941,7 +941,11 @@
       "copy_address": "Copiar dirección",
       "copy_full_hash": "Copiar hash completo"
     },
-    "pool_configuration": "Configuración de la piscina"
+    "pool_configuration": "Configuración de la piscina",
+    "opencl": {
+      "detected_title": "Hardware OpenCL detectado",
+      "none_detected": "No se detectó ninguna GPU compatible con OpenCL"
+    }
   },
   "onboarding": {
     "splash_title": "Núcleo de irio",
@@ -987,6 +991,15 @@
       "need_12_seed_words": "Ingrese al menos 12 palabras iniciales.",
       "wif_min_length": "La clave WIF debe tener al menos 51 caracteres.",
       "priv_key_hex": "La clave privada debe tener 64 caracteres hexadecimales."
+    },
+    "labels": {
+      "node_daemon": "demonio de nodo",
+      "running": "Correr",
+      "sync_progress": "Progreso de sincronización",
+      "tip": "Consejo"
+    },
+    "tooltips": {
+      "copy_address": "Copiar dirección"
     }
   },
   "reputation": {
@@ -1007,7 +1020,7 @@
       "button": "Resultado récord",
       "title": "¿Acabas de negociar con este vendedor?",
       "response_time_label": "Tiempo de respuesta de la prueba (opcional, segundos)",
-      "response_time_placeholder": "p.ej. 3600 por 1 hora"
+      "response_time_placeholder": "e.g. 3600 for 1 hour"
     },
     "risk": {
       "high_disputes": "Más del 10% de los acuerdos de este vendedor terminaron en disputa. Inspeccione su historial de disputas antes de negociar.",
@@ -1106,7 +1119,10 @@
       "disputes": "Disputas",
       "importing_agreements": "Acuerdos de importación",
       "funding": "Financiación como comprador",
-      "creating_agreement_seller": "Crear un acuerdo (flujo de vendedor)"
+      "creating_agreement_seller": "Crear un acuerdo (flujo de vendedor)",
+      "node_information": "Información del nodo",
+      "privacy_data": "Privacidad y datos",
+      "report_issue": "Informar un problema"
     },
     "common_mistake": "Error común:"
   },

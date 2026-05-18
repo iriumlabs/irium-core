@@ -941,7 +941,11 @@
       "copy_address": "Salin alamat",
       "copy_full_hash": "Salin hash lengkap"
     },
-    "pool_configuration": "Konfigurasi Kolam"
+    "pool_configuration": "Konfigurasi Kolam",
+    "opencl": {
+      "detected_title": "Perangkat Keras OpenCL Terdeteksi",
+      "none_detected": "Tidak ada GPU berkemampuan OpenCL yang terdeteksi"
+    }
   },
   "onboarding": {
     "splash_title": "Inti Irium",
@@ -987,6 +991,15 @@
       "need_12_seed_words": "Masukkan setidaknya 12 kata unggulan.",
       "wif_min_length": "Kunci WIF minimal harus terdiri dari 51 karakter.",
       "priv_key_hex": "Kunci pribadi harus terdiri dari 64 karakter hex."
+    },
+    "labels": {
+      "node_daemon": "Daemon simpul",
+      "running": "Berlari",
+      "sync_progress": "Sinkronkan kemajuan",
+      "tip": "Tip"
+    },
+    "tooltips": {
+      "copy_address": "Salin alamat"
     }
   },
   "reputation": {
@@ -1099,14 +1112,17 @@
     "sections": {
       "specs": "Spesifikasi jaringan",
       "links": "Sumber daya",
-      "faq": "Pertanyaan yang sering diajukan",
+      "faq": "Pertanyaan Umum",
       "agreements": "Siklus hidup perjanjian",
       "reputation": "Membangun reputasi Anda",
       "feeds": "Registri Umpan",
       "disputes": "Perselisihan",
       "importing_agreements": "Perjanjian impor",
       "funding": "Pendanaan sebagai pembeli",
-      "creating_agreement_seller": "Membuat perjanjian (Aliran penjual)"
+      "creating_agreement_seller": "Membuat perjanjian (Aliran penjual)",
+      "node_information": "Informasi Node",
+      "privacy_data": "Privasi & Data",
+      "report_issue": "Laporkan Masalah"
     },
     "common_mistake": "Kesalahan umum:"
   },

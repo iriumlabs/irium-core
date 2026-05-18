@@ -941,7 +941,11 @@
       "copy_address": "Adresse kopieren",
       "copy_full_hash": "Vollständigen Hash kopieren"
     },
-    "pool_configuration": "Poolkonfiguration"
+    "pool_configuration": "Poolkonfiguration",
+    "opencl": {
+      "detected_title": "OpenCL-Hardware erkannt",
+      "none_detected": "Keine OpenCL-fähige GPU erkannt"
+    }
   },
   "onboarding": {
     "splash_title": "Irium-Kern",
@@ -987,6 +991,15 @@
       "need_12_seed_words": "Geben Sie mindestens 12 Startwörter ein.",
       "wif_min_length": "Der WIF-Schlüssel sollte mindestens 51 Zeichen lang sein.",
       "priv_key_hex": "Der private Schlüssel muss 64 Hexadezimalzeichen lang sein."
+    },
+    "labels": {
+      "node_daemon": "Knoten-Daemon",
+      "running": "Läuft",
+      "sync_progress": "Fortschritt synchronisieren",
+      "tip": "Tipp"
+    },
+    "tooltips": {
+      "copy_address": "Adresse kopieren"
     }
   },
   "reputation": {
@@ -1099,14 +1112,17 @@
     "sections": {
       "specs": "Netzwerkspezifikationen",
       "links": "Ressourcen",
-      "faq": "Häufig gestellte Fragen",
+      "faq": "FAQ",
       "agreements": "Vertragslebenszyklus",
       "reputation": "Bauen Sie Ihren Ruf auf",
       "feeds": "Futtermittelregister",
       "disputes": "Streitigkeiten",
       "importing_agreements": "Vereinbarungen importieren",
       "funding": "Finanzierung als Käufer",
-      "creating_agreement_seller": "Erstellen einer Vereinbarung (Verkäuferablauf)"
+      "creating_agreement_seller": "Erstellen einer Vereinbarung (Verkäuferablauf)",
+      "node_information": "Knoteninformationen",
+      "privacy_data": "Datenschutz und Daten",
+      "report_issue": "Melden Sie ein Problem"
     },
     "common_mistake": "Häufiger Fehler:"
   },

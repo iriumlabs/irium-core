@@ -941,7 +941,11 @@
       "copy_address": "Sao chép địa chỉ",
       "copy_full_hash": "Sao chép toàn bộ hàm băm"
     },
-    "pool_configuration": "Cấu hình nhóm"
+    "pool_configuration": "Cấu hình nhóm",
+    "opencl": {
+      "detected_title": "Đã phát hiện phần cứng OpenCL",
+      "none_detected": "Không phát hiện thấy GPU hỗ trợ OpenCL"
+    }
   },
   "onboarding": {
     "splash_title": "lõi irium",
@@ -987,6 +991,15 @@
       "need_12_seed_words": "Nhập ít nhất 12 từ giống.",
       "wif_min_length": "Khóa WIF phải có ít nhất 51 ký tự.",
       "priv_key_hex": "Khóa riêng phải có 64 ký tự hex."
+    },
+    "labels": {
+      "node_daemon": "Trình nền nút",
+      "running": "Đang chạy",
+      "sync_progress": "Tiến trình đồng bộ hóa",
+      "tip": "Mẹo"
+    },
+    "tooltips": {
+      "copy_address": "Sao chép địa chỉ"
     }
   },
   "reputation": {
@@ -1106,7 +1119,10 @@
       "disputes": "Tranh chấp",
       "importing_agreements": "Hiệp định nhập khẩu",
       "funding": "Tài trợ với tư cách là người mua",
-      "creating_agreement_seller": "Tạo thỏa thuận (Luồng người bán)"
+      "creating_agreement_seller": "Tạo thỏa thuận (Luồng người bán)",
+      "node_information": "Thông tin nút",
+      "privacy_data": "Quyền riêng tư & Dữ liệu",
+      "report_issue": "Báo cáo sự cố"
     },
     "common_mistake": "Lỗi thường gặp:"
   },

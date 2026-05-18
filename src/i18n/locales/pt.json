@@ -941,7 +941,11 @@
       "copy_address": "Copiar endereço",
       "copy_full_hash": "Copie o hash completo"
     },
-    "pool_configuration": "Configuração do pool"
+    "pool_configuration": "Configuração do pool",
+    "opencl": {
+      "detected_title": "Hardware OpenCL detectado",
+      "none_detected": "Nenhuma GPU compatível com OpenCL detectada"
+    }
   },
   "onboarding": {
     "splash_title": "Núcleo de Írio",
@@ -987,6 +991,15 @@
       "need_12_seed_words": "Insira pelo menos 12 palavras-semente.",
       "wif_min_length": "A chave WIF deve ter pelo menos 51 caracteres.",
       "priv_key_hex": "A chave privada deve ter 64 caracteres hexadecimais."
+    },
+    "labels": {
+      "node_daemon": "Daemon de nó",
+      "running": "Correndo",
+      "sync_progress": "Sincronizar progresso",
+      "tip": "Dica"
+    },
+    "tooltips": {
+      "copy_address": "Copiar endereço"
     }
   },
   "reputation": {
@@ -1106,7 +1119,10 @@
       "disputes": "Disputas",
       "importing_agreements": "Importando acordos",
       "funding": "Financiamento como comprador",
-      "creating_agreement_seller": "Criação de um contrato (fluxo do vendedor)"
+      "creating_agreement_seller": "Criação de um contrato (fluxo do vendedor)",
+      "node_information": "Informações do nó",
+      "privacy_data": "Privacidade e dados",
+      "report_issue": "Informar um problema"
     },
     "common_mistake": "Erro comum:"
   },

@@ -72,7 +72,7 @@
     "clear_all": "Очистить все",
     "no_notifications_short": "Нет уведомлений",
     "pill_starting": "Начало...",
-    "pill_offline": "Офлайн",
+    "pill_offline": "Оффлайн",
     "pill_connecting": "Подключение",
     "pill_syncing": "Синхронизация",
     "pill_live": "Жить"
@@ -941,7 +941,11 @@
       "copy_address": "Копировать адрес",
       "copy_full_hash": "Скопировать полный хэш"
     },
-    "pool_configuration": "Конфигурация пула"
+    "pool_configuration": "Конфигурация пула",
+    "opencl": {
+      "detected_title": "Обнаружено оборудование OpenCL",
+      "none_detected": "Графический процессор с поддержкой OpenCL не обнаружен"
+    }
   },
   "onboarding": {
     "splash_title": "Ириевое ядро",
@@ -987,6 +991,15 @@
       "need_12_seed_words": "Введите не менее 12 исходных слов.",
       "wif_min_length": "Ключ WIF должен содержать не менее 51 символа.",
       "priv_key_hex": "Закрытый ключ должен состоять из 64 шестнадцатеричных символов."
+    },
+    "labels": {
+      "node_daemon": "Демон узла",
+      "running": "Бег",
+      "sync_progress": "Синхронизировать прогресс",
+      "tip": "Кончик"
+    },
+    "tooltips": {
+      "copy_address": "Копировать адрес"
     }
   },
   "reputation": {
@@ -1106,7 +1119,10 @@
       "disputes": "Споры",
       "importing_agreements": "Импорт соглашений",
       "funding": "Финансирование в качестве покупателя",
-      "creating_agreement_seller": "Создание договора (поток продавца)"
+      "creating_agreement_seller": "Создание договора (поток продавца)",
+      "node_information": "Информация об узле",
+      "privacy_data": "Конфиденциальность и данные",
+      "report_issue": "Сообщить о проблеме"
     },
     "common_mistake": "Распространенная ошибка:"
   },
@@ -1207,7 +1223,7 @@
   "sidebar": {
     "live": "Жить",
     "syncing": "Синхронизация...",
-    "offline": "Офлайн"
+    "offline": "Оффлайн"
   },
   "tx_detail": {
     "status": "Статус",

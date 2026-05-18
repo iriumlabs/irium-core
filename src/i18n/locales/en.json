@@ -939,7 +939,11 @@
       "copy_address": "Copy address",
       "copy_full_hash": "Copy full hash"
     },
-    "pool_configuration": "Pool Configuration"
+    "pool_configuration": "Pool Configuration",
+    "opencl": {
+      "detected_title": "OpenCL Hardware Detected",
+      "none_detected": "No OpenCL-capable GPU detected"
+    }
   },
   "onboarding": {
     "splash_title": "Irium Core",
@@ -985,6 +989,15 @@
       "need_12_seed_words": "Enter at least 12 seed words.",
       "wif_min_length": "WIF key should be at least 51 characters.",
       "priv_key_hex": "Private key must be 64 hex characters."
+    },
+    "labels": {
+      "node_daemon": "Node daemon",
+      "running": "Running",
+      "sync_progress": "Sync progress",
+      "tip": "Tip"
+    },
+    "tooltips": {
+      "copy_address": "Copy address"
     }
   },
   "reputation": {
@@ -1097,14 +1110,17 @@
     "sections": {
       "specs": "Network specs",
       "links": "Resources",
-      "faq": "Frequently asked questions",
+      "faq": "FAQ",
       "agreements": "Agreement lifecycle",
       "reputation": "Building your reputation",
       "feeds": "Feed Registry",
       "disputes": "Disputes",
       "importing_agreements": "Importing agreements",
       "funding": "Funding as a buyer",
-      "creating_agreement_seller": "Creating an agreement (Seller flow)"
+      "creating_agreement_seller": "Creating an agreement (Seller flow)",
+      "node_information": "Node Information",
+      "privacy_data": "Privacy & Data",
+      "report_issue": "Report an Issue"
     },
     "common_mistake": "Common mistake:"
   },

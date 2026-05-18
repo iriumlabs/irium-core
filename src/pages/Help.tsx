@@ -166,6 +166,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 
 // ── Section content ───────────────────────────────────────────────────────────
 function AboutSection() {
+  const { t } = useTranslation();
   const appVersion = useStore((s) => s.appVersion);
   const nodeStatus = useStore((s) => s.nodeStatus);
   const settings   = useStore((s) => s.settings);
@@ -233,7 +234,7 @@ function AboutSection() {
       <div className="card p-5">
         <div className="flex items-center gap-2.5 mb-4">
           <Server size={16} className="text-irium-400 flex-shrink-0" />
-          <h2 className="font-display font-semibold text-white/90 text-base">Node Information</h2>
+          <h2 className="font-display font-semibold text-white/90 text-base">{t('help.sections.node_information')}</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {[
@@ -268,7 +269,7 @@ function AboutSection() {
         <div className="relative">
           <div className="flex items-center gap-2.5 mb-4">
             <ShieldCheck size={16} style={{ color: '#34d399' }} className="flex-shrink-0" />
-            <h2 className="font-display font-semibold text-white/90 text-base">Privacy &amp; Data</h2>
+            <h2 className="font-display font-semibold text-white/90 text-base">{t('help.sections.privacy_data')}</h2>
           </div>
           <p className="font-display font-bold text-base mb-1.5" style={{ color: '#34d399' }}>
             Your Data Stays on Your Machine
@@ -304,7 +305,7 @@ function AboutSection() {
       <div>
         <div className="flex items-center gap-2.5 mb-4">
           <HelpCircle size={16} className="text-irium-400 flex-shrink-0" />
-          <h2 className="font-display font-semibold text-white/90 text-base">FAQ</h2>
+          <h2 className="font-display font-semibold text-white/90 text-base">{t('help.sections.faq')}</h2>
         </div>
         <div className="space-y-2">
           {FAQS.map((faq) => (
@@ -317,7 +318,7 @@ function AboutSection() {
       <div className="card p-5">
         <div className="flex items-center gap-2.5 mb-4">
           <Bug size={16} className="text-irium-400 flex-shrink-0" />
-          <h2 className="font-display font-semibold text-white/90 text-base">Report an Issue</h2>
+          <h2 className="font-display font-semibold text-white/90 text-base">{t('help.sections.report_issue')}</h2>
         </div>
         <p className="text-sm text-white/50 leading-relaxed mb-4">
           Found a bug or need help? Open an issue on the Irium Core GitHub repository. Include your app version,

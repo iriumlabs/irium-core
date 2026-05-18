@@ -941,7 +941,11 @@
       "copy_address": "アドレスをコピーする",
       "copy_full_hash": "完全なハッシュをコピーする"
     },
-    "pool_configuration": "プール構成"
+    "pool_configuration": "プール構成",
+    "opencl": {
+      "detected_title": "OpenCL ハードウェアが検出されました",
+      "none_detected": "OpenCL 対応 GPU が検出されませんでした"
+    }
   },
   "onboarding": {
     "splash_title": "アイリウムコア",
@@ -987,6 +991,15 @@
       "need_12_seed_words": "少なくとも 12 個のシードワードを入力してください。",
       "wif_min_length": "WIF キーは少なくとも 51 文字である必要があります。",
       "priv_key_hex": "秘密キーは 64 桁の 16 進文字である必要があります。"
+    },
+    "labels": {
+      "node_daemon": "ノードデーモン",
+      "running": "ランニング",
+      "sync_progress": "同期の進行状況",
+      "tip": "ヒント"
+    },
+    "tooltips": {
+      "copy_address": "アドレスをコピーする"
     }
   },
   "reputation": {
@@ -1106,7 +1119,10 @@
       "disputes": "紛争",
       "importing_agreements": "契約のインポート",
       "funding": "買い手としての資金調達",
-      "creating_agreement_seller": "契約書の作成（販売者フロー）"
+      "creating_agreement_seller": "契約書の作成（販売者フロー）",
+      "node_information": "ノード情報",
+      "privacy_data": "プライバシーとデータ",
+      "report_issue": "問題を報告する"
     },
     "common_mistake": "よくある間違い:"
   },

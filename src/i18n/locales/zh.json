@@ -70,7 +70,7 @@
     "stop_button": "停止",
     "start_node_button": "启动节点",
     "clear_all": "全部清除",
-    "no_notifications_short": "没有通知",
+    "no_notifications_short": "无通知",
     "pill_starting": "开始...",
     "pill_offline": "离线",
     "pill_connecting": "正在连接",
@@ -941,7 +941,11 @@
       "copy_address": "复制地址",
       "copy_full_hash": "复制完整哈希值"
     },
-    "pool_configuration": "池配置"
+    "pool_configuration": "池配置",
+    "opencl": {
+      "detected_title": "检测到 OpenCL 硬件",
+      "none_detected": "未检测到支持 OpenCL 的 GPU"
+    }
   },
   "onboarding": {
     "splash_title": "铱核",
@@ -987,6 +991,15 @@
       "need_12_seed_words": "输入至少 12 个种子词。",
       "wif_min_length": "WIF 密钥应至少为 51 个字符。",
       "priv_key_hex": "私钥必须是 64 个十六进制字符。"
+    },
+    "labels": {
+      "node_daemon": "节点守护进程",
+      "running": "跑步",
+      "sync_progress": "同步进度",
+      "tip": "提示"
+    },
+    "tooltips": {
+      "copy_address": "复制地址"
     }
   },
   "reputation": {
@@ -1099,14 +1112,17 @@
     "sections": {
       "specs": "网络规格",
       "links": "资源",
-      "faq": "常见问题",
+      "faq": "常问问题",
       "agreements": "协议生命周期",
       "reputation": "建立您的声誉",
       "feeds": "饲料登记处",
       "disputes": "争议",
       "importing_agreements": "进口协议",
       "funding": "作为买家提供资金",
-      "creating_agreement_seller": "创建协议（卖家流程）"
+      "creating_agreement_seller": "创建协议（卖家流程）",
+      "node_information": "节点信息",
+      "privacy_data": "隐私和数据",
+      "report_issue": "报告问题"
     },
     "common_mistake": "常见错误："
   },

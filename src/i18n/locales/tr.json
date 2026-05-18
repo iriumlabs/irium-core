@@ -587,7 +587,7 @@
       "funds_released": "Serbest bırakılan fonlar · txid: {{txid}}",
       "release_failed": "Serbest bırakma başarısız oldu",
       "escrow_funded": "Emanet fonlu · txid: {{txid}}",
-      "funding_failed": "Funding failed",
+      "funding_failed": "Finansman başarısız oldu",
       "agreement_imported": "Sözleşme içe aktarıldı: {{id}}",
       "invoice_parse_warning": "İçe aktarıldı ancak önceden doldurma için fatura alanları ayrıştırılamadı",
       "invoice_imported": "Fatura içe aktarıldı",
@@ -941,7 +941,11 @@
       "copy_address": "Adresi kopyala",
       "copy_full_hash": "Karmanın tamamını kopyala"
     },
-    "pool_configuration": "Havuz Yapılandırması"
+    "pool_configuration": "Havuz Yapılandırması",
+    "opencl": {
+      "detected_title": "OpenCL Donanımı Algılandı",
+      "none_detected": "OpenCL özellikli GPU algılanmadı"
+    }
   },
   "onboarding": {
     "splash_title": "İryum Çekirdeği",
@@ -987,6 +991,15 @@
       "need_12_seed_words": "En az 12 başlangıç ​​kelime girin.",
       "wif_min_length": "WIF anahtarı en az 51 karakter olmalıdır.",
       "priv_key_hex": "Özel anahtar 64 onaltılık karakterden oluşmalıdır."
+    },
+    "labels": {
+      "node_daemon": "Düğüm arka plan programı",
+      "running": "Koşma",
+      "sync_progress": "Senkronizasyon ilerlemesi",
+      "tip": "Uç"
+    },
+    "tooltips": {
+      "copy_address": "Adresi kopyala"
     }
   },
   "reputation": {
@@ -1099,14 +1112,17 @@
     "sections": {
       "specs": "Ağ özellikleri",
       "links": "Kaynaklar",
-      "faq": "Sık sorulan sorular",
+      "faq": "SSS",
       "agreements": "Sözleşme yaşam döngüsü",
       "reputation": "İtibarınızı geliştirmek",
       "feeds": "Yem Kaydı",
       "disputes": "Anlaşmazlıklar",
       "importing_agreements": "Anlaşmaları içe aktarma",
       "funding": "Alıcı olarak finansman",
-      "creating_agreement_seller": "Sözleşme oluşturma (Satıcı akışı)"
+      "creating_agreement_seller": "Sözleşme oluşturma (Satıcı akışı)",
+      "node_information": "Düğüm Bilgileri",
+      "privacy_data": "Gizlilik ve Veri",
+      "report_issue": "Sorun Bildir"
     },
     "common_mistake": "Yaygın hata:"
   },

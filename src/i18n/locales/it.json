@@ -941,7 +941,11 @@
       "copy_address": "Copia indirizzo",
       "copy_full_hash": "Copia l'hash completo"
     },
-    "pool_configuration": "Configurazione della piscina"
+    "pool_configuration": "Configurazione della piscina",
+    "opencl": {
+      "detected_title": "Rilevato hardware OpenCL",
+      "none_detected": "Nessuna GPU compatibile con OpenCL rilevata"
+    }
   },
   "onboarding": {
     "splash_title": "Nucleo d'Irio",
@@ -987,6 +991,15 @@
       "need_12_seed_words": "Inserisci almeno 12 parole chiave.",
       "wif_min_length": "La chiave WIF deve contenere almeno 51 caratteri.",
       "priv_key_hex": "La chiave privata deve contenere 64 caratteri esadecimali."
+    },
+    "labels": {
+      "node_daemon": "Demone del nodo",
+      "running": "Corsa",
+      "sync_progress": "Sincronizza i progressi",
+      "tip": "Mancia"
+    },
+    "tooltips": {
+      "copy_address": "Copia indirizzo"
     }
   },
   "reputation": {
@@ -1106,7 +1119,10 @@
       "disputes": "Controversie",
       "importing_agreements": "Accordi di importazione",
       "funding": "Finanziamento come acquirente",
-      "creating_agreement_seller": "Creazione di un accordo (flusso del venditore)"
+      "creating_agreement_seller": "Creazione di un accordo (flusso del venditore)",
+      "node_information": "Informazioni sul nodo",
+      "privacy_data": "Privacy e dati",
+      "report_issue": "Segnala un problema"
     },
     "common_mistake": "Errore comune:"
   },

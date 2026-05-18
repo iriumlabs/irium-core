@@ -1110,7 +1110,7 @@ function GpuMinerTab() {
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display font-bold text-base" style={{ color: 'var(--t1)' }}>
-                  OpenCL Hardware Detected
+                  {t('miner.opencl.detected_title')}
                 </h3>
                 <button
                   onClick={() => setShowModal(false)}
@@ -1191,7 +1191,7 @@ function GpuMinerTab() {
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display font-bold text-base" style={{ color: 'var(--t1)' }}>
-                  No OpenCL-capable GPU detected
+                  {t('miner.opencl.none_detected')}
                 </h3>
                 <button
                   onClick={() => setShowOpenCLError(false)}
