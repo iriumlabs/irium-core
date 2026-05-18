@@ -819,6 +819,29 @@ export interface RichListResponse {
   entries: RichListEntry[];
 }
 
+// Pool stats fetched from the official-pool stats proxy via the
+// get_pool_stats Tauri command. Mirrors PoolStats / PoolProfileStats in
+// src-tauri/src/types.rs. Counts default to 0 and integrity to "unknown"
+// when the proxy returns no data for a profile.
+export interface PoolProfileStats {
+  active_miners: number;
+  accepted_shares: number;
+  rejected_shares: number;
+  blocks_found: number;
+  integrity: string;
+}
+
+export interface PoolStats {
+  pool: string;
+  url: string;
+  asic_port: number;
+  cpu_gpu_port: number;
+  asic: PoolProfileStats;
+  cpu_gpu: PoolProfileStats;
+  total_miners: number;
+  total_blocks_found: number;
+}
+
 // Returned by check_port_open. `open` is the simple boolean the UI uses
 // to flip a green/red status; `reason` is a human-readable explanation.
 // `upnp_external_ip` and `inbound_count` carry the two underlying signals

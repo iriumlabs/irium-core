@@ -1206,7 +1206,29 @@
     },
     "tabs": {
       "overview": "Overview",
-      "rich_list": "Rich List"
+      "rich_list": "Rich List",
+      "pool_stats": "Pool Stats"
+    },
+    "pool_stats": {
+      "title": "Irium Official Pool",
+      "subtitle": "Live status of pool.iriumlabs.org",
+      "total_miners": "Total Active Miners",
+      "asic_miners": "ASIC Miners",
+      "cpu_gpu_miners": "CPU / GPU Miners",
+      "total_blocks_found": "Blocks Found",
+      "asic_port": "ASIC port {{port}}",
+      "cpu_gpu_port": "CPU/GPU port {{port}}",
+      "integrity": "Integrity",
+      "integrity_healthy": "Healthy",
+      "integrity_unknown": "Unknown",
+      "last_updated": "Last updated {{ago}}",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing…",
+      "loading": "Loading pool stats…",
+      "load_error": "Could not load pool stats — proxy may be unreachable",
+      "empty": "Pool stats unavailable",
+      "accepted_shares": "Accepted shares",
+      "rejected_shares": "Rejected shares"
     },
     "richlist": {
       "title": "Top IRM Holders",

@@ -607,6 +607,31 @@ pub struct RichListResponse {
     pub entries: Vec<RichListEntry>,
 }
 
+// Public pool stats — fetched by get_pool_stats from the iriumlabs.org
+// stats proxy (http://207.244.247.86:3337/stats). Mirrors the JSON shape
+// the proxy emits. All counts are best-effort: if the proxy is unreachable
+// or returns malformed data, get_pool_stats returns Default::default().
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+pub struct PoolProfileStats {
+    pub active_miners: u64,
+    pub accepted_shares: u64,
+    pub rejected_shares: u64,
+    pub blocks_found: u64,
+    pub integrity: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+pub struct PoolStats {
+    pub pool: String,
+    pub url: String,
+    pub asic_port: u16,
+    pub cpu_gpu_port: u16,
+    pub asic: PoolProfileStats,
+    pub cpu_gpu: PoolProfileStats,
+    pub total_miners: u64,
+    pub total_blocks_found: u64,
+}
+
 // Port-forwarding self-test result for the Help page's Test Connection
 // button. `open` is the headline boolean the UI renders as green/red.
 // `reason` is a human-readable explanation surfaced inline. The two

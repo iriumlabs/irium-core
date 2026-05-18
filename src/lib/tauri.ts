@@ -19,7 +19,7 @@ import type {
   DisputeEntry, DisputeOpenResult,
   NetworkMetrics, ExplorerAgreement, ExplorerStats,
   ExplorerNetworkStats, ExplorerPeer, ExplorerBlock, NetworkHashrateInfo,
-  RichListResponse, PortCheckResult,
+  RichListResponse, PortCheckResult, PoolStats,
   FeedDiscoverResult,
   AgreementSignResult, AgreementVerifySignatureResult,
   AgreementDecryptResult, AgreementStoreListResult,
@@ -562,6 +562,13 @@ export const rpc = {
   // aggregation is done on the node side under a single chain-lock.
   richlist: (limit?: number) =>
     safeInvoke<RichListResponse>('get_richlist', { limit }),
+
+  // Official-pool stats — hits the iriumlabs.org public proxy via the
+  // Rust get_pool_stats Tauri command. Returns a PoolStats snapshot.
+  // Failure path returns null; the Explorer surface handles that with an
+  // empty state rather than a toast (the section is informational).
+  poolStats: () =>
+    safeInvoke<PoolStats>('get_pool_stats'),
 
   offersFeed: () =>
     safeInvoke<unknown>('rpc_get_offers_feed'),

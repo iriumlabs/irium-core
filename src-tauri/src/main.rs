@@ -5056,6 +5056,33 @@ async fn get_network_hashrate(state: State<'_, AppState>) -> Result<NetworkHashr
     })
 }
 
+// Public pool stats proxy — sanitised read-only summary fetched from the
+// stats-proxy running on the same VPS as the pool itself. The proxy lives
+// at http://pool.iriumlabs.org:3337/stats and is a Python helper that
+// scrapes the loopback /metrics endpoints exposed by both irium-stratum
+// profiles (ASIC + CPU/GPU) and combines them. Hardcoded URL because this
+// is the canonical Irium-operated pool; users with private/alternative
+// pools will not have their stats surfaced here (intentional — the
+// Explorer's Pool Stats section is specifically for the official pool).
+const POOL_STATS_URL: &str = "http://pool.iriumlabs.org:3337/stats";
+
+#[tauri::command]
+async fn get_pool_stats() -> Result<PoolStats, String> {
+    let client = reqwest::Client::new();
+    let resp = client
+        .get(POOL_STATS_URL)
+        .timeout(Duration::from_secs(5))
+        .send()
+        .await
+        .map_err(|e| format!("pool stats unreachable: {}", e))?;
+    if !resp.status().is_success() {
+        return Err(format!("pool stats returned {}", resp.status()));
+    }
+    resp.json::<PoolStats>()
+        .await
+        .map_err(|e| format!("pool stats parse error: {}", e))
+}
+
 // get_richlist: thin passthrough to iriumd's /rpc/richlist?limit=N.
 // Default 100, clamped to [1, 500] on the iriumd side. The frontend uses
 // this for the Explorer's Rich List tab; a 10-second timeout is generous
@@ -6848,6 +6875,7 @@ fn main() {
             get_recent_blocks,
             get_network_hashrate,
             get_richlist,
+            get_pool_stats,
             rpc_get_offers_feed,
             rpc_set_url,
             // Diagnostics

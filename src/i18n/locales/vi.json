@@ -897,6 +897,7 @@
       "address_picker_other": "Địa chỉ khác…",
       "address_picker_no_wallets": "Không có địa chỉ ví — chọn Khác",
       "address_picker_custom_placeholder": "Nhập địa chỉ P hoặc Q bất kỳ",
+      "address_invalid_inline": "Địa chỉ không hợp lệ. Phải bắt đầu bằng P hoặc Q",
       "threads_label": "chủ đề",
       "stratum_url_label": "URL nhóm",
       "stratum_url_placeholder": "tầng+tcp://pool.example.com:3333",
@@ -939,8 +940,12 @@
       "gpu_started": "Công cụ khai thác GPU đã bắt đầu",
       "gpu_stopped": "Công cụ khai thác GPU đã dừng",
       "pool_url_required": "Yêu cầu URL nhóm",
+      "pool_url_invalid": "URL nhóm không hợp lệ. Định dạng: tầng+tcp://pool.example.com:3333",
       "worker_required": "Cần có tên công nhân",
-      "connecting_to_pool": "Đang kết nối với hồ bơi…"
+      "connecting_to_pool": "Đang kết nối với hồ bơi…",
+      "pool_disconnected_reconnecting": "Nhóm bị ngắt kết nối - đang kết nối lại…",
+      "pool_connection_lost": "Kết nối bể bơi bị mất. Vui lòng kết nối lại.",
+      "pool_error": "Lỗi nhóm: {{message}}"
     },
     "page_subtitle": "SHA-256d · CPU · GPU · Hỗ trợ nhóm ASIC",
     "tooltips": {
@@ -1194,12 +1199,36 @@
     "node_offline_hint": "Nút ngoại tuyến - nút bắt đầu trên Trang tổng quan",
     "start_node_hint": "Khởi động nút trên Bảng điều khiển để xem số liệu thống kê mạng",
     "section_search": "Tìm kiếm",
-    "section_blocks": "Khối",
+    "section_blocks": "khối",
     "look_up": "Tra cứu",
     "search_results": {
       "block": "Chi tiết khối",
       "tx": "Giao dịch",
       "address": "Thông tin địa chỉ"
+    },
+    "tabs": {
+      "overview": "Tổng quan",
+      "rich_list": "Danh sách phong phú"
+    },
+    "richlist": {
+      "title": "Những người nắm giữ IRM hàng đầu",
+      "subtitle": "Được xếp hạng theo số dư có thể chi tiêu trên đầu chuỗi hiện tại",
+      "total_supply": "Tổng nguồn cung",
+      "at_height": "ở độ cao #{{height}}",
+      "showing_top": "Đang hiển thị hàng đầu {{count}}",
+      "col_rank": "Thứ hạng",
+      "col_address": "Địa chỉ",
+      "col_balance_irm": "Số dư (IRM)",
+      "col_percentage": "% nguồn cung",
+      "col_utxos": "UTXO",
+      "you_badge": "Bạn",
+      "refresh": "Làm cho khỏe lại",
+      "loading": "Đang tải danh sách phong phú...",
+      "load_more": "Tải top 500",
+      "load_more_loading": "Đang tải 500 hàng đầu…",
+      "load_error": "Không tải được danh sách phong phú: {{reason}}",
+      "empty": "Chưa có số dư P2PKH trên chuỗi.",
+      "node_offline_hint": "Bắt đầu nút trên Bảng điều khiển để tải danh sách phong phú."
     }
   },
   "help": {
@@ -1321,6 +1350,36 @@
       "a10": "macOS cách ly các ứng dụng được tải xuống bên ngoài App Store. Để khắc phục điều này: (1) mở Terminal; (2) chạy: xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app — thao tác này sẽ xóa cờ cách ly khỏi toàn bộ gói ứng dụng. Nếu bạn vẫn thấy \"hư hỏng\", hãy chạy: codesign --force --deep --sign - /Applications/Irium\\ Core.app sau đó khởi chạy lại. Lần khởi chạy đầu tiên có thể mất 10-20 giây trong khi Gatekeeper xác minh lại chữ ký. Nếu bản thân iriumd đã bị cách ly (bạn thấy \"iriumd bị hỏng\" trong nhật ký), hãy chạy: xattr -d com.apple.quarantine ~/.irium/binaries/iriumd để hủy cách ly chỉ nhị phân nút.",
       "q11": "Nút của tôi có các khối cách ly. Làm thế nào để tôi phục hồi?",
       "a11": "iriud cách ly các tập tin chặn mà nó không thể xác thực (thường là sau sự cố khi ghi giữa chừng hoặc bản reorg bị hỏng). Các khối bị cách ly nằm trong ~/.irium/blocks/orphaned_<timestamp>/. Bạn có thể xóa chúng khỏi phần Khôi phục khối cách ly ở trên (dừng nút trước). Nút sẽ tự động tìm nạp lại các khối bị thiếu từ các nút ngang hàng vào lần bắt đầu tiếp theo. Nếu quá trình đồng bộ lại bị kẹt ở cùng độ cao, hãy sử dụng Cài đặt → Xóa trạng thái chuỗi để đồng bộ lại rõ ràng từ nguồn gốc (ví và các thỏa thuận của bạn được giữ nguyên)."
+    },
+    "port_forwarding": {
+      "section_title": "Cách chuyển tiếp cổng để kết nối tốt hơn",
+      "intro": "Irium sử dụng cổng 38291 cho kết nối P2P. Chuyển tiếp cổng này cho phép các nút khác kết nối trực tiếp với bạn, cải thiện kết nối mạng và hiệu suất khai thác của bạn.",
+      "steps_heading": "Các bước cho hầu hết các bộ định tuyến:",
+      "step1_title": "Tìm địa chỉ IP cục bộ của bạn",
+      "step1_windows": "Windows: mở Dấu nhắc Lệnh, gõ ipconfig. Tìm Địa chỉ IPv4 (ví dụ: 192.168.1.100).",
+      "step1_mac": "Mac: Tùy chọn hệ thống → Mạng.",
+      "step2_title": "Đăng nhập vào bộ định tuyến của bạn",
+      "step2_body": "Mở trình duyệt và truy cập 192.168.1.1 hoặc 192.168.0.1. Đăng nhập bằng tên người dùng và mật khẩu bộ định tuyến của bạn (thường được in trên bộ định tuyến).",
+      "step3_title": "Tìm cài đặt Chuyển tiếp cổng",
+      "step3_body": "Tìm kiếm: Chuyển tiếp cổng, NAT, Máy chủ ảo hoặc Ứng dụng (tên thay đổi tùy theo nhãn hiệu bộ định tuyến).",
+      "step4_title": "Thêm quy tắc mới",
+      "step4_service_name": "Tên dịch vụ: Irium P2P",
+      "step4_external_port": "Cổng ngoài: 38291",
+      "step4_internal_port": "Cổng nội bộ: 38291",
+      "step4_internal_ip": "IP nội bộ: IP cục bộ của bạn từ bước 1",
+      "step4_protocol": "Giao thức: TCP",
+      "step4_enable": "Kích hoạt: Có",
+      "step4_save": "Lưu quy tắc.",
+      "step5_title": "Xác minh nó hoạt động",
+      "step5_body": "Thanh trạng thái ở cuối ứng dụng hiển thị UPnP khi chuyển tiếp cổng đang hoạt động. Dấu chấm màu xanh lá cây có nghĩa là đã tìm thấy các đồng nghiệp được kết nối.",
+      "upnp_note_label": "Ghi chú:",
+      "upnp_note": "UPnP được bật theo mặc định trong Irium và sẽ cố gắng tự động chuyển tiếp cổng. Chuyển tiếp cổng thủ công chỉ cần thiết nếu UPnP không được bộ định tuyến của bạn hỗ trợ.",
+      "test_button": "Kiểm tra kết nối",
+      "testing": "Đang thử nghiệm…",
+      "result_open": "Cổng 38291 đã mở - thật tuyệt!",
+      "result_closed": "Cổng 38291 có vẻ đã đóng — hãy thử chuyển tiếp cổng thủ công ở trên.",
+      "result_details": "Chi tiết: {{reason}}",
+      "test_failed": "Không thể chạy kiểm tra cổng: {{reason}}"
     },
     "quarantine": {
       "section_title": "Phục hồi khối cách ly",

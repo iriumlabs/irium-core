@@ -6,15 +6,15 @@ import toast from 'react-hot-toast';
 import {
   Copy, CheckCircle2, RefreshCw, Search,
   Cpu, Users, Layers, Clock, Activity, Zap, TrendingUp, Coins,
-  Wallet, ArrowRightLeft, Trophy, Medal, Award,
+  Wallet, ArrowRightLeft, Trophy, Medal, Award, Server,
 } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { rpc, wallet } from '../lib/tauri';
 import { timeAgo, formatIRM, SATS_PER_IRM } from '../lib/types';
-import type { ExplorerBlock, NetworkHashrateInfo, RichListEntry } from '../lib/types';
+import type { ExplorerBlock, NetworkHashrateInfo, RichListEntry, PoolStats } from '../lib/types';
 
 type SearchTab = 'block' | 'tx' | 'address';
-type PageTab = 'overview' | 'rich_list';
+type PageTab = 'overview' | 'rich_list' | 'pool_stats';
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -402,6 +402,188 @@ function rankAccent(rank: number): { color: string; Icon: React.ElementType | nu
 
 function shortAddr(a: string): string {
   return a.length > 18 ? `${a.slice(0, 10)}…${a.slice(-6)}` : a;
+}
+
+// ── Pool Stats section ───────────────────────────────────────
+//
+// Renders the official-pool snapshot fetched via get_pool_stats. The
+// data source is a Python proxy on irium-vps:3337 that scrapes the
+// loopback /metrics endpoints of both irium-stratum profiles and
+// combines them. We never poll automatically — the section fetches once
+// on mount and on each Refresh click. Stats change slowly enough that
+// background polling would be wasteful and risk hammering the proxy.
+
+function PoolStatsTile({
+  label, value, sub, accent,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  accent: string;
+}) {
+  return (
+    <div
+      className="flex flex-col gap-1.5 px-4 py-3"
+      style={{
+        background: 'var(--bg-elev-1)',
+        border: '1px solid rgba(110,198,255,0.10)',
+        borderRadius: 8,
+      }}
+    >
+      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.30)', fontFamily: '"Space Grotesk", sans-serif' }}>
+        {label}
+      </span>
+      <span style={{ fontSize: 22, fontWeight: 800, color: accent, fontVariantNumeric: 'tabular-nums', fontFamily: '"Space Grotesk", sans-serif', lineHeight: 1.1 }}>
+        {value}
+      </span>
+      {sub && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.40)' }}>{sub}</span>}
+    </div>
+  );
+}
+
+function PoolStatsSection() {
+  const { t } = useTranslation();
+  const [stats, setStats] = useState<PoolStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string>('');
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+
+  const fetchStats = useCallback(async () => {
+    setLoading(true);
+    setErr('');
+    try {
+      const result = await rpc.poolStats();
+      if (!result) throw new Error('empty response');
+      setStats(result);
+      setLastUpdated(Math.floor(Date.now() / 1000));
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  const integrityLabel = (raw: string) =>
+    raw === 'healthy' ? t('explorer.pool_stats.integrity_healthy')
+    : t('explorer.pool_stats.integrity_unknown');
+
+  const integrityColor = (raw: string) =>
+    raw === 'healthy' ? '#34d399' : 'rgba(255,255,255,0.40)';
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 style={{ fontSize: 16, fontWeight: 800, color: '#d4eeff', fontFamily: '"Space Grotesk", sans-serif', letterSpacing: '0.02em' }}>
+            {t('explorer.pool_stats.title')}
+          </h2>
+          <p className="mt-1" style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.45)' }}>
+            {t('explorer.pool_stats.subtitle')}
+          </p>
+          {lastUpdated && (
+            <p className="mt-1" style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, color: 'rgba(110,198,255,0.55)' }}>
+              {t('explorer.pool_stats.last_updated', { ago: timeAgo(lastUpdated) })}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={fetchStats}
+          disabled={loading}
+          className="btn-secondary text-xs gap-2 flex-shrink-0"
+        >
+          <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+          {loading ? t('explorer.pool_stats.refreshing') : t('explorer.pool_stats.refresh')}
+        </button>
+      </div>
+
+      {/* Error / loading / content */}
+      {err ? (
+        <div className="py-10 text-center text-sm" style={{ background: 'rgba(244,63,94,0.06)', border: '1px solid rgba(244,63,94,0.20)', borderRadius: 8, color: '#fda4af' }}>
+          {t('explorer.pool_stats.load_error')}
+        </div>
+      ) : loading && !stats ? (
+        <div className="py-10 text-center text-sm" style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.08)', borderRadius: 8, color: 'rgba(255,255,255,0.30)' }}>
+          {t('explorer.pool_stats.loading')}
+        </div>
+      ) : !stats ? (
+        <div className="py-10 text-center text-sm" style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.07)', borderRadius: 8, color: 'rgba(255,255,255,0.30)' }}>
+          {t('explorer.pool_stats.empty')}
+        </div>
+      ) : (
+        <>
+          {/* Combined headline tiles */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <PoolStatsTile
+              label={t('explorer.pool_stats.total_miners')}
+              value={stats.total_miners.toLocaleString('en-US')}
+              accent="#6ec6ff"
+            />
+            <PoolStatsTile
+              label={t('explorer.pool_stats.asic_miners')}
+              value={stats.asic.active_miners.toLocaleString('en-US')}
+              sub={t('explorer.pool_stats.asic_port', { port: stats.asic_port })}
+              accent="#a78bfa"
+            />
+            <PoolStatsTile
+              label={t('explorer.pool_stats.cpu_gpu_miners')}
+              value={stats.cpu_gpu.active_miners.toLocaleString('en-US')}
+              sub={t('explorer.pool_stats.cpu_gpu_port', { port: stats.cpu_gpu_port })}
+              accent="#a78bfa"
+            />
+            <PoolStatsTile
+              label={t('explorer.pool_stats.total_blocks_found')}
+              value={stats.total_blocks_found.toLocaleString('en-US')}
+              accent="#34d399"
+            />
+          </div>
+
+          {/* Per-profile detail panel */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {([
+              { key: 'asic',    label: t('explorer.pool_stats.asic_miners'),    port: stats.asic_port,    data: stats.asic },
+              { key: 'cpu_gpu', label: t('explorer.pool_stats.cpu_gpu_miners'), port: stats.cpu_gpu_port, data: stats.cpu_gpu },
+            ] as const).map(({ key, label, port, data }) => (
+              <div
+                key={key}
+                className="p-4"
+                style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.13)', borderRadius: 8 }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#d4eeff', fontFamily: '"Space Grotesk", sans-serif' }}>
+                    {label}
+                  </span>
+                  <span className="font-mono" style={{ fontSize: 11, color: 'rgba(110,198,255,0.55)' }}>:{port}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
+                  <span style={{ color: 'rgba(255,255,255,0.40)' }}>{t('explorer.pool_stats.accepted_shares')}</span>
+                  <span className="font-mono text-right" style={{ color: '#34d399' }}>
+                    {data.accepted_shares.toLocaleString('en-US')}
+                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.40)' }}>{t('explorer.pool_stats.rejected_shares')}</span>
+                  <span className="font-mono text-right" style={{ color: '#fda4af' }}>
+                    {data.rejected_shares.toLocaleString('en-US')}
+                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.40)' }}>{t('explorer.pool_stats.total_blocks_found')}</span>
+                  <span className="font-mono text-right" style={{ color: '#fbbf24' }}>
+                    {data.blocks_found.toLocaleString('en-US')}
+                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.40)' }}>{t('explorer.pool_stats.integrity')}</span>
+                  <span className="font-mono text-right" style={{ color: integrityColor(data.integrity) }}>
+                    {integrityLabel(data.integrity)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 function RichListSection({ running }: { running: boolean }) {
@@ -1004,10 +1186,18 @@ export default function Explorer() {
             icon={Trophy}
             label={t('explorer.tabs.rich_list')}
           />
+          <PageTabBtn
+            active={pageTab === 'pool_stats'}
+            onClick={() => setPageTab('pool_stats')}
+            icon={Server}
+            label={t('explorer.tabs.pool_stats')}
+          />
         </div>
 
-        {/* Rich-list takes over the body when selected. */}
-        {pageTab === 'rich_list' ? <RichListSection running={running} /> : (
+        {/* Rich-list or Pool-stats takes over the body when selected.
+            The Overview path falls through to the original layout. */}
+        {pageTab === 'rich_list' ? <RichListSection running={running} /> :
+         pageTab === 'pool_stats' ? <PoolStatsSection /> : (
         <>
 
         {/* ── Network Stats ─────────────────────────────── */}
