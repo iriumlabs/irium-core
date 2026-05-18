@@ -16,6 +16,8 @@ import { formatIRM } from '../lib/types';
 // Step 0 = Choose Type, then the regular find/take/fund/monitor flow. Mirrors
 // the four-card template grid in Settlement.tsx and SellerWizard.tsx so all
 // three entry paths share the same visual template selection.
+// Step labels are only used in the dots-progress UI (loop index, label not
+// rendered), so the array stays English — translating it has no UI effect.
 const STEPS = ['Choose Type', 'Find Offer', 'Take Offer', 'Fund & Pay', 'Monitor & Complete'];
 
 // Settlement type the buyer is looking for. The offer-create binary command
@@ -23,19 +25,21 @@ const STEPS = ['Choose Type', 'Find Offer', 'Take Offer', 'Fund & Pay', 'Monitor
 // step still shows all offers; the chosen template is surfaced for context.
 type TemplateId = 'otc' | 'freelance' | 'milestone' | 'deposit';
 
+// Template metadata. nameKey/descKey resolve through t() in the render so the
+// card title/description follow the active locale.
 const TEMPLATES: ReadonlyArray<{
   id: TemplateId;
-  name: string;
-  desc: string;
+  nameKey: string;
+  descKey: string;
   Icon: React.ElementType;
   iconBg: string;
   iconColor: string;
   glowBg: string;
 }> = [
-  { id: 'otc',       name: 'OTC Trade',  desc: 'Peer-to-peer trade with escrow', Icon: ArrowLeftRight, iconBg: 'bg-irium-500/20', iconColor: 'text-irium-400', glowBg: 'bg-irium-500' },
-  { id: 'freelance', name: 'Freelance',  desc: 'Contractor milestone payment',   Icon: Briefcase,      iconBg: 'bg-blue-500/20',  iconColor: 'text-blue-400',  glowBg: 'bg-blue-500'  },
-  { id: 'milestone', name: 'Milestone',  desc: 'Multi-stage project payment',    Icon: Target,         iconBg: 'bg-green-500/20', iconColor: 'text-green-400', glowBg: 'bg-green-500' },
-  { id: 'deposit',   name: 'Deposit',    desc: 'Collateral deposit escrow',      Icon: Landmark,       iconBg: 'bg-amber-500/20', iconColor: 'text-amber-400', glowBg: 'bg-amber-500' },
+  { id: 'otc',       nameKey: 'wizards.templates.otc_name',       descKey: 'wizards.templates.otc_desc',       Icon: ArrowLeftRight, iconBg: 'bg-irium-500/20', iconColor: 'text-irium-400', glowBg: 'bg-irium-500' },
+  { id: 'freelance', nameKey: 'wizards.templates.freelance_name', descKey: 'wizards.templates.freelance_desc', Icon: Briefcase,      iconBg: 'bg-blue-500/20',  iconColor: 'text-blue-400',  glowBg: 'bg-blue-500'  },
+  { id: 'milestone', nameKey: 'wizards.templates.milestone_name', descKey: 'wizards.templates.milestone_desc', Icon: Target,         iconBg: 'bg-green-500/20', iconColor: 'text-green-400', glowBg: 'bg-green-500' },
+  { id: 'deposit',   nameKey: 'wizards.templates.deposit_name',   descKey: 'wizards.templates.deposit_desc',   Icon: Landmark,       iconBg: 'bg-amber-500/20', iconColor: 'text-amber-400', glowBg: 'bg-amber-500' },
 ];
 
 export default function BuyerWizard() {
@@ -130,7 +134,7 @@ export default function BuyerWizard() {
       setLoading(true);
       try {
         const o = await offers.show(offerIdInput.trim());
-        if (!o) throw new Error('Offer not found');
+        if (!o) throw new Error(t('wizards.buyer.offer_not_found'));
         setFoundOffer(o);
         setStep(2);
       } catch (e) {
@@ -142,7 +146,7 @@ export default function BuyerWizard() {
     }
 
     // Path 3: file was imported, selectedOffer might be set already by handleImportOffer
-    setError('Select an offer from the marketplace, enter an offer ID, or import an offer file');
+    setError(t('wizards.buyer.select_or_enter_id'));
   };
 
   const handleTakeOffer = async () => {
@@ -151,7 +155,7 @@ export default function BuyerWizard() {
     setError('');
     try {
       const res = await offers.take(foundOffer.id);
-      if (!res?.success) throw new Error(res?.message ?? 'Failed to take offer');
+      if (!res?.success) throw new Error(res?.message ?? t('wizards.buyer.take_offer_failed'));
       setAgreementId(res.agreement_id);
       setStep(3);
     } catch (e) {
@@ -167,7 +171,7 @@ export default function BuyerWizard() {
     setError('');
     try {
       const res = await agreementSpend.fund(agreementId);
-      if (!res?.success) throw new Error(res?.message ?? 'Funding failed');
+      if (!res?.success) throw new Error(res?.message ?? t('wizards.buyer.funding_failed'));
       toast.success(t('wizards.buyer.escrow_funded'));
       setStep(4);
       startPolling();
@@ -199,7 +203,7 @@ export default function BuyerWizard() {
       if (pollRef.current) { clearInterval(pollRef.current); setPolling(false); }
       setReleaseResult(res ?? { success: false });
       if (res?.success) toast.success(t('wizards.buyer.payment_released'));
-      else toast.error(res?.message ?? 'Release failed');
+      else toast.error(res?.message ?? t('wizards.buyer.release_failed'));
     } catch (e) {
       setError(String(e));
     } finally {
@@ -216,7 +220,7 @@ export default function BuyerWizard() {
       if (pollRef.current) { clearInterval(pollRef.current); setPolling(false); }
       setReleaseResult(res ?? { success: false });
       if (res?.success) toast.success(t('wizards.buyer.refunded'));
-      else toast.error(res?.message ?? 'Refund failed');
+      else toast.error(res?.message ?? t('wizards.buyer.refund_failed'));
     } catch (e) {
       setError(String(e));
     } finally {
@@ -277,31 +281,31 @@ export default function BuyerWizard() {
               <div>
                 <h2 className="font-display font-bold text-xl text-white">{t('wizards.buyer.step_choose')}</h2>
                 <p className="text-white/40 text-sm mt-1">
-                  Pick the kind of trade you're looking for. We'll surface matching offers in the next step.
+                  {t('wizards.buyer.step_choose_subtitle')}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {TEMPLATES.map((t) => {
-                  const selected = template === t.id;
+                {TEMPLATES.map((tpl) => {
+                  const selected = template === tpl.id;
                   return (
                     <motion.button
-                      key={t.id}
+                      key={tpl.id}
                       type="button"
                       whileHover={{ scale: 1.02, y: -2 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => setTemplate(t.id)}
+                      onClick={() => setTemplate(tpl.id)}
                       className={`card-interactive p-6 text-left flex flex-col gap-3 relative overflow-hidden transition-colors ${
                         selected ? 'ring-2 ring-blue-500/60 bg-blue-500/[0.04]' : ''
                       }`}
                     >
-                      <div className={`absolute top-4 right-4 w-20 h-20 rounded-full blur-2xl opacity-25 ${t.glowBg}`} />
-                      <div className={`p-3 rounded-xl w-fit ${t.iconBg}`}>
-                        <t.Icon size={20} className={t.iconColor} />
+                      <div className={`absolute top-4 right-4 w-20 h-20 rounded-full blur-2xl opacity-25 ${tpl.glowBg}`} />
+                      <div className={`p-3 rounded-xl w-fit ${tpl.iconBg}`}>
+                        <tpl.Icon size={20} className={tpl.iconColor} />
                       </div>
                       <div>
-                        <div className="font-display font-bold text-lg text-white">{t.name}</div>
-                        <div className="text-white/45 text-sm mt-1">{t.desc}</div>
+                        <div className="font-display font-bold text-lg text-white">{t(tpl.nameKey)}</div>
+                        <div className="text-white/45 text-sm mt-1">{t(tpl.descKey)}</div>
                       </div>
                       {selected && (
                         <div className="absolute top-3 left-3 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
@@ -319,8 +323,8 @@ export default function BuyerWizard() {
                 className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {template
-                  ? `Continue with ${TEMPLATES.find((t) => t.id === template)?.name} →`
-                  : 'Select a template to continue'}
+                  ? t('wizards.common.continue_with', { name: t(TEMPLATES.find((tpl) => tpl.id === template)!.nameKey) })
+                  : t('wizards.common.select_template_continue')}
               </button>
             </motion.div>
           )}
@@ -342,27 +346,27 @@ export default function BuyerWizard() {
                     className="btn-secondary flex items-center gap-2 text-sm"
                   >
                     <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
-                    {syncing ? 'Syncing…' : 'Sync Marketplace'}
+                    {syncing ? t('wizards.buyer.syncing') : t('wizards.buyer.sync_marketplace')}
                   </button>
                 </div>
 
                 {/* Offer cards */}
                 {marketLoaded && marketOffers.length === 0 && (
                   <div className="text-center py-6 text-white/25 text-sm">
-                    No offers found. Try syncing the marketplace.
+                    {t('wizards.buyer.no_offers_found')}
                   </div>
                 )}
 
                 {!marketLoaded && !syncing && (
                   <div className="text-center py-6 text-white/20 text-sm">
-                    Sync the marketplace to browse available offers
+                    {t('wizards.buyer.sync_to_browse')}
                   </div>
                 )}
 
                 {syncing && (
                   <div className="flex items-center justify-center gap-2 py-6 text-white/30 text-sm">
                     <Loader2 size={14} className="animate-spin" />
-                    Fetching offers from feeds…
+                    {t('wizards.buyer.fetching_offers')}
                   </div>
                 )}
 
@@ -387,7 +391,7 @@ export default function BuyerWizard() {
                               )}
                             </div>
                             <div className="text-xs text-white/30 font-mono truncate mt-0.5">
-                              {offer.seller ? offer.seller.slice(0, 20) + '…' : 'Unknown seller'}
+                              {offer.seller ? offer.seller.slice(0, 20) + '…' : t('wizards.buyer.unknown_seller')}
                             </div>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
@@ -413,13 +417,13 @@ export default function BuyerWizard() {
 
               {/* Alternative paths */}
               <div className="card p-5 space-y-4">
-                <p className="text-xs text-white/35 font-semibold uppercase tracking-wider">Or use a specific offer</p>
+                <p className="text-xs text-white/35 font-semibold uppercase tracking-wider">{t('wizards.buyer.or_use_specific')}</p>
 
                 <div className="space-y-1">
                   <label className="label">{t('wizards.buyer.offer_id_label')}</label>
                   <input
                     className="input"
-                    placeholder="offer_..."
+                    placeholder={t('wizards.buyer.offer_id_placeholder')}
                     value={offerIdInput}
                     onChange={(e) => { setOfferIdInput(e.target.value); setSelectedOffer(null); setError(''); }}
                   />
@@ -427,7 +431,7 @@ export default function BuyerWizard() {
 
                 <button onClick={handleImportOffer} className="btn-secondary w-full flex items-center justify-center gap-2">
                   <Upload size={14} />
-                  {offerFile ? offerFile.split(/[\\/]/).pop() : 'Import Offer File'}
+                  {offerFile ? offerFile.split(/[\\/]/).pop() : t('wizards.buyer.import_offer_file')}
                 </button>
               </div>
 
@@ -439,7 +443,7 @@ export default function BuyerWizard() {
 
               {selectedOffer && (
                 <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300">
-                  Selected: <span className="font-mono">{selectedOffer.id}</span> · {formatIRM(selectedOffer.amount)} IRM
+                  {t('wizards.buyer.selected_offer', { id: selectedOffer.id, amount: formatIRM(selectedOffer.amount) })}
                 </div>
               )}
 
@@ -449,7 +453,7 @@ export default function BuyerWizard() {
                 className="btn-primary w-full flex items-center justify-center gap-2"
               >
                 {loading ? <Loader2 size={15} className="animate-spin" /> : <ArrowRight size={15} />}
-                Next
+                {t('common.next')}
               </button>
             </motion.div>
           )}
@@ -464,11 +468,11 @@ export default function BuyerWizard() {
 
               <div className="space-y-2">
                 {[
-                  { label: 'Offer ID',       value: foundOffer.id },
-                  { label: 'Amount',         value: `${formatIRM(foundOffer.amount ?? 0)} IRM`, highlight: true },
-                  { label: 'Seller',         value: foundOffer.seller ?? '—' },
-                  { label: 'Payment Method', value: foundOffer.payment_method ?? '—' },
-                  { label: 'Description',    value: foundOffer.description ?? '—' },
+                  { label: t('wizards.buyer.review_rows.offer_id'),       value: foundOffer.id },
+                  { label: t('wizards.buyer.review_rows.amount'),         value: `${formatIRM(foundOffer.amount ?? 0)} IRM`, highlight: true },
+                  { label: t('wizards.buyer.review_rows.seller'),         value: foundOffer.seller ?? '—' },
+                  { label: t('wizards.buyer.review_rows.payment_method'), value: foundOffer.payment_method ?? '—' },
+                  { label: t('wizards.buyer.review_rows.description'),    value: foundOffer.description ?? '—' },
                 ].map(({ label, value, highlight }) => (
                   <div key={label} className="flex items-start justify-between py-2 border-b border-white/5 last:border-0 gap-4">
                     <span className="text-sm text-white/45 flex-shrink-0">{label}</span>
@@ -485,7 +489,7 @@ export default function BuyerWizard() {
 
               <button onClick={handleTakeOffer} disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
                 {loading ? <Loader2 size={15} className="animate-spin" /> : null}
-                Take This Offer
+                {t('wizards.buyer.take_this_offer')}
               </button>
             </motion.div>
           )}
@@ -500,19 +504,19 @@ export default function BuyerWizard() {
 
               <div className="p-4 rounded-xl bg-white/5 space-y-3">
                 <div>
-                  <div className="text-xs text-white/35 mb-1">Agreement ID</div>
+                  <div className="text-xs text-white/35 mb-1">{t('wizards.buyer.agreement_id_label')}</div>
                   <div className="font-mono text-sm text-white break-all">{agreementId}</div>
                 </div>
                 {foundOffer && (
                   <div>
-                    <div className="text-xs text-white/35 mb-1">Amount to Lock</div>
+                    <div className="text-xs text-white/35 mb-1">{t('wizards.buyer.amount_to_lock')}</div>
                     <div className="text-lg font-semibold text-irium-300">{formatIRM(foundOffer.amount ?? 0)} IRM</div>
                   </div>
                 )}
               </div>
 
               <p className="text-xs text-white/35 leading-relaxed">
-                Funds will be locked in a smart escrow. The seller receives payment only after submitting proof of delivery.
+                {t('wizards.buyer.funds_locked_note')}
               </p>
 
               {error && (
@@ -523,7 +527,7 @@ export default function BuyerWizard() {
 
               <button onClick={handleFund} disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
                 {loading ? <Loader2 size={15} className="animate-spin" /> : null}
-                Fund Escrow
+                {t('wizards.buyer.fund_escrow')}
               </button>
             </motion.div>
           )}
@@ -537,14 +541,14 @@ export default function BuyerWizard() {
                     <CheckCircle2 size={28} className="text-green-400" />
                   </div>
                   <h2 className="font-display font-bold text-xl text-white">
-                    {releaseResult.txid ? 'Payment Released' : 'Refunded'}
+                    {releaseResult.txid ? t('wizards.buyer.payment_released_heading') : t('wizards.buyer.refunded_heading')}
                   </h2>
                   {releaseResult.txid && (
                     <p className="font-mono text-xs text-white/40 break-all">{releaseResult.txid}</p>
                   )}
                   <div className="flex gap-3 justify-center">
-                    <button onClick={() => navigate('/agreements')} className="btn-secondary">View Agreements</button>
-                    <button onClick={() => navigate('/settlement')} className="btn-primary">Done</button>
+                    <button onClick={() => navigate('/agreements')} className="btn-secondary">{t('wizards.buyer.view_agreements')}</button>
+                    <button onClick={() => navigate('/settlement')} className="btn-primary">{t('wizards.buyer.done')}</button>
                   </div>
                 </div>
               ) : (
@@ -552,7 +556,7 @@ export default function BuyerWizard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h2 className="font-display font-bold text-xl text-white">{t('wizards.buyer.monitor_title')}</h2>
-                      <p className="text-white/40 text-sm mt-1">Waiting for seller to deliver and submit proof</p>
+                      <p className="text-white/40 text-sm mt-1">{t('wizards.buyer.waiting_for_seller')}</p>
                     </div>
                     {polling && <RefreshCw size={14} className="animate-spin text-white/30" />}
                   </div>
@@ -564,10 +568,10 @@ export default function BuyerWizard() {
                   {agreementStatus && (
                     <div className="space-y-2">
                       {[
-                        { label: 'Status',           value: agreementStatus.status },
-                        { label: 'Funded',           value: agreementStatus.funded ? 'Yes' : 'No' },
-                        { label: 'Release Eligible', value: agreementStatus.release_eligible ? 'Yes' : 'No' },
-                        { label: 'Refund Eligible',  value: agreementStatus.refund_eligible ? 'Yes' : 'No' },
+                        { label: t('wizards.buyer.status_rows.status'),           value: agreementStatus.status },
+                        { label: t('wizards.buyer.status_rows.funded'),           value: agreementStatus.funded ? t('common.yes') : t('common.no') },
+                        { label: t('wizards.buyer.status_rows.release_eligible'), value: agreementStatus.release_eligible ? t('common.yes') : t('common.no') },
+                        { label: t('wizards.buyer.status_rows.refund_eligible'),  value: agreementStatus.refund_eligible ? t('common.yes') : t('common.no') },
                       ].map(({ label, value }) => (
                         <div key={label} className="flex justify-between text-sm py-1.5 border-b border-white/5 last:border-0">
                           <span className="text-white/40">{label}</span>
@@ -586,16 +590,16 @@ export default function BuyerWizard() {
                   <div className="grid grid-cols-2 gap-3">
                     <button onClick={handleRefund} disabled={loading || !agreementStatus?.refund_eligible} className="btn-secondary flex items-center justify-center gap-2">
                       {loading ? <Loader2 size={14} className="animate-spin" /> : null}
-                      Refund
+                      {t('wizards.buyer.refund')}
                     </button>
                     <button onClick={handleRelease} disabled={loading || !agreementStatus?.release_eligible} className="btn-primary flex items-center justify-center gap-2">
                       {loading ? <Loader2 size={14} className="animate-spin" /> : null}
-                      Release Payment
+                      {t('wizards.buyer.release_payment')}
                     </button>
                   </div>
 
                   <p className="text-xs text-white/25 text-center">
-                    Polling every 5s · {agreementStatus ? 'last updated just now' : 'waiting…'}
+                    {t('wizards.buyer.polling_indicator', { state: agreementStatus ? t('wizards.buyer.polling_updated') : t('wizards.buyer.polling_waiting') })}
                   </p>
                 </>
               )}

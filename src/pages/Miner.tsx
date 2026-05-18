@@ -11,12 +11,120 @@ import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import toast from 'react-hot-toast';
 import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
-import { miner, gpuMiner, stratum } from '../lib/tauri';
+import { miner, gpuMiner, stratum, wallet } from '../lib/tauri';
 import { useStore } from '../lib/store';
 import type { LucideIcon } from 'lucide-react';
-import type { FoundBlock, GpuPlatform } from '../lib/types';
+import type { FoundBlock, GpuPlatform, AddressInfo } from '../lib/types';
 import NodeOfflineBanner from '../components/NodeOfflineBanner';
 import clsx from 'clsx';
+
+// ── Address picker ────────────────────────────────────────────────────────────
+// Dropdown of wallet addresses with a final "Other address…" escape hatch
+// that reveals a free-text input. Used by both CPU and GPU miner tabs so the
+// user no longer has to copy-paste from the Wallet page. Pre-selects the
+// first wallet address on mount when no value is set yet, and treats any
+// passed-in value that isn't in the wallet as the "Other" branch so a saved
+// custom address survives a reload.
+const OTHER_SENTINEL = '__other__';
+
+function shortAddr(a: string): string {
+  return a.length > 14 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a;
+}
+
+function AddressPicker({
+  value,
+  onChange,
+  placeholder,
+  disabled,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  placeholder: string;
+  disabled?: boolean;
+}) {
+  const { t } = useTranslation();
+  const hiddenAddresses = useStore((s) => s.hiddenAddresses);
+  const [addresses, setAddresses] = useState<AddressInfo[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  // 'other' mode when the current value is empty (after load with no wallet)
+  // or doesn't match any wallet address. Stored separately so toggling to
+  // "Other address…" and back doesn't lose the user's typed custom address.
+  const [otherMode, setOtherMode] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    wallet.listAddresses().then((list) => {
+      if (cancelled) return;
+      const visible = (list ?? []).filter((a) => !hiddenAddresses.has(a.address.trim()));
+      setAddresses(visible);
+      setLoaded(true);
+      // Pre-select first wallet address only if the field is currently empty.
+      // If a value is already set (saved from a previous session), respect it.
+      if (!value && visible.length > 0) {
+        onChange(visible[0].address);
+        setOtherMode(false);
+      } else if (value && !visible.some((a) => a.address === value)) {
+        setOtherMode(true);
+      }
+    }).catch(() => { if (!cancelled) setLoaded(true); });
+    return () => { cancelled = true; };
+    // Intentionally only run on mount + hidden-set changes; value updates
+    // inside the picker shouldn't re-trigger the fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hiddenAddresses]);
+
+  const selectValue = otherMode ? OTHER_SENTINEL : value;
+
+  const handleSelectChange = (next: string) => {
+    if (next === OTHER_SENTINEL) {
+      setOtherMode(true);
+      // Don't clear value — let the user keep editing whatever was there.
+    } else {
+      setOtherMode(false);
+      onChange(next);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="relative">
+        <select
+          className="input w-full appearance-none pr-8"
+          value={selectValue}
+          onChange={(e) => handleSelectChange(e.target.value)}
+          disabled={disabled || !loaded}
+        >
+          {/* Inline styles on <option> propagate to the native dropdown list
+              in Chromium / WebView2 — CSS class selectors on the <select>
+              do not. Without this the list renders white-on-white on Windows. */}
+          {addresses.length === 0 && (
+            <option value={OTHER_SENTINEL} style={{ background: '#0f0f23', color: '#eef0ff' }}>
+              {t('miner.fields.address_picker_no_wallets')}
+            </option>
+          )}
+          {addresses.map((a) => (
+            <option key={a.address} value={a.address} style={{ background: '#0f0f23', color: '#eef0ff' }}>
+              {shortAddr(a.address)}
+            </option>
+          ))}
+          <option value={OTHER_SENTINEL} style={{ background: '#0f0f23', color: '#eef0ff' }}>
+            {t('miner.fields.address_picker_other')}
+          </option>
+        </select>
+        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+      </div>
+      {otherMode && (
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="input"
+          disabled={disabled}
+        />
+      )}
+    </div>
+  );
+}
 
 function formatUptime(secs: number): string {
   if (secs < 60) return `${secs}s`;
@@ -572,11 +680,11 @@ function CpuMinerTab() {
 
         <div>
           <label className="label">{t('miner.fields.mining_address_label')}</label>
-          <input
+          <AddressPicker
             value={address}
-            onChange={e => setAddress(e.target.value)}
-            placeholder={t('miner.fields.mining_address_placeholder')}
-            className="input"
+            onChange={setAddress}
+            placeholder={t('miner.fields.address_picker_custom_placeholder')}
+            disabled={status?.running}
           />
           <button onClick={() => navigate('/wallet')} className="mt-1.5 flex items-center gap-1 text-xs transition-colors" style={{ color: '#6ec6ff' }}>
             View wallet <ArrowRight size={11} />
@@ -1034,7 +1142,12 @@ function GpuMinerTab() {
         {/* Mining address */}
         <div>
           <label className="label">{t('miner.fields.mining_address_label')}</label>
-          <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t('miner.fields.gpu_address_placeholder')} className="input" />
+          <AddressPicker
+            value={address}
+            onChange={setAddress}
+            placeholder={t('miner.fields.address_picker_custom_placeholder')}
+            disabled={status?.running}
+          />
           <button onClick={() => navigate('/wallet')} className="mt-1.5 flex items-center gap-1 text-xs transition-colors" style={{ color: '#6ec6ff' }}>
             View wallet <ArrowRight size={11} />
           </button>
@@ -1110,7 +1223,7 @@ function GpuMinerTab() {
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display font-bold text-base" style={{ color: 'var(--t1)' }}>
-                  OpenCL Hardware Detected
+                  {t('miner.opencl.detected_title')}
                 </h3>
                 <button
                   onClick={() => setShowModal(false)}
@@ -1191,7 +1304,7 @@ function GpuMinerTab() {
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display font-bold text-base" style={{ color: 'var(--t1)' }}>
-                  No OpenCL-capable GPU detected
+                  {t('miner.opencl.none_detected')}
                 </h3>
                 <button
                   onClick={() => setShowOpenCLError(false)}
@@ -1454,7 +1567,7 @@ export default function Miner() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="h-full overflow-y-auto"
+      className="h-full overflow-y-auto scroll-visible"
     >
       <div className="w-full space-y-5 px-8 py-6">
       <NodeOfflineBanner />

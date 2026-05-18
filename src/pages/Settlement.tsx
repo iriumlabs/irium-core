@@ -834,7 +834,7 @@ export default function SettlementPage() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="h-full overflow-y-auto"
+      className="h-full overflow-y-auto scroll-visible"
     >
       <div className="w-full px-8 py-6">
       <div className="mb-4">

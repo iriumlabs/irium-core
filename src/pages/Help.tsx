@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -6,80 +6,43 @@ import { open as shellOpen } from '@tauri-apps/api/shell';
 import {
   ShieldCheck, ShoppingBag, FileText, Star, Info,
   Github, Globe, Pickaxe, ChevronDown, ExternalLink,
-  Server, HelpCircle, Bug, Check,
+  Server, HelpCircle, Bug, Check, AlertTriangle, RefreshCw, Trash2,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { node } from '../lib/tauri';
 import { useStore } from '../lib/store';
 
 // ── Spec table data ───────────────────────────────────────────────────────────
-const SPECS = [
-  { label: 'Network',              value: 'Mainnet' },
-  { label: 'Coin',                 value: 'IRM' },
-  { label: 'Max Supply',           value: '100,000,000 IRM (at launch)' },
-  { label: 'Block Time',           value: '~10 minutes target (at launch — see Dashboard for live network rate)' },
-  { label: 'Block Reward',         value: '50 IRM at launch (Early Miner Era — halves on schedule)' },
-  { label: 'Consensus',            value: 'SHA-256d Proof of Work' },
-  { label: 'Difficulty Algorithm', value: 'LWMA-144' },
-  { label: 'Address Prefix',       value: 'P / Q' },
-  { label: 'Key Derivation',       value: 'BIP39 24-word mnemonic seed phrase + WIF key (both supported for backup/recovery)' },
-  { label: 'RPC Port',             value: '38300' },
-  { label: 'P2P Port',             value: '38291' },
-  { label: 'Bootstrap',            value: 'DNS-free (signed seedlist + blockchain-embedded peers)' },
-  { label: 'AuxPoW Merged Mining', value: 'Activating at block 26,347' },
+// Static shape kept here — labels/values resolved through i18n in AboutSection
+// using the help.specs_labels / help.specs_values namespaces.
+const SPEC_KEYS: { labelKey: string; valueKey: string }[] = [
+  { labelKey: 'help.specs_labels.network',         valueKey: 'help.specs_values.network' },
+  { labelKey: 'help.specs_labels.coin',            valueKey: 'help.specs_values.coin' },
+  { labelKey: 'help.specs_labels.max_supply',      valueKey: 'help.specs_values.max_supply' },
+  { labelKey: 'help.specs_labels.block_time',      valueKey: 'help.specs_values.block_time' },
+  { labelKey: 'help.specs_labels.block_reward',    valueKey: 'help.specs_values.block_reward' },
+  { labelKey: 'help.specs_labels.consensus',       valueKey: 'help.specs_values.consensus' },
+  { labelKey: 'help.specs_labels.difficulty',      valueKey: 'help.specs_values.difficulty' },
+  { labelKey: 'help.specs_labels.address_prefix',  valueKey: 'help.specs_values.address_prefix' },
+  { labelKey: 'help.specs_labels.key_derivation',  valueKey: 'help.specs_values.key_derivation' },
+  { labelKey: 'help.specs_labels.rpc_port',        valueKey: 'help.specs_values.rpc_port' },
+  { labelKey: 'help.specs_labels.p2p_port',        valueKey: 'help.specs_values.p2p_port' },
+  { labelKey: 'help.specs_labels.bootstrap',       valueKey: 'help.specs_values.bootstrap' },
+  { labelKey: 'help.specs_labels.auxpow',          valueKey: 'help.specs_values.auxpow' },
 ];
 
-const LINKS = [
-  { label: 'GitHub',        url: 'https://github.com/iriumlabs/irium',                                    icon: Github  },
-  { label: 'Website',       url: 'https://iriumlabs.org',                                                  icon: Globe   },
-  { label: 'Whitepaper',    url: 'https://github.com/iriumlabs/irium/blob/main/docs/WHITEPAPER.md',        icon: FileText },
-  { label: 'Mining Guide',  url: 'https://github.com/iriumlabs/irium/blob/main/MINING.md',                icon: Pickaxe },
+const LINKS: { labelKey: string; url: string; icon: React.ElementType }[] = [
+  { labelKey: 'help.links.github',       url: 'https://github.com/iriumlabs/irium',                                    icon: Github  },
+  { labelKey: 'help.links.website',      url: 'https://iriumlabs.org',                                                  icon: Globe   },
+  { labelKey: 'help.links.whitepaper',   url: 'https://github.com/iriumlabs/irium/blob/main/docs/WHITEPAPER.md',        icon: FileText },
+  { labelKey: 'help.links.mining_guide', url: 'https://github.com/iriumlabs/irium/blob/main/MINING.md',                icon: Pickaxe },
 ];
 
-const FAQS = [
-  {
-    q: 'Does Irium Core collect any data?',
-    a: 'No. Irium Core runs entirely on your computer. No analytics, no telemetry, no usage tracking. The app never contacts any external server except the Irium P2P network for blockchain synchronization. Your wallet keys, transaction history, and all settings stay on your local machine. There are no user accounts and no registration.',
-  },
-  {
-    q: 'Where are my wallet files stored?',
-    a: 'All wallet data is stored in your local ~/.irium/ directory (on Windows: C:\\Users\\YourName\\.irium\\). This includes your wallet.json file, blockchain data, peer cache, and configuration. Nothing is stored in the cloud. If you uninstall the app, your wallet files remain on disk — you can reinstall and pick up where you left off. Always back up your recovery phrase and WIF keys separately in case of hardware failure.',
-  },
-  {
-    q: 'My node is not connecting to peers',
-    a: 'Irium uses a DNS-free bootstrap system with signed seed nodes. If you are behind a strict firewall, ensure outbound TCP port 38291 is allowed. You can also add a peer manually from the Network Sync screen or in Settings using the Add Seed option.',
-  },
-  {
-    q: 'How do I start mining?',
-    a: 'Go to the Mining page, enter your IRM address in the configuration field, set the number of threads, and click Start Mining. Your address must start with P or Q. Average block time varies with network hashrate — currently around 13 minutes; the Dashboard shows the live value.',
-  },
-  {
-    q: 'What is a settlement agreement?',
-    a: 'A settlement agreement locks IRM in escrow between a buyer and seller. Funds are only released when proof requirements are met or the timeout expires. Go to the Settlement page to create or manage agreements.',
-  },
-  {
-    q: 'My wallet shows 0 IRM but I received funds',
-    a: 'Click Refresh on the Wallet page or wait for the next polling cycle (15 seconds). If the balance still shows 0, ensure your node is fully synced — check the block height matches the network on the Block Explorer page.',
-  },
-  {
-    q: 'How do I back up my wallet?',
-    a: 'Irium wallets use BIP39 with a 24-word recovery phrase. To back up your wallet, go to Wallet → Security → Show Recovery Phrase to view your 24-word mnemonic, or Export WIF Key for a single-address backup. Store the recovery phrase or WIF key offline in a safe place — the recovery phrase restores your entire wallet, while a WIF key only restores one address.',
-  },
-  {
-    q: 'What is the difference between P and Q addresses?',
-    a: 'Both P and Q addresses are valid Irium addresses. They are derived from different parts of your HD wallet key tree. All addresses in your wallet belong to you and can receive IRM.',
-  },
-  {
-    q: 'How do I connect to the mining pool?',
-    a: 'Go to the Mining page and select the Stratum Pool tab. Enter the pool URL stratum+tcp://pool.iriumlabs.org:3333 for ASIC/modern miners or stratum+tcp://pool.iriumlabs.org:3335 for CPU/GPU miners. Your username should be your IRM address followed by a worker name, for example PwjVf7nY19UWW2i9HCEPyZt81975M6iKdW.worker1.',
-  },
-  {
-    q: 'macOS says Irium Core is damaged or quarantined. How do I fix it?',
-    a: 'macOS quarantines apps downloaded outside the App Store. To fix this: (1) open Terminal; (2) run: xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app — this removes the quarantine flag from the entire app bundle. If you still see "damaged", run: codesign --force --deep --sign - /Applications/Irium\\ Core.app then re-launch. The first launch may take 10-20 seconds while Gatekeeper re-verifies the signature. If iriumd itself was quarantined (you see "iriumd is damaged" in the logs), run: xattr -d com.apple.quarantine ~/.irium/binaries/iriumd to unquarantine just the node binary.',
-  },
-  {
-    q: 'My node has quarantined blocks. How do I recover?',
-    a: 'iriumd quarantines block files it cannot validate (typically after a crash mid-write or a corrupted reorg). Quarantined blocks live in ~/.irium/blocks/quarantine/. To safely recover: (1) stop iriumd (Dashboard → Stop Node); (2) move the quarantine folder aside: mv ~/.irium/blocks/quarantine ~/.irium/blocks/quarantine.bak; (3) restart iriumd from the Dashboard. The node will re-fetch the missing blocks from peers automatically. If the resync gets stuck at the same height, use Settings → Clear chain state for a clean resync from genesis (your wallet and agreements are preserved).',
-  },
-];
+// FAQ entries — each has a Q key and A key in help.faqs. Numbered q1..q11.
+const FAQ_KEYS: { qKey: string; aKey: string }[] = Array.from({ length: 11 }, (_, i) => ({
+  qKey: `help.faqs.q${i + 1}`,
+  aKey: `help.faqs.a${i + 1}`,
+}));
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 function openUrl(url: string) {
@@ -164,8 +127,155 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
+// ── Quarantined Blocks Recovery ───────────────────────────────────────────────
+// Surfaces iriumd's `orphaned_*` quarantine state to the user. Reads counts
+// via scan_quarantined_blocks on mount, lets the user re-scan or clear (when
+// the node is stopped). Deletion fans out to clear_quarantined_blocks which
+// only touches paths under <data_dir>/blocks/orphaned_*/ — see main.rs.
+function QuarantineRecovery() {
+  const { t } = useTranslation();
+  const nodeStatus = useStore((s) => s.nodeStatus);
+  const nodeRunning = nodeStatus?.running ?? false;
+  const [counts, setCounts] = useState<{ files: number; dirs: number } | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+
+  const scan = useCallback(async () => {
+    setScanning(true);
+    setScanError(null);
+    try {
+      const result = await node.scanQuarantinedBlocks();
+      setCounts(result ?? { files: 0, dirs: 0 });
+    } catch (e) {
+      setScanError(String(e));
+      setCounts(null);
+    } finally {
+      setScanning(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    scan();
+  }, [scan]);
+
+  const handleClear = async () => {
+    setClearing(true);
+    try {
+      const result = await node.clearQuarantinedBlocks();
+      if (result) {
+        toast.success(t('help.quarantine.toast_cleared', { files: result.deleted_files }));
+        if (result.errors.length > 0) {
+          // Surface non-fatal per-dir errors as a single warning toast so
+          // the user knows some dirs were not removed.
+          toast.error(t('help.quarantine.toast_clear_failed', { reason: result.errors[0] }));
+        }
+      }
+      await scan();
+    } catch (e) {
+      toast.error(t('help.quarantine.toast_clear_failed', { reason: String(e) }));
+    } finally {
+      setClearing(false);
+      setConfirming(false);
+    }
+  };
+
+  const hasQuarantined = !!counts && counts.files > 0;
+  const status = !counts
+    ? null
+    : counts.files === 0
+      ? t('help.quarantine.status_none')
+      : counts.files === 1
+        ? t('help.quarantine.status_count_one', { files: counts.files, dirs: counts.dirs })
+        : t('help.quarantine.status_count_other', { files: counts.files, dirs: counts.dirs });
+
+  return (
+    <div className="card p-5">
+      <div className="flex items-center gap-2.5 mb-3">
+        <AlertTriangle size={16} className="text-amber-400 flex-shrink-0" />
+        <h2 className="font-display font-semibold text-white/90 text-base">{t('help.quarantine.section_title')}</h2>
+      </div>
+      <p className="text-sm text-white/50 leading-relaxed mb-4">
+        {t('help.quarantine.description')}
+      </p>
+
+      <div className="rounded-lg bg-white/[0.025] border border-white/[0.06] p-3 mb-4">
+        {scanning ? (
+          <div className="flex items-center gap-2 text-xs text-white/50">
+            <RefreshCw size={12} className="animate-spin" />
+            {t('help.quarantine.scanning')}
+          </div>
+        ) : scanError ? (
+          <div className="text-xs text-red-400">{scanError}</div>
+        ) : (
+          <div className={`text-sm ${hasQuarantined ? 'text-amber-300' : 'text-white/55'}`}>{status}</div>
+        )}
+      </div>
+
+      {nodeRunning && hasQuarantined && (
+        <p className="text-xs text-amber-400/80 mb-3">
+          {t('help.quarantine.node_running_warning')}
+        </p>
+      )}
+
+      <div className="flex flex-wrap gap-3">
+        <button
+          onClick={scan}
+          disabled={scanning}
+          className="btn-secondary gap-2 text-xs"
+        >
+          <RefreshCw size={12} className={scanning ? 'animate-spin' : ''} />
+          {t('help.quarantine.scan_button')}
+        </button>
+
+        {hasQuarantined && (
+          confirming ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-white/55">
+                {t('help.quarantine.confirm_body', { files: counts?.files, dirs: counts?.dirs })}
+              </span>
+              <button
+                onClick={() => setConfirming(false)}
+                className="btn-secondary text-xs gap-1"
+                disabled={clearing}
+              >
+                {t('help.quarantine.confirm_no')}
+              </button>
+              <button
+                onClick={handleClear}
+                disabled={clearing || nodeRunning}
+                className="text-xs gap-1 px-3 py-1.5 rounded-lg bg-red-500/15 border border-red-500/40 text-red-300 hover:bg-red-500/25 disabled:opacity-40 transition-colors"
+              >
+                {clearing ? <Loader2InlineSpinner /> : <Trash2 size={12} />}
+                {clearing ? t('help.quarantine.clearing') : t('help.quarantine.confirm_yes')}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirming(true)}
+              disabled={nodeRunning || clearing}
+              className="gap-2 text-xs px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center"
+            >
+              <Trash2 size={12} />
+              {t('help.quarantine.clear_button')}
+            </button>
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Tiny inline spinner used inside the destructive confirm button so we don't
+// have to widen the lucide-react import surface for one more icon.
+function Loader2InlineSpinner() {
+  return <RefreshCw size={12} className="animate-spin" />;
+}
+
 // ── Section content ───────────────────────────────────────────────────────────
 function AboutSection() {
+  const { t } = useTranslation();
   const appVersion = useStore((s) => s.appVersion);
   const nodeStatus = useStore((s) => s.nodeStatus);
   const settings   = useStore((s) => s.settings);
@@ -194,34 +304,32 @@ function AboutSection() {
             </div>
           </div>
           <p className="text-sm text-white/55 leading-relaxed mb-6">
-            Irium Core is a full-node GUI desktop wallet for the Irium blockchain. It runs a complete iriumd node
-            locally, giving you full sovereignty over your funds and settlement agreements. No third-party servers.
-            No custodians. Your keys, your chain.
+            {t('help.about_app.intro')}
           </p>
           <div className="rounded-xl overflow-hidden border border-white/[0.07] mb-6">
-            {SPECS.map(({ label, value }, i) => (
+            {SPEC_KEYS.map(({ labelKey, valueKey }, i) => (
               <div
-                key={label}
+                key={labelKey}
                 className="flex items-start gap-4 px-4 py-2.5 text-sm"
                 style={{
                   background: i % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent',
-                  borderBottom: i < SPECS.length - 1 ? '1px solid rgba(255,255,255,0.05)' : undefined,
+                  borderBottom: i < SPEC_KEYS.length - 1 ? '1px solid rgba(255,255,255,0.05)' : undefined,
                 }}
               >
-                <span className="text-white/35 w-48 flex-shrink-0 font-display text-xs">{label}</span>
-                <span className="font-mono text-xs text-white/75 break-all">{value}</span>
+                <span className="text-white/35 w-48 flex-shrink-0 font-display text-xs">{t(labelKey)}</span>
+                <span className="font-mono text-xs text-white/75 break-all">{t(valueKey)}</span>
               </div>
             ))}
           </div>
           <div className="flex flex-wrap gap-2">
-            {LINKS.map(({ label, url, icon: Icon }) => (
+            {LINKS.map(({ labelKey, url, icon: Icon }) => (
               <button
-                key={label}
+                key={labelKey}
                 onClick={() => openUrl(url)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-display font-medium text-white/60 hover:text-white border border-white/10 hover:border-irium-500/40 hover:bg-irium-500/10 transition-all duration-150"
               >
                 <Icon size={13} />
-                {label}
+                {t(labelKey)}
                 <ExternalLink size={10} className="text-white/25" />
               </button>
             ))}
@@ -233,16 +341,16 @@ function AboutSection() {
       <div className="card p-5">
         <div className="flex items-center gap-2.5 mb-4">
           <Server size={16} className="text-irium-400 flex-shrink-0" />
-          <h2 className="font-display font-semibold text-white/90 text-base">Node Information</h2>
+          <h2 className="font-display font-semibold text-white/90 text-base">{t('help.sections.node_information')}</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {[
-            { label: 'iriumd version',  value: nodeStatus?.version ?? appVersion },
-            { label: 'Data directory',  value: dataDir },
-            { label: 'RPC endpoint',    value: rpcUrl },
-            { label: 'Block height',    value: nodeStatus?.running ? `#${(nodeStatus.height ?? 0).toLocaleString('en-US')}` : '—' },
-            { label: 'Sync status',     value: nodeStatus?.running ? (nodeStatus.synced ? 'Fully synced' : 'Syncing…') : 'Offline' },
-            { label: 'Connected peers', value: nodeStatus?.running ? String(nodeStatus.peers ?? 0) : '—' },
+            { label: t('help.node_info_labels.iriumd_version'),  value: nodeStatus?.version ?? appVersion },
+            { label: t('help.node_info_labels.data_directory'),  value: dataDir },
+            { label: t('help.node_info_labels.rpc_endpoint'),    value: rpcUrl },
+            { label: t('help.node_info_labels.block_height'),    value: nodeStatus?.running ? `#${(nodeStatus.height ?? 0).toLocaleString('en-US')}` : '—' },
+            { label: t('help.node_info_labels.sync_status'),     value: nodeStatus?.running ? (nodeStatus.synced ? t('help.node_info_labels.fully_synced') : t('help.node_info_labels.syncing')) : t('help.node_info_labels.offline') },
+            { label: t('help.node_info_labels.connected_peers'), value: nodeStatus?.running ? String(nodeStatus.peers ?? 0) : '—' },
           ].map(({ label, value }) => (
             <div key={label} className="flex flex-col gap-0.5 p-3 rounded-lg bg-white/[0.025] border border-white/[0.06]">
               <span className="text-[10px] text-white/35 font-display uppercase tracking-wider">{label}</span>
@@ -268,23 +376,22 @@ function AboutSection() {
         <div className="relative">
           <div className="flex items-center gap-2.5 mb-4">
             <ShieldCheck size={16} style={{ color: '#34d399' }} className="flex-shrink-0" />
-            <h2 className="font-display font-semibold text-white/90 text-base">Privacy &amp; Data</h2>
+            <h2 className="font-display font-semibold text-white/90 text-base">{t('help.sections.privacy_data')}</h2>
           </div>
           <p className="font-display font-bold text-base mb-1.5" style={{ color: '#34d399' }}>
-            Your Data Stays on Your Machine
+            {t('help.privacy.title')}
           </p>
           <p className="text-sm leading-relaxed mb-4" style={{ color: 'rgba(238,240,255,0.65)' }}>
-            Irium Core is a full-node desktop wallet that runs entirely on your computer. No data is collected,
-            transmitted, or stored on any external server.
+            {t('help.privacy.intro')}
           </p>
           <ul className="space-y-2.5">
             {[
-              'No analytics or telemetry — the app does not phone home',
-              'No account registration required — there are no user accounts',
-              'Wallet keys and seed phrases are stored locally in your ~/.irium/ directory only',
-              'Transaction history is read directly from your local blockchain copy',
-              'Peer connections use direct IP-to-IP communication with no intermediary servers',
-              'No DNS lookups — peer discovery is fully DNS-free using signed seedlists and blockchain-embedded addresses',
+              t('help.privacy.bullet_1'),
+              t('help.privacy.bullet_2'),
+              t('help.privacy.bullet_3'),
+              t('help.privacy.bullet_4'),
+              t('help.privacy.bullet_5'),
+              t('help.privacy.bullet_6'),
             ].map((point, i) => (
               <li key={i} className="flex items-start gap-2.5">
                 <span
@@ -304,37 +411,41 @@ function AboutSection() {
       <div>
         <div className="flex items-center gap-2.5 mb-4">
           <HelpCircle size={16} className="text-irium-400 flex-shrink-0" />
-          <h2 className="font-display font-semibold text-white/90 text-base">FAQ</h2>
+          <h2 className="font-display font-semibold text-white/90 text-base">{t('help.sections.faq')}</h2>
         </div>
         <div className="space-y-2">
-          {FAQS.map((faq) => (
-            <FaqItem key={faq.q} q={faq.q} a={faq.a} />
+          {FAQ_KEYS.map(({ qKey, aKey }) => (
+            <FaqItem key={qKey} q={t(qKey)} a={t(aKey)} />
           ))}
         </div>
       </div>
+
+      {/* Quarantined blocks recovery — surfaced above the report-issue card
+          so users notice it when troubleshooting. The component fetches
+          counts itself; AboutSection just mounts it. */}
+      <QuarantineRecovery />
 
       {/* Report an issue */}
       <div className="card p-5">
         <div className="flex items-center gap-2.5 mb-4">
           <Bug size={16} className="text-irium-400 flex-shrink-0" />
-          <h2 className="font-display font-semibold text-white/90 text-base">Report an Issue</h2>
+          <h2 className="font-display font-semibold text-white/90 text-base">{t('help.sections.report_issue')}</h2>
         </div>
         <p className="text-sm text-white/50 leading-relaxed mb-4">
-          Found a bug or need help? Open an issue on the Irium Core GitHub repository. Include your app version,
-          operating system, and a description of the problem.
+          {t('help.report_issue.body')}
         </p>
         <div className="flex flex-wrap gap-3">
           <button
             onClick={() => openUrl('https://github.com/iriumlabs/irium-core/issues/new')}
             className="btn-primary gap-2"
           >
-            <Bug size={14} /> Open Issue on GitHub
+            <Bug size={14} /> {t('help.report_issue.open_issue')}
           </button>
           <button
             onClick={() => openUrl('https://github.com/iriumlabs/irium-core/issues')}
             className="btn-secondary gap-2"
           >
-            <ExternalLink size={14} /> View Existing Issues
+            <ExternalLink size={14} /> {t('help.report_issue.view_existing')}
           </button>
         </div>
       </div>
@@ -345,7 +456,7 @@ function AboutSection() {
           onClick={() => setLicensesOpen((v) => !v)}
           className="w-full flex items-center justify-between text-left"
         >
-          <span className="text-sm text-white/40">Licenses</span>
+          <span className="text-sm text-white/40">{t('help.licenses.title')}</span>
           <ChevronDown
             size={14}
             className="text-white/30 transition-transform duration-200"
@@ -363,13 +474,13 @@ function AboutSection() {
             >
               <div className="pt-3 space-y-2">
                 <p className="text-xs text-white/35 leading-relaxed">
-                  Irium Core is open source software released under the MIT License.
+                  {t('help.licenses.body')}
                 </p>
                 <button
                   onClick={() => openUrl('https://github.com/iriumlabs/irium-core/blob/main/LICENSE')}
                   className="flex items-center gap-1.5 text-xs text-irium-400 hover:text-irium-300 transition-colors"
                 >
-                  <ExternalLink size={11} /> View License
+                  <ExternalLink size={11} /> {t('help.licenses.view')}
                 </button>
               </div>
             </motion.div>
@@ -381,200 +492,164 @@ function AboutSection() {
 }
 
 function SettlementSection() {
+  const { t } = useTranslation();
   return (
     <div id="settlement" className="scroll-mt-6">
-      <Heading>What is Settlement?</Heading>
-      <P>
-        Settlement lets two parties lock funds in a provably-fair on-chain escrow. Money is only released
-        when the recipient submits a cryptographic proof — or returned to the sender if the deadline passes.
-        No intermediary, no disputes with a central authority.
-      </P>
+      <Heading>{t('help.settlement_help.what_title')}</Heading>
+      <P>{t('help.settlement_help.what_body')}</P>
 
-      <Heading>Templates</Heading>
-      <P>Pick the template that matches your use-case:</P>
+      <Heading>{t('help.settlement_help.templates_title')}</Heading>
+      <P>{t('help.settlement_help.templates_intro')}</P>
       <ul className="space-y-1.5 mb-3 text-sm text-white/60">
-        <li><span className="text-white/90 font-medium">OTC Trade</span> — direct asset swap between two parties.</li>
-        <li><span className="text-white/90 font-medium">Freelance</span> — single-payment job escrow with optional scope description.</li>
-        <li><span className="text-white/90 font-medium">Milestones</span> — split payment across 2–20 equal milestones, each requiring a proof.</li>
-        <li><span className="text-white/90 font-medium">Time-lock Deposit</span> — funds held until a deadline then released or refunded.</li>
-        <li><span className="text-white/90 font-medium">Merchant Delayed</span> — buyer pays, merchant claims after a cool-down window that gives the buyer time to dispute.</li>
-        <li><span className="text-white/90 font-medium">Contractor Milestones</span> — milestone escrow framed around client / contractor roles with optional scope.</li>
+        <li><span className="text-white/90 font-medium">{t('help.settlement_help.template_otc')}</span> — {t('help.settlement_help.template_otc_desc')}</li>
+        <li><span className="text-white/90 font-medium">{t('help.settlement_help.template_freelance')}</span> — {t('help.settlement_help.template_freelance_desc')}</li>
+        <li><span className="text-white/90 font-medium">{t('help.settlement_help.template_milestones')}</span> — {t('help.settlement_help.template_milestones_desc')}</li>
+        <li><span className="text-white/90 font-medium">{t('help.settlement_help.template_timelock')}</span> — {t('help.settlement_help.template_timelock_desc')}</li>
+        <li><span className="text-white/90 font-medium">{t('help.settlement_help.template_merchant')}</span> — {t('help.settlement_help.template_merchant_desc')}</li>
+        <li><span className="text-white/90 font-medium">{t('help.settlement_help.template_contractor')}</span> — {t('help.settlement_help.template_contractor_desc')}</li>
       </ul>
 
-      <Heading>Creating an agreement (Seller flow)</Heading>
+      <Heading>{t('help.settlement_help.creating_title')}</Heading>
       <Steps items={[
-        'Open Settlement → click "I\'m Selling".',
-        'Fill in the buyer\'s address, amount, deadline, and any template-specific fields.',
-        'Review the summary — verify addresses and amounts before confirming.',
-        'Share the agreement ID with the buyer so they can fund it.',
-        'Submit a delivery proof once you\'ve fulfilled the obligation.',
-        'Claim your funds after the proof is accepted.',
+        t('help.settlement_help.creating_step_1'),
+        t('help.settlement_help.creating_step_2'),
+        t('help.settlement_help.creating_step_3'),
+        t('help.settlement_help.creating_step_4'),
+        t('help.settlement_help.creating_step_5'),
+        t('help.settlement_help.creating_step_6'),
       ]} />
 
-      <Heading>Funding as a buyer</Heading>
+      <Heading>{t('help.settlement_help.funding_title')}</Heading>
       <Steps items={[
-        'Open Settlement → click "I\'m Buying".',
-        'Paste the agreement ID the seller shared.',
-        'Confirm the amount matches what you agreed off-chain.',
-        'Click Fund — this locks your coins in escrow.',
-        'Once the seller submits a proof, verify it and release payment.',
+        t('help.settlement_help.funding_step_1'),
+        t('help.settlement_help.funding_step_2'),
+        t('help.settlement_help.funding_step_3'),
+        t('help.settlement_help.funding_step_4'),
+        t('help.settlement_help.funding_step_5'),
       ]} />
 
-      <Heading>Proofs</Heading>
-      <P>
-        A proof is a signed message proving delivery. The seller generates it from the Agreements page
-        after fulfilling the obligation. The buyer reviews the proof and clicks Release to complete payment.
-        If the proof is missing or wrong, the buyer can dispute before the deadline.
-      </P>
+      <Heading>{t('help.settlement_help.proofs_title')}</Heading>
+      <P>{t('help.settlement_help.proofs_body')}</P>
 
-      <Heading>Disputes</Heading>
-      <P>
-        If something goes wrong, open the agreement in Agreements and click Dispute before the deadline expires.
-        A dispute freezes the escrow. Resolution is handled on-chain by the Irium arbitration contract —
-        both parties must submit evidence via their wallet CLI.
-      </P>
+      <Heading>{t('help.settlement_help.disputes_title')}</Heading>
+      <P>{t('help.settlement_help.disputes_body')}</P>
 
       <Callout>
-        <strong className="text-white">Common mistake:</strong> Setting a deadline too short. Always give
-        yourself enough time to complete delivery and for the buyer to review the proof.
-        Merchant Delayed has two separate windows — the cool-down (buyer dispute period) and the total escrow window.
+        <strong className="text-white">{t('help.common_mistake')}</strong> {t('help.settlement_help.callout')}
       </Callout>
     </div>
   );
 }
 
 function MarketplaceSection() {
+  const { t } = useTranslation();
   return (
     <div id="marketplace" className="scroll-mt-6">
-      <Heading>What is the Marketplace?</Heading>
-      <P>
-        The Marketplace is a peer-to-peer offer board. Sellers post offers describing what they're selling,
-        at what price, and the settlement terms. Buyers browse and respond directly — no central server,
-        orders propagate through the Irium gossip network.
-      </P>
+      <Heading>{t('help.marketplace_help.what_title')}</Heading>
+      <P>{t('help.marketplace_help.what_body')}</P>
 
-      <Heading>Posting an offer</Heading>
+      <Heading>{t('help.marketplace_help.posting_title')}</Heading>
       <Steps items={[
-        'Go to Marketplace → My Offers → click Post Offer.',
-        'Set the asset, price (in IRM), and settlement template.',
-        'Add a description so buyers know what they\'re getting.',
-        'Submit — the offer broadcasts to connected peers.',
+        t('help.marketplace_help.posting_step_1'),
+        t('help.marketplace_help.posting_step_2'),
+        t('help.marketplace_help.posting_step_3'),
+        t('help.marketplace_help.posting_step_4'),
       ]} />
 
-      <Heading>Responding to an offer (buyer)</Heading>
+      <Heading>{t('help.marketplace_help.responding_title')}</Heading>
       <Steps items={[
-        'Browse Offers — filter by asset or price range.',
-        'Click an offer to view terms.',
-        'Click Buy — this opens a new settlement agreement pre-filled with the offer details.',
-        'Fund the escrow and wait for the seller to deliver and submit proof.',
+        t('help.marketplace_help.responding_step_1'),
+        t('help.marketplace_help.responding_step_2'),
+        t('help.marketplace_help.responding_step_3'),
+        t('help.marketplace_help.responding_step_4'),
       ]} />
 
-      <Heading>Feed Registry</Heading>
-      <P>
-        Feeds are curated offer streams published by trusted sellers. Subscribe to a feed to automatically
-        see new offers from that seller in your Browse view. Unsubscribe any time.
-      </P>
+      <Heading>{t('help.marketplace_help.feeds_title')}</Heading>
+      <P>{t('help.marketplace_help.feeds_body')}</P>
 
       <Callout>
-        <strong className="text-white">Tip:</strong> Offers are propagated via gossip — peers that go offline
-        may not see your offer. Re-post if you haven't had a response after a few hours.
+        <strong className="text-white">{t('help.marketplace_help.callout_label')}</strong> {t('help.marketplace_help.callout')}
       </Callout>
     </div>
   );
 }
 
 function AgreementsSection() {
+  const { t } = useTranslation();
   return (
     <div id="agreements" className="scroll-mt-6">
-      <Heading>What is the Agreements page?</Heading>
-      <P>
-        Agreements is your ledger of all settlement agreements you've created or participated in.
-        You can track status, submit proofs, fund, release, or dispute from here.
-      </P>
+      <Heading>{t('help.agreements_help.what_title')}</Heading>
+      <P>{t('help.agreements_help.what_body')}</P>
 
-      <Heading>Agreement lifecycle</Heading>
+      <Heading>{t('help.agreements_help.lifecycle_title')}</Heading>
       <Steps items={[
-        'Created — agreement exists on-chain, waiting for the buyer to fund.',
-        'Funded — buyer has locked coins in escrow. Seller can now fulfill and submit proof.',
-        'Proof submitted — seller has provided delivery proof. Buyer reviews.',
-        'Released — buyer approved proof, funds sent to seller. Done.',
-        'Refunded — deadline passed or dispute resolved in buyer\'s favour. Funds returned.',
-        'Disputed — buyer raised a dispute. Awaiting on-chain arbitration.',
+        t('help.agreements_help.lifecycle_step_1'),
+        t('help.agreements_help.lifecycle_step_2'),
+        t('help.agreements_help.lifecycle_step_3'),
+        t('help.agreements_help.lifecycle_step_4'),
+        t('help.agreements_help.lifecycle_step_5'),
+        t('help.agreements_help.lifecycle_step_6'),
       ]} />
 
-      <Heading>Submitting a proof</Heading>
+      <Heading>{t('help.agreements_help.submit_title')}</Heading>
       <Steps items={[
-        'Open the agreement from the list.',
-        'Click Submit Proof.',
-        'Paste or upload your signed proof file.',
-        'Confirm — proof is broadcast on-chain.',
+        t('help.agreements_help.submit_step_1'),
+        t('help.agreements_help.submit_step_2'),
+        t('help.agreements_help.submit_step_3'),
+        t('help.agreements_help.submit_step_4'),
       ]} />
 
-      <Heading>Importing agreements</Heading>
-      <P>
-        Use Import Pack to restore a batch of agreements from a JSON export.
-        Use Import Invoice to create a new agreement directly from a payment invoice JSON generated by another Irium wallet.
-      </P>
+      <Heading>{t('help.agreements_help.importing_title')}</Heading>
+      <P>{t('help.agreements_help.importing_body')}</P>
 
       <Callout>
-        <strong className="text-white">Note:</strong> You can only submit a proof or release/refund if you are
-        a party to the agreement and your wallet is unlocked. Make sure the correct address is selected.
+        <strong className="text-white">{t('help.agreements_help.callout_label')}</strong> {t('help.agreements_help.callout')}
       </Callout>
     </div>
   );
 }
 
 function ReputationSection() {
+  const { t } = useTranslation();
   return (
     <div id="reputation" className="scroll-mt-6">
-      <Heading>What is Reputation?</Heading>
-      <P>
-        Irium's on-chain reputation system scores addresses based on their settlement history —
-        successful completions, disputes raised, refunds received, and how long they've been active.
-        Scores are deterministic and verifiable by any node.
-      </P>
+      <Heading>{t('help.reputation_help.what_title')}</Heading>
+      <P>{t('help.reputation_help.what_body')}</P>
 
-      <Heading>Querying a score</Heading>
+      <Heading>{t('help.reputation_help.query_title')}</Heading>
       <Steps items={[
-        'Enter a Q-prefix address or 64-hex public key in the search bar.',
-        'Press Enter or click Lookup.',
-        'Review the score breakdown — overall score, completed agreements, disputes, volume.',
+        t('help.reputation_help.query_step_1'),
+        t('help.reputation_help.query_step_2'),
+        t('help.reputation_help.query_step_3'),
       ]} />
 
-      <Heading>Understanding the score</Heading>
+      <Heading>{t('help.reputation_help.understanding_title')}</Heading>
       <ul className="space-y-1.5 mb-3 text-sm text-white/60">
-        <li><span className="text-white/90 font-medium">Score 80–100</span> — excellent track record, minimal disputes.</li>
-        <li><span className="text-white/90 font-medium">Score 50–79</span> — moderate history, verify before large trades.</li>
-        <li><span className="text-white/90 font-medium">Score below 50</span> — use caution. Multiple disputes or refunds on record.</li>
+        <li><span className="text-white/90 font-medium">{t('help.reputation_help.tier_high')}</span> — {t('help.reputation_help.tier_high_desc')}</li>
+        <li><span className="text-white/90 font-medium">{t('help.reputation_help.tier_mid')}</span> — {t('help.reputation_help.tier_mid_desc')}</li>
+        <li><span className="text-white/90 font-medium">{t('help.reputation_help.tier_low')}</span> — {t('help.reputation_help.tier_low_desc')}</li>
       </ul>
 
-      <Heading>Building your reputation</Heading>
-      <P>
-        Complete agreements on time, submit proofs promptly, and avoid raising frivolous disputes.
-        Each successfully released agreement adds to your score. Disputes lower it, even if resolved in your favour.
-      </P>
+      <Heading>{t('help.reputation_help.building_title')}</Heading>
+      <P>{t('help.reputation_help.building_body')}</P>
 
       <Callout>
-        <strong className="text-white">Tip:</strong> Check a counterparty's reputation before funding a large
-        escrow. A score below 60 is a red flag for first-time trades.
+        <strong className="text-white">{t('help.reputation_help.callout_label')}</strong> {t('help.reputation_help.callout')}
       </Callout>
     </div>
   );
 }
 
 // ── Nav sections ──────────────────────────────────────────────────────────────
-interface Section {
-  id: string;
-  label: string;
-  Icon: React.ElementType;
-}
-
-const SECTIONS: Section[] = [
-  { id: 'about',       label: 'About',       Icon: Info        },
-  { id: 'settlement',  label: 'Settlement',  Icon: ShieldCheck },
-  { id: 'marketplace', label: 'Marketplace', Icon: ShoppingBag },
-  { id: 'agreements',  label: 'Agreements',  Icon: FileText    },
-  { id: 'reputation',  label: 'Reputation',  Icon: Star        },
+// Section labels live in help.section_labels.<id> — resolved through t() in
+// the navigation render so the visible text translates with the active locale.
+interface SectionMeta { id: string; labelKey: string; Icon: React.ElementType }
+const SECTIONS: SectionMeta[] = [
+  { id: 'about',       labelKey: 'help.section_labels.about',       Icon: Info        },
+  { id: 'settlement',  labelKey: 'help.section_labels.settlement',  Icon: ShieldCheck },
+  { id: 'marketplace', labelKey: 'help.section_labels.marketplace', Icon: ShoppingBag },
+  { id: 'agreements',  labelKey: 'help.section_labels.agreements',  Icon: FileText    },
+  { id: 'reputation',  labelKey: 'help.section_labels.reputation',  Icon: Star        },
 ];
 
 const SECTION_CONTENT: Record<string, React.ReactNode> = {
@@ -606,9 +681,9 @@ export default function Help() {
         style={{ borderColor: 'rgba(255,255,255,0.06)' }}
       >
         <div className="text-[10px] font-display font-bold text-white/30 uppercase tracking-widest mb-2 px-2">
-          Help Topics
+          {t('help.topics_label')}
         </div>
-        {SECTIONS.map(({ id, label, Icon }) => (
+        {SECTIONS.map(({ id, labelKey, Icon }) => (
           <a
             key={id}
             href={`#${id}`}
@@ -621,7 +696,7 @@ export default function Help() {
             className="flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-white/45 hover:text-white/90 hover:bg-white/5 transition-colors font-display font-medium"
           >
             <Icon size={14} className="flex-shrink-0" />
-            {label}
+            {t(labelKey)}
           </a>
         ))}
       </nav>

@@ -905,7 +905,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
       <div className="panel p-5 mb-5 space-y-4">
         {/* Node daemon row */}
         <div className="flex items-center justify-between text-sm">
-          <span style={{ color: 'rgba(238,240,255,0.45)' }}>Node daemon</span>
+          <span style={{ color: 'rgba(238,240,255,0.45)' }}>{t('onboarding.labels.node_daemon')}</span>
           {!nodeStarted ? (
             <span className="flex items-center gap-2 font-mono text-xs" style={{ color: 'rgba(238,240,255,0.45)' }}>
               <Loader2 size={12} className="animate-spin" /> Starting iriumd…
@@ -913,7 +913,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
           ) : running ? (
             <span className="flex items-center gap-2 text-xs">
               <span className="dot-live" />
-              <span className="font-semibold" style={{ color: '#34d399' }}>Running</span>
+              <span className="font-semibold" style={{ color: '#34d399' }}>{t('onboarding.labels.running')}</span>
             </span>
           ) : (
             <span className="flex items-center gap-2 text-xs">
@@ -927,7 +927,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
 
         {/* Peers */}
         <div className="flex items-center justify-between text-sm">
-          <span style={{ color: 'rgba(238,240,255,0.45)' }}>Connected peers</span>
+          <span style={{ color: 'rgba(238,240,255,0.45)' }}>{t('onboarding.network.connected_peers')}</span>
           <span className="flex items-center gap-2">
             <AnimatePresence>
               {peers > 0 && (
@@ -976,7 +976,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
 
         {/* Block height */}
         <div className="flex items-center justify-between text-sm">
-          <span style={{ color: 'rgba(238,240,255,0.45)' }}>Block height</span>
+          <span style={{ color: 'rgba(238,240,255,0.45)' }}>{t('onboarding.network.block_height')}</span>
           <motion.span
             key={h}
             initial={{ y: -6, opacity: 0 }}
@@ -993,7 +993,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
         {/* Sync progress bar */}
         <div>
           <div className="flex justify-between text-xs mb-1.5" style={{ color: 'rgba(238,240,255,0.35)' }}>
-            <span>Sync progress</span>
+            <span>{t('onboarding.labels.sync_progress')}</span>
             <motion.span key={pct} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-mono">
               {pct}%
             </motion.span>
@@ -1014,7 +1014,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
         {/* Tip hash */}
         {status?.tip && (
           <div className="flex items-center justify-between text-xs" style={{ color: 'rgba(238,240,255,0.30)' }}>
-            <span>Tip</span>
+            <span>{t('onboarding.labels.tip')}</span>
             <span className="font-mono">{truncateHash(status.tip, 8)}</span>
           </div>
         )}
@@ -1027,7 +1027,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
               className="flex items-center gap-2 pt-1"
             >
               <CheckCircle2 size={16} style={{ color: '#34d399' }} />
-              <span className="font-semibold text-sm" style={{ color: '#34d399' }}>Blockchain fully synced</span>
+              <span className="font-semibold text-sm" style={{ color: '#34d399' }}>{t('onboarding.network.blockchain_fully_synced')}</span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -1185,7 +1185,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
                 Continuing in {syncCountdown}s…
               </>
             ) : (
-              <>Continue to Wallet <ArrowRight size={15} /></>
+              <>{t('onboarding.wallet_create.continue_to_wallet')} <ArrowRight size={15} /></>
             )}
           </motion.button>
         ) : (
@@ -1316,7 +1316,7 @@ function StepWalletSetup({
             <Loader2 size={24} className="animate-spin" style={{ color: '#a78bfa' }} />
           </div>
           <div>
-            <p className="font-display font-semibold text-white text-center mb-1">Generating wallet</p>
+            <p className="font-display font-semibold text-white text-center mb-1">{t('onboarding.wallet_create.generating')}</p>
             <p className="text-xs text-center" style={{ color: 'rgba(238,240,255,0.40)' }}>
               Creating BIP32 HD wallet with 24-word seed phrase…
             </p>
@@ -1367,7 +1367,7 @@ function StepWalletSetup({
                 onClick={() => copyAddr(primaryAddr)}
                 className="flex-shrink-0 p-1.5 rounded-lg transition-colors"
                 style={{ background: 'rgba(110,198,255,0.12)', border: '1px solid rgba(110,198,255,0.30)' }}
-                title="Copy address"
+                title={t('onboarding.tooltips.copy_address')}
               >
                 <Copy size={13} style={{ color: copied ? '#34d399' : '#6ec6ff' }} />
               </button>
@@ -1522,7 +1522,7 @@ function StepWalletSetup({
             {busy ? (
               <><Loader2 size={14} className="animate-spin" /> Importing…</>
             ) : (
-              <>Import Wallet <ArrowRight size={15} /></>
+              <>{t('onboarding.import.import_button')} <ArrowRight size={15} /></>
             )}
           </button>
         </div>
@@ -1568,7 +1568,7 @@ function StepWalletSetup({
             <WalletIcon size={20} style={{ color: '#fff' }} />
           </div>
           <div>
-            <div className="font-display font-bold text-white mb-1.5" style={{ fontSize: 15 }}>Create New Wallet</div>
+            <div className="font-display font-bold text-white mb-1.5" style={{ fontSize: 15 }}>{t('onboarding.welcome.create_new')}</div>
             <div className="text-xs leading-relaxed" style={{ color: 'rgba(238,240,255,0.50)' }}>
               Generate a fresh BIP32 HD wallet with a 24-word seed phrase.
             </div>
@@ -1592,7 +1592,7 @@ function StepWalletSetup({
             <FileText size={20} style={{ color: '#6ec6ff' }} />
           </div>
           <div>
-            <div className="font-display font-bold text-white mb-1.5" style={{ fontSize: 15 }}>Import Existing</div>
+            <div className="font-display font-bold text-white mb-1.5" style={{ fontSize: 15 }}>{t('onboarding.welcome.import_existing')}</div>
             <div className="text-xs leading-relaxed" style={{ color: 'rgba(238,240,255,0.50)' }}>
               Restore via seed phrase, WIF key, or raw private key.
             </div>

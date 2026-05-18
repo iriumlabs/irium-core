@@ -283,7 +283,7 @@ export default function AgreementsPage() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="h-full overflow-y-auto"
+      className="h-full overflow-y-auto scroll-visible"
     >
       <div className="w-full space-y-5 px-8 py-6">
       <NodeOfflineBanner />

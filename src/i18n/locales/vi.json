@@ -441,6 +441,9 @@
       "no_spendable_funds": "Không có quỹ có thể chi tiêu",
       "insufficient_funds": "Không đủ tiền. Bạn có sẵn {{available}}.",
       "estimated_fee": "Phí ước tính: ~1.000 sats",
+      "advanced_toggle": "Trình độ cao",
+      "largest_first_label": "Trước tiên hãy sử dụng UTXO lớn nhất",
+      "largest_first_hint": "Chọn đầu vào lớn hơn trước — giao dịch nhỏ hơn, phí thấp hơn. Mặc định là nhỏ nhất trước, sẽ thoát bụi theo thời gian.",
       "security_note": "Giao dịch được bảo mật bằng chữ ký khóa riêng của bạn, không phải khai thác. Không cần PoW để gửi.",
       "review_button": "Xem lại →",
       "confirm_send": "Xác nhận gửi",
@@ -891,6 +894,9 @@
     "fields": {
       "mining_address_label": "Địa chỉ khai thác",
       "mining_address_placeholder": "Dán địa chỉ khai thác Irium của bạn (Q... hoặc P...)",
+      "address_picker_other": "Địa chỉ khác…",
+      "address_picker_no_wallets": "Không có địa chỉ ví — chọn Khác",
+      "address_picker_custom_placeholder": "Nhập địa chỉ P hoặc Q bất kỳ",
       "threads_label": "chủ đề",
       "stratum_url_label": "URL nhóm",
       "stratum_url_placeholder": "tầng+tcp://pool.example.com:3333",
@@ -941,7 +947,11 @@
       "copy_address": "Sao chép địa chỉ",
       "copy_full_hash": "Sao chép toàn bộ hàm băm"
     },
-    "pool_configuration": "Cấu hình nhóm"
+    "pool_configuration": "Cấu hình nhóm",
+    "opencl": {
+      "detected_title": "Đã phát hiện phần cứng OpenCL",
+      "none_detected": "Không phát hiện thấy GPU hỗ trợ OpenCL"
+    }
   },
   "onboarding": {
     "splash_title": "lõi irium",
@@ -987,27 +997,95 @@
       "need_12_seed_words": "Nhập ít nhất 12 từ giống.",
       "wif_min_length": "Khóa WIF phải có ít nhất 51 ký tự.",
       "priv_key_hex": "Khóa riêng phải có 64 ký tự hex."
+    },
+    "labels": {
+      "node_daemon": "Trình nền nút",
+      "running": "Đang chạy",
+      "sync_progress": "Tiến trình đồng bộ hóa",
+      "tip": "Mẹo"
+    },
+    "tooltips": {
+      "copy_address": "Sao chép địa chỉ"
     }
   },
   "reputation": {
     "page_title": "Danh tiếng",
     "search_placeholder": "Địa chỉ tiền tố Q hoặc khóa công khai 64-hex…",
     "no_address_queried": "Chưa có địa chỉ nào được truy vấn",
+    "no_address_hint": "Nhập địa chỉ tiền tố Q hoặc khóa chung của người bán để kiểm tra lịch sử giao dịch, tỷ lệ hoàn thành và mức độ rủi ro của họ trước khi bạn giao dịch với họ.",
     "search_above": "Tìm kiếm người bán ở trên",
     "search_second": "Tìm kiếm người bán thứ hai để so sánh",
     "compare_tooltip": "So sánh hai người bán cạnh nhau",
     "recent_lookups": "Tra cứu gần đây",
+    "loading_short": "Đang tải…",
+    "look_up": "tra cứu",
+    "looking_up": "Nhìn lên…",
+    "compare_button": "So sánh",
+    "score_no_data": "không có dữ liệu",
+    "score_success_suffix": "% thành công",
+    "risk_labels": {
+      "low": "Rủi ro thấp",
+      "medium": "Rủi ro trung bình",
+      "high": "Rủi ro cao",
+      "unknown": "Không xác định"
+    },
+    "time_units": {
+      "minutes": "~~PH0__ phút",
+      "hours": "~{{count}} giờ",
+      "days": "~{{count}} ngày"
+    },
+    "labels": {
+      "address": "Địa chỉ",
+      "sybil_suppressed_badge": "bị ức chế âm tiết",
+      "self_trades_badge": "Tự giao dịch: {{count}}",
+      "high_disputes_badge": "Tranh chấp cao: {{rate}}%"
+    },
     "stats": {
       "completed_trades": "Hoàn thành",
       "disputed_trades": "Đang tranh chấp",
       "default_trades": "Mặc định",
-      "satisfied": "Thỏa mãn"
+      "satisfied": "Thỏa mãn",
+      "total_agreements": "Tổng số thỏa thuận",
+      "satisfied_trades": "Giao dịch hài lòng",
+      "satisfied_sub": "Đã phát hành thành công",
+      "defaults": "Mặc định",
+      "defaults_sub": "Nghĩa vụ không thành công",
+      "success_rate": "Tỷ lệ thành công",
+      "success_rate_sub": "Trọn đời"
     },
     "record_outcome": {
       "button": "Ghi lại kết quả",
       "title": "Chỉ cần giao dịch với người bán này?",
+      "title_body": "Ghi lại kết quả vào cơ sở dữ liệu danh tiếng địa phương của bạn. Tra cứu trong tương lai sẽ phản ánh nó.",
+      "modal_title": "Ghi lại kết quả",
+      "with_seller": "với",
+      "local_db_note_before": "Điều này thêm vào của bạn",
+      "local_db_note_emphasis": "địa phương",
+      "local_db_note_after": "cơ sở dữ liệu danh tiếng. Chỉ có bạn nhìn thấy nó. Người bán có thể yêu cầu ký xuất khẩu sau nếu hai bên đồng ý.",
       "response_time_label": "Thời gian phản hồi bằng chứng (tùy chọn, giây)",
-      "response_time_placeholder": "ví dụ. 3600 trong 1 giờ"
+      "response_time_placeholder": "ví dụ. 3600 trong 1 giờ",
+      "response_time_hint": "Mất bao lâu từ khi tài trợ đến khi nộp bằng chứng. Được sử dụng cho tín hiệu danh tiếng avg_proof_response_secs.",
+      "cancel": "Hủy bỏ",
+      "recording": "Đang ghi…",
+      "submit": "Ghi lại kết quả"
+    },
+    "outcomes": {
+      "satisfied": "Thỏa mãn",
+      "satisfied_sub": "Giao dịch đã hoàn tất thành công",
+      "failed": "Thất bại",
+      "failed_sub": "Đối tác không thực hiện",
+      "disputed": "Đang tranh chấp",
+      "disputed_sub": "Yêu cầu chứng thực của người giải quyết",
+      "timeout": "Hết giờ",
+      "timeout_sub": "Hết thời hạn mà không giải quyết"
+    },
+    "recent_window": {
+      "title": "Cửa sổ gần đây",
+      "last_blocks": "· {{count}} khối cuối cùng ({{duration}})",
+      "satisfied": "Thỏa mãn",
+      "defaults": "Mặc định",
+      "success_rate": "Tỷ lệ thành công",
+      "risk": "Rủi ro"
     },
     "risk": {
       "high_disputes": "Hơn 10% thỏa thuận của người bán này kết thúc bằng tranh chấp. Kiểm tra lịch sử tranh chấp của họ trước khi giao dịch.",
@@ -1050,28 +1128,59 @@
       "height": "Chiều cao",
       "hash": "Băm",
       "time": "Thời gian",
+      "age": "Tuổi",
+      "txs_short": "Tx",
       "miner": "Thợ mỏ",
       "tx_count": "Số lần gửi",
       "reward": "Phần thưởng",
       "estimated_suffix": "(ước lượng)",
       "estimated_tooltip": "Ước tính từ lịch trình giảm một nửa sự ra mắt – iriumd không hiển thị trường phần thưởng được phân tích cú pháp trên mỗi khối",
       "all_loaded": "Đã tải tất cả các khối {{count}} — từ đầu đến cuối",
+      "loaded_short": "{{count}} đã tải",
       "loaded_range": "{{count}} đã tải · #{{from}}–#{{to}}"
     },
     "block_modal": {
+      "title_prefix": "Khối",
       "label_height": "Chiều cao",
       "label_hash": "Băm",
       "label_prev_hash": "Trước băm",
       "label_merkle": "Rễ cây Merkle",
       "label_time": "Thời gian",
       "label_reward": "Phần thưởng",
+      "label_reward_with_estimated": "{{reward}} (ước tính)",
       "label_transactions": "Giao dịch",
       "label_bits": "Bit",
       "label_nonce": "Nonce",
       "label_miner": "Thợ mỏ",
       "pending_title": "Khối #{{height}} chưa có sẵn",
       "pending_body": "Nút có thể vẫn đang lập chỉ mục khối này. Nhấp để thử lại — quá trình tra cứu sẽ chạy lại sau 5 giây.",
-      "retrying": "Thử lại sau 5 giây…"
+      "retrying": "Thử lại sau 5 giây…",
+      "dismiss": "Miễn nhiệm",
+      "retry": "Thử lại"
+    },
+    "search": {
+      "placeholders": {
+        "block": "Chiều cao khối hoặc hàm băm (ví dụ: 21000 hoặc 00a3b…)",
+        "tx": "ID giao dịch (64 ký tự hex)",
+        "address": "Địa chỉ Irium (ví dụ: Q… hoặc P…)"
+      },
+      "errors": {
+        "block_not_found": "Khối không được tìm thấy trên chuỗi.",
+        "tx_not_found": "Không tìm thấy giao dịch.",
+        "address_not_found": "Không tìm thấy địa chỉ.",
+        "tx_not_found_detailed": "Không tìm thấy giao dịch - xác nhận txid là chính xác và nút được đồng bộ hóa hoàn toàn.",
+        "address_not_found_detailed": "Không tìm thấy địa chỉ - nút có thể chưa hiển thị tra cứu số dư địa chỉ.",
+        "node_unreachable": "Không thể truy cập nút - đảm bảo nút đang chạy trên Trang tổng quan."
+      }
+    },
+    "empty_states": {
+      "start_node_for_blocks": "Bắt đầu nút trên Bảng điều khiển để tải khối",
+      "no_blocks_syncing": "Chưa có khối nào — đang đồng bộ hóa…"
+    },
+    "load_more": {
+      "older_with_next": "Tải các khối cũ hơn (tiếp theo: #{{height}})",
+      "older": "Tải các khối cũ hơn",
+      "loading_older": "Đang tải các khối cũ hơn…"
     },
     "toasts": {
       "block_not_found": "Không tìm thấy khối {{height}} trên nút",
@@ -1096,6 +1205,14 @@
   "help": {
     "page_title": "Trợ giúp & Giới thiệu",
     "subtitle": "Thông tin ứng dụng, tài liệu và câu hỏi thường gặp.",
+    "topics_label": "Chủ đề trợ giúp",
+    "section_labels": {
+      "about": "Về",
+      "settlement": "giải quyết",
+      "marketplace": "Thị trường",
+      "agreements": "Thỏa thuận",
+      "reputation": "Danh tiếng"
+    },
     "sections": {
       "specs": "Thông số mạng",
       "links": "Tài nguyên",
@@ -1106,14 +1223,241 @@
       "disputes": "Tranh chấp",
       "importing_agreements": "Hiệp định nhập khẩu",
       "funding": "Tài trợ với tư cách là người mua",
-      "creating_agreement_seller": "Tạo thỏa thuận (Luồng người bán)"
+      "creating_agreement_seller": "Tạo thỏa thuận (Luồng người bán)",
+      "node_information": "Thông tin nút",
+      "privacy_data": "Quyền riêng tư & Dữ liệu",
+      "report_issue": "Báo cáo sự cố"
     },
-    "common_mistake": "Lỗi thường gặp:"
+    "specs_labels": {
+      "network": "Mạng",
+      "coin": "đồng xu",
+      "max_supply": "Nguồn cung tối đa",
+      "block_time": "Khối thời gian",
+      "block_reward": "Khối phần thưởng",
+      "consensus": "Sự đồng thuận",
+      "difficulty": "Thuật toán độ khó",
+      "address_prefix": "Tiền tố địa chỉ",
+      "key_derivation": "Đạo hàm chính",
+      "rpc_port": "Cổng RPC",
+      "p2p_port": "Cổng P2P",
+      "bootstrap": "Khởi động",
+      "auxpow": "Khai thác hợp nhất AuxPoW"
+    },
+    "specs_values": {
+      "network": "Mạng chính",
+      "coin": "IRM",
+      "max_supply": "100.000.000 IRM (khi ra mắt)",
+      "block_time": "Mục tiêu ~10 phút (khi khởi chạy - xem Trang tổng quan để biết tốc độ mạng trực tiếp)",
+      "block_reward": "50 IRM khi ra mắt (Kỷ nguyên khai thác sớm - giảm một nửa theo lịch trình)",
+      "consensus": "Bằng chứng công việc SHA-256d",
+      "difficulty": "LWMA-144",
+      "address_prefix": "P/Q",
+      "key_derivation": "BIP39 Cụm từ ghi nhớ 24 từ + khóa WIF (cả hai đều được hỗ trợ để sao lưu/khôi phục)",
+      "rpc_port": "38300",
+      "p2p_port": "38291",
+      "bootstrap": "Không có DNS (danh sách hạt giống đã ký + các đồng nghiệp được nhúng blockchain)",
+      "auxpow": "Kích hoạt tại khối 26.347"
+    },
+    "links": {
+      "github": "GitHub",
+      "website": "Trang web",
+      "whitepaper": "Sách trắng",
+      "mining_guide": "Hướng dẫn khai thác"
+    },
+    "about_app": {
+      "intro": "Irium Core là ví máy tính để bàn GUI đầy đủ nút dành cho chuỗi khối Irium. Nó chạy cục bộ một nút iriumd hoàn chỉnh, mang lại cho bạn toàn quyền chủ động đối với số tiền và thỏa thuận thanh toán của mình. Không có máy chủ của bên thứ ba. Không có người giám hộ. Chìa khóa của bạn, dây chuyền của bạn."
+    },
+    "node_info_labels": {
+      "iriumd_version": "phiên bản iriumd",
+      "data_directory": "Thư mục dữ liệu",
+      "rpc_endpoint": "Điểm cuối RPC",
+      "block_height": "Chiều cao khối",
+      "sync_status": "Trạng thái đồng bộ hóa",
+      "connected_peers": "Các đồng nghiệp được kết nối",
+      "fully_synced": "Đã đồng bộ hóa hoàn toàn",
+      "syncing": "Đang đồng bộ hóa…",
+      "offline": "Ngoại tuyến"
+    },
+    "privacy": {
+      "title": "Dữ liệu của bạn vẫn còn trên máy của bạn",
+      "intro": "Irium Core là ví máy tính để bàn đầy đủ nút chạy hoàn toàn trên máy tính của bạn. Không có dữ liệu nào được thu thập, truyền hoặc lưu trữ trên bất kỳ máy chủ bên ngoài nào.",
+      "bullet_1": "Không có phân tích hoặc đo từ xa - ứng dụng không gọi điện về nhà",
+      "bullet_2": "Không cần đăng ký tài khoản - không có tài khoản người dùng",
+      "bullet_3": "Khóa ví và cụm từ hạt giống chỉ được lưu trữ cục bộ trong thư mục ~/.irium/ của bạn",
+      "bullet_4": "Lịch sử giao dịch được đọc trực tiếp từ bản sao blockchain cục bộ của bạn",
+      "bullet_5": "Kết nối ngang hàng sử dụng giao tiếp IP-to-IP trực tiếp không có máy chủ trung gian",
+      "bullet_6": "Không cần tra cứu DNS - khám phá ngang hàng hoàn toàn không có DNS bằng cách sử dụng danh sách hạt giống đã ký và địa chỉ được nhúng trong blockchain"
+    },
+    "report_issue": {
+      "body": "Tìm thấy một lỗi hoặc cần giúp đỡ? Mở một vấn đề trên kho lưu trữ Irium Core GitHub. Bao gồm phiên bản ứng dụng, hệ điều hành và mô tả sự cố.",
+      "open_issue": "Sự cố mở trên GitHub",
+      "view_existing": "Xem các vấn đề hiện có"
+    },
+    "licenses": {
+      "title": "Giấy phép",
+      "body": "Irium Core là phần mềm mã nguồn mở được phát hành theo Giấy phép MIT.",
+      "view": "Xem giấy phép"
+    },
+    "faqs": {
+      "q1": "Irium Core có thu thập dữ liệu nào không?",
+      "a1": "Không. Irium Core chạy hoàn toàn trên máy tính của bạn. Không phân tích, không đo từ xa, không theo dõi việc sử dụng. Ứng dụng không bao giờ liên hệ với bất kỳ máy chủ bên ngoài nào ngoại trừ mạng Irium P2P để đồng bộ hóa blockchain. Khóa ví, lịch sử giao dịch và tất cả cài đặt vẫn được lưu trên máy cục bộ của bạn. Không có tài khoản người dùng và không có đăng ký.",
+      "q2": "Các tập tin ví của tôi được lưu trữ ở đâu?",
+      "a2": "Tất cả dữ liệu ví được lưu trữ trong thư mục ~/.irium/ cục bộ của bạn (trên Windows: C:\\Users\\YourName\\.irium\\). Điều này bao gồm tệp wallet.json, dữ liệu blockchain, bộ đệm ngang hàng và cấu hình của bạn. Không có gì được lưu trữ trên đám mây. Nếu bạn gỡ cài đặt ứng dụng, các tệp trong ví của bạn vẫn còn trên đĩa — bạn có thể cài đặt lại và tiếp tục từ nơi bạn đã dừng lại. Luôn sao lưu riêng cụm từ khôi phục và khóa WIF của bạn trong trường hợp lỗi phần cứng.",
+      "q3": "Nút của tôi không kết nối với các nút ngang hàng",
+      "a3": "Irium sử dụng hệ thống khởi động không có DNS với các nút giống đã ký. Nếu bạn sử dụng tường lửa nghiêm ngặt, hãy đảm bảo cho phép cổng TCP 38291 gửi đi. Bạn cũng có thể thêm thiết bị ngang hàng theo cách thủ công từ màn hình Đồng bộ hóa mạng hoặc trong Cài đặt bằng tùy chọn Thêm hạt giống.",
+      "q4": "Làm cách nào để bắt đầu khai thác?",
+      "a4": "Đi tới trang Khai thác, nhập địa chỉ IRM của bạn vào trường cấu hình, đặt số lượng chuỗi và nhấp vào Bắt đầu khai thác. Địa chỉ của bạn phải bắt đầu bằng P hoặc Q. Thời gian chặn trung bình thay đổi theo tốc độ băm của mạng — hiện tại là khoảng 13 phút; Bảng điều khiển hiển thị giá trị trực tiếp.",
+      "q5": "Thỏa thuận giải quyết là gì?",
+      "a5": "Một thỏa thuận giải quyết khóa IRM trong ký quỹ giữa người mua và người bán. Tiền chỉ được giải phóng khi đáp ứng các yêu cầu về bằng chứng hoặc hết thời gian chờ. Đi tới trang Dàn xếp để tạo hoặc quản lý các thỏa thuận.",
+      "q6": "Ví của tôi hiển thị 0 IRM nhưng tôi đã nhận được tiền",
+      "a6": "Nhấp vào Làm mới trên trang Ví hoặc đợi chu kỳ bỏ phiếu tiếp theo (15 giây). Nếu số dư vẫn hiển thị 0, hãy đảm bảo nút của bạn được đồng bộ hóa hoàn toàn — kiểm tra chiều cao khối khớp với mạng trên trang Block Explorer.",
+      "q7": "Làm cách nào để sao lưu ví của tôi?",
+      "a7": "Ví Irium sử dụng BIP39 với cụm từ khôi phục 24 từ. Để sao lưu ví của bạn, hãy truy cập Ví → Bảo mật → Hiển thị cụm từ khôi phục để xem bản ghi nhớ 24 từ của bạn hoặc Xuất khóa WIF để sao lưu một địa chỉ. Lưu trữ cụm từ khôi phục hoặc khóa WIF ngoại tuyến ở nơi an toàn — cụm từ khôi phục sẽ khôi phục toàn bộ ví của bạn, trong khi khóa WIF chỉ khôi phục một địa chỉ.",
+      "q8": "Sự khác biệt giữa địa chỉ P và Q là gì?",
+      "a8": "Cả địa chỉ P và Q đều là địa chỉ Irium hợp lệ. Chúng có nguồn gốc từ các phần khác nhau của cây khóa ví HD của bạn. Tất cả địa chỉ trong ví của bạn đều thuộc về bạn và có thể nhận IRM.",
+      "q9": "Làm cách nào để kết nối với nhóm khai thác?",
+      "a9": "Chuyển đến trang Khai thác và chọn tab Stratum Pool. Nhập URL nhóm stratum+tcp://pool.iriumlabs.org:3333 cho máy khai thác ASIC/hiện đại hoặc stratum+tcp://pool.iriumlabs.org:3335 cho máy khai thác CPU/GPU. Tên người dùng của bạn phải là địa chỉ IRM, theo sau là tên nhân viên, ví dụ: PwjVf7nY19UWW2i9HCEPyZt81975M6iKdW.worker1.",
+      "q10": "macOS cho biết Irium Core bị hỏng hoặc bị cách ly. Làm cách nào để khắc phục nó?",
+      "a10": "macOS cách ly các ứng dụng được tải xuống bên ngoài App Store. Để khắc phục điều này: (1) mở Terminal; (2) chạy: xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app — thao tác này sẽ xóa cờ cách ly khỏi toàn bộ gói ứng dụng. Nếu bạn vẫn thấy \"hư hỏng\", hãy chạy: codesign --force --deep --sign - /Applications/Irium\\ Core.app sau đó khởi chạy lại. Lần khởi chạy đầu tiên có thể mất 10-20 giây trong khi Gatekeeper xác minh lại chữ ký. Nếu bản thân iriumd đã bị cách ly (bạn thấy \"iriumd bị hỏng\" trong nhật ký), hãy chạy: xattr -d com.apple.quarantine ~/.irium/binaries/iriumd để hủy cách ly chỉ nhị phân nút.",
+      "q11": "Nút của tôi có các khối cách ly. Làm thế nào để tôi phục hồi?",
+      "a11": "iriud cách ly các tập tin chặn mà nó không thể xác thực (thường là sau sự cố khi ghi giữa chừng hoặc bản reorg bị hỏng). Các khối bị cách ly nằm trong ~/.irium/blocks/orphaned_<timestamp>/. Bạn có thể xóa chúng khỏi phần Khôi phục khối cách ly ở trên (dừng nút trước). Nút sẽ tự động tìm nạp lại các khối bị thiếu từ các nút ngang hàng vào lần bắt đầu tiếp theo. Nếu quá trình đồng bộ lại bị kẹt ở cùng độ cao, hãy sử dụng Cài đặt → Xóa trạng thái chuỗi để đồng bộ lại rõ ràng từ nguồn gốc (ví và các thỏa thuận của bạn được giữ nguyên)."
+    },
+    "quarantine": {
+      "section_title": "Phục hồi khối cách ly",
+      "description": "iriud chặn các tập tin mà nó không thể xác thực. Chúng sống trong các thư mục mồ côi_<timestamp> bên trong thư mục khối của bạn. Việc xóa chúng là an toàn — nút tìm nạp lại các độ cao bị ảnh hưởng từ các nút ngang hàng.",
+      "status_none": "Không tìm thấy khối cách ly nào.",
+      "status_count_one": "Đã tìm thấy tệp khối cách ly {{files}} trong thư mục {{dirs}}.",
+      "status_count_other": "Đã tìm thấy {{files}} tệp khối cách ly trên {{dirs}} thư mục.",
+      "scan_button": "Làm cho khỏe lại",
+      "scanning": "Đang quét…",
+      "clear_button": "Xóa các khối cách ly",
+      "clearing": "Đang xóa…",
+      "confirm_title": "Xóa các khối cách ly?",
+      "confirm_body": "Thao tác này sẽ xóa vĩnh viễn (các) tệp {{files}} trên (các) thư mục {{dirs}}. Nút phải được dừng trước khi xóa. Tiếp tục?",
+      "confirm_yes": "Xóa bỏ",
+      "confirm_no": "Hủy bỏ",
+      "node_running_warning": "Dừng nút khỏi Bảng điều khiển trước khi xóa các khối cách ly.",
+      "toast_cleared": "Đã xóa {{files}} tệp khối cách ly",
+      "toast_clear_failed": "Không xóa được các khối cách ly: {{reason}}",
+      "toast_scan_failed": "Không thể quét các khối cách ly: {{reason}}"
+    },
+    "common_mistake": "Lỗi thường gặp:",
+    "settlement_help": {
+      "what_title": "Giải quyết là gì?",
+      "what_body": "Việc thanh toán cho phép hai bên khóa tiền trong một ký quỹ trên chuỗi được chứng minh là công bằng. Tiền chỉ được giải phóng khi người nhận gửi bằng chứng mật mã — hoặc được trả lại cho người gửi nếu thời hạn trôi qua. Không qua trung gian, không tranh chấp với cơ quan trung ương.",
+      "templates_title": "Mẫu",
+      "templates_intro": "Chọn mẫu phù hợp với trường hợp sử dụng của bạn:",
+      "template_otc": "Giao dịch OTC",
+      "template_otc_desc": "trao đổi tài sản trực tiếp giữa hai bên.",
+      "template_freelance": "Làm tự do",
+      "template_freelance_desc": "ký quỹ công việc thanh toán một lần với mô tả phạm vi tùy chọn.",
+      "template_milestones": "Các cột mốc quan trọng",
+      "template_milestones_desc": "chia thanh toán thành 2–20 mốc bằng nhau, mỗi mốc yêu cầu bằng chứng.",
+      "template_timelock": "Tiền gửi có kỳ hạn",
+      "template_timelock_desc": "số tiền được giữ cho đến thời hạn sau đó được giải phóng hoặc hoàn trả.",
+      "template_merchant": "Người bán bị trì hoãn",
+      "template_merchant_desc": "người mua thanh toán, người bán yêu cầu sau một khoảng thời gian hạ nhiệt để người mua có thời gian tranh chấp.",
+      "template_contractor": "Các mốc quan trọng của nhà thầu",
+      "template_contractor_desc": "ký quỹ quan trọng được đóng khung xung quanh vai trò của khách hàng / nhà thầu với phạm vi tùy chọn.",
+      "creating_title": "Tạo thỏa thuận (Luồng người bán)",
+      "creating_step_1": "Mở Thanh toán → nhấp vào \"Tôi đang bán\".",
+      "creating_step_2": "Điền địa chỉ, số tiền, thời hạn của người mua và bất kỳ trường nào theo mẫu cụ thể.",
+      "creating_step_3": "Xem lại bản tóm tắt - xác minh địa chỉ và số tiền trước khi xác nhận.",
+      "creating_step_4": "Chia sẻ ID thỏa thuận với người mua để họ có thể tài trợ cho nó.",
+      "creating_step_5": "Gửi bằng chứng giao hàng sau khi bạn đã hoàn thành nghĩa vụ.",
+      "creating_step_6": "Yêu cầu tiền của bạn sau khi bằng chứng được chấp nhận.",
+      "funding_title": "Tài trợ với tư cách là người mua",
+      "funding_step_1": "Mở Thanh toán → nhấp vào \"Tôi đang mua\".",
+      "funding_step_2": "Dán ID thỏa thuận mà người bán đã chia sẻ.",
+      "funding_step_3": "Xác nhận số tiền khớp với những gì bạn đã đồng ý ngoài chuỗi.",
+      "funding_step_4": "Nhấp vào Fund — thao tác này sẽ khóa tiền của bạn trong ký quỹ.",
+      "funding_step_5": "Khi người bán gửi bằng chứng, hãy xác minh nó và giải phóng thanh toán.",
+      "proofs_title": "Bằng chứng",
+      "proofs_body": "Bằng chứng là một tin nhắn có chữ ký chứng minh việc giao hàng. Người bán tạo nó từ trang Thỏa thuận sau khi hoàn thành nghĩa vụ. Người mua xem lại bằng chứng và nhấp vào Phát hành để hoàn tất thanh toán. Nếu bằng chứng bị thiếu hoặc sai, người mua có thể tranh chấp trước thời hạn.",
+      "disputes_title": "Tranh chấp",
+      "disputes_body": "Nếu có sự cố xảy ra, hãy mở thỏa thuận trong Thỏa thuận và nhấp vào Tranh chấp trước khi hết thời hạn. Một tranh chấp đóng băng ký quỹ. Việc giải quyết được xử lý trực tuyến bằng hợp đồng trọng tài Irium - cả hai bên phải gửi bằng chứng qua ví CLI của họ.",
+      "callout": "Đặt ra thời hạn quá ngắn. Luôn dành đủ thời gian để hoàn thành việc giao hàng và để người mua xem xét bằng chứng. Người bán bị trì hoãn có hai khoảng thời gian riêng biệt - thời gian chờ đợi (thời gian tranh chấp của người mua) và tổng thời gian ký quỹ."
+    },
+    "marketplace_help": {
+      "what_title": "Thị trường là gì?",
+      "what_body": "Thị trường là một bảng cung cấp ngang hàng. Người bán đăng các ưu đãi mô tả những gì họ đang bán, ở mức giá nào và các điều khoản thanh toán. Người mua duyệt và phản hồi trực tiếp - không có máy chủ trung tâm, các đơn đặt hàng được truyền qua mạng tin đồn Irium.",
+      "posting_title": "Đăng một lời đề nghị",
+      "posting_step_1": "Vào Marketplace → Ưu đãi của tôi → nhấp vào Đăng ưu đãi.",
+      "posting_step_2": "Đặt nội dung, giá (trong IRM) và mẫu thanh toán.",
+      "posting_step_3": "Thêm mô tả để người mua biết họ đang nhận được gì.",
+      "posting_step_4": "Gửi - ưu đãi được phát tới các đồng nghiệp được kết nối.",
+      "responding_title": "Đáp lại lời đề nghị (người mua)",
+      "responding_step_1": "Duyệt Ưu đãi - lọc theo tài sản hoặc phạm vi giá.",
+      "responding_step_2": "Nhấp vào một đề nghị để xem các điều khoản.",
+      "responding_step_3": "Nhấp vào Mua - thao tác này sẽ mở ra một thỏa thuận thanh toán mới được điền sẵn các chi tiết về ưu đãi.",
+      "responding_step_4": "Cấp vốn cho khoản ký quỹ và đợi người bán giao hàng và nộp bằng chứng.",
+      "feeds_title": "Đăng ký nguồn cấp dữ liệu",
+      "feeds_body": "Nguồn cấp dữ liệu là các luồng ưu đãi tuyển chọn được xuất bản bởi những người bán đáng tin cậy. Đăng ký nguồn cấp dữ liệu để tự động xem các ưu đãi mới từ người bán đó trong chế độ xem Duyệt qua của bạn. Hủy đăng ký bất cứ lúc nào.",
+      "callout_label": "Mẹo:",
+      "callout": "Các ưu đãi được lan truyền thông qua tin đồn - những người ngang hàng ngoại tuyến có thể không thấy ưu đãi của bạn. Đăng lại nếu bạn không nhận được phản hồi sau vài giờ."
+    },
+    "agreements_help": {
+      "what_title": "Trang Thỏa thuận là gì?",
+      "what_body": "Các thỏa thuận là sổ cái của tất cả các thỏa thuận dàn xếp mà bạn đã tạo hoặc tham gia. Bạn có thể theo dõi trạng thái, gửi bằng chứng, cấp vốn, giải phóng hoặc tranh chấp từ đây.",
+      "lifecycle_title": "Vòng đời thỏa thuận",
+      "lifecycle_step_1": "Đã tạo - thỏa thuận tồn tại trên chuỗi, đang chờ người mua cấp vốn.",
+      "lifecycle_step_2": "Đã tài trợ - người mua đã khóa tiền trong ký quỹ. Người bán bây giờ có thể hoàn thành và gửi bằng chứng.",
+      "lifecycle_step_3": "Đã gửi bằng chứng - người bán đã cung cấp bằng chứng giao hàng. Đánh giá của người mua.",
+      "lifecycle_step_4": "Đã phát hành - bằng chứng được người mua chấp thuận, tiền được gửi cho người bán. Xong.",
+      "lifecycle_step_5": "Được hoàn lại - thời hạn đã qua hoặc tranh chấp được giải quyết theo hướng có lợi cho người mua. Tiền đã được trả lại.",
+      "lifecycle_step_6": "Tranh chấp - người mua đưa ra tranh chấp. Đang chờ phân xử trên chuỗi.",
+      "submit_title": "Gửi bằng chứng",
+      "submit_step_1": "Mở thỏa thuận từ danh sách.",
+      "submit_step_2": "Nhấp vào Gửi bằng chứng.",
+      "submit_step_3": "Dán hoặc tải lên tệp bằng chứng đã ký của bạn.",
+      "submit_step_4": "Xác nhận - bằng chứng được phát trên chuỗi.",
+      "importing_title": "Hiệp định nhập khẩu",
+      "importing_body": "Sử dụng Gói nhập để khôi phục một loạt thỏa thuận từ bản xuất JSON. Sử dụng Hóa đơn nhập khẩu để tạo thỏa thuận mới trực tiếp từ hóa đơn thanh toán JSON được tạo bởi ví Irium khác.",
+      "callout_label": "Ghi chú:",
+      "callout": "Bạn chỉ có thể gửi bằng chứng hoặc giải phóng/hoàn tiền nếu bạn là một bên tham gia thỏa thuận và ví của bạn đã được mở khóa. Đảm bảo chọn đúng địa chỉ."
+    },
+    "reputation_help": {
+      "what_title": "Danh tiếng là gì?",
+      "what_body": "Hệ thống danh tiếng trên chuỗi của Irium chấm điểm các địa chỉ dựa trên lịch sử giải quyết của họ — hoàn thành thành công, tranh chấp được đưa ra, số tiền hoàn lại nhận được và thời gian hoạt động của chúng. Điểm số có tính xác định và có thể xác minh được bởi bất kỳ nút nào.",
+      "query_title": "Truy vấn điểm số",
+      "query_step_1": "Nhập địa chỉ tiền tố Q hoặc khóa chung 64-hex vào thanh tìm kiếm.",
+      "query_step_2": "Nhấn Enter hoặc nhấp vào Tra cứu.",
+      "query_step_3": "Xem lại bảng phân tích điểm số - điểm tổng thể, các thỏa thuận đã hoàn thành, tranh chấp, khối lượng.",
+      "understanding_title": "Hiểu điểm số",
+      "tier_high": "Điểm 80–100",
+      "tier_high_desc": "hồ sơ theo dõi xuất sắc, tranh chấp tối thiểu.",
+      "tier_mid": "Điểm 50–79",
+      "tier_mid_desc": "lịch sử vừa phải, xác minh trước khi giao dịch lớn.",
+      "tier_low": "Điểm dưới 50",
+      "tier_low_desc": "sử dụng thận trọng. Nhiều tranh chấp hoặc hoàn lại tiền được ghi lại.",
+      "building_title": "Xây dựng danh tiếng của bạn",
+      "building_body": "Hoàn thành các thỏa thuận đúng thời hạn, gửi bằng chứng kịp thời và tránh nảy sinh những tranh chấp phù phiếm. Mỗi thỏa thuận được phát hành thành công sẽ cộng thêm điểm của bạn. Tranh chấp làm giảm nó, ngay cả khi được giải quyết có lợi cho bạn.",
+      "callout_label": "Mẹo:",
+      "callout": "Kiểm tra danh tiếng của đối tác trước khi tài trợ cho một khoản ký quỹ lớn. Điểm dưới 60 là dấu hiệu cảnh báo cho giao dịch lần đầu."
+    }
   },
   "wizards": {
+    "templates": {
+      "otc_name": "Giao dịch OTC",
+      "otc_desc": "Giao dịch ngang hàng với ký quỹ",
+      "freelance_name": "Làm tự do",
+      "freelance_desc": "Mốc thanh toán của nhà thầu",
+      "milestone_name": "Cột mốc quan trọng",
+      "milestone_desc": "Thanh toán dự án nhiều giai đoạn",
+      "deposit_name": "Tiền gửi",
+      "deposit_desc": "Ký quỹ ký quỹ đảm bảo"
+    },
+    "common": {
+      "back": "Mặt sau",
+      "next": "Kế tiếp",
+      "loading": "Đang tải…",
+      "continue_with": "Tiếp tục với {{name}} →",
+      "select_template_continue": "Chọn một mẫu để tiếp tục"
+    },
     "buyer": {
       "page_title": "Nhận một lời đề nghị",
       "step_choose": "Chọn Loại Giải quyết",
+      "step_choose_subtitle": "Chọn loại giao dịch bạn đang tìm kiếm. Chúng tôi sẽ hiển thị các ưu đãi phù hợp trong bước tiếp theo.",
       "step_find": "Tìm ưu đãi",
       "step_review": "Xem lại ưu đãi",
       "step_fund": "Ký quỹ quỹ",
@@ -1135,32 +1479,98 @@
       "settlement_hub": "Trung tâm định cư",
       "review_offer_title": "Xem lại ưu đãi",
       "fund_title": "Ký quỹ quỹ",
-      "monitor_title": "Giám sát thỏa thuận"
+      "monitor_title": "Giám sát thỏa thuận",
+      "sync_marketplace": "Đồng bộ hóa thị trường",
+      "syncing": "Đang đồng bộ hóa…",
+      "no_offers_found": "Không tìm thấy ưu đãi nào. Hãy thử đồng bộ hóa thị trường.",
+      "sync_to_browse": "Đồng bộ hóa thị trường để duyệt các ưu đãi có sẵn",
+      "fetching_offers": "Đang tìm nạp phiếu mua hàng từ nguồn cấp dữ liệu…",
+      "import_offer_file": "Nhập tệp ưu đãi",
+      "selected_offer": "Đã chọn: {{id}} · {{amount}} IRM",
+      "unknown_seller": "Người bán không xác định",
+      "select_or_enter_id": "Chọn một ưu đãi từ thị trường, nhập ID ưu đãi hoặc nhập tệp ưu đãi",
+      "offer_not_found": "Không tìm thấy ưu đãi",
+      "take_offer_failed": "Không thể nhận được lời đề nghị",
+      "funding_failed": "Cấp vốn không thành công",
+      "release_failed": "Phát hành không thành công",
+      "refund_failed": "Hoàn tiền không thành công",
+      "review_rows": {
+        "offer_id": "Mã ưu đãi",
+        "amount": "Số lượng",
+        "seller": "Người bán",
+        "payment_method": "Phương thức thanh toán",
+        "description": "Sự miêu tả"
+      },
+      "take_this_offer": "Nhận ưu đãi này",
+      "fund_escrow": "Ký quỹ quỹ",
+      "funds_locked_note": "Tiền sẽ bị khóa trong một ký quỹ thông minh. Người bán chỉ nhận được thanh toán sau khi gửi bằng chứng giao hàng.",
+      "waiting_for_seller": "Đang chờ người bán giao hàng và nộp bằng chứng",
+      "status_rows": {
+        "status": "Trạng thái",
+        "funded": "Được tài trợ",
+        "release_eligible": "Đủ điều kiện phát hành",
+        "refund_eligible": "Đủ điều kiện hoàn tiền"
+      },
+      "refund": "Đền bù",
+      "release_payment": "Phát hành thanh toán",
+      "polling_indicator": "Bỏ phiếu cứ sau 5 giây · {{state}}",
+      "polling_updated": "vừa cập nhật lần cuối",
+      "polling_waiting": "chờ…",
+      "payment_released_heading": "Thanh toán được phát hành",
+      "refunded_heading": "Đã hoàn tiền",
+      "view_agreements": "Xem thỏa thuận",
+      "done": "Xong"
     },
     "seller": {
       "page_title": "Tạo một ưu đãi",
       "step_choose": "Chọn Loại Giải quyết",
+      "step_choose_subtitle": "Chọn mẫu mô tả đúng nhất những gì bạn đang bán. Điều này trở thành một phần của ưu đãi mà người mua của bạn nhìn thấy.",
       "step_create": "Tạo ưu đãi của bạn",
       "step_agreements": "Thỏa thuận",
       "intro": "Xác định những gì bạn đang bán và giá cả",
       "fields": {
         "amount_label": "Số tiền (IRM)",
+        "amount_placeholder": "0.0000",
+        "sats_preview": "{{sats}} thứ bảy",
         "offer_id_label": "Mã ưu đãi",
         "seller_address_label": "Địa chỉ người bán",
         "seller_address_hint": "Tự động được phát hiện từ ví của bạn. Người mua sẽ gửi thanh toán tại đây.",
+        "no_wallet_addresses": "Không tìm thấy địa chỉ ví",
         "expires_label": "Hết hạn (khối)",
         "expires_hint": "Ưu đãi sẽ hết hạn sau nhiều khối kể từ bây giờ (~10 phút/khối)",
         "payment_method_label": "Phương thức thanh toán",
         "payment_method_placeholder": "chuyển khoản ngân hàng, tiền mặt, tiền điện tử…",
+        "timeout_label": "Hết giờ",
+        "timeout_unit": "(khối)",
+        "timeout_placeholder": "1000",
         "price_note_label": "Lưu ý giá",
+        "price_note_optional": "(không bắt buộc)",
         "price_note_placeholder": "ví dụ. 'Chỉ BTC, thanh toán ngay lập tức'",
         "payment_instructions_label": "Hướng dẫn thanh toán",
+        "payment_instructions_optional": "(không bắt buộc)",
         "payment_instructions_placeholder": "Chi tiết ngân hàng, địa chỉ tiền điện tử hoặc các hướng dẫn khác dành cho người mua…"
       },
+      "errors": {
+        "valid_amount": "Nhập số tiền hợp lệ",
+        "payment_required": "Phương thức thanh toán là bắt buộc",
+        "no_response": "Không có phản hồi từ nút"
+      },
+      "est_time_min": "~~PH0__ phút",
+      "est_time_hr": "~{{hours}} giờ",
       "offer_exported": "Đã xuất phiếu mua hàng",
       "offer_id_copied": "Đã sao chép ID ưu đãi",
       "create_your_offer": "Tạo ưu đãi của bạn",
-      "share_your_offer": "Chia sẻ ưu đãi của bạn"
+      "create_offer_button": "Tạo ưu đãi",
+      "share_your_offer": "Chia sẻ ưu đãi của bạn",
+      "share_intro": "Gửi ID hoặc tệp ưu đãi cho người mua của bạn",
+      "offer_id_heading": "Mã ưu đãi",
+      "copy_id": "Sao chép giấy tờ tùy thân",
+      "export_file": "Xuất tệp",
+      "share_buyer_note_before": "Chia sẻ ID phiếu mua hàng với người mua của bạn. Khi họ chấp nhận lời đề nghị, một thỏa thuận sẽ được tạo tự động. Kiểm tra của bạn",
+      "share_buyer_note_emphasis": "Thỏa thuận",
+      "share_buyer_note_after": "trang dành cho thỏa thuận mới — việc gửi bằng chứng và công bố diễn ra ở đó.",
+      "done": "Xong",
+      "view_my_agreements": "Xem các thỏa thuận của tôi →"
     }
   },
   "logs": {

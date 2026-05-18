@@ -516,7 +516,7 @@
       "need_12_words": "Ingrese al menos 12 palabras mnemotécnicas",
       "enter_wif": "Ingrese una clave WIF",
       "imported_successfully": "Cartera importada correctamente",
-      "copied": "Copiado",
+      "copied": "copiado",
       "recovery_copied": "Frase de recuperación copiada",
       "wif_copied": "WIF copiado",
       "name_invalid_chars": "El nombre de la billetera no puede contener: / \\ : * ? \" < > |"
@@ -582,7 +582,7 @@
       "refund_initiated": "Reembolso iniciado",
       "refund_failed": "Reembolso fallido",
       "pack_exported": "Paquete de acuerdos exportado a {{path}}",
-      "copied": "Copiado",
+      "copied": "copiado",
       "submission_failed": "Envío fallido",
       "funds_released": "Fondos liberados · txid: {{txid}}",
       "release_failed": "Liberación fallida",
@@ -759,7 +759,7 @@
       "invoice_loaded": "Factura cargada: revisar y confirmar",
       "summary_copied": "Resumen copiado",
       "payload_copied": "Carga útil copiada",
-      "copied": "Copiado",
+      "copied": "copiado",
       "invoice_json_copied": "Factura JSON copiada",
       "invoice_saved": "Factura guardada en {{path}}",
       "save_failed": "Error al guardar: {{reason}}"
@@ -941,7 +941,11 @@
       "copy_address": "Copiar dirección",
       "copy_full_hash": "Copiar hash completo"
     },
-    "pool_configuration": "Configuración de la piscina"
+    "pool_configuration": "Configuración de la piscina",
+    "opencl": {
+      "detected_title": "Hardware OpenCL detectado",
+      "none_detected": "No se detectó ninguna GPU compatible con OpenCL"
+    }
   },
   "onboarding": {
     "splash_title": "Núcleo de irio",
@@ -987,27 +991,95 @@
       "need_12_seed_words": "Ingrese al menos 12 palabras iniciales.",
       "wif_min_length": "La clave WIF debe tener al menos 51 caracteres.",
       "priv_key_hex": "La clave privada debe tener 64 caracteres hexadecimales."
+    },
+    "labels": {
+      "node_daemon": "demonio de nodo",
+      "running": "Correr",
+      "sync_progress": "Progreso de sincronización",
+      "tip": "Consejo"
+    },
+    "tooltips": {
+      "copy_address": "Copiar dirección"
     }
   },
   "reputation": {
     "page_title": "Reputación",
     "search_placeholder": "Dirección con prefijo Q o clave pública de 64 hexadecimal...",
     "no_address_queried": "Aún no se ha consultado ninguna dirección",
+    "no_address_hint": "Ingrese la dirección con prefijo Q o la clave pública de un vendedor para verificar su historial comercial, tasa de finalización y nivel de riesgo antes de operar con él.",
     "search_above": "Busque un vendedor arriba",
     "search_second": "Busque un segundo vendedor para comparar",
     "compare_tooltip": "Compara dos vendedores uno al lado del otro",
     "recent_lookups": "Búsquedas recientes",
+    "loading_short": "Cargando…",
+    "look_up": "Buscar",
+    "looking_up": "Mirando hacia arriba…",
+    "compare_button": "Comparar",
+    "score_no_data": "sin datos",
+    "score_success_suffix": "% éxito",
+    "risk_labels": {
+      "low": "Bajo riesgo",
+      "medium": "Riesgo medio",
+      "high": "Alto riesgo",
+      "unknown": "Desconocido"
+    },
+    "time_units": {
+      "minutes": "~{{count}} minutos",
+      "hours": "~{{count}} horas",
+      "days": "~{{count}} días"
+    },
+    "labels": {
+      "address": "DIRECCIÓN",
+      "sybil_suppressed_badge": "Sibila suprimida",
+      "self_trades_badge": "Auto-negocios: {{count}}",
+      "high_disputes_badge": "Disputas altas: {{rate}}%"
+    },
     "stats": {
       "completed_trades": "Terminado",
       "disputed_trades": "Cuestionado",
       "default_trades": "Valores predeterminados",
-      "satisfied": "Satisfecho"
+      "satisfied": "Satisfecho",
+      "total_agreements": "Acuerdos totales",
+      "satisfied_trades": "Oficios satisfechos",
+      "satisfied_sub": "Lanzado con éxito",
+      "defaults": "Valores predeterminados",
+      "defaults_sub": "Obligaciones fallidas",
+      "success_rate": "Tasa de éxito",
+      "success_rate_sub": "Vida"
     },
     "record_outcome": {
       "button": "Resultado récord",
       "title": "¿Acabas de negociar con este vendedor?",
+      "title_body": "Registre el resultado en su base de datos de reputación local. Las búsquedas futuras lo reflejarán.",
+      "modal_title": "Resultado récord",
+      "with_seller": "con",
+      "local_db_note_before": "Esto se suma a tu",
+      "local_db_note_emphasis": "local",
+      "local_db_note_after": "base de datos de reputación. Sólo tú lo ves. Los vendedores pueden solicitar una exportación firmada más adelante si ambas partes están de acuerdo.",
       "response_time_label": "Tiempo de respuesta de la prueba (opcional, segundos)",
-      "response_time_placeholder": "p.ej. 3600 por 1 hora"
+      "response_time_placeholder": "p.ej. 3600 por 1 hora",
+      "response_time_hint": "Cuánto tiempo transcurre desde la financiación hasta la presentación de las pruebas. Se utiliza para la señal de reputación avg_proof_response_secs.",
+      "cancel": "Cancelar",
+      "recording": "Grabación…",
+      "submit": "Resultado récord"
+    },
+    "outcomes": {
+      "satisfied": "Satisfecho",
+      "satisfied_sub": "Comercio completado con éxito",
+      "failed": "Fallido",
+      "failed_sub": "La contraparte no cumplió",
+      "disputed": "Cuestionado",
+      "disputed_sub": "Se requiere una certificación de resolución",
+      "timeout": "Se acabó el tiempo",
+      "timeout_sub": "Plazo superado sin resolución"
+    },
+    "recent_window": {
+      "title": "Ventana reciente",
+      "last_blocks": "· últimos {{count}} bloques ({{duration}})",
+      "satisfied": "Satisfecho",
+      "defaults": "Valores predeterminados",
+      "success_rate": "Tasa de éxito",
+      "risk": "Riesgo"
     },
     "risk": {
       "high_disputes": "Más del 10% de los acuerdos de este vendedor terminaron en disputa. Inspeccione su historial de disputas antes de negociar.",
@@ -1050,28 +1122,59 @@
       "height": "Altura",
       "hash": "Picadillo",
       "time": "Tiempo",
+      "age": "Edad",
+      "txs_short": "txs",
       "miner": "Minero",
       "tx_count": "recuento de tx",
       "reward": "Premio",
       "estimated_suffix": "(estimado)",
       "estimated_tooltip": "Estimado a partir del cronograma de reducción a la mitad del lanzamiento: iriumd no expone un campo de recompensa analizado por bloque",
       "all_loaded": "Todos los bloques {{count}} cargados, desde el génesis hasta la punta",
+      "loaded_short": "{{count}} cargado",
       "loaded_range": "{{count}} cargado · #{{from}}–#{{to}}"
     },
     "block_modal": {
+      "title_prefix": "Bloquear",
       "label_height": "Altura",
       "label_hash": "Picadillo",
       "label_prev_hash": "Hash anterior",
       "label_merkle": "Raíz de Merkle",
       "label_time": "Tiempo",
       "label_reward": "Premio",
+      "label_reward_with_estimated": "{{reward}} (estimado)",
       "label_transactions": "Actas",
       "label_bits": "bits",
       "label_nonce": "Mientras tanto",
       "label_miner": "Minero",
       "pending_title": "Bloque #{{height}} aún no disponible",
       "pending_body": "Es posible que el nodo todavía esté indexando este bloque. Haga clic para volver a intentarlo: la búsqueda se ejecuta nuevamente después de 5 segundos.",
-      "retrying": "Reintentando en 5 segundos..."
+      "retrying": "Reintentando en 5 segundos...",
+      "dismiss": "Despedir",
+      "retry": "Rever"
+    },
+    "search": {
+      "placeholders": {
+        "block": "Altura del bloque o hash (por ejemplo, 21000 o 00a3b…)",
+        "tx": "ID de transacción (64 caracteres hexadecimales)",
+        "address": "Dirección de irio (por ejemplo, Q… o P…)"
+      },
+      "errors": {
+        "block_not_found": "Bloque no encontrado en la cadena.",
+        "tx_not_found": "Transacción no encontrada.",
+        "address_not_found": "Dirección no encontrada.",
+        "tx_not_found_detailed": "Transacción no encontrada: confirme que el txid sea correcto y que el nodo esté completamente sincronizado.",
+        "address_not_found_detailed": "Dirección no encontrada: es posible que el nodo aún no exponga la búsqueda del saldo de direcciones.",
+        "node_unreachable": "No se puede acceder al nodo: asegúrese de que el nodo se esté ejecutando en el Panel."
+      }
+    },
+    "empty_states": {
+      "start_node_for_blocks": "Inicie el nodo en el Panel para cargar bloques",
+      "no_blocks_syncing": "Aún no hay bloqueos: sincronizando..."
+    },
+    "load_more": {
+      "older_with_next": "Cargar bloques más antiguos (siguiente: #{{height}})",
+      "older": "Cargar bloques más antiguos",
+      "loading_older": "Cargando bloques más antiguos..."
     },
     "toasts": {
       "block_not_found": "Bloque {{height}} no encontrado en el nodo",
@@ -1096,6 +1199,14 @@
   "help": {
     "page_title": "Ayuda y acerca de",
     "subtitle": "Información de la aplicación, documentación y preguntas frecuentes.",
+    "topics_label": "Temas de ayuda",
+    "section_labels": {
+      "about": "Acerca de",
+      "settlement": "Asentamiento",
+      "marketplace": "Mercado",
+      "agreements": "Acuerdos",
+      "reputation": "Reputación"
+    },
     "sections": {
       "specs": "Especificaciones de red",
       "links": "Recursos",
@@ -1106,14 +1217,241 @@
       "disputes": "Disputas",
       "importing_agreements": "Acuerdos de importación",
       "funding": "Financiación como comprador",
-      "creating_agreement_seller": "Crear un acuerdo (flujo de vendedor)"
+      "creating_agreement_seller": "Crear un acuerdo (flujo de vendedor)",
+      "node_information": "Información del nodo",
+      "privacy_data": "Privacidad y datos",
+      "report_issue": "Informar un problema"
     },
-    "common_mistake": "Error común:"
+    "specs_labels": {
+      "network": "Red",
+      "coin": "Acuñar",
+      "max_supply": "Suministro máximo",
+      "block_time": "Bloquear tiempo",
+      "block_reward": "Recompensa de bloque",
+      "consensus": "Consenso",
+      "difficulty": "Algoritmo de dificultad",
+      "address_prefix": "Prefijo de dirección",
+      "key_derivation": "Derivación clave",
+      "rpc_port": "Puerto RPC",
+      "p2p_port": "Puerto P2P",
+      "bootstrap": "Oreja",
+      "auxpow": "Minería fusionada con AuxPoW"
+    },
+    "specs_values": {
+      "network": "red principal",
+      "coin": "IRM",
+      "max_supply": "100.000.000 IRM (en el lanzamiento)",
+      "block_time": "Objetivo de ~10 minutos (en el lanzamiento; consulte el Panel de control para conocer la velocidad de la red en vivo)",
+      "block_reward": "50 IRM en el lanzamiento (Early Miner Era – mitades según lo previsto)",
+      "consensus": "Prueba de trabajo SHA-256d",
+      "difficulty": "LWMA-144",
+      "address_prefix": "P/Q",
+      "key_derivation": "Frase inicial mnemotécnica BIP39 de 24 palabras + clave WIF (ambas compatibles para copia de seguridad/recuperación)",
+      "rpc_port": "38300",
+      "p2p_port": "38291",
+      "bootstrap": "Sin DNS (lista de semillas firmada + pares integrados en blockchain)",
+      "auxpow": "Activando en el bloque 26,347"
+    },
+    "links": {
+      "github": "GitHub",
+      "website": "Sitio web",
+      "whitepaper": "Libro blanco",
+      "mining_guide": "Guía de minería"
+    },
+    "about_app": {
+      "intro": "Irium Core es una billetera de escritorio con GUI de nodo completo para la cadena de bloques Irium. Ejecuta un nodo iriumd completo localmente, lo que le brinda total soberanía sobre sus fondos y acuerdos de liquidación. Sin servidores de terceros. Sin custodios. Tus llaves, tu cadena."
+    },
+    "node_info_labels": {
+      "iriumd_version": "versión iriumd",
+      "data_directory": "Directorio de datos",
+      "rpc_endpoint": "punto final RPC",
+      "block_height": "Altura del bloque",
+      "sync_status": "Estado de sincronización",
+      "connected_peers": "Compañeros conectados",
+      "fully_synced": "Totalmente sincronizado",
+      "syncing": "Sincronizando…",
+      "offline": "Desconectado"
+    },
+    "privacy": {
+      "title": "Sus datos permanecen en su máquina",
+      "intro": "Irium Core es una billetera de escritorio de nodo completo que se ejecuta completamente en su computadora. No se recopilan, transmiten ni almacenan datos en ningún servidor externo.",
+      "bullet_1": "Sin análisis ni telemetría: la aplicación no llama a casa",
+      "bullet_2": "No es necesario registrar una cuenta: no hay cuentas de usuario",
+      "bullet_3": "Las claves de billetera y las frases iniciales se almacenan localmente en su directorio ~/.irium/ únicamente",
+      "bullet_4": "El historial de transacciones se lee directamente desde su copia local de blockchain",
+      "bullet_5": "Las conexiones entre pares utilizan comunicación directa de IP a IP sin servidores intermediarios",
+      "bullet_6": "Sin búsquedas de DNS: el descubrimiento entre pares está completamente libre de DNS mediante listas de semillas firmadas y direcciones integradas en blockchain."
+    },
+    "report_issue": {
+      "body": "¿Encontró un error o necesita ayuda? Abra una incidencia en el repositorio de Irium Core GitHub. Incluya la versión de su aplicación, el sistema operativo y una descripción del problema.",
+      "open_issue": "Problema abierto en GitHub",
+      "view_existing": "Ver problemas existentes"
+    },
+    "licenses": {
+      "title": "Licencias",
+      "body": "Irium Core es un software de código abierto publicado bajo la licencia MIT.",
+      "view": "Ver licencia"
+    },
+    "faqs": {
+      "q1": "¿Irium Core recopila algún dato?",
+      "a1": "No. Irium Core se ejecuta completamente en su computadora. Sin análisis, sin telemetría, sin seguimiento de uso. La aplicación nunca contacta con ningún servidor externo excepto la red Irium P2P para la sincronización de blockchain. Las claves de su billetera, el historial de transacciones y todas las configuraciones permanecen en su máquina local. No hay cuentas de usuario ni registro.",
+      "q2": "¿Dónde se almacenan los archivos de mi billetera?",
+      "a2": "Todos los datos de la billetera se almacenan en su directorio local ~/.irium/ (en Windows: C:\\Users\\YourName\\.irium\\). Esto incluye su archivo wallet.json, datos de blockchain, caché de pares y configuración. No se almacena nada en la nube. Si desinstalas la aplicación, los archivos de tu billetera permanecen en el disco; puedes volver a instalarla y continuar donde la dejaste. Siempre haga una copia de seguridad de su frase de recuperación y de sus claves WIF por separado en caso de falla del hardware.",
+      "q3": "Mi nodo no se conecta con sus pares",
+      "a3": "Irium utiliza un sistema de arranque sin DNS con nodos semilla firmados. Si está detrás de un firewall estricto, asegúrese de que el puerto TCP saliente 38291 esté permitido. También puede agregar un par manualmente desde la pantalla Network Sync o en Configuración usando la opción Agregar semilla.",
+      "q4": "¿Cómo empiezo a minar?",
+      "a4": "Vaya a la página de Minería, ingrese su dirección IRM en el campo de configuración, establezca la cantidad de subprocesos y haga clic en Iniciar minería. Su dirección debe comenzar con P o Q. El tiempo promedio de bloqueo varía según la tasa de hash de la red (actualmente alrededor de 13 minutos); el Panel muestra el valor en vivo.",
+      "q5": "¿Qué es un acuerdo de conciliación?",
+      "a5": "Un acuerdo de conciliación bloquea a IRM en custodia entre un comprador y un vendedor. Los fondos solo se liberan cuando se cumplen los requisitos de prueba o expira el tiempo de espera. Vaya a la página de Liquidación para crear o administrar acuerdos.",
+      "q6": "Mi billetera muestra 0 IRM pero recibí fondos",
+      "a6": "Haga clic en Actualizar en la página Monedero o espere el siguiente ciclo de sondeo (15 segundos). Si el saldo aún muestra 0, asegúrese de que su nodo esté completamente sincronizado; verifique que la altura del bloque coincida con la red en la página Explorador de bloques.",
+      "q7": "¿Cómo hago una copia de seguridad de mi billetera?",
+      "a7": "Las billeteras Irium usan BIP39 con una frase de recuperación de 24 palabras. Para hacer una copia de seguridad de su billetera, vaya a Cartera → Seguridad → Mostrar frase de recuperación para ver su mnemotécnico de 24 palabras, o Exportar clave WIF para una copia de seguridad de una sola dirección. Guarde la frase de recuperación o la clave WIF sin conexión en un lugar seguro: la frase de recuperación restaura toda su billetera, mientras que una clave WIF solo restaura una dirección.",
+      "q8": "¿Cuál es la diferencia entre las direcciones P y Q?",
+      "a8": "Tanto la dirección P como la Q son direcciones Irium válidas. Se derivan de diferentes partes del árbol de claves de su billetera HD. Todas las direcciones en su billetera le pertenecen y pueden recibir IRM.",
+      "q9": "¿Cómo me conecto al pool de minería?",
+      "a9": "Vaya a la página Minería y seleccione la pestaña Grupo de estratos. Ingrese la URL del grupo stratum+tcp://pool.iriumlabs.org:3333 para mineros ASIC/modernos o stratum+tcp://pool.iriumlabs.org:3335 para mineros de CPU/GPU. Su nombre de usuario debe ser su dirección IRM seguida de un nombre de trabajador, por ejemplo PwjVf7nY19UWW2i9HCEPyZt81975M6iKdW.worker1.",
+      "q10": "macOS dice que Irium Core está dañado o en cuarentena. ¿Cómo lo soluciono?",
+      "a10": "macOS pone en cuarentena las aplicaciones descargadas fuera de la App Store. Para solucionar este problema: (1) abra la Terminal; (2) ejecute: xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app: esto elimina el indicador de cuarentena de todo el paquete de aplicaciones. Si aún ve \"dañado\", ejecute: codesign --force --deep --sign - /Applications/Irium\\ Core.app y luego reinicie. El primer lanzamiento puede tardar entre 10 y 20 segundos mientras Gatekeeper vuelve a verificar la firma. Si el propio iriumd fue puesto en cuarentena (ve \"iriumd está dañado\" en los registros), ejecute: xattr -d com.apple.quarantine ~/.irium/binaries/iriumd para sacar de la cuarentena solo el nodo binario.",
+      "q11": "Mi nodo tiene bloques en cuarentena. ¿Cómo me recupero?",
+      "a11": "iriumd pone en cuarentena archivos de bloques que no puede validar (generalmente después de una falla en mitad de la escritura o una reorganización corrupta). Los bloques en cuarentena viven en ~/.irium/blocks/orphaned_<timestamp>/. Puede borrarlos desde la sección Recuperación de bloques en cuarentena anterior (primero detenga el nodo). El nodo recuperará automáticamente los bloques faltantes de sus pares en el próximo inicio. Si la resincronización se atasca a la misma altura, use Configuración → Borrar estado de la cadena para una resincronización limpia desde génesis (su billetera y sus acuerdos se conservan)."
+    },
+    "quarantine": {
+      "section_title": "Recuperación de bloques en cuarentena",
+      "description": "iriumd pone en cuarentena los archivos que no puede validar. Viven en carpetas orphaned_<timestamp> dentro de su directorio de bloques. Eliminarlos es seguro: el nodo recupera las alturas afectadas de sus pares.",
+      "status_none": "No se encontraron bloques en cuarentena.",
+      "status_count_one": "Se encontró {{files}} archivo de bloque en cuarentena en la carpeta {{dirs}}.",
+      "status_count_other": "Se encontraron {{files}} archivos de bloque en cuarentena en las carpetas {{dirs}}.",
+      "scan_button": "Refrescar",
+      "scanning": "Exploración…",
+      "clear_button": "Borrar bloques en cuarentena",
+      "clearing": "Claro…",
+      "confirm_title": "¿Eliminar bloques en cuarentena?",
+      "confirm_body": "Esto elimina permanentemente {{files}} archivos en {{dirs}} carpetas. El nodo debe detenerse antes de borrarse. ¿Continuar?",
+      "confirm_yes": "Borrar",
+      "confirm_no": "Cancelar",
+      "node_running_warning": "Detenga el nodo desde el Panel antes de borrar los bloques en cuarentena.",
+      "toast_cleared": "Se borraron {{files}} archivos de bloque en cuarentena",
+      "toast_clear_failed": "No se pudieron borrar los bloques en cuarentena: {{reason}}",
+      "toast_scan_failed": "No se pudieron escanear los bloques en cuarentena: {{reason}}"
+    },
+    "common_mistake": "Error común:",
+    "settlement_help": {
+      "what_title": "¿Qué es la liquidación?",
+      "what_body": "El acuerdo permite a dos partes bloquear fondos en un depósito en garantía en cadena demostrablemente justo. El dinero solo se libera cuando el destinatario envía una prueba criptográfica, o se devuelve al remitente si pasa la fecha límite. Sin intermediarios, sin disputas con una autoridad central.",
+      "templates_title": "Plantillas",
+      "templates_intro": "Elija la plantilla que coincida con su caso de uso:",
+      "template_otc": "Comercio OTC",
+      "template_otc_desc": "Intercambio directo de activos entre dos partes.",
+      "template_freelance": "Independiente",
+      "template_freelance_desc": "depósito en garantía de trabajo de pago único con descripción de alcance opcional.",
+      "template_milestones": "Hitos",
+      "template_milestones_desc": "dividir el pago entre 2 y 20 hitos iguales, cada uno de los cuales requiere una prueba.",
+      "template_timelock": "Depósito con bloqueo de tiempo",
+      "template_timelock_desc": "fondos retenidos hasta una fecha límite y luego liberados o reembolsados.",
+      "template_merchant": "Comerciante retrasado",
+      "template_merchant_desc": "el comprador paga, el comerciante reclama después de un período de tiempo que le da al comprador tiempo para disputar.",
+      "template_contractor": "Hitos del contratista",
+      "template_contractor_desc": "depósito en garantía de hitos enmarcado en roles de cliente/contratista con alcance opcional.",
+      "creating_title": "Crear un acuerdo (flujo de vendedor)",
+      "creating_step_1": "Abra el Acuerdo → haga clic en \"Estoy vendiendo\".",
+      "creating_step_2": "Complete la dirección del comprador, el monto, la fecha límite y cualquier campo específico de la plantilla.",
+      "creating_step_3": "Revise el resumen: verifique las direcciones y los montos antes de confirmar.",
+      "creating_step_4": "Comparta el ID del acuerdo con el comprador para que pueda financiarlo.",
+      "creating_step_5": "Envíe un comprobante de entrega una vez que haya cumplido con la obligación.",
+      "creating_step_6": "Reclame sus fondos después de que se acepte la prueba.",
+      "funding_title": "Financiación como comprador",
+      "funding_step_1": "Abra la Liquidación → haga clic en \"Estoy comprando\".",
+      "funding_step_2": "Pegue el ID del acuerdo que compartió el vendedor.",
+      "funding_step_3": "Confirme que la cantidad coincida con lo que acordó fuera de la cadena.",
+      "funding_step_4": "Haga clic en Fondo: esto bloquea sus monedas en depósito de garantía.",
+      "funding_step_5": "Una vez que el vendedor presente una prueba, verifíquela y libere el pago.",
+      "proofs_title": "Pruebas",
+      "proofs_body": "Una prueba es un mensaje firmado que acredita la entrega. El vendedor lo genera desde la página de Acuerdos luego de cumplir con la obligación. El comprador revisa la prueba y hace clic en Liberar para completar el pago. Si falta la prueba o es incorrecta, el comprador puede disputar antes de la fecha límite.",
+      "disputes_title": "Disputas",
+      "disputes_body": "Si algo sale mal, abra el acuerdo en Acuerdos y haga clic en Disputa antes de que expire el plazo. Una disputa congela el depósito en garantía. La resolución se maneja en cadena mediante el contrato de arbitraje de Irium: ambas partes deben presentar pruebas a través de la CLI de su billetera.",
+      "callout": "Fijar un plazo demasiado corto. Tómese siempre el tiempo suficiente para completar la entrega y para que el comprador revise la prueba. Merchant Delayed tiene dos ventanas separadas: la ventana de enfriamiento (período de disputa del comprador) y la ventana de depósito en garantía total."
+    },
+    "marketplace_help": {
+      "what_title": "¿Qué es el Mercado?",
+      "what_body": "Marketplace es un tablero de ofertas de igual a igual. Los vendedores publican ofertas que describen lo que venden, a qué precio y los términos de liquidación. Los compradores navegan y responden directamente: sin servidor central, los pedidos se propagan a través de la red de chismes Irium.",
+      "posting_title": "Publicar una oferta",
+      "posting_step_1": "Vaya a Marketplace → Mis ofertas → haga clic en Publicar oferta.",
+      "posting_step_2": "Establezca el activo, el precio (en IRM) y la plantilla de liquidación.",
+      "posting_step_3": "Agregue una descripción para que los compradores sepan lo que obtendrán.",
+      "posting_step_4": "Enviar: la oferta se transmite a los pares conectados.",
+      "responding_title": "Responder a una oferta (comprador)",
+      "responding_step_1": "Explorar ofertas: filtrar por activo o rango de precios.",
+      "responding_step_2": "Haga clic en una oferta para ver los términos.",
+      "responding_step_3": "Haga clic en Comprar: esto abre un nuevo acuerdo de liquidación precargado con los detalles de la oferta.",
+      "responding_step_4": "Financia el depósito en garantía y espera a que el vendedor entregue y presente pruebas.",
+      "feeds_title": "Registro de alimentación",
+      "feeds_body": "Los feeds son flujos de ofertas seleccionados publicados por vendedores confiables. Suscríbete a un feed para ver automáticamente nuevas ofertas de ese vendedor en tu vista de exploración. Darse de baja en cualquier momento.",
+      "callout_label": "Consejo:",
+      "callout": "Las ofertas se propagan a través de chismes: es posible que los pares que se desconectan no vean su oferta. Vuelva a publicar si no ha recibido respuesta después de unas horas."
+    },
+    "agreements_help": {
+      "what_title": "¿Qué es la página de Acuerdos?",
+      "what_body": "Acuerdos es su libro de contabilidad de todos los acuerdos de conciliación que ha creado o en los que ha participado. Puede realizar un seguimiento del estado, enviar pruebas, financiar, liberar o disputar desde aquí.",
+      "lifecycle_title": "Ciclo de vida del acuerdo",
+      "lifecycle_step_1": "Creado: el acuerdo existe en la cadena, esperando que el comprador financie.",
+      "lifecycle_step_2": "Financiado: el comprador ha bloqueado las monedas en depósito de garantía. El vendedor ahora puede cumplir y presentar pruebas.",
+      "lifecycle_step_3": "Prueba enviada: el vendedor ha proporcionado prueba de entrega. Reseñas de compradores.",
+      "lifecycle_step_4": "Publicado: prueba aprobada por el comprador, fondos enviados al vendedor. Hecho.",
+      "lifecycle_step_5": "Reembolsado: fecha límite vencida o disputa resuelta a favor del comprador. Fondos devueltos.",
+      "lifecycle_step_6": "En disputa: el comprador planteó una disputa. En espera de arbitraje en cadena.",
+      "submit_title": "Presentando una prueba",
+      "submit_step_1": "Abra el acuerdo de la lista.",
+      "submit_step_2": "Haga clic en Enviar prueba.",
+      "submit_step_3": "Pegue o cargue su archivo de prueba firmado.",
+      "submit_step_4": "Confirmar: la prueba se transmite en cadena.",
+      "importing_title": "Acuerdos de importación",
+      "importing_body": "Utilice Import Pack para restaurar un lote de acuerdos a partir de una exportación JSON. Utilice Importar factura para crear un nuevo acuerdo directamente desde una factura de pago JSON generada por otra billetera Irium.",
+      "callout_label": "Nota:",
+      "callout": "Solo puede enviar una prueba o liberación/reembolso si es parte del acuerdo y su billetera está desbloqueada. Asegúrese de seleccionar la dirección correcta."
+    },
+    "reputation_help": {
+      "what_title": "¿Qué es la reputación?",
+      "what_body": "El sistema de reputación en cadena de Irium califica las direcciones según su historial de liquidaciones: finalizaciones exitosas, disputas planteadas, reembolsos recibidos y cuánto tiempo han estado activas. Las puntuaciones son deterministas y verificables por cualquier nodo.",
+      "query_title": "Consultar una puntuación",
+      "query_step_1": "Ingrese una dirección con prefijo Q o una clave pública de 64 hexadecimales en la barra de búsqueda.",
+      "query_step_2": "Presione Entrar o haga clic en Buscar.",
+      "query_step_3": "Revise el desglose de la puntuación: puntuación general, acuerdos completados, disputas, volumen.",
+      "understanding_title": "Entendiendo la puntuación",
+      "tier_high": "Puntuación 80-100",
+      "tier_high_desc": "Excelente historial, disputas mínimas.",
+      "tier_mid": "Puntuación 50–79",
+      "tier_mid_desc": "historial moderado, verificar antes de grandes operaciones.",
+      "tier_low": "Puntuación inferior a 50",
+      "tier_low_desc": "tenga cuidado. Múltiples disputas o reembolsos registrados.",
+      "building_title": "Construyendo tu reputación",
+      "building_body": "Complete los acuerdos a tiempo, presente pruebas con prontitud y evite generar disputas frívolas. Cada acuerdo lanzado con éxito aumenta su puntuación. Las disputas lo reducen, incluso si se resuelven a tu favor.",
+      "callout_label": "Consejo:",
+      "callout": "Verifique la reputación de una contraparte antes de financiar un depósito en garantía grande. Una puntuación inferior a 60 es una señal de alerta para las operaciones por primera vez."
+    }
   },
   "wizards": {
+    "templates": {
+      "otc_name": "Comercio OTC",
+      "otc_desc": "Comercio entre pares con depósito en garantía",
+      "freelance_name": "Independiente",
+      "freelance_desc": "Pago por hito del contratista",
+      "milestone_name": "Hito",
+      "milestone_desc": "Pago del proyecto en varias etapas",
+      "deposit_name": "Depósito",
+      "deposit_desc": "Custodia de depósito de garantía"
+    },
+    "common": {
+      "back": "Atrás",
+      "next": "Próximo",
+      "loading": "Cargando…",
+      "continue_with": "Continuar con {{name}} →",
+      "select_template_continue": "Seleccione una plantilla para continuar"
+    },
     "buyer": {
       "page_title": "Tomar una oferta",
       "step_choose": "Elija el tipo de liquidación",
+      "step_choose_subtitle": "Elija el tipo de comercio que está buscando. En el siguiente paso mostraremos ofertas coincidentes.",
       "step_find": "Buscar oferta",
       "step_review": "Revisar oferta",
       "step_fund": "depósito de fondos",
@@ -1135,32 +1473,98 @@
       "settlement_hub": "Centro de asentamiento",
       "review_offer_title": "Revisar oferta",
       "fund_title": "depósito de fondos",
-      "monitor_title": "Acuerdo de seguimiento"
+      "monitor_title": "Acuerdo de seguimiento",
+      "sync_marketplace": "Mercado de sincronización",
+      "syncing": "Sincronizando…",
+      "no_offers_found": "No se encontraron ofertas. Intente sincronizar el mercado.",
+      "sync_to_browse": "Sincroniza el mercado para explorar las ofertas disponibles",
+      "fetching_offers": "Obteniendo ofertas de feeds...",
+      "import_offer_file": "Importar archivo de oferta",
+      "selected_offer": "Seleccionado: {{id}} · {{amount}} IRM",
+      "unknown_seller": "Vendedor desconocido",
+      "select_or_enter_id": "Seleccione una oferta del mercado, ingrese un ID de oferta o importe un archivo de oferta",
+      "offer_not_found": "Oferta no encontrada",
+      "take_offer_failed": "No se pudo aceptar la oferta",
+      "funding_failed": "Financiamiento fallido",
+      "release_failed": "Liberación fallida",
+      "refund_failed": "Reembolso fallido",
+      "review_rows": {
+        "offer_id": "ID de oferta",
+        "amount": "Cantidad",
+        "seller": "Vendedor",
+        "payment_method": "Método de pago",
+        "description": "Descripción"
+      },
+      "take_this_offer": "Toma esta oferta",
+      "fund_escrow": "depósito de fondos",
+      "funds_locked_note": "Los fondos quedarán bloqueados en un depósito de garantía inteligente. El vendedor recibe el pago sólo después de presentar el comprobante de entrega.",
+      "waiting_for_seller": "Esperando a que el vendedor entregue y presente pruebas",
+      "status_rows": {
+        "status": "Estado",
+        "funded": "Fundado",
+        "release_eligible": "Lanzamiento elegible",
+        "refund_eligible": "Reembolso elegible"
+      },
+      "refund": "Reembolso",
+      "release_payment": "Liberar pago",
+      "polling_indicator": "Sondeo cada 5s · {{state}}",
+      "polling_updated": "Última actualización hace un momento",
+      "polling_waiting": "esperando…",
+      "payment_released_heading": "Pago liberado",
+      "refunded_heading": "Reintegrado",
+      "view_agreements": "Ver acuerdos",
+      "done": "Hecho"
     },
     "seller": {
       "page_title": "Crear una oferta",
       "step_choose": "Elija el tipo de liquidación",
+      "step_choose_subtitle": "Elija la plantilla que mejor describa lo que vende. Esto se convierte en parte de la oferta que ve su comprador.",
       "step_create": "Crea tu oferta",
       "step_agreements": "Acuerdos",
       "intro": "Define lo que vendes y el precio.",
       "fields": {
         "amount_label": "Importe (IRM)",
+        "amount_placeholder": "0.0000",
+        "sats_preview": "{{sats}} se sienta",
         "offer_id_label": "ID de oferta",
         "seller_address_label": "Dirección del vendedor",
         "seller_address_hint": "Detectado automáticamente desde su billetera. Los compradores enviarán el pago aquí.",
+        "no_wallet_addresses": "No se encontraron direcciones de billetera",
         "expires_label": "Caducidad (bloques)",
         "expires_hint": "La oferta vence a esta cantidad de bloques a partir de ahora (~10 min/bloque)",
         "payment_method_label": "Método de pago",
         "payment_method_placeholder": "transferencia bancaria, efectivo, cripto…",
+        "timeout_label": "Se acabó el tiempo",
+        "timeout_unit": "(bloques)",
+        "timeout_placeholder": "1000",
         "price_note_label": "Nota de precio",
+        "price_note_optional": "(opcional)",
         "price_note_placeholder": "p.ej. 'Solo BTC, liquidación instantánea'",
         "payment_instructions_label": "Instrucciones de pago",
+        "payment_instructions_optional": "(opcional)",
         "payment_instructions_placeholder": "Datos bancarios, dirección criptográfica u otras instrucciones para el comprador..."
       },
+      "errors": {
+        "valid_amount": "Introduce un importe válido",
+        "payment_required": "Se requiere método de pago",
+        "no_response": "No hay respuesta del nodo"
+      },
+      "est_time_min": "~{{minutes}} min",
+      "est_time_hr": "~{{hours}} h",
       "offer_exported": "Oferta exportada",
       "offer_id_copied": "ID de oferta copiado",
       "create_your_offer": "Crea tu oferta",
-      "share_your_offer": "Comparte tu oferta"
+      "create_offer_button": "Crear oferta",
+      "share_your_offer": "Comparte tu oferta",
+      "share_intro": "Envíe el ID de la oferta o el archivo a su comprador",
+      "offer_id_heading": "ID de oferta",
+      "copy_id": "Copiar identificación",
+      "export_file": "Exportar archivo",
+      "share_buyer_note_before": "Comparta el ID de la oferta con su comprador. Cuando aceptan la oferta, se crea un acuerdo automáticamente. revisa tu",
+      "share_buyer_note_emphasis": "Acuerdos",
+      "share_buyer_note_after": "página para el nuevo acuerdo: el envío de pruebas y la publicación se realizan allí.",
+      "done": "Hecho",
+      "view_my_agreements": "Ver mis acuerdos →"
     }
   },
   "logs": {
