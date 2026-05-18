@@ -483,6 +483,11 @@ function CreateOfferModal({
           exit={{ opacity: 0, scale: 0.95, y: 8 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
           className="card w-full max-w-lg p-6 rounded-2xl"
+          // M-23: the modal exceeds the viewport on smaller window sizes,
+          // hiding the Create Offer button. Make the whole modal scrollable
+          // within 85vh and pin the action row to the bottom (see the
+          // sticky-positioned div below).
+          style={{ overflowY: 'auto', maxHeight: '85vh' }}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between mb-2">
@@ -629,7 +634,28 @@ function CreateOfferModal({
                 onChange={(e) => setForm((f) => ({ ...f, id: e.target.value }))}
               />
             </div>
-            <div className="flex gap-3 pt-1">
+            {/* M-23: sticky action row — pulled past the modal's p-6 padding via
+                negative margins so it spans the full width, and overlaps the
+                bottom padding via bottom:-24 so it sits flush with the modal's
+                bottom edge when the user scrolls. Matches the modal background
+                (var(--bg-elev-1)) and adds a hairline divider above. */}
+            <div
+              className="flex gap-3"
+              style={{
+                position: 'sticky',
+                bottom: -24,
+                marginLeft: -24,
+                marginRight: -24,
+                marginBottom: -24,
+                marginTop: 16,
+                padding: 16,
+                background: 'var(--bg-elev-1)',
+                borderTop: '1px solid var(--brand-line)',
+                borderBottomLeftRadius: 16,
+                borderBottomRightRadius: 16,
+                zIndex: 1,
+              }}
+            >
               <button onClick={onClose} className="btn-secondary flex-1 justify-center">
                 Cancel
               </button>

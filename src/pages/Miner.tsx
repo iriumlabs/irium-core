@@ -101,14 +101,20 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
 // ── Found Blocks list (Bug 1) ─────────────────────────────────
 // Polls the Rust shell every 10s for the list of blocks this app
 // session's CPU/GPU miner has had accepted. Newest first. Empty until
-// the parser in main.rs records a [✅] Block accepted... line.
+// the parser in main.rs records a confirmed `Block accepted...` line.
 // Rows are clickable: a row click navigates to /explorer with
 // location.state.openBlockHeight, which opens BlockDetailModal on the
 // Explorer page (see Explorer.tsx Option C deep-link useEffect).
+//
+// Mac orphan fix: the Rust shell now flags entries `orphaned: true` when
+// the canonical block at that height was mined by a different address.
+// Orphaned rows are hidden by default; a toggle exposes them with a
+// greyed-out style so power users can audit their orphan rate.
 function FoundBlocksList() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [blocks, setBlocks] = useState<FoundBlock[]>([]);
+  const [showOrphaned, setShowOrphaned] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -123,20 +129,46 @@ function FoundBlocksList() {
     return () => { mounted = false; clearInterval(id); };
   }, []);
 
+  const orphanCount = blocks.filter((b) => b.orphaned).length;
+  const visible = showOrphaned ? blocks : blocks.filter((b) => !b.orphaned);
+
   return (
     <div className="card p-5">
-      <h3 className="font-display font-semibold text-sm mb-3" style={{ color: 'var(--t1)' }}>
-        Found Blocks
-      </h3>
-      {blocks.length === 0 ? (
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>
+          Found Blocks
+        </h3>
+        {orphanCount > 0 && (
+          <button
+            onClick={() => setShowOrphaned((v) => !v)}
+            className="text-[11px] px-2 py-0.5 rounded-md transition-colors"
+            style={{
+              color: showOrphaned ? 'rgba(238,240,255,0.85)' : 'rgba(238,240,255,0.45)',
+              background: showOrphaned ? 'rgba(110,198,255,0.10)' : 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(110,198,255,0.18)',
+            }}
+            title={
+              showOrphaned
+                ? 'Hide blocks won by another miner'
+                : `Reveal ${orphanCount} orphaned candidate${orphanCount === 1 ? '' : 's'}`
+            }
+          >
+            {showOrphaned ? `Hide orphans (${orphanCount})` : `Show orphans (${orphanCount})`}
+          </button>
+        )}
+      </div>
+      {visible.length === 0 ? (
         <p className="text-xs py-2" style={{ color: 'rgba(238,240,255,0.40)' }}>
-          No blocks found yet in this session.
+          {blocks.length === 0
+            ? 'No blocks found yet in this session.'
+            : 'No confirmed blocks yet — all candidates so far were orphaned.'}
         </p>
       ) : (
         <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
-          {blocks.map((b, i) => {
+          {visible.map((b, i) => {
             const ageSecs = Math.max(0, Math.floor(Date.now() / 1000) - b.timestamp);
             const reward = b.reward_sats > 0 ? `${(b.reward_sats / 100_000_000).toFixed(4)} IRM` : '—';
+            const isOrphan = b.orphaned === true;
             return (
               <div
                 key={`${b.height}-${i}`}
@@ -158,22 +190,46 @@ function FoundBlocksList() {
                   },
                 })}
                 className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs cursor-pointer hover:bg-white/5 transition-colors"
-                style={{ background: 'rgba(110,198,255,0.04)', border: '1px solid rgba(110,198,255,0.10)' }}
-                title={t('miner.found_blocks.open_in_explorer_tooltip')}
+                style={
+                  isOrphan
+                    ? { background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', opacity: 0.55 }
+                    : { background: 'rgba(110,198,255,0.04)', border: '1px solid rgba(110,198,255,0.10)' }
+                }
+                title={
+                  isOrphan
+                    ? 'Orphaned — won by another miner'
+                    : t('miner.found_blocks.open_in_explorer_tooltip')
+                }
               >
                 <span
                   className="font-mono font-semibold flex-shrink-0"
-                  style={{ color: '#34d399', fontFamily: '"JetBrains Mono", monospace' }}
+                  style={{
+                    color: isOrphan ? 'rgba(238,240,255,0.45)' : '#34d399',
+                    fontFamily: '"JetBrains Mono", monospace',
+                  }}
                   title={`Block height ${b.height}`}
                 >
                   #{b.height.toLocaleString('en-US')}
                 </span>
+                {isOrphan && (
+                  <span
+                    className="text-[10px] uppercase tracking-wider flex-shrink-0"
+                    style={{ color: 'rgba(245,158,11,0.85)' }}
+                    title="The canonical block at this height was mined by another address — we recorded our candidate but lost the race."
+                  >
+                    orphaned
+                  </span>
+                )}
                 <span
                   className="font-mono truncate flex-1"
                   style={{ color: 'rgba(238,240,255,0.55)', fontFamily: '"JetBrains Mono", monospace' }}
-                  title={b.hash || 'hash unavailable from this miner build'}
+                  title={
+                    isOrphan
+                      ? 'Won by another miner'
+                      : (b.hash || 'hash unavailable from this miner build')
+                  }
                 >
-                  {b.hash ? truncateHash(b.hash) : '—'}
+                  {isOrphan ? 'Won by another miner' : (b.hash ? truncateHash(b.hash) : '—')}
                 </span>
                 <span
                   className="font-mono flex-shrink-0"
@@ -186,7 +242,7 @@ function FoundBlocksList() {
                   style={{ color: 'rgba(238,240,255,0.55)', fontFamily: '"JetBrains Mono", monospace' }}
                   title={b.reward_sats > 0 ? undefined : 'Reward unknown — miner stdout does not report it'}
                 >
-                  {reward}
+                  {isOrphan ? '—' : reward}
                 </span>
                 <ExternalLink
                   size={11}
