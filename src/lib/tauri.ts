@@ -50,6 +50,19 @@ export const node = {
   clearState: () =>
     safeInvoke<boolean>('clear_node_state'),
 
+  // Walks <data_dir>/blocks/ for orphaned_<ts>/ subdirs (created by iriumd
+  // when a block fails validation) and counts the files inside. Returns
+  // zero counts when the blocks dir doesn't exist — never errors on that.
+  scanQuarantinedBlocks: () =>
+    safeInvoke<{ files: number; dirs: number }>('scan_quarantined_blocks'),
+
+  // Deletes every orphaned_* dir under <data_dir>/blocks/. Backend refuses
+  // to run while the node process is alive — node must be stopped first.
+  clearQuarantinedBlocks: () =>
+    safeInvoke<{ deleted_files: number; deleted_dirs: number; errors: string[] }>(
+      'clear_quarantined_blocks',
+    ),
+
   detectPublicIp: (serviceUrl: string) =>
     safeInvoke<string>('detect_public_ip', { serviceUrl }),
 
@@ -83,8 +96,12 @@ export const wallet = {
   listAddresses: () =>
     safeInvoke<AddressInfo[]>('wallet_list_addresses'),
 
-  send: (from: string, to: string, amountSats: number, feeSats?: number) =>
-    safeInvoke<SendResult>('wallet_send', { fromAddress: from, to, amountSats, feeSats }),
+  // coinSelect: 'smallest' (default in irium-wallet) drains dust first;
+  // 'largest' picks bigger inputs first which reduces input count and fees
+  // when the user has many small UTXOs. Omitted entirely if undefined so the
+  // wallet binary uses its own default.
+  send: (from: string, to: string, amountSats: number, feeSats?: number, coinSelect?: 'smallest' | 'largest') =>
+    safeInvoke<SendResult>('wallet_send', { fromAddress: from, to, amountSats, feeSats, coinSelect }),
 
   transactions: (limit?: number, address?: string) =>
     safeInvoke<Transaction[]>('wallet_transactions', { limit, address }),

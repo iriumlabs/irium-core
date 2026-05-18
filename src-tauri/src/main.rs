@@ -1318,6 +1318,138 @@ async fn clear_node_state(state: State<'_, AppState>) -> Result<bool, String> {
     Ok(true)
 }
 
+// ─── Quarantined-blocks recovery ──────────────────────────────────────────────
+// iriumd quarantines block files it cannot validate by renaming them into
+// `<blocks>/orphaned_<unix_ts>/` (see iriumd::quarantine_single_block_file at
+// src/bin/iriumd.rs:2033). Over time those directories accumulate; the node
+// will re-fetch the affected heights from peers if they are simply deleted.
+// These two commands let the Help page surface a "scan + clear" UX without
+// asking the user to drop to a terminal.
+
+#[derive(serde::Serialize)]
+struct QuarantineScan {
+    /// Total .json block files inside any orphaned_* subdir of the blocks dir.
+    files: u64,
+    /// Count of orphaned_* directories found.
+    dirs: u64,
+}
+
+#[derive(serde::Serialize)]
+struct QuarantineClearResult {
+    deleted_files: u64,
+    deleted_dirs: u64,
+    errors: Vec<String>,
+}
+
+// Resolve the canonical blocks/ directory. Honors the app's configured
+// data_dir override (Settings → Data directory) and falls back to ~/.irium/
+// when no override is set.
+fn blocks_dir(state: &State<'_, AppState>) -> Result<PathBuf, String> {
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let base = match data_dir {
+        Some(d) if !d.trim().is_empty() => PathBuf::from(d),
+        _ => dirs::home_dir()
+            .ok_or_else(|| "Cannot determine home directory".to_string())?
+            .join(".irium"),
+    };
+    Ok(base.join("blocks"))
+}
+
+// scan_quarantined_blocks: walks <blocks>/ for entries named `orphaned_*`
+// and counts the regular files inside each. Returns zero counts (not an
+// error) when the blocks directory does not exist — that just means the
+// node has never written blocks here.
+#[tauri::command]
+async fn scan_quarantined_blocks(state: State<'_, AppState>) -> Result<QuarantineScan, String> {
+    let dir = blocks_dir(&state)?;
+    if !dir.exists() {
+        return Ok(QuarantineScan { files: 0, dirs: 0 });
+    }
+    let mut files = 0u64;
+    let mut dirs = 0u64;
+    let entries = std::fs::read_dir(&dir)
+        .map_err(|e| format!("read {}: {}", dir.display(), e))?;
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let Some(name_str) = name.to_str() else { continue };
+        if !name_str.starts_with("orphaned_") {
+            continue;
+        }
+        let p = entry.path();
+        if !p.is_dir() {
+            continue;
+        }
+        dirs = dirs.saturating_add(1);
+        if let Ok(inner) = std::fs::read_dir(&p) {
+            for f in inner.flatten() {
+                if f.path().is_file() {
+                    files = files.saturating_add(1);
+                }
+            }
+        }
+    }
+    Ok(QuarantineScan { files, dirs })
+}
+
+// clear_quarantined_blocks: deletes every orphaned_* directory under the
+// blocks dir. Refuses to run while the node is alive — the node may still
+// be writing to those paths during a reorg.
+//
+// Safety: only touches paths that (a) live directly under the canonical
+// blocks dir and (b) have a file name starting with "orphaned_". Symlinks
+// are not followed (remove_dir_all on a symlink fails on most platforms).
+#[tauri::command]
+async fn clear_quarantined_blocks(state: State<'_, AppState>) -> Result<QuarantineClearResult, String> {
+    {
+        let proc_lock = state.node_process.lock().map_err(lock_err)?;
+        if proc_lock.is_some() {
+            return Err("Stop the node from the Dashboard before clearing quarantined blocks.".to_string());
+        }
+    }
+    let dir = blocks_dir(&state)?;
+    if !dir.exists() {
+        return Ok(QuarantineClearResult { deleted_files: 0, deleted_dirs: 0, errors: vec![] });
+    }
+    let mut deleted_files = 0u64;
+    let mut deleted_dirs = 0u64;
+    let mut errors: Vec<String> = Vec::new();
+    let entries = std::fs::read_dir(&dir)
+        .map_err(|e| format!("read {}: {}", dir.display(), e))?;
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let Some(name_str) = name.to_str() else { continue };
+        if !name_str.starts_with("orphaned_") {
+            continue;
+        }
+        let p = entry.path();
+        if !p.is_dir() {
+            continue;
+        }
+        // Belt-and-braces: ensure the resolved path is still inside the
+        // blocks dir before we remove_dir_all on it. read_dir entries are
+        // already relative to the blocks dir, but symlinks could escape.
+        if !p.starts_with(&dir) {
+            errors.push(format!("skipped (outside blocks dir): {}", p.display()));
+            continue;
+        }
+        // Count files we are about to delete (best-effort — failures here
+        // just leave deleted_files lower than the actual count).
+        let file_count = std::fs::read_dir(&p)
+            .map(|it| it.flatten().filter(|f| f.path().is_file()).count() as u64)
+            .unwrap_or(0);
+        match std::fs::remove_dir_all(&p) {
+            Ok(()) => {
+                deleted_dirs = deleted_dirs.saturating_add(1);
+                deleted_files = deleted_files.saturating_add(file_count);
+            }
+            Err(e) => {
+                errors.push(format!("{}: {}", p.display(), e));
+            }
+        }
+    }
+    Ok(QuarantineClearResult { deleted_files, deleted_dirs, errors })
+}
+
 // setup_data_dir: creates ~/.irium/bootstrap/ and writes all seed/anchor files.
 #[tauri::command]
 async fn setup_data_dir() -> Result<bool, String> {
@@ -1792,7 +1924,13 @@ async fn wallet_list_addresses(state: State<'_, AppState>) -> Result<Vec<Address
     Ok(results)
 }
 
-// wallet_send: send <from_addr> <to_addr> <amount_irm> [--fee <irm>] --rpc <url>
+// wallet_send: send <from_addr> <to_addr> <amount_irm> [--fee <irm>] [--coin-select <mode>] --rpc <url>
+//
+// coin_select: forwarded as --coin-select to the wallet binary. Accepts
+//   "smallest" (default in irium-wallet — drains dust first, larger tx, more
+//   fee) or "largest" (picks bigger UTXOs first — fewer inputs, smaller tx,
+//   lower fee, but leaves small UTXOs unconsolidated). Any other value is
+//   rejected here so we don't propagate garbage to the binary.
 #[tauri::command]
 async fn wallet_send(
     state: State<'_, AppState>,
@@ -1800,6 +1938,7 @@ async fn wallet_send(
     to: String,
     amount_sats: u64,
     fee_sats: Option<u64>,
+    coin_select: Option<String>,
 ) -> Result<SendResult, String> {
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
@@ -1814,6 +1953,13 @@ async fn wallet_send(
     ];
     if let Some(fee) = fee_sats {
         args.push(format!("--fee={:.8}", sats_to_irm(fee)));
+    }
+    if let Some(mode) = coin_select.as_deref() {
+        if mode != "smallest" && mode != "largest" {
+            return Err(format!("invalid coin_select value: {} (expected 'smallest' or 'largest')", mode));
+        }
+        args.push("--coin-select".to_string());
+        args.push(mode.to_string());
     }
 
     let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await?;
@@ -6367,6 +6513,8 @@ fn main() {
             get_node_metrics,
             setup_data_dir,
             clear_node_state,
+            scan_quarantined_blocks,
+            clear_quarantined_blocks,
             save_discovered_peers,
             check_binaries,
             try_upnp_port_map,

@@ -1899,6 +1899,13 @@ function SendModal({
   const [addrError, setAddrError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sentTxid, setSentTxid] = useState<string | null>(null);
+  // Advanced: UTXO coin-selection mode. 'smallest' is the irium-wallet default
+  // and drains dust first (larger tx, more fee); 'largest' picks bigger inputs
+  // first which produces a smaller tx and a lower fee but leaves the small
+  // UTXOs untouched. Surfaced behind a collapsible "Advanced" toggle so it
+  // doesn't clutter the main send flow.
+  const [largestFirst, setLargestFirst] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const navigate = useNavigate();
 
   const parsedIrm = parseFloat(sendAmountIrm);
@@ -1928,7 +1935,7 @@ function SendModal({
     setSendLoading(true);
     setSendError(null);
     try {
-      const result: SendResult = await wallet.send(fromAddress, sendTo, amountSats);
+      const result: SendResult = await wallet.send(fromAddress, sendTo, amountSats, undefined, largestFirst ? 'largest' : undefined);
       const rawTxid = result.txid ?? '';
       const cleanTxid = rawTxid.startsWith('txid ') ? rawTxid.slice(5) : rawTxid;
       setSentTxid(cleanTxid);
@@ -2017,6 +2024,42 @@ function SendModal({
                     Transactions are secured by your private key signature, not mining. No PoW required to send.
                   </p>
                 </div>
+
+                {/* Advanced — collapsible. Keeps the basic send flow clean
+                    while exposing the largest-first coin-select for users
+                    who have many small UTXOs and want a smaller fee. */}
+                <div className="border-t border-white/[0.05] pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setAdvancedOpen((v) => !v)}
+                    className="flex items-center gap-1.5 text-[11px] text-white/40 hover:text-white/70 transition-colors"
+                  >
+                    <ChevronDown
+                      size={12}
+                      style={{ transform: advancedOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}
+                    />
+                    {t('wallet.send.advanced_toggle')}
+                  </button>
+                  {advancedOpen && (
+                    <div className="mt-2 pl-4">
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={largestFirst}
+                          onChange={(e) => setLargestFirst(e.target.checked)}
+                          className="mt-0.5 flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs text-white/70">{t('wallet.send.largest_first_label')}</div>
+                          <div className="text-[10px] text-white/35 leading-snug mt-0.5">
+                            {t('wallet.send.largest_first_hint')}
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+                  )}
+                </div>
+
                 <div className="text-white/30 text-xs font-mono">Estimated fee: ~1,000 sats</div>
                 <div className="flex gap-3 pt-1">
                   <button onClick={onClose} className="btn-secondary flex-1 justify-center">Cancel</button>
