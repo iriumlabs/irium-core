@@ -349,7 +349,7 @@
       "start_to_sync": "Mulai node untuk melakukan sinkronisasi dengan jaringan Irium.",
       "start_node": "Mulai Node",
       "searching_for_peers": "Mencari rekan…",
-      "peer_search_subtitle": "Blokir #{{height}} · iriumd menemukan jaringan. If stuck, try Clear & Restart.",
+      "peer_search_subtitle": "Blokir #{{height}} · iriumd menemukan jaringan. Jika macet, coba Hapus & Mulai Ulang.",
       "clear_restart": "Hapus & Mulai Ulang",
       "sync_stalled": "Sinkronisasi terhenti — {{count}} blok tertinggal",
       "sync_stalled_subtitle": "Blokir #{{height}} / #{{tip}} · Status rantai mungkin rusak. Hapus & Mulai Ulang untuk menyinkronkan ulang dari awal.",
@@ -493,7 +493,7 @@
       "txid_copied": "ID Transaksi disalin",
       "address_added": "Alamat ditambahkan",
       "address_hidden": "Alamat disembunyikan",
-      "address_unhidden": "Alamat dipulihkan",
+      "address_unhidden": "Alamat tidak disembunyikan",
       "wallet_renamed": "Dompet diganti namanya",
       "rename_failed": "Gagal mengganti nama: {{reason}}",
       "delete_failed": "Penghapusan gagal: {{reason}}",
@@ -507,7 +507,19 @@
       "failed_load_addresses": "Gagal memuat alamat",
       "failed_load_transactions": "Gagal memuat transaksi",
       "node_must_be_online": "Node harus online untuk mengirim transaksi",
-      "set_as_primary": "Tetapkan sebagai yang utama"
+      "set_as_primary": "Tetapkan sebagai yang utama",
+      "no_address_returned": "Tidak ada alamat yang dikembalikan",
+      "no_seed_backup": "Dompet ini tidak memiliki cadangan awal — gunakan Kunci WIF atau Ekspor File Cadangan",
+      "no_address_loaded": "Tidak ada alamat yang dimuat",
+      "restored_backup": "Dompet dipulihkan dari cadangan",
+      "wif_saved": "Kunci WIF disimpan",
+      "need_12_words": "Masukkan setidaknya 12 kata mnemonik",
+      "enter_wif": "Masukkan kunci WIF",
+      "imported_successfully": "Dompet berhasil diimpor",
+      "copied": "Disalin",
+      "recovery_copied": "Frasa pemulihan disalin",
+      "wif_copied": "WIF disalin",
+      "name_invalid_chars": "Nama dompet tidak boleh berisi: / \\ : * ? \" < > |"
     }
   },
   "agreements": {
@@ -534,14 +546,14 @@
       "audit_modal_open": "Audit Perjanjian"
     },
     "actions": {
-      "fund": "Penampungan dana",
-      "release": "Melepaskan",
-      "refund": "Pengembalian dana",
-      "dispute": "Sengketa terbuka",
-      "submit_proof": "Kirimkan bukti",
-      "verify_signatures": "Verifikasi tanda tangan",
-      "sign_agreement": "Tanda tangani perjanjian",
-      "delete": "Menghapus"
+      "action_required_sign": "Tindakan yang diperlukan: Menandatangani Perjanjian",
+      "open_dispute": "Sengketa Terbuka",
+      "awaiting_resolver": "Menunggu Penyelesai",
+      "view_audit": "Lihat Audit",
+      "share_text": "Bagikan Teks",
+      "delete": "Menghapus",
+      "submitting": "Mengirimkan…",
+      "sign": "Tanda"
     },
     "proof_modal": {
       "title": "Kirimkan bukti",
@@ -563,14 +575,130 @@
       "release_success": "Dirilis — txid {{txid}}",
       "refund_success": "Dikembalikan — txid {{txid}}",
       "dispute_opened": "Sengketa dibuka",
-      "proof_submitted": "Bukti diserahkan",
+      "proof_submitted": "Bukti yang diserahkan: {{id}}",
       "delete_success": "Perjanjian dihapus",
-      "failed_load": "Gagal memuat perjanjian"
+      "failed_load": "Gagal memuat perjanjian",
+      "delete_failed": "Penghapusan gagal: {{reason}}",
+      "refund_initiated": "Pengembalian dana dimulai",
+      "refund_failed": "Pengembalian dana gagal",
+      "pack_exported": "Paket perjanjian diekspor ke {{path}}",
+      "copied": "Disalin",
+      "submission_failed": "Pengiriman gagal",
+      "funds_released": "Dana dikeluarkan · txid: {{txid}}",
+      "release_failed": "Rilis gagal",
+      "escrow_funded": "Didanai escrow · txid: {{txid}}",
+      "funding_failed": "Pendanaan gagal",
+      "agreement_imported": "Perjanjian yang diimpor: {{id}}",
+      "invoice_parse_warning": "Diimpor, namun tidak dapat mengurai bidang faktur untuk pengisian awal",
+      "invoice_imported": "Faktur diimpor",
+      "failed_open_dispute": "Gagal membuka sengketa",
+      "signature_valid": "Tanda tangan sah (penandatangan {{signer}})",
+      "signature_invalid": "Tanda tangan tidak valid: {{reason}}",
+      "agreement_signed_short": "Perjanjian ditandatangani.",
+      "sign_failed": "Penandatanganan gagal"
     },
     "refund": {
       "blocked_default": "Kelayakan pengembalian dana tidak diketahui",
       "blocked_reason": "Pengembalian dana tidak tersedia: {{reason}}",
       "timeout_not_reached": "Batas waktu belum tercapai"
+    },
+    "page_subtitle": "Perjanjian penyelesaian on-chain",
+    "tooltips": {
+      "help": "Perjanjian membantu",
+      "import_invoice": "Impor JSON faktur pembayaran dan buat perjanjian darinya",
+      "clear_search": "Hapus pencarian",
+      "choose_save_location": "Pilih simpan lokasi",
+      "you_are_buyer": "Alamat dompet yang Anda pilih adalah pembeli perjanjian ini",
+      "you_are_seller": "Alamat dompet yang Anda pilih adalah penjual perjanjian ini",
+      "copy_full_hash": "Salin hash perjanjian lengkap",
+      "submit_proof_delivery": "Kirimkan bukti pengiriman Anda",
+      "resolver_required": "Pengesahan penyelesai diperlukan untuk menyelesaikan perselisihan ini. Hubungi penyelesai yang Anda tunjuk.",
+      "deadline_passed": "Batas waktu perjanjian ini telah berlalu tanpa resolusi.",
+      "share_text": "Salin ringkasan teks biasa dari perjanjian ini ke papan klip",
+      "delete_local": "Hapus perjanjian ini dari toko lokal Anda. Salinan pihak lawan tidak terpengaruh.",
+      "save_friendly_name": "Simpan nama ramah untuk perjanjian ini (disimpan secara lokal)",
+      "verify_signature_file": "Verifikasi file tanda tangan (.sig atau .json) terhadap perjanjian ini"
+    },
+    "buttons": {
+      "import_invoice": "Impor Faktur",
+      "import_pack": "Paket Impor",
+      "browse": "Jelajahi",
+      "delete_agreement": "Hapus Perjanjian"
+    },
+    "page_views": {
+      "agreements": "Perjanjian",
+      "disputes": "Perselisihan"
+    },
+    "status_filters": {
+      "all": "Semua",
+      "pending": "Tertunda",
+      "open": "Membuka",
+      "funded": "Didanai",
+      "released": "Dilepaskan",
+      "refunded": "Dikembalikan"
+    },
+    "proof_types": {
+      "delivery_confirmed": "Pengiriman Dikonfirmasi",
+      "payment_received": "Pembayaran Diterima",
+      "otc_release": "Rilis OTC",
+      "milestone_complete": "Tonggak Pencapaian Selesai"
+    },
+    "search_placeholder": "Cari berdasarkan ID, alamat pembeli/penjual, atau label…",
+    "role_badges": {
+      "buyer": "Anda adalah: Pembeli",
+      "seller": "Anda adalah: Penjual"
+    },
+    "labels": {
+      "hash": "hash:",
+      "release_reason": "Alasan rilis:",
+      "proof_not_final": "Buktinya belum final",
+      "agreement_hash": "Perjanjian Hash",
+      "proof_type": "Jenis Bukti",
+      "attested_by": "Dibuktikan Oleh",
+      "evidence_summary": "Ringkasan Bukti",
+      "proof_file": "Berkas Bukti",
+      "create_from_evidence": "Buat dari Bukti",
+      "secret_preimage": "Preimage Rahasia (hex)",
+      "pack_file": "Kemas Berkas",
+      "invoice_file": "File Faktur",
+      "invoice_id": "ID Faktur",
+      "recipient": "Penerima",
+      "amount": "Jumlah",
+      "reference": "Referensi",
+      "expires_height": "Kedaluwarsa (tinggi)",
+      "dispute_reason": "Alasan (opsional)",
+      "agreement": "Perjanjian",
+      "txid": "Terima kasih",
+      "value": "Nilai",
+      "policy": "Kebijakan",
+      "signatures": "Tanda tangan",
+      "buyer": "Pembeli",
+      "seller": "Penjual",
+      "signer_wallet": "Alamat dompet penandatangan",
+      "role": "Peran:",
+      "reason": "Alasan:"
+    },
+    "placeholders": {
+      "your_wallet_address": "Alamat dompet Anda",
+      "secret_preimage": "Opsional · heksa 64 karakter",
+      "dispute_reason": "Jelaskan apa yang salah — hal ini dibagikan kepada penyelesainya."
+    },
+    "modals": {
+      "submit_proof_title": "Kirim Bukti",
+      "import_pack_title": "Impor Paket Perjanjian",
+      "import_invoice_title": "Impor Faktur",
+      "open_dispute_title": "Sengketa Terbuka?",
+      "audit_title": "Audit Perjanjian",
+      "sign_title": "Menandatangani Perjanjian"
+    },
+    "audit": {
+      "fetching": "Mengambil catatan audit…"
+    },
+    "empty": {
+      "no_signatures": "Belum ada tanda tangan yang diverifikasi. Gunakan tombol di atas untuk memverifikasinya.",
+      "no_wallet_addresses": "Tidak ada alamat dompet",
+      "no_disputes": "Tidak ada perselisihan.",
+      "disputes_offline": "(Node sedang offline — daftar sengketa mungkin tidak tersedia.)"
     }
   },
   "settlement": {
@@ -616,7 +744,9 @@
         "payment_placeholder": "misalnya Transfer bank, PayPal...",
         "memo": "Memo (opsional)",
         "memo_otc_placeholder": "Deskripsi perdagangan...",
-        "memo_merchant_placeholder": "Deskripsi pesanan..."
+        "memo_merchant_placeholder": "Deskripsi pesanan...",
+        "total_escrow_hours": "Total Jendela Escrow (jam)",
+        "party_placeholder": "Q... atau P..."
       }
     },
     "seller_dashboard": "Dasbor Penjual",
@@ -625,9 +755,23 @@
     "buyer_status_unavailable": "Status pembeli tidak tersedia.",
     "toasts": {
       "fee_unavailable": "Perkiraan biaya tidak tersedia",
-      "agreement_created": "Perjanjian dibuat!"
+      "agreement_created": "Perjanjian dibuat!",
+      "invoice_loaded": "Faktur dimuat — tinjau dan konfirmasi",
+      "summary_copied": "Ringkasan disalin",
+      "payload_copied": "Muatan disalin",
+      "copied": "Disalin",
+      "invoice_json_copied": "Faktur JSON disalin",
+      "invoice_saved": "Faktur disimpan ke {{path}}",
+      "save_failed": "Gagal menyimpan: {{reason}}"
     },
-    "page_title_hub": "Pusat Pemukiman"
+    "page_title_hub": "Pusat Pemukiman",
+    "tooltips": {
+      "help": "Bantuan penyelesaian"
+    },
+    "review_agreement": "Perjanjian Tinjauan",
+    "modals": {
+      "payment_invoice": "Faktur Pembayaran"
+    }
   },
   "marketplace": {
     "page_title": "Pasar",
@@ -639,15 +783,15 @@
     },
     "filters": {
       "search_placeholder": "Penawaran pencarian…",
-      "min_amount": "Minimal IRM",
-      "max_amount": "Maks IRM",
+      "min_amount": "Min IRM",
+      "max_amount": "IRM Maks",
       "payment_method": "Metode pembayaran"
     },
     "create_offer": {
       "title": "Buat Penawaran Jual",
       "how_works_title": "Cara kerja penjualan OTC",
-      "how_works_step_1": "Anda membuat penawaran ini (IRM terkunci di escrow sekarang).",
-      "how_works_step_2": "Pembeli mendanai escrow dengan bagian IRM mereka.",
+      "how_works_step_1": "Anda membuat penawaran ini (IRM sekarang terkunci di escrow).",
+      "how_works_step_2": "Pembeli mendanai escrow dengan saham IRM mereka.",
       "how_works_step_3": "Pembeli membayar Anda secara off-chain menggunakan instruksi di bawah ini.",
       "how_works_step_4": "Anda mengkonfirmasi pembayaran diterima.",
       "how_works_step_5": "Escrow melepaskan IRM kepada pembeli.",
@@ -682,7 +826,8 @@
       "title": "Ambil Penawaran",
       "completed_trades": "Perdagangan selesai",
       "take_button": "Terima tawaran",
-      "taking": "Memukau…"
+      "taking": "Memukau…",
+      "title_modal": "Ambil Penawaran Ini"
     },
     "feeds": {
       "discover_button": "Temukan feed",
@@ -696,8 +841,22 @@
       "feed_added": "Umpan ditambahkan",
       "min_must_be_positive": "Jumlah perdagangan minimum harus berupa angka positif",
       "min_cannot_exceed": "Minimum tidak dapat melebihi jumlah penawaran",
-      "amount_exceeds_supply": "Jumlah tidak boleh melebihi {{max}} IRM (total pasokan)",
-      "failed_to_load": "Gagal memuat tawaran: {{reason}}"
+      "amount_exceeds_supply": "Jumlah tidak boleh melebihi {{max}} IRM (total persediaan)",
+      "failed_to_load": "Gagal memuat tawaran: {{reason}}",
+      "enter_positive_amount": "Masukkan jumlah positif",
+      "failed_load_my": "Gagal memuat penawaran Anda: {{reason}}",
+      "failed_load_feeds": "Gagal memuat feed: {{reason}}",
+      "failed_add_feed": "Gagal menambahkan umpan: {{reason}}",
+      "feed_removed": "Umpan dihapus",
+      "failed_remove_feed": "Gagal menghapus umpan: {{reason}}",
+      "offer_exported": "Penawaran diekspor ke {{path}}",
+      "export_failed": "Ekspor gagal: {{reason}}",
+      "offer_deleted": "Penawaran dihapus",
+      "delete_failed": "Penghapusan gagal: {{reason}}",
+      "offer_imported": "Penawaran diimpor",
+      "import_failed": "Impor gagal: {{reason}}",
+      "sync_failed": "Sinkronisasi gagal: {{reason}}",
+      "default_feeds_added": "Umpan default ditambahkan"
     }
   },
   "miner": {

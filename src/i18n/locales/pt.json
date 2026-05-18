@@ -232,7 +232,7 @@
       "node_offline": "Nó off-line",
       "retry": "Tentar novamente",
       "external_ip_label": "IP externo",
-      "detecting_paragraph": "Waiting up to 60s for an inbound peer to confirm reachability. PEX needs a moment to propagate your address to other nodes after start.",
+      "detecting_paragraph": "Aguardando até 60 segundos por um peer de entrada para confirmar a acessibilidade. O PEX precisa de um momento para propagar seu endereço para outros nós após o início.",
       "inactive_paragraph": "UPnP falhou e nenhum peer de entrada chegou. Configure o encaminhamento manual de porta em seu roteador (TCP 38291) ou habilite o UPnP e clique em Tentar novamente. As conexões de saída ainda funcionam neste estado."
     },
     "security_info": {
@@ -434,12 +434,12 @@
       "title": "Enviar IRM",
       "to_address_label": "Para endereçar",
       "to_address_placeholder": "Endereço Q… ou P…",
-      "amount_label": "Montante (IRM)",
+      "amount_label": "Quantidade (IRM)",
       "amount_placeholder": "0.0000",
       "amount_in_sats": "= {{sats}} sats",
       "available_balance": "Disponível: {{amount}}",
       "no_spendable_funds": "Sem fundos gastáveis",
-      "insufficient_funds": "Insufficient funds. You have {{available}} available.",
+      "insufficient_funds": "Fundos insuficientes. Você tem {{available}} disponível.",
       "estimated_fee": "Taxa estimada: aproximadamente 1.000 sats",
       "security_note": "As transações são protegidas pela assinatura da sua chave privada, não pela mineração. Não é necessário PoW para enviar.",
       "review_button": "Revisão →",
@@ -459,7 +459,7 @@
       }
     },
     "receive": {
-      "title": "Receber IRM",
+      "title": "Receba IRM",
       "scan_qr_hint": "Digitalize este código QR ou copie o endereço abaixo"
     },
     "security": {
@@ -493,7 +493,7 @@
       "txid_copied": "ID da transação copiado",
       "address_added": "Endereço adicionado",
       "address_hidden": "Endereço oculto",
-      "address_unhidden": "Endereço restaurado",
+      "address_unhidden": "Endereço exibido",
       "wallet_renamed": "Carteira renomeada",
       "rename_failed": "Falha ao renomear: {{reason}}",
       "delete_failed": "Falha na exclusão: {{reason}}",
@@ -507,7 +507,19 @@
       "failed_load_addresses": "Falha ao carregar endereços",
       "failed_load_transactions": "Falha ao carregar transações",
       "node_must_be_online": "O nó deve estar online para enviar transações",
-      "set_as_primary": "Definir como principal"
+      "set_as_primary": "Definir como principal",
+      "no_address_returned": "Nenhum endereço retornado",
+      "no_seed_backup": "Esta carteira não tem backup inicial – use a chave WIF ou exportar arquivo de backup",
+      "no_address_loaded": "Nenhum endereço carregado",
+      "restored_backup": "Carteira restaurada do backup",
+      "wif_saved": "Chave WIF salva",
+      "need_12_words": "Digite pelo menos 12 palavras mnemônicas",
+      "enter_wif": "Insira uma chave WIF",
+      "imported_successfully": "Carteira importada com sucesso",
+      "copied": "Copiado",
+      "recovery_copied": "Frase de recuperação copiada",
+      "wif_copied": "WIF copiado",
+      "name_invalid_chars": "O nome da carteira não pode conter: / \\ : * ? \" < > |"
     }
   },
   "agreements": {
@@ -534,14 +546,14 @@
       "audit_modal_open": "Auditoria de Contrato"
     },
     "actions": {
-      "fund": "Garantia de fundos",
-      "release": "Liberar",
-      "refund": "Reembolso",
-      "dispute": "Disputa aberta",
-      "submit_proof": "Enviar prova",
-      "verify_signatures": "Verifique assinaturas",
-      "sign_agreement": "Assinar acordo",
-      "delete": "Excluir"
+      "action_required_sign": "Ação necessária: assinar contrato",
+      "open_dispute": "Disputa aberta",
+      "awaiting_resolver": "Aguardando resolução",
+      "view_audit": "Ver auditoria",
+      "share_text": "Compartilhar texto",
+      "delete": "Excluir",
+      "submitting": "Enviando…",
+      "sign": "Sinal"
     },
     "proof_modal": {
       "title": "Enviar prova",
@@ -563,14 +575,130 @@
       "release_success": "Lançado - txid {{txid}}",
       "refund_success": "Reembolsado — txid {{txid}}",
       "dispute_opened": "Disputa aberta",
-      "proof_submitted": "Prova enviada",
+      "proof_submitted": "Prova enviada: {{id}}",
       "delete_success": "Contrato excluído",
-      "failed_load": "Falha ao carregar contratos"
+      "failed_load": "Falha ao carregar contratos",
+      "delete_failed": "Falha na exclusão: {{reason}}",
+      "refund_initiated": "Reembolso iniciado",
+      "refund_failed": "Falha no reembolso",
+      "pack_exported": "Pacote de contrato exportado para {{path}}",
+      "copied": "Copiado",
+      "submission_failed": "Falha no envio",
+      "funds_released": "Fundos liberados · txid: {{txid}}",
+      "release_failed": "Falha na liberação",
+      "escrow_funded": "Custódia financiada · txid: {{txid}}",
+      "funding_failed": "Falha no financiamento",
+      "agreement_imported": "Contrato importado: {{id}}",
+      "invoice_parse_warning": "Importado, mas não foi possível analisar os campos da fatura para preenchimento prévio",
+      "invoice_imported": "Fatura importada",
+      "failed_open_dispute": "Falha ao abrir disputa",
+      "signature_valid": "Assinatura válida (assinante {{signer}})",
+      "signature_invalid": "Assinatura inválida: {{reason}}",
+      "agreement_signed_short": "Acordo assinado.",
+      "sign_failed": "Falha no sinal"
     },
     "refund": {
       "blocked_default": "Elegibilidade para reembolso desconhecida",
       "blocked_reason": "Reembolso não disponível: {{reason}}",
       "timeout_not_reached": "Tempo limite ainda não atingido"
+    },
+    "page_subtitle": "Acordos de liquidação em cadeia",
+    "tooltips": {
+      "help": "Ajuda de acordos",
+      "import_invoice": "Importe um JSON de fatura de pagamento e crie um contrato a partir dele",
+      "clear_search": "Limpar pesquisa",
+      "choose_save_location": "Escolha o local para salvar",
+      "you_are_buyer": "O endereço da carteira selecionado é o do comprador deste contrato",
+      "you_are_seller": "O endereço da carteira selecionado é o do vendedor deste contrato",
+      "copy_full_hash": "Copiar hash completo do contrato",
+      "submit_proof_delivery": "Envie seu comprovante de entrega",
+      "resolver_required": "Um atestado de resolução é necessário para resolver esta disputa. Entre em contato com o resolvedor designado.",
+      "deadline_passed": "O prazo deste acordo expirou sem resolução.",
+      "share_text": "Copie um resumo em texto simples deste contrato para a área de transferência",
+      "delete_local": "Exclua este contrato da sua loja local. A cópia da contraparte não é afetada.",
+      "save_friendly_name": "Salve um nome amigável para este contrato (armazenado localmente)",
+      "verify_signature_file": "Verifique um arquivo de assinatura (.sig ou .json) em relação a este contrato"
+    },
+    "buttons": {
+      "import_invoice": "Fatura de importação",
+      "import_pack": "Pacote de importação",
+      "browse": "Navegar",
+      "delete_agreement": "Excluir contrato"
+    },
+    "page_views": {
+      "agreements": "Acordos",
+      "disputes": "Disputas"
+    },
+    "status_filters": {
+      "all": "Todos",
+      "pending": "Pendente",
+      "open": "Abrir",
+      "funded": "Financiado",
+      "released": "Lançado",
+      "refunded": "Reembolsado"
+    },
+    "proof_types": {
+      "delivery_confirmed": "Entrega confirmada",
+      "payment_received": "Pagamento recebido",
+      "otc_release": "Lançamento OTC",
+      "milestone_complete": "Marco concluído"
+    },
+    "search_placeholder": "Pesquise por ID, endereço do comprador/vendedor ou etiqueta…",
+    "role_badges": {
+      "buyer": "Você é: Comprador",
+      "seller": "Você é: Vendedor"
+    },
+    "labels": {
+      "hash": "Hash:",
+      "release_reason": "Motivo da liberação:",
+      "proof_not_final": "Prova ainda não definitiva",
+      "agreement_hash": "Hash do contrato",
+      "proof_type": "Tipo de prova",
+      "attested_by": "Atestado por",
+      "evidence_summary": "Resumo de evidências",
+      "proof_file": "Arquivo de prova",
+      "create_from_evidence": "Crie a partir de evidências",
+      "secret_preimage": "Pré-imagem secreta (hex)",
+      "pack_file": "Arquivo de pacote",
+      "invoice_file": "Arquivo de fatura",
+      "invoice_id": "ID da fatura",
+      "recipient": "Destinatário",
+      "amount": "Quantia",
+      "reference": "Referência",
+      "expires_height": "Expira (altura)",
+      "dispute_reason": "Razão (opcional)",
+      "agreement": "Acordo",
+      "txid": "Txid",
+      "value": "Valor",
+      "policy": "Política",
+      "signatures": "Assinaturas",
+      "buyer": "Comprador",
+      "seller": "Vendedor",
+      "signer_wallet": "Endereço da carteira do signatário",
+      "role": "Papel:",
+      "reason": "Razão:"
+    },
+    "placeholders": {
+      "your_wallet_address": "Endereço da sua carteira",
+      "secret_preimage": "Opcional · hexadecimal de 64 caracteres",
+      "dispute_reason": "Descreva o que deu errado — isso é compartilhado com o resolvedor."
+    },
+    "modals": {
+      "submit_proof_title": "Enviar prova",
+      "import_pack_title": "Pacote de Contrato de Importação",
+      "import_invoice_title": "Fatura de importação",
+      "open_dispute_title": "Disputa aberta?",
+      "audit_title": "Auditoria de Contrato",
+      "sign_title": "Assinar Acordo"
+    },
+    "audit": {
+      "fetching": "Buscando registro de auditoria…"
+    },
+    "empty": {
+      "no_signatures": "Nenhuma assinatura verificada ainda. Use o botão acima para verificar um.",
+      "no_wallet_addresses": "Nenhum endereço de carteira",
+      "no_disputes": "Sem disputas.",
+      "disputes_offline": "(O nó está offline – a lista de disputas pode estar indisponível.)"
     }
   },
   "settlement": {
@@ -604,7 +732,7 @@
       "fields": {
         "party_a": "Parte A",
         "party_b": "Festa B",
-        "amount_irm": "Montante (IRM)",
+        "amount_irm": "Quantidade (IRM)",
         "deadline_hours": "Prazo (horas)",
         "cooldown_hours": "Janela de resfriamento (horas)",
         "milestones": "Número de marcos",
@@ -616,7 +744,9 @@
         "payment_placeholder": "por exemplo Transferência bancária, PayPal...",
         "memo": "Memorando (opcional)",
         "memo_otc_placeholder": "Descrição comercial...",
-        "memo_merchant_placeholder": "Descrição do pedido..."
+        "memo_merchant_placeholder": "Descrição do pedido...",
+        "total_escrow_hours": "Janela de Garantia Total (horas)",
+        "party_placeholder": "Q... ou P..."
       }
     },
     "seller_dashboard": "Painel do Vendedor",
@@ -625,9 +755,23 @@
     "buyer_status_unavailable": "Status do comprador indisponível.",
     "toasts": {
       "fee_unavailable": "Estimativa de taxa indisponível",
-      "agreement_created": "Acordo criado!"
+      "agreement_created": "Acordo criado!",
+      "invoice_loaded": "Fatura carregada — revise e confirme",
+      "summary_copied": "Resumo copiado",
+      "payload_copied": "Carga copiada",
+      "copied": "Copiado",
+      "invoice_json_copied": "JSON da fatura copiada",
+      "invoice_saved": "Fatura salva em {{path}}",
+      "save_failed": "Falha ao salvar: {{reason}}"
     },
-    "page_title_hub": "Centro de Liquidação"
+    "page_title_hub": "Centro de Liquidação",
+    "tooltips": {
+      "help": "Ajuda de liquidação"
+    },
+    "review_agreement": "Revise o acordo",
+    "modals": {
+      "payment_invoice": "Fatura de pagamento"
+    }
   },
   "marketplace": {
     "page_title": "Mercado",
@@ -639,15 +783,15 @@
     },
     "filters": {
       "search_placeholder": "Pesquisar ofertas…",
-      "min_amount": "IRM mínimo",
-      "max_amount": "IRM máximo",
+      "min_amount": "Min IRM",
+      "max_amount": "Max IRM",
       "payment_method": "Método de pagamento"
     },
     "create_offer": {
       "title": "Criar oferta de venda",
       "how_works_title": "Como funciona a venda OTC",
       "how_works_step_1": "Você cria esta oferta (o IRM está bloqueado em depósito agora).",
-      "how_works_step_2": "Um comprador financia o depósito com sua participação no IRM.",
+      "how_works_step_2": "Um comprador financia o depósito com sua ação IRM.",
       "how_works_step_3": "O comprador paga fora da rede usando as instruções abaixo.",
       "how_works_step_4": "Você confirma o pagamento recebido.",
       "how_works_step_5": "O compromisso libera o IRM para o comprador.",
@@ -682,7 +826,8 @@
       "title": "Aceite a oferta",
       "completed_trades": "Negociações concluídas",
       "take_button": "Aceite a oferta",
-      "taking": "Tirando…"
+      "taking": "Tirando…",
+      "title_modal": "Aceite esta oferta"
     },
     "feeds": {
       "discover_button": "Descubra feeds",
@@ -697,7 +842,21 @@
       "min_must_be_positive": "O valor mínimo de negociação deve ser um número positivo",
       "min_cannot_exceed": "O mínimo não pode exceder o valor da oferta",
       "amount_exceeds_supply": "O valor não pode exceder {{max}} IRM (oferta total)",
-      "failed_to_load": "Falha ao carregar ofertas: {{reason}}"
+      "failed_to_load": "Falha ao carregar ofertas: {{reason}}",
+      "enter_positive_amount": "Insira um valor positivo",
+      "failed_load_my": "Falha ao carregar suas ofertas: {{reason}}",
+      "failed_load_feeds": "Falha ao carregar feeds: {{reason}}",
+      "failed_add_feed": "Falha ao adicionar feed: {{reason}}",
+      "feed_removed": "Feed removido",
+      "failed_remove_feed": "Falha ao remover feed: {{reason}}",
+      "offer_exported": "Oferta exportada para {{path}}",
+      "export_failed": "Falha na exportação: {{reason}}",
+      "offer_deleted": "Oferta excluída",
+      "delete_failed": "Falha na exclusão: {{reason}}",
+      "offer_imported": "Oferta importada",
+      "import_failed": "Falha na importação: {{reason}}",
+      "sync_failed": "Falha na sincronização: {{reason}}",
+      "default_feeds_added": "Feeds padrão adicionados"
     }
   },
   "miner": {
@@ -928,7 +1087,7 @@
       "step_agreements": "Acordos",
       "intro": "Defina o que você está vendendo e o preço",
       "fields": {
-        "amount_label": "Montante (IRM)",
+        "amount_label": "Quantidade (IRM)",
         "offer_id_label": "ID da oferta",
         "seller_address_label": "Endereço do Vendedor",
         "seller_address_hint": "Detectado automaticamente em sua carteira. Os compradores enviarão o pagamento aqui.",

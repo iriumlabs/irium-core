@@ -434,7 +434,7 @@
       "title": "发送 IRM",
       "to_address_label": "收件人地址",
       "to_address_placeholder": "Q…或P…地址",
-      "amount_label": "金额（IRM）",
+      "amount_label": "金额 (IRM)",
       "amount_placeholder": "0.0000",
       "amount_in_sats": "= {{sats}} 坐",
       "available_balance": "可用：{{amount}}",
@@ -459,7 +459,7 @@
       }
     },
     "receive": {
-      "title": "接收IRM",
+      "title": "接收 IRM",
       "scan_qr_hint": "扫描此二维码或复制以下地址"
     },
     "security": {
@@ -493,7 +493,7 @@
       "txid_copied": "交易 ID 已复制",
       "address_added": "地址已添加",
       "address_hidden": "地址隐藏",
-      "address_unhidden": "地址已恢复",
+      "address_unhidden": "地址取消隐藏",
       "wallet_renamed": "钱包重命名",
       "rename_failed": "重命名失败：{{reason}}",
       "delete_failed": "删除失败：{{reason}}",
@@ -507,7 +507,19 @@
       "failed_load_addresses": "加载地址失败",
       "failed_load_transactions": "无法加载交易",
       "node_must_be_online": "节点必须在线才能发送交易",
-      "set_as_primary": "设置为主"
+      "set_as_primary": "设置为主",
+      "no_address_returned": "没有返回地址",
+      "no_seed_backup": "该钱包没有种子备份 - 请使用 WIF 密钥或导出备份文件",
+      "no_address_loaded": "未加载地址",
+      "restored_backup": "从备份恢复钱包",
+      "wif_saved": "WIF 密钥已保存",
+      "need_12_words": "输入至少12个助记词",
+      "enter_wif": "输入 WIF 密钥",
+      "imported_successfully": "钱包导入成功",
+      "copied": "已复制",
+      "recovery_copied": "已复制恢复短语",
+      "wif_copied": "WIF 已复制",
+      "name_invalid_chars": "钱包名称不能包含：/ \\ : * ? ” < > |"
     }
   },
   "agreements": {
@@ -534,14 +546,14 @@
       "audit_modal_open": "协议审核"
     },
     "actions": {
-      "fund": "资金托管",
-      "release": "发布",
-      "refund": "退款",
-      "dispute": "公开争议",
-      "submit_proof": "提交证明",
-      "verify_signatures": "验证签名",
-      "sign_agreement": "签署协议",
-      "delete": "删除"
+      "action_required_sign": "所需行动：签署协议",
+      "open_dispute": "公开争议",
+      "awaiting_resolver": "等待解析器",
+      "view_audit": "查看审核",
+      "share_text": "分享文字",
+      "delete": "删除",
+      "submitting": "正在提交...",
+      "sign": "符号"
     },
     "proof_modal": {
       "title": "提交证明",
@@ -563,14 +575,130 @@
       "release_success": "已发布 — txid {{txid}}",
       "refund_success": "已退款 — txid {{txid}}",
       "dispute_opened": "争议已展开",
-      "proof_submitted": "已提交证明",
+      "proof_submitted": "提交的证明：{{id}}",
       "delete_success": "协议已删除",
-      "failed_load": "加载协议失败"
+      "failed_load": "加载协议失败",
+      "delete_failed": "删除失败：{{reason}}",
+      "refund_initiated": "退款已启动",
+      "refund_failed": "退款失败",
+      "pack_exported": "协议包导出到 {{path}}",
+      "copied": "已复制",
+      "submission_failed": "提交失败",
+      "funds_released": "资金释放·txid：{{txid}}",
+      "release_failed": "发布失败",
+      "escrow_funded": "托管资金 · txid：{{txid}}",
+      "funding_failed": "资金失败",
+      "agreement_imported": "导入协议：{{id}}",
+      "invoice_parse_warning": "已导入，但无法解析发票字段以进行预填充",
+      "invoice_imported": "发票导入",
+      "failed_open_dispute": "无法展开争议",
+      "signature_valid": "签名有效（签名者{{signer}}）",
+      "signature_invalid": "签名无效：{{reason}}",
+      "agreement_signed_short": "协议签署。",
+      "sign_failed": "签名失败"
     },
     "refund": {
       "blocked_default": "退款资格未知",
       "blocked_reason": "无法退款：{{reason}}",
       "timeout_not_reached": "尚未达到超时时间"
+    },
+    "page_subtitle": "链上结算协议",
+    "tooltips": {
+      "help": "协议有帮助",
+      "import_invoice": "导入付款发票 JSON 并从中创建协议",
+      "clear_search": "清除搜索",
+      "choose_save_location": "选择保存位置",
+      "you_are_buyer": "您选择的钱包地址是本协议的买家",
+      "you_are_seller": "您选择的钱包地址为本协议的卖家",
+      "copy_full_hash": "复制完整协议哈希",
+      "submit_proof_delivery": "提交您的交货证明",
+      "resolver_required": "需要解析者证明才能解决此争议。请联系您指定的解析者。",
+      "deadline_passed": "该协议的截止日期已过，但尚未得到解决。",
+      "share_text": "将本协议的纯文本摘要复制到剪贴板",
+      "delete_local": "从您的本地商店删除此协议。交易对手的副本不受影响。",
+      "save_friendly_name": "为本协议保存一个好记的名称（本地存储）",
+      "verify_signature_file": "根据此协议验证签名文件（.sig 或 .json）"
+    },
+    "buttons": {
+      "import_invoice": "进口发票",
+      "import_pack": "导入包",
+      "browse": "浏览",
+      "delete_agreement": "删除协议"
+    },
+    "page_views": {
+      "agreements": "协议",
+      "disputes": "争议"
+    },
+    "status_filters": {
+      "all": "全部",
+      "pending": "待办的",
+      "open": "打开",
+      "funded": "资助",
+      "released": "已发布",
+      "refunded": "已退款"
+    },
+    "proof_types": {
+      "delivery_confirmed": "交货已确认",
+      "payment_received": "已收到付款",
+      "otc_release": "场外发行",
+      "milestone_complete": "里程碑完成"
+    },
+    "search_placeholder": "按 ID、买家/卖家地址或标签搜索...",
+    "role_badges": {
+      "buyer": "您是：买家",
+      "seller": "您是：卖家"
+    },
+    "labels": {
+      "hash": "哈希：",
+      "release_reason": "发布原因：",
+      "proof_not_final": "证据尚未最终确定",
+      "agreement_hash": "协议哈希",
+      "proof_type": "校样类型",
+      "attested_by": "证明人",
+      "evidence_summary": "证据摘要",
+      "proof_file": "证明文件",
+      "create_from_evidence": "从证据中创造",
+      "secret_preimage": "秘密原像（十六进制）",
+      "pack_file": "打包文件",
+      "invoice_file": "发票文件",
+      "invoice_id": "发票编号",
+      "recipient": "接受者",
+      "amount": "数量",
+      "reference": "参考",
+      "expires_height": "过期（身高）",
+      "dispute_reason": "原因（可选）",
+      "agreement": "协议",
+      "txid": "TXID",
+      "value": "价值",
+      "policy": "政策",
+      "signatures": "签名",
+      "buyer": "买方",
+      "seller": "卖方",
+      "signer_wallet": "签名者钱包地址",
+      "role": "角色：",
+      "reason": "原因："
+    },
+    "placeholders": {
+      "your_wallet_address": "您的钱包地址",
+      "secret_preimage": "可选 · 64 个字符的十六进制",
+      "dispute_reason": "描述出了什么问题——这与解析器共享。"
+    },
+    "modals": {
+      "submit_proof_title": "提交证明",
+      "import_pack_title": "进口协议包",
+      "import_invoice_title": "进口发票",
+      "open_dispute_title": "公开争议？",
+      "audit_title": "协议审核",
+      "sign_title": "签署协议"
+    },
+    "audit": {
+      "fetching": "正在获取审核记录..."
+    },
+    "empty": {
+      "no_signatures": "尚未验证签名。使用上面的按钮进行验证。",
+      "no_wallet_addresses": "没有钱包地址",
+      "no_disputes": "没有争议。",
+      "disputes_offline": "（节点已离线 - 争议列表可能不可用。）"
     }
   },
   "settlement": {
@@ -604,7 +732,7 @@
       "fields": {
         "party_a": "甲方",
         "party_b": "乙方",
-        "amount_irm": "金额（IRM）",
+        "amount_irm": "金额 (IRM)",
         "deadline_hours": "截止日期（小时）",
         "cooldown_hours": "冷却窗口（小时）",
         "milestones": "里程碑数量",
@@ -616,7 +744,9 @@
         "payment_placeholder": "例如银行转账、PayPal...",
         "memo": "备注（可选）",
         "memo_otc_placeholder": "商品说明...",
-        "memo_merchant_placeholder": "订单说明..."
+        "memo_merchant_placeholder": "订单说明...",
+        "total_escrow_hours": "总托管窗口（小时）",
+        "party_placeholder": "问...或P..."
       }
     },
     "seller_dashboard": "卖家仪表板",
@@ -625,9 +755,23 @@
     "buyer_status_unavailable": "买家状态不可用。",
     "toasts": {
       "fee_unavailable": "无法估算费用",
-      "agreement_created": "协议已创建！"
+      "agreement_created": "协议已创建！",
+      "invoice_loaded": "发票已加载 - 检查并确认",
+      "summary_copied": "摘要已复制",
+      "payload_copied": "已复制有效负载",
+      "copied": "已复制",
+      "invoice_json_copied": "已复制发票 JSON",
+      "invoice_saved": "发票保存至 {{path}}",
+      "save_failed": "保存失败：{{reason}}"
     },
-    "page_title_hub": "结算中心"
+    "page_title_hub": "结算中心",
+    "tooltips": {
+      "help": "结算帮助"
+    },
+    "review_agreement": "审查协议",
+    "modals": {
+      "payment_invoice": "付款发票"
+    }
   },
   "marketplace": {
     "page_title": "市场",
@@ -639,8 +783,8 @@
     },
     "filters": {
       "search_placeholder": "搜索优惠...",
-      "min_amount": "最小IRM",
-      "max_amount": "最大IRM",
+      "min_amount": "最小 IRM",
+      "max_amount": "最大 IRM",
       "payment_method": "付款方式"
     },
     "create_offer": {
@@ -650,7 +794,7 @@
       "how_works_step_2": "买方用其 IRM 份额为托管提供资金。",
       "how_works_step_3": "买家按照以下说明向您链下付款。",
       "how_works_step_4": "您确认收到付款。",
-      "how_works_step_5": "Escrow 将 IRM 发布给买方。",
+      "how_works_step_5": "托管机构将 IRM 发布给买方。",
       "escrow_note": "链上托管可以保护双方——双方都不能带着钱消失。",
       "fields": {
         "amount_label": "IRM 出售",
@@ -665,7 +809,7 @@
         "payment_method_placeholder": "例如银行转账、PayPal、USDT、BTC、现金",
         "payment_method_hint": "帮助买家过滤报价的短标签 - 选择他们应该使用的导轨。",
         "price_label": "价格或汇率（可选）",
-        "price_placeholder": "例如市场利率 + 2%，每 IRM 0.05 美元",
+        "price_placeholder": "例如市场利率 + 2%，每个 IRM 0.05 美元",
         "payment_details_label": "您的付款详细信息（发送给您的内容）",
         "payment_details_hint": "买方在托管资金到位后会看到这些说明。要具体——错误的细节意味着浪费时间。",
         "custom_id_label": "自定义优惠 ID（可选）",
@@ -682,7 +826,8 @@
       "title": "接受报价",
       "completed_trades": "已完成交易",
       "take_button": "接受报价",
-      "taking": "服用…"
+      "taking": "服用…",
+      "title_modal": "接受此优惠"
     },
     "feeds": {
       "discover_button": "发现提要",
@@ -697,7 +842,21 @@
       "min_must_be_positive": "最小交易金额必须为正数",
       "min_cannot_exceed": "最低不能超过优惠金额",
       "amount_exceeds_supply": "金额不能超过 {{max}} IRM（总供应量）",
-      "failed_to_load": "无法加载优惠：{{reason}}"
+      "failed_to_load": "无法加载优惠：{{reason}}",
+      "enter_positive_amount": "输入正数",
+      "failed_load_my": "无法加载您的报价：{{reason}}",
+      "failed_load_feeds": "无法加载提要：{{reason}}",
+      "failed_add_feed": "添加 Feed 失败：{{reason}}",
+      "feed_removed": "饲料被移除",
+      "failed_remove_feed": "无法删除 Feed：{{reason}}",
+      "offer_exported": "报价已导出至 {{path}}",
+      "export_failed": "导出失败：{{reason}}",
+      "offer_deleted": "报价已删除",
+      "delete_failed": "删除失败：{{reason}}",
+      "offer_imported": "报价进口",
+      "import_failed": "导入失败：{{reason}}",
+      "sync_failed": "同步失败：{{reason}}",
+      "default_feeds_added": "添加了默认提要"
     }
   },
   "miner": {
@@ -928,7 +1087,7 @@
       "step_agreements": "协议",
       "intro": "定义您要销售的产品和价格",
       "fields": {
-        "amount_label": "金额（IRM）",
+        "amount_label": "金额 (IRM)",
         "offer_id_label": "报价 ID",
         "seller_address_label": "卖家地址",
         "seller_address_hint": "从您的钱包中自动检测到。买家将在这里付款。",

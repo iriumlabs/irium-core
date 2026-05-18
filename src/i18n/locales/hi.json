@@ -431,7 +431,7 @@
       "manage_description": "वॉलेट फ़ाइलें, आयात, छिपे हुए पते"
     },
     "send": {
-      "title": "IRM भेजें",
+      "title": "IRMTIKER भेजें",
       "to_address_label": "पता करने के लिए",
       "to_address_placeholder": "क्यू… या पी… पता",
       "amount_label": "राशि (IRM)",
@@ -459,7 +459,7 @@
       }
     },
     "receive": {
-      "title": "IRM प्राप्त करें",
+      "title": "IRMTIKER प्राप्त करें",
       "scan_qr_hint": "इस QR कोड को स्कैन करें या नीचे दिए गए पते को कॉपी करें"
     },
     "security": {
@@ -493,7 +493,7 @@
       "txid_copied": "लेन-देन आईडी की प्रतिलिपि बनाई गई",
       "address_added": "पता जोड़ा गया",
       "address_hidden": "पता छुपाया गया",
-      "address_unhidden": "पता पुनर्स्थापित किया गया",
+      "address_unhidden": "पता छिपाया गया",
       "wallet_renamed": "वॉलेट का नाम बदला गया",
       "rename_failed": "नाम बदलना विफल: {{reason}}",
       "delete_failed": "हटाना विफल: {{reason}}",
@@ -507,7 +507,19 @@
       "failed_load_addresses": "पते लोड करने में विफल",
       "failed_load_transactions": "लेन-देन लोड करने में विफल",
       "node_must_be_online": "लेनदेन भेजने के लिए नोड ऑनलाइन होना चाहिए",
-      "set_as_primary": "प्राथमिक के रूप में सेट करें"
+      "set_as_primary": "प्राथमिक के रूप में सेट करें",
+      "no_address_returned": "कोई पता नहीं लौटाया गया",
+      "no_seed_backup": "इस वॉलेट में कोई बीज बैकअप नहीं है - इसके बजाय WIF कुंजी या निर्यात बैकअप फ़ाइल का उपयोग करें",
+      "no_address_loaded": "कोई पता लोड नहीं किया गया",
+      "restored_backup": "वॉलेट को बैकअप से पुनर्स्थापित किया गया",
+      "wif_saved": "WIF कुंजी सहेजी गई",
+      "need_12_words": "कम से कम 12 स्मरणीय शब्द दर्ज करें",
+      "enter_wif": "WIF कुंजी दर्ज करें",
+      "imported_successfully": "वॉलेट सफलतापूर्वक आयात किया गया",
+      "copied": "कॉपी किया गया",
+      "recovery_copied": "पुनर्प्राप्ति वाक्यांश की प्रतिलिपि बनाई गई",
+      "wif_copied": "WIF की प्रतिलिपि बनाई गई",
+      "name_invalid_chars": "वॉलेट नाम में शामिल नहीं हो सकता: / \\ : * ? \" < > |"
     }
   },
   "agreements": {
@@ -534,14 +546,14 @@
       "audit_modal_open": "अनुबंध लेखापरीक्षा"
     },
     "actions": {
-      "fund": "फंड एस्क्रो",
-      "release": "मुक्त करना",
-      "refund": "धनवापसी",
-      "dispute": "खुला विवाद",
-      "submit_proof": "प्रमाण प्रस्तुत करें",
-      "verify_signatures": "हस्ताक्षर सत्यापित करें",
-      "sign_agreement": "समझौते पर हस्ताक्षर करें",
-      "delete": "मिटाना"
+      "action_required_sign": "कार्रवाई आवश्यक: अनुबंध पर हस्ताक्षर करें",
+      "open_dispute": "विवाद खोलें",
+      "awaiting_resolver": "समाधानकर्ता की प्रतीक्षा है",
+      "view_audit": "ऑडिट देखें",
+      "share_text": "पाठ साझा करें",
+      "delete": "मिटाना",
+      "submitting": "सबमिट किया जा रहा है...",
+      "sign": "संकेत"
     },
     "proof_modal": {
       "title": "प्रमाण प्रस्तुत करें",
@@ -563,14 +575,130 @@
       "release_success": "जारी - txid {{txid}}",
       "refund_success": "धनवापसी - txid {{txid}}",
       "dispute_opened": "विवाद खुल गया",
-      "proof_submitted": "प्रमाण प्रस्तुत किया गया",
+      "proof_submitted": "प्रमाण प्रस्तुत किया गया: {{id}}",
       "delete_success": "अनुबंध हटा दिया गया",
-      "failed_load": "अनुबंध लोड करने में विफल"
+      "failed_load": "अनुबंध लोड करने में विफल",
+      "delete_failed": "हटाना विफल: {{reason}}",
+      "refund_initiated": "धनवापसी प्रारंभ की गई",
+      "refund_failed": "धनवापसी विफल",
+      "pack_exported": "अनुबंध पैक {{path}} को निर्यात किया गया",
+      "copied": "कॉपी किया गया",
+      "submission_failed": "सबमिशन विफल",
+      "funds_released": "जारी की गई धनराशि · txid: {{txid}}",
+      "release_failed": "रिलीज़ विफल",
+      "escrow_funded": "एस्क्रो वित्त पोषित · txid: {{txid}}",
+      "funding_failed": "फंडिंग विफल रही",
+      "agreement_imported": "आयातित अनुबंध: {{id}}",
+      "invoice_parse_warning": "आयातित, लेकिन प्रीफ़िल के लिए इनवॉइस फ़ील्ड को पार्स नहीं किया जा सका",
+      "invoice_imported": "चालान आयात किया गया",
+      "failed_open_dispute": "विवाद खोलने में विफल",
+      "signature_valid": "हस्ताक्षर मान्य (हस्ताक्षरकर्ता {{signer}})",
+      "signature_invalid": "हस्ताक्षर अमान्य: {{reason}}",
+      "agreement_signed_short": "समझौते पर हस्ताक्षर किये गये।",
+      "sign_failed": "साइन फेल"
     },
     "refund": {
       "blocked_default": "धनवापसी पात्रता अज्ञात",
       "blocked_reason": "रिफ़ंड उपलब्ध नहीं है: {{reason}}",
       "timeout_not_reached": "अभी समय समाप्त नहीं हुआ है"
+    },
+    "page_subtitle": "ऑन-चेन निपटान समझौते",
+    "tooltips": {
+      "help": "समझौते मदद करते हैं",
+      "import_invoice": "एक भुगतान चालान JSON आयात करें और उससे एक अनुबंध बनाएं",
+      "clear_search": "स्पष्ट खोज",
+      "choose_save_location": "स्थान सहेजें चुनें",
+      "you_are_buyer": "आपका चयनित वॉलेट पता इस अनुबंध का खरीदार है",
+      "you_are_seller": "आपका चयनित वॉलेट पता इस अनुबंध का विक्रेता है",
+      "copy_full_hash": "पूर्ण अनुबंध हैश कॉपी करें",
+      "submit_proof_delivery": "अपनी डिलीवरी का प्रमाण जमा करें",
+      "resolver_required": "इस विवाद को निपटाने के लिए समाधानकर्ता का सत्यापन आवश्यक है। अपने नामित रिज़ॉल्वर से संपर्क करें.",
+      "deadline_passed": "इस समझौते की समय सीमा बिना किसी समाधान के बीत गई है.",
+      "share_text": "इस अनुबंध के सादे-पाठ सारांश को क्लिपबोर्ड पर कॉपी करें",
+      "delete_local": "इस अनुबंध को अपने स्थानीय स्टोर से हटा दें. प्रतिपक्ष की प्रति प्रभावित नहीं होती.",
+      "save_friendly_name": "इस अनुबंध के लिए एक अनुकूल नाम सहेजें (स्थानीय रूप से संग्रहीत)",
+      "verify_signature_file": "इस अनुबंध के विरुद्ध एक हस्ताक्षर फ़ाइल (.sig या .json) सत्यापित करें"
+    },
+    "buttons": {
+      "import_invoice": "आयात चालान",
+      "import_pack": "आयात पैक",
+      "browse": "ब्राउज़",
+      "delete_agreement": "अनुबंध हटाएं"
+    },
+    "page_views": {
+      "agreements": "करार",
+      "disputes": "विवादों"
+    },
+    "status_filters": {
+      "all": "सभी",
+      "pending": "लंबित",
+      "open": "खुला",
+      "funded": "वित्त पोषित",
+      "released": "जारी किया",
+      "refunded": "वापसी की गई है"
+    },
+    "proof_types": {
+      "delivery_confirmed": "डिलिवरी की पुष्टि हो गई",
+      "payment_received": "भुगतान प्राप्त",
+      "otc_release": "ओटीसी रिलीज",
+      "milestone_complete": "मील का पत्थर पूरा"
+    },
+    "search_placeholder": "आईडी, खरीदार/विक्रेता का पता, या लेबल के आधार पर खोजें...",
+    "role_badges": {
+      "buyer": "आप हैं: खरीदार",
+      "seller": "आप हैं: विक्रेता"
+    },
+    "labels": {
+      "hash": "हैश:",
+      "release_reason": "रिलीज का कारण:",
+      "proof_not_final": "सबूत अभी अंतिम नहीं है",
+      "agreement_hash": "समझौता हैश",
+      "proof_type": "प्रमाण प्रकार",
+      "attested_by": "द्वारा प्रमाणित",
+      "evidence_summary": "साक्ष्य सारांश",
+      "proof_file": "प्रमाण फ़ाइल",
+      "create_from_evidence": "साक्ष्य से बनाएं",
+      "secret_preimage": "गुप्त प्रीइमेज (हेक्स)",
+      "pack_file": "फ़ाइल पैक करें",
+      "invoice_file": "चालान फ़ाइल",
+      "invoice_id": "चालान आईडी",
+      "recipient": "प्राप्तकर्ता",
+      "amount": "मात्रा",
+      "reference": "संदर्भ",
+      "expires_height": "समाप्त (ऊंचाई)",
+      "dispute_reason": "कारण (वैकल्पिक)",
+      "agreement": "समझौता",
+      "txid": "Txid",
+      "value": "कीमत",
+      "policy": "नीति",
+      "signatures": "हस्ताक्षर",
+      "buyer": "क्रेता",
+      "seller": "विक्रेता",
+      "signer_wallet": "हस्ताक्षरकर्ता बटुआ पता",
+      "role": "भूमिका:",
+      "reason": "कारण:"
+    },
+    "placeholders": {
+      "your_wallet_address": "आपका बटुआ पता",
+      "secret_preimage": "वैकल्पिक · 64-वर्ण हेक्स",
+      "dispute_reason": "बताएं कि क्या गलत हुआ - इसे रिज़ॉल्वर के साथ साझा किया जाता है।"
+    },
+    "modals": {
+      "submit_proof_title": "सबूत जमा करें",
+      "import_pack_title": "आयात अनुबंध पैक",
+      "import_invoice_title": "आयात चालान",
+      "open_dispute_title": "खुला विवाद?",
+      "audit_title": "अनुबंध लेखापरीक्षा",
+      "sign_title": "समझौते पर हस्ताक्षर करें"
+    },
+    "audit": {
+      "fetching": "ऑडिट रिकॉर्ड लाया जा रहा है..."
+    },
+    "empty": {
+      "no_signatures": "अभी तक कोई हस्ताक्षर सत्यापित नहीं है. किसी को सत्यापित करने के लिए ऊपर दिए गए बटन का उपयोग करें।",
+      "no_wallet_addresses": "कोई वॉलेट पता नहीं",
+      "no_disputes": "कोई विवाद नहीं.",
+      "disputes_offline": "(नोड ऑफ़लाइन है - विवाद सूची अनुपलब्ध हो सकती है।)"
     }
   },
   "settlement": {
@@ -616,7 +744,9 @@
         "payment_placeholder": "जैसे बैंक हस्तांतरण, पेपैल...",
         "memo": "मेमो (वैकल्पिक)",
         "memo_otc_placeholder": "व्यापार विवरण...",
-        "memo_merchant_placeholder": "आदेश विवरण..."
+        "memo_merchant_placeholder": "आदेश विवरण...",
+        "total_escrow_hours": "कुल एस्क्रो विंडो (घंटे)",
+        "party_placeholder": "क्यू... या पी..."
       }
     },
     "seller_dashboard": "विक्रेता डैशबोर्ड",
@@ -625,9 +755,23 @@
     "buyer_status_unavailable": "क्रेता स्थिति अनुपलब्ध.",
     "toasts": {
       "fee_unavailable": "शुल्क अनुमान अनुपलब्ध",
-      "agreement_created": "समझौता बनाया गया!"
+      "agreement_created": "समझौता बनाया गया!",
+      "invoice_loaded": "चालान लोड किया गया - समीक्षा करें और पुष्टि करें",
+      "summary_copied": "सारांश कॉपी किया गया",
+      "payload_copied": "पेलोड कॉपी किया गया",
+      "copied": "कॉपी किया गया",
+      "invoice_json_copied": "इनवॉइस JSON कॉपी किया गया",
+      "invoice_saved": "चालान {{path}} पर सहेजा गया",
+      "save_failed": "सहेजना विफल: {{reason}}"
     },
-    "page_title_hub": "सेटलमेंट हब"
+    "page_title_hub": "सेटलमेंट हब",
+    "tooltips": {
+      "help": "निपटान सहायता"
+    },
+    "review_agreement": "समझौते की समीक्षा करें",
+    "modals": {
+      "payment_invoice": "भुगतान चालान"
+    }
   },
   "marketplace": {
     "page_title": "बाजार",
@@ -639,21 +783,21 @@
     },
     "filters": {
       "search_placeholder": "ऑफ़र खोजें…",
-      "min_amount": "न्यूनतम IRM",
-      "max_amount": "अधिकतम IRM",
+      "min_amount": "मिन इर्मटिकर",
+      "max_amount": "मैक्स इर्मटिकर",
       "payment_method": "भुगतान विधि"
     },
     "create_offer": {
       "title": "विक्रय प्रस्ताव बनाएँ",
       "how_works_title": "ओटीसी सेलिंग कैसे काम करती है",
       "how_works_step_1": "आप यह ऑफर बनाएं (IRM अब एस्क्रो में बंद है)।",
-      "how_works_step_2": "एक खरीदार अपने IRM शेयर के साथ एस्क्रो को फंड करता है।",
+      "how_works_step_2": "एक खरीदार एस्क्रो को अपने IRM शेयर से निधि देता है।",
       "how_works_step_3": "क्रेता आपको नीचे दिए गए निर्देशों का उपयोग करके ऑफ-चेन भुगतान करता है।",
       "how_works_step_4": "आप भुगतान प्राप्त होने की पुष्टि करें।",
       "how_works_step_5": "एस्क्रो खरीदार को IRM जारी करता है।",
       "escrow_note": "ऑन-चेन एस्क्रो दोनों पक्षों की सुरक्षा करता है - आप में से कोई भी पैसे लेकर गायब नहीं हो सकता।",
       "fields": {
-        "amount_label": "IRM बेचने के लिए",
+        "amount_label": "बेचने के लिए IRMTIKER",
         "amount_hint": "यह राशि आपके वॉलेट से काट ली जाएगी और एस्क्रो में लॉक कर दी जाएगी।",
         "seller_address_label": "विक्रेता का पता (वैकल्पिक)",
         "seller_address_placeholder": "वैकल्पिक · वॉलेट डिफॉल्ट के लिए खाली छोड़ दें",
@@ -665,7 +809,7 @@
         "payment_method_placeholder": "जैसे बैंक स्थानांतरण, पेपैल, यूएसडीटी, बीटीसी, नकद",
         "payment_method_hint": "लघु लेबल जो खरीदारों को ऑफ़र फ़िल्टर करने में मदद करता है - वह रेल चुनें जिसका उन्हें उपयोग करना चाहिए।",
         "price_label": "मूल्य या विनिमय दर (वैकल्पिक)",
-        "price_placeholder": "जैसे बाज़ार दर + 2%, $0.05 प्रति IRM",
+        "price_placeholder": "जैसे बाज़ार दर + 2%, $0.05 प्रति IRMTIKER",
         "payment_details_label": "आपका भुगतान विवरण (आपको क्या भेजना है)",
         "payment_details_hint": "एस्क्रो द्वारा वित्त पोषित होने के बाद खरीदार इन निर्देशों को देखता है। विशिष्ट बनें - गलत विवरण का अर्थ है समय की बर्बादी।",
         "custom_id_label": "कस्टम ऑफ़र आईडी (वैकल्पिक)",
@@ -673,7 +817,7 @@
       },
       "submit": "प्रस्ताव बनाएं",
       "creating": "बनाया जा रहा है...",
-      "confirm_large_amount": "आप {{amount}} IRM को एस्क्रो में लॉक करने वाले हैं।\n\nयह एक बड़ी रकम है. पुष्टि करें कि आपने दशमलव सही ढंग से टाइप किया है।",
+      "confirm_large_amount": "आप एस्क्रो में {{amount}} IRM को लॉक करने वाले हैं।\n\nयह एक बड़ी रकम है. पुष्टि करें कि आपने दशमलव सही ढंग से टाइप किया है।",
       "remote_label": "दूर",
       "remote_tooltip": "यह ऑफ़र किसी अन्य विक्रेता का है और इसे आपके स्थानीय स्टोर से हटाया नहीं जा सकता।",
       "delete_tooltip": "इस ऑफ़र को अपने स्थानीय स्टोर से हटा दें"
@@ -682,7 +826,8 @@
       "title": "ऑफर लीजिए",
       "completed_trades": "पूर्ण व्यापार",
       "take_button": "प्रस्ताव लीजिए",
-      "taking": "ले रहा हूँ..."
+      "taking": "ले रहा हूँ...",
+      "title_modal": "यह ऑफर लें"
     },
     "feeds": {
       "discover_button": "फ़ीड खोजें",
@@ -697,7 +842,21 @@
       "min_must_be_positive": "न्यूनतम व्यापार राशि एक धनात्मक संख्या होनी चाहिए",
       "min_cannot_exceed": "न्यूनतम ऑफर राशि से अधिक नहीं हो सकती",
       "amount_exceeds_supply": "राशि {{max}} IRM (कुल आपूर्ति) से अधिक नहीं हो सकती",
-      "failed_to_load": "ऑफ़र लोड करने में विफल: {{reason}}"
+      "failed_to_load": "ऑफ़र लोड करने में विफल: {{reason}}",
+      "enter_positive_amount": "एक सकारात्मक राशि दर्ज करें",
+      "failed_load_my": "आपके ऑफ़र लोड करने में विफल: {{reason}}",
+      "failed_load_feeds": "फ़ीड लोड करने में विफल: {{reason}}",
+      "failed_add_feed": "फ़ीड जोड़ने में विफल: {{reason}}",
+      "feed_removed": "फ़ीड हटा दिया गया",
+      "failed_remove_feed": "फ़ीड हटाने में विफल: {{reason}}",
+      "offer_exported": "ऑफर {{path}} पर निर्यात किया गया",
+      "export_failed": "निर्यात विफल: {{reason}}",
+      "offer_deleted": "प्रस्ताव हटा दिया गया",
+      "delete_failed": "हटाना विफल: {{reason}}",
+      "offer_imported": "प्रस्ताव आयातित",
+      "import_failed": "आयात विफल: {{reason}}",
+      "sync_failed": "समन्वयन विफल: {{reason}}",
+      "default_feeds_added": "डिफ़ॉल्ट फ़ीड जोड़ी गईं"
     }
   },
   "miner": {

@@ -451,7 +451,7 @@
       "addr_invalid_chars": "Ungültiges Zeichen in der Adresse",
       "enter_positive_amount": "Geben Sie einen gültigen positiven Betrag ein",
       "errors": {
-        "insufficient": "Sie verfügen nicht über genügend IRM, um diese Transaktion abzuschließen. Überprüfen Sie Ihr Guthaben und versuchen Sie es mit einem kleineren Betrag.",
+        "insufficient": "Sie haben nicht genügend IRM, um diese Transaktion abzuschließen. Überprüfen Sie Ihr Guthaben und versuchen Sie es mit einem kleineren Betrag.",
         "unconfirmed": "Ihre Mittel sind noch nicht bestätigt. Warten Sie vor dem Senden mindestens eine Bestätigung ab.",
         "double_spend": "Diese Transaktion steht im Konflikt mit einer anderen ausstehenden Transaktion. Bitte warten Sie und versuchen Sie es erneut.",
         "generic": "Die Transaktion konnte nicht übertragen werden. Bitte überprüfen Sie, ob der Knoten online ist, und versuchen Sie es erneut.",
@@ -459,7 +459,7 @@
       }
     },
     "receive": {
-      "title": "IRM erhalten",
+      "title": "Erhalten Sie den IRM",
       "scan_qr_hint": "Scannen Sie diesen QR-Code oder kopieren Sie die Adresse unten"
     },
     "security": {
@@ -493,7 +493,7 @@
       "txid_copied": "Transaktions-ID kopiert",
       "address_added": "Adresse hinzugefügt",
       "address_hidden": "Adresse ausgeblendet",
-      "address_unhidden": "Adresse wiederhergestellt",
+      "address_unhidden": "Adresse nicht ausgeblendet",
       "wallet_renamed": "Brieftasche umbenannt",
       "rename_failed": "Umbenennen fehlgeschlagen: {{reason}}",
       "delete_failed": "Löschen fehlgeschlagen: {{reason}}",
@@ -507,7 +507,19 @@
       "failed_load_addresses": "Adressen konnten nicht geladen werden",
       "failed_load_transactions": "Transaktionen konnten nicht geladen werden",
       "node_must_be_online": "Der Knoten muss online sein, um Transaktionen senden zu können",
-      "set_as_primary": "Als primär festlegen"
+      "set_as_primary": "Als primär festlegen",
+      "no_address_returned": "Keine Adresse zurückgegeben",
+      "no_seed_backup": "Dieses Wallet verfügt über kein Seed-Backup – verwenden Sie stattdessen den WIF-Schlüssel oder die Option „Backup-Datei exportieren“.",
+      "no_address_loaded": "Keine Adresse geladen",
+      "restored_backup": "Wallet aus Backup wiederhergestellt",
+      "wif_saved": "WIF-Schlüssel gespeichert",
+      "need_12_words": "Geben Sie mindestens 12 mnemonische Wörter ein",
+      "enter_wif": "Geben Sie einen WIF-Schlüssel ein",
+      "imported_successfully": "Wallet erfolgreich importiert",
+      "copied": "Kopiert",
+      "recovery_copied": "Wiederherstellungsphrase kopiert",
+      "wif_copied": "WIF kopiert",
+      "name_invalid_chars": "Der Wallet-Name darf Folgendes nicht enthalten: / \\ : * ? \" < > |"
     }
   },
   "agreements": {
@@ -534,14 +546,14 @@
       "audit_modal_open": "Vertragsprüfung"
     },
     "actions": {
-      "fund": "Fonds-Treuhandkonto",
-      "release": "Freigeben",
-      "refund": "Erstattung",
-      "dispute": "Offener Streit",
-      "submit_proof": "Nachweis einreichen",
-      "verify_signatures": "Signaturen überprüfen",
-      "sign_agreement": "Vereinbarung unterzeichnen",
-      "delete": "Löschen"
+      "action_required_sign": "Erforderliche Maßnahme: Vereinbarung unterzeichnen",
+      "open_dispute": "Offener Streit",
+      "awaiting_resolver": "Warten auf den Resolver",
+      "view_audit": "Audit anzeigen",
+      "share_text": "Text teilen",
+      "delete": "Löschen",
+      "submitting": "Einreichen…",
+      "sign": "Zeichen"
     },
     "proof_modal": {
       "title": "Nachweis einreichen",
@@ -563,14 +575,130 @@
       "release_success": "Veröffentlicht – txid {{txid}}",
       "refund_success": "Erstattet – txid {{txid}}",
       "dispute_opened": "Streit eröffnet",
-      "proof_submitted": "Nachweis eingereicht",
+      "proof_submitted": "Nachweis eingereicht: {{id}}",
       "delete_success": "Vereinbarung gelöscht",
-      "failed_load": "Vereinbarungen konnten nicht geladen werden"
+      "failed_load": "Vereinbarungen konnten nicht geladen werden",
+      "delete_failed": "Löschen fehlgeschlagen: {{reason}}",
+      "refund_initiated": "Rückerstattung eingeleitet",
+      "refund_failed": "Rückerstattung fehlgeschlagen",
+      "pack_exported": "Vereinbarungspaket nach {{path}} exportiert",
+      "copied": "Kopiert",
+      "submission_failed": "Die Übermittlung ist fehlgeschlagen",
+      "funds_released": "Freigegebene Mittel · txid: {{txid}}",
+      "release_failed": "Die Veröffentlichung ist fehlgeschlagen",
+      "escrow_funded": "Treuhand finanziert · txid: {{txid}}",
+      "funding_failed": "Die Finanzierung ist gescheitert",
+      "agreement_imported": "Importierte Vereinbarung: {{id}}",
+      "invoice_parse_warning": "Importiert, Rechnungsfelder konnten jedoch nicht für die Vorabfüllung geparst werden",
+      "invoice_imported": "Rechnung importiert",
+      "failed_open_dispute": "Streit konnte nicht eröffnet werden",
+      "signature_valid": "Signatur gültig (Unterzeichner {{signer}})",
+      "signature_invalid": "Signatur ungültig: {{reason}}",
+      "agreement_signed_short": "Vereinbarung unterzeichnet.",
+      "sign_failed": "Die Anmeldung ist fehlgeschlagen"
     },
     "refund": {
       "blocked_default": "Rückerstattungsanspruch unbekannt",
       "blocked_reason": "Rückerstattung nicht verfügbar: {{reason}}",
       "timeout_not_reached": "Timeout noch nicht erreicht"
+    },
+    "page_subtitle": "On-Chain-Vergleichsvereinbarungen",
+    "tooltips": {
+      "help": "Vereinbarungen helfen",
+      "import_invoice": "Importieren Sie eine JSON-Zahlungsrechnung und erstellen Sie daraus eine Vereinbarung",
+      "clear_search": "Suche löschen",
+      "choose_save_location": "Wählen Sie den Speicherort",
+      "you_are_buyer": "Die von Ihnen ausgewählte Wallet-Adresse ist der Käufer dieser Vereinbarung",
+      "you_are_seller": "Die von Ihnen ausgewählte Wallet-Adresse ist der Verkäufer dieser Vereinbarung",
+      "copy_full_hash": "Vollständigen Vereinbarungs-Hash kopieren",
+      "submit_proof_delivery": "Reichen Sie Ihren Zustellnachweis ein",
+      "resolver_required": "Zur Beilegung dieses Streits ist eine Schlichtungsbescheinigung erforderlich. Wenden Sie sich an Ihren zuständigen Resolver.",
+      "deadline_passed": "Die Frist dieser Vereinbarung ist ohne Lösung abgelaufen.",
+      "share_text": "Kopieren Sie eine Nur-Text-Zusammenfassung dieser Vereinbarung in die Zwischenablage",
+      "delete_local": "Löschen Sie diese Vereinbarung aus Ihrem örtlichen Geschäft. Die Kopie des Kontrahenten ist davon nicht betroffen.",
+      "save_friendly_name": "Speichern Sie einen benutzerfreundlichen Namen für diese Vereinbarung (lokal gespeichert).",
+      "verify_signature_file": "Überprüfen Sie eine Signaturdatei (.sig oder .json) anhand dieser Vereinbarung"
+    },
+    "buttons": {
+      "import_invoice": "Rechnung importieren",
+      "import_pack": "Paket importieren",
+      "browse": "Durchsuchen",
+      "delete_agreement": "Vereinbarung löschen"
+    },
+    "page_views": {
+      "agreements": "Vereinbarungen",
+      "disputes": "Streitigkeiten"
+    },
+    "status_filters": {
+      "all": "Alle",
+      "pending": "Ausstehend",
+      "open": "Offen",
+      "funded": "Gefördert",
+      "released": "Freigegeben",
+      "refunded": "Erstattet"
+    },
+    "proof_types": {
+      "delivery_confirmed": "Lieferung bestätigt",
+      "payment_received": "Zahlung erhalten",
+      "otc_release": "OTC-Veröffentlichung",
+      "milestone_complete": "Meilenstein abgeschlossen"
+    },
+    "search_placeholder": "Suchen Sie nach ID, Käufer-/Verkäuferadresse oder Etikett ...",
+    "role_badges": {
+      "buyer": "Sie sind: Käufer",
+      "seller": "Sie sind: Verkäufer"
+    },
+    "labels": {
+      "hash": "Hash:",
+      "release_reason": "Veröffentlichungsgrund:",
+      "proof_not_final": "Beweis noch nicht endgültig",
+      "agreement_hash": "Vereinbarungs-Hash",
+      "proof_type": "Proof-Typ",
+      "attested_by": "Bestätigt von",
+      "evidence_summary": "Zusammenfassung der Beweise",
+      "proof_file": "Proof-Datei",
+      "create_from_evidence": "Aus Beweisen schaffen",
+      "secret_preimage": "Geheimes Vorbild (hex)",
+      "pack_file": "Datei packen",
+      "invoice_file": "Rechnungsdatei",
+      "invoice_id": "Rechnungs-ID",
+      "recipient": "Empfänger",
+      "amount": "Menge",
+      "reference": "Referenz",
+      "expires_height": "Läuft ab (Höhe)",
+      "dispute_reason": "Grund (optional)",
+      "agreement": "Vereinbarung",
+      "txid": "Txid",
+      "value": "Wert",
+      "policy": "Politik",
+      "signatures": "Unterschriften",
+      "buyer": "Käufer",
+      "seller": "Verkäufer",
+      "signer_wallet": "Wallet-Adresse des Unterzeichners",
+      "role": "Rolle:",
+      "reason": "Grund:"
+    },
+    "placeholders": {
+      "your_wallet_address": "Ihre Wallet-Adresse",
+      "secret_preimage": "Optional · Hexadezimalzahl mit 64 Zeichen",
+      "dispute_reason": "Beschreiben Sie, was schief gelaufen ist – dies wird dem Resolver mitgeteilt."
+    },
+    "modals": {
+      "submit_proof_title": "Beweis einreichen",
+      "import_pack_title": "Importvereinbarungspaket",
+      "import_invoice_title": "Rechnung importieren",
+      "open_dispute_title": "Offener Streit?",
+      "audit_title": "Vertragsprüfung",
+      "sign_title": "Vereinbarung unterzeichnen"
+    },
+    "audit": {
+      "fetching": "Prüfdatensatz wird abgerufen…"
+    },
+    "empty": {
+      "no_signatures": "Noch keine Unterschriften verifiziert. Verwenden Sie die Schaltfläche oben, um eine zu bestätigen.",
+      "no_wallet_addresses": "Keine Wallet-Adressen",
+      "no_disputes": "Keine Streitigkeiten.",
+      "disputes_offline": "(Knoten ist offline – die Streitbeilegungsliste ist möglicherweise nicht verfügbar.)"
     }
   },
   "settlement": {
@@ -616,7 +744,9 @@
         "payment_placeholder": "z.B. Banküberweisung, PayPal...",
         "memo": "Notiz (optional)",
         "memo_otc_placeholder": "Handelsbeschreibung...",
-        "memo_merchant_placeholder": "Bestellbeschreibung..."
+        "memo_merchant_placeholder": "Bestellbeschreibung...",
+        "total_escrow_hours": "Gesamtes Treuhandfenster (Stunden)",
+        "party_placeholder": "Q... oder P..."
       }
     },
     "seller_dashboard": "Verkäufer-Dashboard",
@@ -625,9 +755,23 @@
     "buyer_status_unavailable": "Käuferstatus nicht verfügbar.",
     "toasts": {
       "fee_unavailable": "Kostenvoranschlag nicht verfügbar",
-      "agreement_created": "Vereinbarung erstellt!"
+      "agreement_created": "Vereinbarung erstellt!",
+      "invoice_loaded": "Rechnung geladen – überprüfen und bestätigen",
+      "summary_copied": "Zusammenfassung kopiert",
+      "payload_copied": "Nutzlast kopiert",
+      "copied": "Kopiert",
+      "invoice_json_copied": "JSON der Rechnung kopiert",
+      "invoice_saved": "Rechnung unter {{path}} gespeichert",
+      "save_failed": "Speichern fehlgeschlagen: {{reason}}"
     },
-    "page_title_hub": "Siedlungszentrum"
+    "page_title_hub": "Siedlungszentrum",
+    "tooltips": {
+      "help": "Hilfe bei der Ansiedlung"
+    },
+    "review_agreement": "Überprüfungsvereinbarung",
+    "modals": {
+      "payment_invoice": "Zahlungsrechnung"
+    }
   },
   "marketplace": {
     "page_title": "Marktplatz",
@@ -639,21 +783,21 @@
     },
     "filters": {
       "search_placeholder": "Angebote suchen…",
-      "min_amount": "Min. IRM",
-      "max_amount": "Max. IRM",
+      "min_amount": "Mindestens IRM",
+      "max_amount": "Max IRM",
       "payment_method": "Zahlungsart"
     },
     "create_offer": {
       "title": "Verkaufsangebot erstellen",
       "how_works_title": "So funktioniert der OTC-Verkauf",
-      "how_works_step_1": "Sie erstellen dieses Angebot (das IRM ist jetzt treuhänderisch gesperrt).",
+      "how_works_step_1": "Sie erstellen dieses Angebot (der IRM ist jetzt treuhänderisch gesperrt).",
       "how_works_step_2": "Ein Käufer finanziert das Treuhandkonto mit seinem IRM-Anteil.",
       "how_works_step_3": "Der Käufer bezahlt Sie außerhalb der Kette anhand der folgenden Anweisungen.",
       "how_works_step_4": "Sie bestätigen den Zahlungseingang.",
-      "how_works_step_5": "Escrow gibt das IRM an den Käufer frei.",
+      "how_works_step_5": "Escrow gibt den IRM an den Käufer frei.",
       "escrow_note": "Das On-Chain-Treuhandkonto schützt beide Seiten – keiner von Ihnen kann mit dem Geld verschwinden.",
       "fields": {
-        "amount_label": "IRM zu verkaufen",
+        "amount_label": "IRM zum Verkaufen",
         "amount_hint": "Dieser Betrag wird von Ihrem Geldbeutel abgebucht und auf einem Treuhandkonto gesichert.",
         "seller_address_label": "Verkäuferadresse (optional)",
         "seller_address_placeholder": "Optional · Für den Wallet-Standard leer lassen",
@@ -673,7 +817,7 @@
       },
       "submit": "Angebot erstellen",
       "creating": "Erstellen…",
-      "confirm_large_amount": "Sie sind dabei, {{amount}} IRM treuhänderisch zu sperren.\n\nDas ist eine große Menge. Bestätigen Sie, dass Sie die Dezimalzahl richtig eingegeben haben.",
+      "confirm_large_amount": "Sie sind dabei, {{amount}} IRM im Treuhandkonto zu sperren.\n\nDas ist eine große Menge. Bestätigen Sie, dass Sie die Dezimalzahl richtig eingegeben haben.",
       "remote_label": "Fernbedienung",
       "remote_tooltip": "Dieses Angebot stammt von einem anderen Verkäufer und kann nicht aus Ihrem lokalen Geschäft gelöscht werden.",
       "delete_tooltip": "Löschen Sie dieses Angebot aus Ihrem örtlichen Geschäft"
@@ -682,7 +826,8 @@
       "title": "Angebot annehmen",
       "completed_trades": "Abgeschlossene Geschäfte",
       "take_button": "Angebot annehmen",
-      "taking": "Nehmen…"
+      "taking": "Nehmen…",
+      "title_modal": "Nehmen Sie dieses Angebot an"
     },
     "feeds": {
       "discover_button": "Entdecken Sie Feeds",
@@ -697,7 +842,21 @@
       "min_must_be_positive": "Der Mindesthandelsbetrag muss eine positive Zahl sein",
       "min_cannot_exceed": "Der Mindestbetrag darf den Angebotsbetrag nicht überschreiten",
       "amount_exceeds_supply": "Der Betrag darf {{max}} IRM (Gesamtvorrat) nicht überschreiten.",
-      "failed_to_load": "Angebote konnten nicht geladen werden: {{reason}}"
+      "failed_to_load": "Angebote konnten nicht geladen werden: {{reason}}",
+      "enter_positive_amount": "Geben Sie einen positiven Betrag ein",
+      "failed_load_my": "Ihre Angebote konnten nicht geladen werden: {{reason}}",
+      "failed_load_feeds": "Feeds konnten nicht geladen werden: {{reason}}",
+      "failed_add_feed": "Feed konnte nicht hinzugefügt werden: {{reason}}",
+      "feed_removed": "Feed entfernt",
+      "failed_remove_feed": "Feed konnte nicht entfernt werden: {{reason}}",
+      "offer_exported": "Angebot nach {{path}} exportiert",
+      "export_failed": "Export fehlgeschlagen: {{reason}}",
+      "offer_deleted": "Angebot gelöscht",
+      "delete_failed": "Löschen fehlgeschlagen: {{reason}}",
+      "offer_imported": "Angebot importiert",
+      "import_failed": "Import fehlgeschlagen: {{reason}}",
+      "sync_failed": "Synchronisierung fehlgeschlagen: {{reason}}",
+      "default_feeds_added": "Standard-Feeds hinzugefügt"
     }
   },
   "miner": {

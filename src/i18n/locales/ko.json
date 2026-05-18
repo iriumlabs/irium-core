@@ -434,7 +434,7 @@
       "title": "IRM 보내기",
       "to_address_label": "주소",
       "to_address_placeholder": "Q… 또는 P… 주소",
-      "amount_label": "금액(IRM)",
+      "amount_label": "금액(IMTICKER)",
       "amount_placeholder": "0.0000",
       "amount_in_sats": "= {{sats}} 토요일",
       "available_balance": "사용 가능: {{amount}}",
@@ -451,7 +451,7 @@
       "addr_invalid_chars": "주소에 잘못된 문자가 있습니다.",
       "enter_positive_amount": "유효한 양수 금액을 입력하세요.",
       "errors": {
-        "insufficient": "이 트랜잭션을 완료하는 데 충분한 IRM이 없습니다. 잔액을 확인하고 더 적은 금액을 사용해 보세요.",
+        "insufficient": "이 거래를 완료하는 데 충분한 IRM가 없습니다. 잔액을 확인하고 더 적은 금액을 사용해 보세요.",
         "unconfirmed": "귀하의 자금이 아직 확인되지 않았습니다. 보내기 전에 최소 1번의 확인을 기다리세요.",
         "double_spend": "이 거래는 대기 중인 다른 거래와 충돌합니다. 잠시 후 다시 시도해 주세요.",
         "generic": "거래를 브로드캐스트할 수 없습니다. 노드가 온라인인지 확인하고 다시 시도하십시오.",
@@ -493,7 +493,7 @@
       "txid_copied": "거래 ID 복사됨",
       "address_added": "주소가 추가되었습니다",
       "address_hidden": "숨겨진 주소",
-      "address_unhidden": "주소가 복원되었습니다.",
+      "address_unhidden": "주소가 숨겨지지 않음",
       "wallet_renamed": "지갑 이름이 변경됨",
       "rename_failed": "이름 바꾸기 실패: {{reason}}",
       "delete_failed": "삭제 실패: {{reason}}",
@@ -507,7 +507,19 @@
       "failed_load_addresses": "주소를 로드하지 못했습니다.",
       "failed_load_transactions": "거래를 로드하지 못했습니다.",
       "node_must_be_online": "트랜잭션을 보내려면 노드가 온라인 상태여야 합니다.",
-      "set_as_primary": "기본으로 설정"
+      "set_as_primary": "기본으로 설정",
+      "no_address_returned": "반환된 주소가 없습니다.",
+      "no_seed_backup": "이 지갑에는 시드 백업이 없습니다. 대신 WIF 키 또는 백업 파일 내보내기를 사용하세요.",
+      "no_address_loaded": "로드된 주소가 없습니다.",
+      "restored_backup": "백업에서 지갑이 복원되었습니다.",
+      "wif_saved": "WIF 키가 저장되었습니다.",
+      "need_12_words": "니모닉 단어를 12개 이상 입력하세요.",
+      "enter_wif": "WIF 키를 입력하세요",
+      "imported_successfully": "지갑을 성공적으로 가져왔습니다.",
+      "copied": "복사됨",
+      "recovery_copied": "복구 문구가 복사되었습니다.",
+      "wif_copied": "WIF가 복사되었습니다.",
+      "name_invalid_chars": "지갑 이름은 다음을 포함할 수 없습니다: / \\ : * ? \" < > |"
     }
   },
   "agreements": {
@@ -534,14 +546,14 @@
       "audit_modal_open": "계약 감사"
     },
     "actions": {
-      "fund": "기금 에스크로",
-      "release": "풀어 주다",
-      "refund": "환불하다",
-      "dispute": "공개 분쟁",
-      "submit_proof": "증거 제출",
-      "verify_signatures": "서명 확인",
-      "sign_agreement": "계약서 서명",
-      "delete": "삭제"
+      "action_required_sign": "필요한 조치: 계약서 서명",
+      "open_dispute": "공개 분쟁",
+      "awaiting_resolver": "해결자 대기 중",
+      "view_audit": "감사 보기",
+      "share_text": "텍스트 공유",
+      "delete": "삭제",
+      "submitting": "제출 중…",
+      "sign": "징후"
     },
     "proof_modal": {
       "title": "증거 제출",
@@ -563,14 +575,130 @@
       "release_success": "출시 — txid {{txid}}",
       "refund_success": "환불됨 — txid {{txid}}",
       "dispute_opened": "분쟁 개시",
-      "proof_submitted": "제출된 증거",
+      "proof_submitted": "제출된 증거: {{id}}",
       "delete_success": "계약이 삭제되었습니다.",
-      "failed_load": "계약을 로드하지 못했습니다."
+      "failed_load": "계약을 로드하지 못했습니다.",
+      "delete_failed": "삭제 실패: {{reason}}",
+      "refund_initiated": "환불 시작됨",
+      "refund_failed": "환불 실패",
+      "pack_exported": "계약 팩을 {{path}}(으)로 내보냈습니다.",
+      "copied": "복사됨",
+      "submission_failed": "제출 실패",
+      "funds_released": "해제된 자금 · txid: {{txid}}",
+      "release_failed": "출시 실패",
+      "escrow_funded": "에스크로 자금 지원 · txid: {{txid}}",
+      "funding_failed": "펀딩 실패",
+      "agreement_imported": "가져온 계약: {{id}}",
+      "invoice_parse_warning": "가져왔지만 미리 입력할 송장 필드를 구문 분석할 수 없습니다.",
+      "invoice_imported": "송장을 가져왔습니다.",
+      "failed_open_dispute": "분쟁을 개시하지 못했습니다.",
+      "signature_valid": "유효한 서명(서명자 {{signer}})",
+      "signature_invalid": "잘못된 서명: {{reason}}",
+      "agreement_signed_short": "계약이 체결되었습니다.",
+      "sign_failed": "서명 실패"
     },
     "refund": {
       "blocked_default": "환불 자격 여부를 알 수 없음",
       "blocked_reason": "환불 불가: {{reason}}",
       "timeout_not_reached": "아직 시간 초과에 도달하지 않았습니다."
+    },
+    "page_subtitle": "온체인 결제 계약",
+    "tooltips": {
+      "help": "계약 도움말",
+      "import_invoice": "결제 송장 JSON을 가져와서 계약을 작성하세요.",
+      "clear_search": "검색 지우기",
+      "choose_save_location": "저장 위치 선택",
+      "you_are_buyer": "귀하가 선택한 지갑 주소는 본 계약의 구매자입니다.",
+      "you_are_seller": "선택한 지갑 주소는 이 계약의 판매자입니다.",
+      "copy_full_hash": "전체 계약 해시 복사",
+      "submit_proof_delivery": "배송 증명서 제출",
+      "resolver_required": "이 분쟁을 해결하려면 해결자 증명이 필요합니다. 지정된 해결사에게 문의하세요.",
+      "deadline_passed": "본 계약의 기한은 해결되지 않은 채 지났습니다.",
+      "share_text": "본 계약의 일반 텍스트 요약을 클립보드에 복사하세요.",
+      "delete_local": "지역 상점에서 이 계약을 삭제하십시오. 상대방의 사본은 영향을 받지 않습니다.",
+      "save_friendly_name": "이 계약의 이름을 저장하세요(로컬에 저장됨).",
+      "verify_signature_file": "본 계약에 대해 서명 파일(.sig 또는 .json)을 확인하세요."
+    },
+    "buttons": {
+      "import_invoice": "송장 가져오기",
+      "import_pack": "가져오기 팩",
+      "browse": "먹다",
+      "delete_agreement": "계약 삭제"
+    },
+    "page_views": {
+      "agreements": "계약",
+      "disputes": "분쟁"
+    },
+    "status_filters": {
+      "all": "모두",
+      "pending": "보류 중",
+      "open": "열려 있는",
+      "funded": "자금 지원",
+      "released": "출시된",
+      "refunded": "환불됨"
+    },
+    "proof_types": {
+      "delivery_confirmed": "배송 확인됨",
+      "payment_received": "결제 완료",
+      "otc_release": "OTC 출시",
+      "milestone_complete": "마일스톤 완료"
+    },
+    "search_placeholder": "ID, 구매자/판매자 주소, 라벨로 검색하세요.",
+    "role_badges": {
+      "buyer": "당신은: 구매자",
+      "seller": "귀하는: 판매자"
+    },
+    "labels": {
+      "hash": "해시시:",
+      "release_reason": "출시 이유:",
+      "proof_not_final": "아직 확정되지 않은 증거",
+      "agreement_hash": "계약 해시",
+      "proof_type": "증명 유형",
+      "attested_by": "증명자",
+      "evidence_summary": "증거 요약",
+      "proof_file": "증명파일",
+      "create_from_evidence": "증거로부터 창조",
+      "secret_preimage": "비밀 사전 이미지(16진수)",
+      "pack_file": "팩 파일",
+      "invoice_file": "송장 파일",
+      "invoice_id": "송장 ID",
+      "recipient": "받는 사람",
+      "amount": "양",
+      "reference": "참조",
+      "expires_height": "만료(높이)",
+      "dispute_reason": "이유(선택사항)",
+      "agreement": "합의",
+      "txid": "Txid",
+      "value": "값",
+      "policy": "정책",
+      "signatures": "서명",
+      "buyer": "사는 사람",
+      "seller": "파는 사람",
+      "signer_wallet": "서명자 지갑 주소",
+      "role": "역할:",
+      "reason": "이유:"
+    },
+    "placeholders": {
+      "your_wallet_address": "지갑 주소",
+      "secret_preimage": "선택 사항 · 64자 16진수",
+      "dispute_reason": "무엇이 잘못되었는지 설명하세요. 이는 해결 프로그램과 공유됩니다."
+    },
+    "modals": {
+      "submit_proof_title": "증거 제출",
+      "import_pack_title": "수입계약팩",
+      "import_invoice_title": "송장 가져오기",
+      "open_dispute_title": "공개 분쟁?",
+      "audit_title": "계약 감사",
+      "sign_title": "계약서 서명"
+    },
+    "audit": {
+      "fetching": "감사 기록을 가져오는 중…"
+    },
+    "empty": {
+      "no_signatures": "아직 확인된 서명이 없습니다. 위의 버튼을 사용하여 확인하세요.",
+      "no_wallet_addresses": "지갑 주소 없음",
+      "no_disputes": "분쟁이 없습니다.",
+      "disputes_offline": "(노드가 오프라인입니다. 분쟁 목록을 사용할 수 없습니다.)"
     }
   },
   "settlement": {
@@ -604,7 +732,7 @@
       "fields": {
         "party_a": "당사자 A",
         "party_b": "파티 B",
-        "amount_irm": "금액(IRM)",
+        "amount_irm": "금액(IMTICKER)",
         "deadline_hours": "마감 시간(시간)",
         "cooldown_hours": "쿨다운 기간(시간)",
         "milestones": "마일스톤 수",
@@ -616,7 +744,9 @@
         "payment_placeholder": "예를 들어 은행송금, 페이팔...",
         "memo": "메모(선택사항)",
         "memo_otc_placeholder": "거래 설명...",
-        "memo_merchant_placeholder": "주문 설명..."
+        "memo_merchant_placeholder": "주문 설명...",
+        "total_escrow_hours": "총 에스크로 기간(시간)",
+        "party_placeholder": "Q... 또는 P..."
       }
     },
     "seller_dashboard": "판매자 대시보드",
@@ -625,9 +755,23 @@
     "buyer_status_unavailable": "구매자 상태를 확인할 수 없습니다.",
     "toasts": {
       "fee_unavailable": "수수료 견적을 확인할 수 없습니다.",
-      "agreement_created": "계약이 생성되었습니다!"
+      "agreement_created": "계약이 생성되었습니다!",
+      "invoice_loaded": "송장 로드됨 - 검토 및 확인",
+      "summary_copied": "요약이 복사되었습니다.",
+      "payload_copied": "페이로드 복사됨",
+      "copied": "복사됨",
+      "invoice_json_copied": "송장 JSON이 복사되었습니다.",
+      "invoice_saved": "{{path}}에 인보이스가 저장되었습니다.",
+      "save_failed": "저장 실패: {{reason}}"
     },
-    "page_title_hub": "정착 허브"
+    "page_title_hub": "정착 허브",
+    "tooltips": {
+      "help": "정착 지원"
+    },
+    "review_agreement": "계약 검토",
+    "modals": {
+      "payment_invoice": "지불 송장"
+    }
   },
   "marketplace": {
     "page_title": "시장",
@@ -646,11 +790,11 @@
     "create_offer": {
       "title": "판매 제안 생성",
       "how_works_title": "OTC 판매 작동 방식",
-      "how_works_step_1": "귀하는 이 제안을 생성합니다(IRM은 현재 에스크로에 잠겨 있습니다).",
-      "how_works_step_2": "구매자는 자신의 IRM 지분으로 에스크로 자금을 조달합니다.",
+      "how_works_step_1": "귀하는 이 제안을 생성합니다(IRM는 현재 에스크로에 잠겨 있습니다).",
+      "how_works_step_2": "구매자는 IRM 지분으로 에스크로 자금을 조달합니다.",
       "how_works_step_3": "구매자는 아래 지침에 따라 오프체인으로 귀하에게 지불합니다.",
       "how_works_step_4": "결제가 접수되었음을 확인합니다.",
-      "how_works_step_5": "에스크로는 IRM을 구매자에게 공개합니다.",
+      "how_works_step_5": "에스크로는 IRM를 구매자에게 공개합니다.",
       "escrow_note": "온체인 에스크로는 양측을 모두 보호합니다. 둘 중 누구도 돈을 가지고 사라질 수 없습니다.",
       "fields": {
         "amount_label": "IRM 판매",
@@ -673,7 +817,7 @@
       },
       "submit": "제안 만들기",
       "creating": "만드는 중…",
-      "confirm_large_amount": "{{amount}} IRM을 에스크로에 잠그려고 합니다.\n\n이것은 많은 금액입니다. 소수점을 올바르게 입력했는지 확인하세요.",
+      "confirm_large_amount": "{{amount}} IRM를 에스크로에 잠그려고 합니다.\n\n이것은 많은 금액입니다. 소수점을 올바르게 입력했는지 확인하세요.",
       "remote_label": "원격",
       "remote_tooltip": "이 제안은 다른 판매자가 제공한 것이므로 현지 상점에서 삭제할 수 없습니다.",
       "delete_tooltip": "지역 매장에서 이 제안을 삭제하세요."
@@ -682,7 +826,8 @@
       "title": "제안을 받아들이다",
       "completed_trades": "완료된 거래",
       "take_button": "제안을 받아들이다",
-      "taking": "취득…"
+      "taking": "취득…",
+      "title_modal": "이 제안을 받아보세요"
     },
     "feeds": {
       "discover_button": "피드 탐색",
@@ -696,8 +841,22 @@
       "feed_added": "피드가 추가됨",
       "min_must_be_positive": "최소 거래 금액은 양수여야 합니다.",
       "min_cannot_exceed": "최소 금액은 제안 금액을 초과할 수 없습니다.",
-      "amount_exceeds_supply": "금액은 {{max}} IRM(총 공급량)을 초과할 수 없습니다.",
-      "failed_to_load": "쿠폰을 로드하지 못했습니다: {{reason}}"
+      "amount_exceeds_supply": "금액은 {{max}} IRM(총 공급량)를 초과할 수 없습니다.",
+      "failed_to_load": "쿠폰을 로드하지 못했습니다: {{reason}}",
+      "enter_positive_amount": "양수 금액을 입력하세요.",
+      "failed_load_my": "쿠폰을 로드하지 못했습니다: {{reason}}",
+      "failed_load_feeds": "피드를 로드하지 못했습니다: {{reason}}",
+      "failed_add_feed": "피드 추가 실패: {{reason}}",
+      "feed_removed": "피드가 삭제되었습니다.",
+      "failed_remove_feed": "피드 삭제 실패: {{reason}}",
+      "offer_exported": "쿠폰을 {{path}}(으)로 내보냈습니다.",
+      "export_failed": "내보내기 실패: {{reason}}",
+      "offer_deleted": "쿠폰이 삭제되었습니다.",
+      "delete_failed": "삭제 실패: {{reason}}",
+      "offer_imported": "쿠폰을 가져왔습니다.",
+      "import_failed": "가져오기 실패: {{reason}}",
+      "sync_failed": "동기화 실패: {{reason}}",
+      "default_feeds_added": "기본 피드가 추가되었습니다."
     }
   },
   "miner": {
@@ -928,7 +1087,7 @@
       "step_agreements": "계약",
       "intro": "판매하는 제품과 가격을 정의하세요.",
       "fields": {
-        "amount_label": "금액(IRM)",
+        "amount_label": "금액(IMTICKER)",
         "offer_id_label": "쿠폰 ID",
         "seller_address_label": "판매자 주소",
         "seller_address_hint": "지갑에서 자동 감지됩니다. 구매자는 여기로 지불금을 보내게 됩니다.",

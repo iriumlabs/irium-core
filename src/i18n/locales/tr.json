@@ -431,7 +431,7 @@
       "manage_description": "Cüzdan dosyaları, içe aktarma, gizli adresler"
     },
     "send": {
-      "title": "IRM'yi gönder",
+      "title": "IRM'ı gönder",
       "to_address_label": "Adrese",
       "to_address_placeholder": "Q… veya P… adresi",
       "amount_label": "Tutar (IRM)",
@@ -451,7 +451,7 @@
       "addr_invalid_chars": "Adreste geçersiz karakter",
       "enter_positive_amount": "Geçerli bir pozitif tutar girin",
       "errors": {
-        "insufficient": "Bu işlemi tamamlamak için yeterli IRM'niz yok. Bakiyenizi kontrol edin ve daha küçük bir miktar deneyin.",
+        "insufficient": "Bu işlemi tamamlamak için yeterli IRM'ınız yok. Bakiyenizi kontrol edin ve daha küçük bir miktar deneyin.",
         "unconfirmed": "Paranız henüz onaylanmadı. Göndermeden önce en az 1 onay bekleyin.",
         "double_spend": "Bu işlem, bekleyen başka bir işlemle çakışıyor. Lütfen bekleyin ve tekrar deneyin.",
         "generic": "İşlem yayınlanamadı. Lütfen düğümün çevrimiçi olup olmadığını kontrol edin ve tekrar deneyin.",
@@ -459,7 +459,7 @@
       }
     },
     "receive": {
-      "title": "IRM'yi al",
+      "title": "IRM'ı alın",
       "scan_qr_hint": "Bu QR kodunu tarayın veya aşağıdaki adresi kopyalayın"
     },
     "security": {
@@ -493,7 +493,7 @@
       "txid_copied": "İşlem kimliği kopyalandı",
       "address_added": "Adres eklendi",
       "address_hidden": "Adres gizlendi",
-      "address_unhidden": "Adres geri yüklendi",
+      "address_unhidden": "Adres gizlenmedi",
       "wallet_renamed": "Cüzdan yeniden adlandırıldı",
       "rename_failed": "Yeniden adlandırma başarısız oldu: {{reason}}",
       "delete_failed": "Silinemedi: {{reason}}",
@@ -507,7 +507,19 @@
       "failed_load_addresses": "Adresler yüklenemedi",
       "failed_load_transactions": "İşlemler yüklenemedi",
       "node_must_be_online": "İşlemleri gönderebilmek için düğümün çevrimiçi olması gerekir",
-      "set_as_primary": "Birincil olarak ayarla"
+      "set_as_primary": "Birincil olarak ayarla",
+      "no_address_returned": "Adres döndürülmedi",
+      "no_seed_backup": "Bu cüzdanın çekirdek yedeği yok; bunun yerine WIF Anahtarını veya Yedekleme Dosyasını Dışa Aktar'ı kullanın",
+      "no_address_loaded": "Adres yüklenmedi",
+      "restored_backup": "Cüzdan yedeklemeden geri yüklendi",
+      "wif_saved": "WIF anahtarı kaydedildi",
+      "need_12_words": "En az 12 anımsatıcı kelime girin",
+      "enter_wif": "Bir WIF anahtarı girin",
+      "imported_successfully": "Cüzdan başarıyla içe aktarıldı",
+      "copied": "Kopyalandı",
+      "recovery_copied": "Kurtarma ifadesi kopyalandı",
+      "wif_copied": "WIF kopyalandı",
+      "name_invalid_chars": "Cüzdan adı şunları içeremez: / \\ : * ? \" < > |"
     }
   },
   "agreements": {
@@ -534,14 +546,14 @@
       "audit_modal_open": "Anlaşma Denetimi"
     },
     "actions": {
-      "fund": "Fon emaneti",
-      "release": "Serbest bırakmak",
-      "refund": "Geri ödemek",
-      "dispute": "Açık anlaşmazlık",
-      "submit_proof": "Kanıt gönder",
-      "verify_signatures": "İmzaları doğrulayın",
-      "sign_agreement": "Sözleşme imzala",
-      "delete": "Silmek"
+      "action_required_sign": "İşlem gerekli: Sözleşmeyi İmzalayın",
+      "open_dispute": "Anlaşmazlığı Aç",
+      "awaiting_resolver": "Çözümleyici Bekleniyor",
+      "view_audit": "Denetimi Görüntüle",
+      "share_text": "Metni Paylaş",
+      "delete": "Silmek",
+      "submitting": "Gönderiliyor…",
+      "sign": "İmza"
     },
     "proof_modal": {
       "title": "Kanıt gönder",
@@ -563,14 +575,130 @@
       "release_success": "Yayınlandı — txid {{txid}}",
       "refund_success": "Geri ödeme yapıldı — txid {{txid}}",
       "dispute_opened": "Anlaşmazlık açıldı",
-      "proof_submitted": "Kanıt gönderildi",
+      "proof_submitted": "Kanıt gönderildi: {{id}}",
       "delete_success": "Sözleşme silindi",
-      "failed_load": "Sözleşmeler yüklenemedi"
+      "failed_load": "Sözleşmeler yüklenemedi",
+      "delete_failed": "Silinemedi: {{reason}}",
+      "refund_initiated": "Geri ödeme başlatıldı",
+      "refund_failed": "Geri ödeme başarısız oldu",
+      "pack_exported": "Sözleşme paketi {{path}} konumuna aktarıldı",
+      "copied": "Kopyalandı",
+      "submission_failed": "Gönderim başarısız oldu",
+      "funds_released": "Serbest bırakılan fonlar · txid: {{txid}}",
+      "release_failed": "Serbest bırakma başarısız oldu",
+      "escrow_funded": "Emanet fonlu · txid: {{txid}}",
+      "funding_failed": "Finansman başarısız oldu",
+      "agreement_imported": "Sözleşme içe aktarıldı: {{id}}",
+      "invoice_parse_warning": "İçe aktarıldı ancak önceden doldurma için fatura alanları ayrıştırılamadı",
+      "invoice_imported": "Fatura içe aktarıldı",
+      "failed_open_dispute": "Anlaşmazlık açılamadı",
+      "signature_valid": "İmza geçerli (imzalayan {{signer}})",
+      "signature_invalid": "İmza geçersiz: {{reason}}",
+      "agreement_signed_short": "Anlaşma imzalandı.",
+      "sign_failed": "İmza başarısız oldu"
     },
     "refund": {
       "blocked_default": "Geri ödeme uygunluğu bilinmiyor",
       "blocked_reason": "Geri ödeme yapılamıyor: {{reason}}",
       "timeout_not_reached": "Zaman aşımına henüz ulaşılmadı"
+    },
+    "page_subtitle": "Zincir içi uzlaşma anlaşmaları",
+    "tooltips": {
+      "help": "Anlaşmalar yardımı",
+      "import_invoice": "Bir ödeme faturası JSON'u içe aktarın ve ondan bir sözleşme oluşturun",
+      "clear_search": "Aramayı temizle",
+      "choose_save_location": "Kaydetme konumunu seçin",
+      "you_are_buyer": "Seçtiğiniz cüzdan adresi bu sözleşmenin alıcısıdır",
+      "you_are_seller": "Seçtiğiniz cüzdan adresi bu sözleşmenin satıcısıdır",
+      "copy_full_hash": "Sözleşme karmasının tamamını kopyala",
+      "submit_proof_delivery": "Teslimat belgenizi gönderin",
+      "resolver_required": "Bu anlaşmazlığın çözümü için çözümleyici onayı gereklidir. Belirlenen çözümleyicinizle iletişime geçin.",
+      "deadline_passed": "Bu anlaşmanın son tarihi çözümlenmeden geçti.",
+      "share_text": "Bu sözleşmenin düz metin özetini panoya kopyalayın",
+      "delete_local": "Bu sözleşmeyi yerel mağazanızdan silin. Karşı tarafın kopyası etkilenmez.",
+      "save_friendly_name": "Bu sözleşme için kolay bir ad kaydedin (yerel olarak depolanır)",
+      "verify_signature_file": "Bu sözleşmeye uygun bir imza dosyasını (.sig veya .json) doğrulayın"
+    },
+    "buttons": {
+      "import_invoice": "Faturayı İthalat",
+      "import_pack": "Paketi İçe Aktar",
+      "browse": "Göz at",
+      "delete_agreement": "Sözleşmeyi Sil"
+    },
+    "page_views": {
+      "agreements": "Anlaşmalar",
+      "disputes": "Anlaşmazlıklar"
+    },
+    "status_filters": {
+      "all": "Tüm",
+      "pending": "Askıda olması",
+      "open": "Açık",
+      "funded": "Finanse edilen",
+      "released": "Piyasaya sürülmüş",
+      "refunded": "Geri ödeme yapıldı"
+    },
+    "proof_types": {
+      "delivery_confirmed": "Teslimat Onaylandı",
+      "payment_received": "Ödeme Alındı",
+      "otc_release": "OTC Sürümü",
+      "milestone_complete": "Kilometre Taşı Tamamlandı"
+    },
+    "search_placeholder": "Kimliğe, alıcı/satıcı adresine veya etikete göre arayın…",
+    "role_badges": {
+      "buyer": "Siz: Alıcı",
+      "seller": "Siz: Satıcı"
+    },
+    "labels": {
+      "hash": "Doğramak:",
+      "release_reason": "Yayınlanma nedeni:",
+      "proof_not_final": "Kanıt henüz nihai değil",
+      "agreement_hash": "Anlaşma Karması",
+      "proof_type": "Kanıt Türü",
+      "attested_by": "Onaylayan:",
+      "evidence_summary": "Kanıt Özeti",
+      "proof_file": "Kanıt Dosyası",
+      "create_from_evidence": "Kanıtlardan Yarat",
+      "secret_preimage": "Gizli Ön Görüntü (hex)",
+      "pack_file": "Paket Dosyası",
+      "invoice_file": "Fatura Dosyası",
+      "invoice_id": "Fatura Kimliği",
+      "recipient": "Alıcı",
+      "amount": "Miktar",
+      "reference": "Referans",
+      "expires_height": "Süresi doluyor (yükseklik)",
+      "dispute_reason": "Sebep (isteğe bağlı)",
+      "agreement": "Anlaşma",
+      "txid": "Txid",
+      "value": "Değer",
+      "policy": "Politika",
+      "signatures": "İmzalar",
+      "buyer": "Alıcı",
+      "seller": "Satıcı",
+      "signer_wallet": "İmzalayanın cüzdan adresi",
+      "role": "Rol:",
+      "reason": "Sebep:"
+    },
+    "placeholders": {
+      "your_wallet_address": "Cüzdan adresiniz",
+      "secret_preimage": "İsteğe bağlı · 64 karakterli altıgen",
+      "dispute_reason": "Neyin yanlış gittiğini açıklayın; bu, çözümleyiciyle paylaşılır."
+    },
+    "modals": {
+      "submit_proof_title": "Kanıt Gönder",
+      "import_pack_title": "İthalat Sözleşmesi Paketi",
+      "import_invoice_title": "Faturayı İthalat",
+      "open_dispute_title": "Anlaşmazlık Açılsın mı?",
+      "audit_title": "Anlaşma Denetimi",
+      "sign_title": "Sözleşme İmzala"
+    },
+    "audit": {
+      "fetching": "Denetim kaydı getiriliyor…"
+    },
+    "empty": {
+      "no_signatures": "Henüz doğrulanmış bir imza yok. Birini doğrulamak için yukarıdaki düğmeyi kullanın.",
+      "no_wallet_addresses": "Cüzdan adresi yok",
+      "no_disputes": "Anlaşmazlık yok.",
+      "disputes_offline": "(Düğüm çevrimdışı; anlaşmazlık listesi kullanılamayabilir.)"
     }
   },
   "settlement": {
@@ -616,7 +744,9 @@
         "payment_placeholder": "örneğin Banka havalesi, PayPal...",
         "memo": "Not (isteğe bağlı)",
         "memo_otc_placeholder": "Ticaret açıklaması...",
-        "memo_merchant_placeholder": "Sipariş açıklaması..."
+        "memo_merchant_placeholder": "Sipariş açıklaması...",
+        "total_escrow_hours": "Toplam Emanet Penceresi (saat)",
+        "party_placeholder": "Soru... ya da P..."
       }
     },
     "seller_dashboard": "Satıcı Kontrol Paneli",
@@ -625,9 +755,23 @@
     "buyer_status_unavailable": "Alıcı durumu mevcut değil.",
     "toasts": {
       "fee_unavailable": "Ücret tahmini mevcut değil",
-      "agreement_created": "Anlaşma oluşturuldu!"
+      "agreement_created": "Anlaşma oluşturuldu!",
+      "invoice_loaded": "Fatura yüklendi — inceleyin ve onaylayın",
+      "summary_copied": "Özet kopyalandı",
+      "payload_copied": "Yük kopyalandı",
+      "copied": "Kopyalandı",
+      "invoice_json_copied": "Fatura JSON'u kopyalandı",
+      "invoice_saved": "Fatura {{path}} hesabına kaydedildi",
+      "save_failed": "Kaydetme başarısız oldu: {{reason}}"
     },
-    "page_title_hub": "Yerleşim Merkezi"
+    "page_title_hub": "Yerleşim Merkezi",
+    "tooltips": {
+      "help": "Yerleşim yardımı"
+    },
+    "review_agreement": "Sözleşmeyi İnceleyin",
+    "modals": {
+      "payment_invoice": "Ödeme Faturası"
+    }
   },
   "marketplace": {
     "page_title": "Pazar yeri",
@@ -639,7 +783,7 @@
     },
     "filters": {
       "search_placeholder": "Teklifleri ara…",
-      "min_amount": "Min. IRM",
+      "min_amount": "Minimum IRM",
       "max_amount": "Maksimum IRM",
       "payment_method": "Ödeme yöntemi"
     },
@@ -647,10 +791,10 @@
       "title": "Satış Teklifi Oluştur",
       "how_works_title": "OTC satışı nasıl çalışır?",
       "how_works_step_1": "Bu teklifi siz yaratırsınız (IRM artık emanette kilitlidir).",
-      "how_works_step_2": "Bir alıcı emaneti kendi IRM payıyla finanse eder.",
+      "how_works_step_2": "Bir alıcı emaneti IRM hissesi ile finanse eder.",
       "how_works_step_3": "Alıcı, aşağıdaki talimatları kullanarak size zincir dışı ödeme yapar.",
       "how_works_step_4": "Ödemenin alındığını onaylıyorsunuz.",
-      "how_works_step_5": "Escrow, IRM'yi alıcıya bırakır.",
+      "how_works_step_5": "Escrow, IRM'ı alıcıya bırakır.",
       "escrow_note": "Zincir üstü emanet her iki tarafı da korur; ikiniz de parayla birlikte ortadan kaybolamazsınız.",
       "fields": {
         "amount_label": "IRM Satılacak",
@@ -673,7 +817,7 @@
       },
       "submit": "Teklif Oluştur",
       "creating": "Oluşturuluyor…",
-      "confirm_large_amount": "{{amount}} IRM'yi emanete kilitlemek üzeresiniz.\n\nBu büyük bir miktar. Ondalık sayıyı doğru yazdığınızdan emin olun.",
+      "confirm_large_amount": "{{amount}} IRM'ı emanete kilitlemek üzeresiniz.\n\nBu büyük bir miktar. Ondalık sayıyı doğru yazdığınızdan emin olun.",
       "remote_label": "uzak",
       "remote_tooltip": "Bu teklif başka bir satıcıya aittir ve yerel mağazanızdan silinemez.",
       "delete_tooltip": "Bu teklifi yerel mağazanızdan silin"
@@ -682,7 +826,8 @@
       "title": "Teklif Al",
       "completed_trades": "Tamamlanan işlemler",
       "take_button": "Teklif al",
-      "taking": "Alınıyor…"
+      "taking": "Alınıyor…",
+      "title_modal": "Bu Teklifi Alın"
     },
     "feeds": {
       "discover_button": "Yayınları keşfedin",
@@ -696,8 +841,22 @@
       "feed_added": "Özet akışı eklendi",
       "min_must_be_positive": "Minimum işlem tutarı pozitif bir sayı olmalıdır",
       "min_cannot_exceed": "Minimum teklif tutarını aşamaz",
-      "amount_exceeds_supply": "Tutar {{max}} IRM'yi (toplam arz) aşamaz",
-      "failed_to_load": "Teklifler yüklenemedi: {{reason}}"
+      "amount_exceeds_supply": "Tutar {{max}} IRM'ı (toplam arz) aşamaz",
+      "failed_to_load": "Teklifler yüklenemedi: {{reason}}",
+      "enter_positive_amount": "Pozitif bir miktar girin",
+      "failed_load_my": "Teklifleriniz yüklenemedi: {{reason}}",
+      "failed_load_feeds": "Yayınlar yüklenemedi: {{reason}}",
+      "failed_add_feed": "Özet akışı eklenemedi: {{reason}}",
+      "feed_removed": "Feed kaldırıldı",
+      "failed_remove_feed": "Özet akışı kaldırılamadı: {{reason}}",
+      "offer_exported": "Teklif {{path}}'a aktarıldı",
+      "export_failed": "Dışa aktarma başarısız oldu: {{reason}}",
+      "offer_deleted": "Teklif silindi",
+      "delete_failed": "Silinemedi: {{reason}}",
+      "offer_imported": "Teklif içe aktarıldı",
+      "import_failed": "İçe aktarma başarısız oldu: {{reason}}",
+      "sync_failed": "Senkronizasyon başarısız oldu: {{reason}}",
+      "default_feeds_added": "Varsayılan feed'ler eklendi"
     }
   },
   "miner": {

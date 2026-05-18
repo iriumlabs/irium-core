@@ -493,7 +493,7 @@
       "txid_copied": "ID de transacción copiado",
       "address_added": "Dirección agregada",
       "address_hidden": "Dirección oculta",
-      "address_unhidden": "Dirección restaurada",
+      "address_unhidden": "Dirección mostrada",
       "wallet_renamed": "Monedero renombrado",
       "rename_failed": "Error al cambiar el nombre: {{reason}}",
       "delete_failed": "Error al eliminar: {{reason}}",
@@ -507,7 +507,19 @@
       "failed_load_addresses": "No se pudieron cargar las direcciones",
       "failed_load_transactions": "No se pudieron cargar las transacciones",
       "node_must_be_online": "El nodo debe estar en línea para enviar transacciones",
-      "set_as_primary": "Establecer como principal"
+      "set_as_primary": "Establecer como principal",
+      "no_address_returned": "No se devolvió ninguna dirección",
+      "no_seed_backup": "Esta billetera no tiene copia de seguridad inicial: use la clave WIF o Exportar archivo de copia de seguridad en su lugar",
+      "no_address_loaded": "Ninguna dirección cargada",
+      "restored_backup": "Cartera restaurada desde la copia de seguridad",
+      "wif_saved": "Clave WIF guardada",
+      "need_12_words": "Ingrese al menos 12 palabras mnemotécnicas",
+      "enter_wif": "Ingrese una clave WIF",
+      "imported_successfully": "Cartera importada correctamente",
+      "copied": "Copiado",
+      "recovery_copied": "Frase de recuperación copiada",
+      "wif_copied": "WIF copiado",
+      "name_invalid_chars": "El nombre de la billetera no puede contener: / \\ : * ? \" < > |"
     }
   },
   "agreements": {
@@ -732,7 +744,9 @@
         "payment_placeholder": "p.ej. Transferencia bancaria, PayPal...",
         "memo": "Nota (opcional)",
         "memo_otc_placeholder": "Descripción comercial...",
-        "memo_merchant_placeholder": "Descripción del pedido..."
+        "memo_merchant_placeholder": "Descripción del pedido...",
+        "total_escrow_hours": "Ventana total de depósito en garantía (horas)",
+        "party_placeholder": "P... o P..."
       }
     },
     "seller_dashboard": "Panel de vendedor",
@@ -741,9 +755,23 @@
     "buyer_status_unavailable": "Estado del comprador no disponible.",
     "toasts": {
       "fee_unavailable": "Estimación de tarifa no disponible",
-      "agreement_created": "¡Acuerdo creado!"
+      "agreement_created": "¡Acuerdo creado!",
+      "invoice_loaded": "Factura cargada: revisar y confirmar",
+      "summary_copied": "Resumen copiado",
+      "payload_copied": "Carga útil copiada",
+      "copied": "Copiado",
+      "invoice_json_copied": "Factura JSON copiada",
+      "invoice_saved": "Factura guardada en {{path}}",
+      "save_failed": "Error al guardar: {{reason}}"
     },
-    "page_title_hub": "Centro de asentamiento"
+    "page_title_hub": "Centro de asentamiento",
+    "tooltips": {
+      "help": "Ayuda de liquidación"
+    },
+    "review_agreement": "Acuerdo de revisión",
+    "modals": {
+      "payment_invoice": "Factura de pago"
+    }
   },
   "marketplace": {
     "page_title": "Mercado",
@@ -798,7 +826,8 @@
       "title": "tomar oferta",
       "completed_trades": "Operaciones completadas",
       "take_button": "tomar oferta",
-      "taking": "Tomando…"
+      "taking": "Tomando…",
+      "title_modal": "Toma esta oferta"
     },
     "feeds": {
       "discover_button": "Descubrir feeds",
@@ -813,7 +842,21 @@
       "min_must_be_positive": "El monto mínimo de transacción debe ser un número positivo",
       "min_cannot_exceed": "El mínimo no puede exceder el monto de la oferta.",
       "amount_exceeds_supply": "La cantidad no puede exceder {{max}} IRM (suministro total)",
-      "failed_to_load": "No se pudieron cargar las ofertas: {{reason}}"
+      "failed_to_load": "No se pudieron cargar las ofertas: {{reason}}",
+      "enter_positive_amount": "Introduzca una cantidad positiva",
+      "failed_load_my": "No se pudieron cargar sus ofertas: {{reason}}",
+      "failed_load_feeds": "No se pudieron cargar los feeds: {{reason}}",
+      "failed_add_feed": "No se pudo agregar el feed: {{reason}}",
+      "feed_removed": "Feed eliminado",
+      "failed_remove_feed": "No se pudo eliminar el feed: {{reason}}",
+      "offer_exported": "Oferta exportada a {{path}}",
+      "export_failed": "Exportación fallida: {{reason}}",
+      "offer_deleted": "Oferta eliminada",
+      "delete_failed": "Error al eliminar: {{reason}}",
+      "offer_imported": "Oferta importada",
+      "import_failed": "Error de importación: {{reason}}",
+      "sync_failed": "Error de sincronización: {{reason}}",
+      "default_feeds_added": "Se agregaron feeds predeterminados"
     }
   },
   "miner": {

@@ -493,7 +493,7 @@
       "txid_copied": "Đã sao chép ID giao dịch",
       "address_added": "Đã thêm địa chỉ",
       "address_hidden": "Địa chỉ ẩn",
-      "address_unhidden": "Đã khôi phục địa chỉ",
+      "address_unhidden": "Đã hiển thị địa chỉ",
       "wallet_renamed": "Ví đã được đổi tên",
       "rename_failed": "Đổi tên không thành công: {{reason}}",
       "delete_failed": "Xóa không thành công: {{reason}}",
@@ -507,7 +507,19 @@
       "failed_load_addresses": "Không thể tải địa chỉ",
       "failed_load_transactions": "Không thể tải giao dịch",
       "node_must_be_online": "Nút phải trực tuyến để gửi giao dịch",
-      "set_as_primary": "Đặt làm chính"
+      "set_as_primary": "Đặt làm chính",
+      "no_address_returned": "Không có địa chỉ nào được trả lại",
+      "no_seed_backup": "Ví này không có bản sao lưu hạt giống - thay vào đó hãy sử dụng Khóa WIF hoặc Xuất tệp sao lưu",
+      "no_address_loaded": "Không có địa chỉ nào được tải",
+      "restored_backup": "Đã khôi phục ví từ bản sao lưu",
+      "wif_saved": "Đã lưu khóa WIF",
+      "need_12_words": "Nhập ít nhất 12 từ dễ nhớ",
+      "enter_wif": "Nhập khóa WIF",
+      "imported_successfully": "Đã nhập ví thành công",
+      "copied": "Đã sao chép",
+      "recovery_copied": "Đã sao chép cụm từ khôi phục",
+      "wif_copied": "Đã sao chép WIF",
+      "name_invalid_chars": "Tên ví không được chứa: / \\ : * ? \" < > |"
     }
   },
   "agreements": {
@@ -534,14 +546,14 @@
       "audit_modal_open": "Kiểm toán thỏa thuận"
     },
     "actions": {
-      "fund": "Ký quỹ quỹ",
-      "release": "Giải phóng",
-      "refund": "Đền bù",
-      "dispute": "Tranh chấp mở",
-      "submit_proof": "Gửi bằng chứng",
-      "verify_signatures": "Xác minh chữ ký",
-      "sign_agreement": "Ký thỏa thuận",
-      "delete": "Xóa bỏ"
+      "action_required_sign": "Hành động bắt buộc: Ký Thỏa thuận",
+      "open_dispute": "Tranh chấp mở",
+      "awaiting_resolver": "Đang chờ giải quyết",
+      "view_audit": "Xem kiểm tra",
+      "share_text": "Chia sẻ văn bản",
+      "delete": "Xóa bỏ",
+      "submitting": "Đang gửi…",
+      "sign": "Dấu hiệu"
     },
     "proof_modal": {
       "title": "Gửi bằng chứng",
@@ -563,14 +575,130 @@
       "release_success": "Đã phát hành — txid {{txid}}",
       "refund_success": "Đã hoàn lại tiền — txid {{txid}}",
       "dispute_opened": "Đã mở tranh chấp",
-      "proof_submitted": "Đã gửi bằng chứng",
+      "proof_submitted": "Bằng chứng đã gửi: {{id}}",
       "delete_success": "Đã xóa thỏa thuận",
-      "failed_load": "Không tải được thỏa thuận"
+      "failed_load": "Không tải được thỏa thuận",
+      "delete_failed": "Xóa không thành công: {{reason}}",
+      "refund_initiated": "Đã bắt đầu hoàn tiền",
+      "refund_failed": "Hoàn tiền không thành công",
+      "pack_exported": "Gói thỏa thuận được xuất sang {{path}}",
+      "copied": "Đã sao chép",
+      "submission_failed": "Gửi không thành công",
+      "funds_released": "Số tiền được phát hành · txid: {{txid}}",
+      "release_failed": "Phát hành không thành công",
+      "escrow_funded": "Ký quỹ được tài trợ · txid: {{txid}}",
+      "funding_failed": "Cấp vốn không thành công",
+      "agreement_imported": "Thỏa thuận đã nhập: {{id}}",
+      "invoice_parse_warning": "Đã nhập nhưng không thể phân tích cú pháp các trường hóa đơn để điền trước",
+      "invoice_imported": "Hóa đơn đã nhập",
+      "failed_open_dispute": "Không thể mở tranh chấp",
+      "signature_valid": "Chữ ký hợp lệ (người ký {{signer}})",
+      "signature_invalid": "Chữ ký không hợp lệ: {{reason}}",
+      "agreement_signed_short": "Thỏa thuận đã được ký kết.",
+      "sign_failed": "Đăng nhập không thành công"
     },
     "refund": {
       "blocked_default": "Không rõ khả năng hoàn tiền",
       "blocked_reason": "Không thể hoàn tiền: {{reason}}",
       "timeout_not_reached": "Chưa đạt đến thời gian chờ"
+    },
+    "page_subtitle": "Thỏa thuận giải quyết trên chuỗi",
+    "tooltips": {
+      "help": "Trợ giúp thỏa thuận",
+      "import_invoice": "Nhập hóa đơn thanh toán JSON và tạo thỏa thuận từ đó",
+      "clear_search": "Xóa tìm kiếm",
+      "choose_save_location": "Chọn vị trí lưu",
+      "you_are_buyer": "Địa chỉ ví bạn đã chọn là người mua của thỏa thuận này",
+      "you_are_seller": "Địa chỉ ví bạn đã chọn là người bán của thỏa thuận này",
+      "copy_full_hash": "Sao chép hàm băm thỏa thuận đầy đủ",
+      "submit_proof_delivery": "Gửi bằng chứng giao hàng của bạn",
+      "resolver_required": "Cần có chứng thực của người giải quyết để giải quyết tranh chấp này. Liên hệ với người giải quyết được chỉ định của bạn.",
+      "deadline_passed": "Thời hạn của thỏa thuận này đã trôi qua mà không có giải pháp.",
+      "share_text": "Sao chép bản tóm tắt bằng văn bản thuần túy của thỏa thuận này vào khay nhớ tạm",
+      "delete_local": "Xóa thỏa thuận này khỏi cửa hàng địa phương của bạn. Bản sao của đối tác không bị ảnh hưởng.",
+      "save_friendly_name": "Lưu một tên thân thiện cho thỏa thuận này (được lưu trữ cục bộ)",
+      "verify_signature_file": "Xác minh tệp chữ ký (.sig hoặc .json) theo thỏa thuận này"
+    },
+    "buttons": {
+      "import_invoice": "Hóa đơn nhập khẩu",
+      "import_pack": "Gói nhập khẩu",
+      "browse": "Duyệt qua",
+      "delete_agreement": "Xóa thỏa thuận"
+    },
+    "page_views": {
+      "agreements": "Thỏa thuận",
+      "disputes": "Tranh chấp"
+    },
+    "status_filters": {
+      "all": "Tất cả",
+      "pending": "Chưa giải quyết",
+      "open": "Mở",
+      "funded": "Được tài trợ",
+      "released": "Phát hành",
+      "refunded": "Đã hoàn tiền"
+    },
+    "proof_types": {
+      "delivery_confirmed": "Đã xác nhận giao hàng",
+      "payment_received": "Đã nhận được thanh toán",
+      "otc_release": "Phát hành OTC",
+      "milestone_complete": "Cột mốc hoàn thành"
+    },
+    "search_placeholder": "Tìm kiếm theo ID, địa chỉ người mua/người bán hoặc nhãn…",
+    "role_badges": {
+      "buyer": "Bạn là: Người mua",
+      "seller": "Bạn là: Người bán"
+    },
+    "labels": {
+      "hash": "Băm:",
+      "release_reason": "Lý do phát hành:",
+      "proof_not_final": "Bằng chứng chưa cuối cùng",
+      "agreement_hash": "Thỏa thuận băm",
+      "proof_type": "Loại bằng chứng",
+      "attested_by": "Chứng thực bởi",
+      "evidence_summary": "Tóm tắt bằng chứng",
+      "proof_file": "Tệp bằng chứng",
+      "create_from_evidence": "Tạo từ bằng chứng",
+      "secret_preimage": "Tiền ảnh bí mật (hex)",
+      "pack_file": "Gói tập tin",
+      "invoice_file": "Tệp hóa đơn",
+      "invoice_id": "ID hóa đơn",
+      "recipient": "Người nhận",
+      "amount": "Số lượng",
+      "reference": "Thẩm quyền giải quyết",
+      "expires_height": "Hết hạn (chiều cao)",
+      "dispute_reason": "Lý do (tùy chọn)",
+      "agreement": "Hiệp định",
+      "txid": "Txid",
+      "value": "Giá trị",
+      "policy": "Chính sách",
+      "signatures": "Chữ ký",
+      "buyer": "Người mua",
+      "seller": "Người bán",
+      "signer_wallet": "Địa chỉ ví của người ký",
+      "role": "Vai trò:",
+      "reason": "Lý do:"
+    },
+    "placeholders": {
+      "your_wallet_address": "Địa chỉ ví của bạn",
+      "secret_preimage": "Tùy chọn · hệ lục phân 64 ký tự",
+      "dispute_reason": "Mô tả sự cố xảy ra — điều này được chia sẻ với người giải quyết."
+    },
+    "modals": {
+      "submit_proof_title": "Gửi bằng chứng",
+      "import_pack_title": "Gói thỏa thuận nhập khẩu",
+      "import_invoice_title": "Hóa đơn nhập khẩu",
+      "open_dispute_title": "Tranh chấp mở?",
+      "audit_title": "Kiểm toán thỏa thuận",
+      "sign_title": "Ký thỏa thuận"
+    },
+    "audit": {
+      "fetching": "Đang tìm nạp bản ghi kiểm tra..."
+    },
+    "empty": {
+      "no_signatures": "Chưa có chữ ký nào được xác minh. Sử dụng nút ở trên để xác minh một.",
+      "no_wallet_addresses": "Không có địa chỉ ví",
+      "no_disputes": "Không có tranh chấp.",
+      "disputes_offline": "(Nút đang ngoại tuyến - danh sách tranh chấp có thể không có sẵn.)"
     }
   },
   "settlement": {
@@ -616,7 +744,9 @@
         "payment_placeholder": "ví dụ. Chuyển khoản ngân hàng, PayPal...",
         "memo": "Bản ghi nhớ (tùy chọn)",
         "memo_otc_placeholder": "Mô tả giao dịch...",
-        "memo_merchant_placeholder": "Mô tả đơn hàng..."
+        "memo_merchant_placeholder": "Mô tả đơn hàng...",
+        "total_escrow_hours": "Tổng thời hạn ký quỹ (giờ)",
+        "party_placeholder": "Q... hoặc P..."
       }
     },
     "seller_dashboard": "Trang tổng quan người bán",
@@ -625,9 +755,23 @@
     "buyer_status_unavailable": "Trạng thái người mua không có sẵn.",
     "toasts": {
       "fee_unavailable": "Ước tính phí không có sẵn",
-      "agreement_created": "Đã tạo thỏa thuận!"
+      "agreement_created": "Đã tạo thỏa thuận!",
+      "invoice_loaded": "Đã tải hóa đơn - xem xét và xác nhận",
+      "summary_copied": "Đã sao chép tóm tắt",
+      "payload_copied": "Đã sao chép tải trọng",
+      "copied": "Đã sao chép",
+      "invoice_json_copied": "Đã sao chép JSON hóa đơn",
+      "invoice_saved": "Hóa đơn đã được lưu vào {{path}}",
+      "save_failed": "Lưu không thành công: {{reason}}"
     },
-    "page_title_hub": "Trung tâm định cư"
+    "page_title_hub": "Trung tâm định cư",
+    "tooltips": {
+      "help": "Trợ giúp giải quyết"
+    },
+    "review_agreement": "Xem xét thỏa thuận",
+    "modals": {
+      "payment_invoice": "Hóa đơn thanh toán"
+    }
   },
   "marketplace": {
     "page_title": "Thị trường",
@@ -646,11 +790,11 @@
     "create_offer": {
       "title": "Tạo ưu đãi bán",
       "how_works_title": "Cách thức hoạt động của việc bán OTC",
-      "how_works_step_1": "Bạn tạo phiếu mua hàng này (IRM hiện đã bị khóa trong ký quỹ).",
-      "how_works_step_2": "Người mua tài trợ cho khoản ký quỹ bằng cổ phiếu IRM của họ.",
+      "how_works_step_1": "Bạn tạo ưu đãi này (IRM hiện đã bị khóa trong ký quỹ).",
+      "how_works_step_2": "Người mua tài trợ cho khoản ký quỹ bằng cổ phần IRM của họ.",
       "how_works_step_3": "Người mua thanh toán cho bạn ngoài chuỗi bằng cách sử dụng hướng dẫn bên dưới.",
       "how_works_step_4": "Bạn xác nhận đã nhận được thanh toán.",
-      "how_works_step_5": "Escrow giải phóng IRM cho người mua.",
+      "how_works_step_5": "Escrow phát hành IRM cho người mua.",
       "escrow_note": "Ký quỹ trên chuỗi bảo vệ cả hai bên — không ai trong số các bạn có thể biến mất cùng với số tiền.",
       "fields": {
         "amount_label": "IRM để bán",
@@ -665,7 +809,7 @@
         "payment_method_placeholder": "ví dụ. Chuyển khoản ngân hàng, PayPal, USDT, BTC, Tiền mặt",
         "payment_method_hint": "Nhãn ngắn giúp người mua lọc các ưu đãi — chọn đường ray họ nên sử dụng.",
         "price_label": "Giá hoặc tỷ giá hối đoái (tùy chọn)",
-        "price_placeholder": "ví dụ. Lãi suất thị trường + 2%, 0,05 USD mỗi IRM",
+        "price_placeholder": "ví dụ. Tỷ giá thị trường + 2%, 0,05 USD cho mỗi IRM",
         "payment_details_label": "Chi tiết thanh toán của bạn (nội dung cần gửi cho bạn)",
         "payment_details_hint": "Người mua nhìn thấy những hướng dẫn này sau khi ký quỹ được cấp vốn. Hãy cụ thể - chi tiết sai có nghĩa là mất thời gian.",
         "custom_id_label": "ID ưu đãi tùy chỉnh (tùy chọn)",
@@ -682,7 +826,8 @@
       "title": "Nhận ưu đãi",
       "completed_trades": "Giao dịch đã hoàn thành",
       "take_button": "Nhận ưu đãi",
-      "taking": "Lấy…"
+      "taking": "Lấy…",
+      "title_modal": "Nhận ưu đãi này"
     },
     "feeds": {
       "discover_button": "Khám phá nguồn cấp dữ liệu",
@@ -696,8 +841,22 @@
       "feed_added": "Đã thêm nguồn cấp dữ liệu",
       "min_must_be_positive": "Số tiền giao dịch tối thiểu phải là số dương",
       "min_cannot_exceed": "Mức tối thiểu không thể vượt quá số tiền ưu đãi",
-      "amount_exceeds_supply": "Số tiền không được vượt quá {{max}} IRM (tổng nguồn cung)",
-      "failed_to_load": "Không tải được phiếu mua hàng: {{reason}}"
+      "amount_exceeds_supply": "Số lượng không được vượt quá {{max}} IRM (tổng cung)",
+      "failed_to_load": "Không tải được phiếu mua hàng: {{reason}}",
+      "enter_positive_amount": "Nhập số tiền dương",
+      "failed_load_my": "Không tải được phiếu mua hàng của bạn: {{reason}}",
+      "failed_load_feeds": "Không tải được nguồn cấp dữ liệu: {{reason}}",
+      "failed_add_feed": "Không thêm được nguồn cấp dữ liệu: {{reason}}",
+      "feed_removed": "Đã xóa nguồn cấp dữ liệu",
+      "failed_remove_feed": "Không xóa được nguồn cấp dữ liệu: {{reason}}",
+      "offer_exported": "Ưu đãi được xuất sang {{path}}",
+      "export_failed": "Xuất không thành công: {{reason}}",
+      "offer_deleted": "Đã xóa ưu đãi",
+      "delete_failed": "Xóa không thành công: {{reason}}",
+      "offer_imported": "Ưu đãi đã được nhập",
+      "import_failed": "Nhập không thành công: {{reason}}",
+      "sync_failed": "Đồng bộ hóa không thành công: {{reason}}",
+      "default_feeds_added": "Đã thêm nguồn cấp dữ liệu mặc định"
     }
   },
   "miner": {

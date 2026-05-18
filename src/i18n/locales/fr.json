@@ -493,7 +493,7 @@
       "txid_copied": "ID de transaction copié",
       "address_added": "Adresse ajoutée",
       "address_hidden": "Adresse masquée",
-      "address_unhidden": "Adresse restaurée",
+      "address_unhidden": "Adresse non masquée",
       "wallet_renamed": "Portefeuille renommé",
       "rename_failed": "Échec du changement de nom : {{reason}}",
       "delete_failed": "Échec de la suppression : {{reason}}",
@@ -507,7 +507,19 @@
       "failed_load_addresses": "Échec du chargement des adresses",
       "failed_load_transactions": "Échec du chargement des transactions",
       "node_must_be_online": "Le nœud doit être en ligne pour envoyer des transactions",
-      "set_as_primary": "Définir comme principal"
+      "set_as_primary": "Définir comme principal",
+      "no_address_returned": "Aucune adresse renvoyée",
+      "no_seed_backup": "Ce portefeuille n'a pas de sauvegarde de départ - utilisez plutôt la clé WIF ou l'exportation du fichier de sauvegarde",
+      "no_address_loaded": "Aucune adresse chargée",
+      "restored_backup": "Portefeuille restauré à partir d'une sauvegarde",
+      "wif_saved": "Clé WIF enregistrée",
+      "need_12_words": "Entrez au moins 12 mots mnémoniques",
+      "enter_wif": "Entrez une clé WIF",
+      "imported_successfully": "Portefeuille importé avec succès",
+      "copied": "Copié",
+      "recovery_copied": "Phrase de récupération copiée",
+      "wif_copied": "WIF copié",
+      "name_invalid_chars": "Le nom du portefeuille ne peut pas contenir : / \\ : * ? \" < > |"
     }
   },
   "agreements": {
@@ -732,7 +744,9 @@
         "payment_placeholder": "par ex. Virement bancaire, PayPal...",
         "memo": "Mémo (facultatif)",
         "memo_otc_placeholder": "Descriptif du métier...",
-        "memo_merchant_placeholder": "Descriptif de la commande..."
+        "memo_merchant_placeholder": "Descriptif de la commande...",
+        "total_escrow_hours": "Fenêtre de dépôt totale (heures)",
+        "party_placeholder": "Q... ou P..."
       }
     },
     "seller_dashboard": "Tableau de bord du vendeur",
@@ -741,9 +755,23 @@
     "buyer_status_unavailable": "Statut d'acheteur indisponible.",
     "toasts": {
       "fee_unavailable": "Estimation des frais indisponible",
-      "agreement_created": "Accord créé !"
+      "agreement_created": "Accord créé !",
+      "invoice_loaded": "Facture chargée – examiner et confirmer",
+      "summary_copied": "Résumé copié",
+      "payload_copied": "Charge utile copiée",
+      "copied": "Copié",
+      "invoice_json_copied": "Facture JSON copiée",
+      "invoice_saved": "Facture enregistrée dans {{path}}",
+      "save_failed": "Échec de l'enregistrement : {{reason}}"
     },
-    "page_title_hub": "Centre de règlement"
+    "page_title_hub": "Centre de règlement",
+    "tooltips": {
+      "help": "Aide au règlement"
+    },
+    "review_agreement": "Accord de révision",
+    "modals": {
+      "payment_invoice": "Facture de paiement"
+    }
   },
   "marketplace": {
     "page_title": "Marché",
@@ -798,7 +826,8 @@
       "title": "Accepter l'offre",
       "completed_trades": "Transactions terminées",
       "take_button": "Accepter l'offre",
-      "taking": "Prise…"
+      "taking": "Prise…",
+      "title_modal": "Acceptez cette offre"
     },
     "feeds": {
       "discover_button": "Découvrez les flux",
@@ -813,7 +842,21 @@
       "min_must_be_positive": "Le montant minimum d'échange doit être un nombre positif",
       "min_cannot_exceed": "Le minimum ne peut pas dépasser le montant de l'offre",
       "amount_exceeds_supply": "Le montant ne peut pas dépasser {{max}} IRM (offre totale)",
-      "failed_to_load": "Échec du chargement des offres : {{reason}}"
+      "failed_to_load": "Échec du chargement des offres : {{reason}}",
+      "enter_positive_amount": "Entrez un montant positif",
+      "failed_load_my": "Échec du chargement de vos offres : {{reason}}",
+      "failed_load_feeds": "Échec du chargement des flux : {{reason}}",
+      "failed_add_feed": "Échec de l'ajout du flux : {{reason}}",
+      "feed_removed": "Flux supprimé",
+      "failed_remove_feed": "Échec de la suppression du flux : {{reason}}",
+      "offer_exported": "Offre exportée vers {{path}}",
+      "export_failed": "Échec de l'exportation : {{reason}}",
+      "offer_deleted": "Offre supprimée",
+      "delete_failed": "Échec de la suppression : {{reason}}",
+      "offer_imported": "Offre importée",
+      "import_failed": "Échec de l'importation : {{reason}}",
+      "sync_failed": "Échec de la synchronisation : {{reason}}",
+      "default_feeds_added": "Flux par défaut ajoutés"
     }
   },
   "miner": {

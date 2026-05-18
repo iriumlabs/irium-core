@@ -451,7 +451,7 @@
       "addr_invalid_chars": "حرف غير صالح في العنوان",
       "enter_positive_amount": "أدخل مبلغًا موجبًا صالحًا",
       "errors": {
-        "insufficient": "ليس لديك IRM (IRM) كافية لإكمال هذه المعاملة. تحقق من رصيدك وجرب مبلغًا أقل.",
+        "insufficient": "ليس لديك ما يكفي من IRM لإكمال هذه المعاملة. تحقق من رصيدك وجرب مبلغًا أقل.",
         "unconfirmed": "لم يتم تأكيد أموالك بعد. انتظر تأكيدًا واحدًا على الأقل قبل الإرسال.",
         "double_spend": "تتعارض هذه المعاملة مع معاملة معلقة أخرى. يرجى الانتظار والمحاولة مرة أخرى.",
         "generic": "لا يمكن بث المعاملة. يرجى التحقق من أن العقدة متصلة بالإنترنت ثم حاول مرة أخرى.",
@@ -459,7 +459,7 @@
       }
     },
     "receive": {
-      "title": "تلقي IRM",
+      "title": "احصل على IRM",
       "scan_qr_hint": "امسح رمز الاستجابة السريعة ضوئيًا أو انسخ العنوان أدناه"
     },
     "security": {
@@ -493,7 +493,7 @@
       "txid_copied": "تم نسخ معرف المعاملة",
       "address_added": "تمت إضافة العنوان",
       "address_hidden": "العنوان مخفي",
-      "address_unhidden": "تمت استعادة العنوان",
+      "address_unhidden": "العنوان غير مخفي",
       "wallet_renamed": "تمت إعادة تسمية المحفظة",
       "rename_failed": "فشلت إعادة التسمية: {{reason}}",
       "delete_failed": "فشل الحذف: {{reason}}",
@@ -507,7 +507,19 @@
       "failed_load_addresses": "فشل تحميل العناوين",
       "failed_load_transactions": "فشل في تحميل المعاملات",
       "node_must_be_online": "يجب أن تكون العقدة متصلة بالإنترنت لإرسال المعاملات",
-      "set_as_primary": "تعيين كإعداد أساسي"
+      "set_as_primary": "تعيين كإعداد أساسي",
+      "no_address_returned": "لم يتم إرجاع أي عنوان",
+      "no_seed_backup": "لا تحتوي هذه المحفظة على نسخة احتياطية أولية — استخدم مفتاح WIF أو تصدير ملف النسخ الاحتياطي بدلاً من ذلك",
+      "no_address_loaded": "لم يتم تحميل أي عنوان",
+      "restored_backup": "تمت استعادة المحفظة من النسخة الاحتياطية",
+      "wif_saved": "تم حفظ مفتاح WIF",
+      "need_12_words": "أدخل ما لا يقل عن 12 كلمة ذاكري",
+      "enter_wif": "أدخل مفتاح WIF",
+      "imported_successfully": "تم استيراد المحفظة بنجاح",
+      "copied": "منقول",
+      "recovery_copied": "تم نسخ عبارة الاسترداد",
+      "wif_copied": "تم نسخ WIF",
+      "name_invalid_chars": "لا يمكن أن يحتوي اسم المحفظة على: / \\ : * ? \" < > |"
     }
   },
   "agreements": {
@@ -534,14 +546,14 @@
       "audit_modal_open": "تدقيق الاتفاقية"
     },
     "actions": {
-      "fund": "ضمان الصندوق",
-      "release": "يطلق",
-      "refund": "استرداد",
-      "dispute": "نزاع مفتوح",
-      "submit_proof": "تقديم إثبات",
-      "verify_signatures": "التحقق من التوقيعات",
-      "sign_agreement": "توقيع الاتفاقية",
-      "delete": "يمسح"
+      "action_required_sign": "الإجراء المطلوب: توقيع الاتفاقية",
+      "open_dispute": "فتح النزاع",
+      "awaiting_resolver": "في انتظار الحل",
+      "view_audit": "عرض التدقيق",
+      "share_text": "مشاركة النص",
+      "delete": "يمسح",
+      "submitting": "تقديم…",
+      "sign": "لافتة"
     },
     "proof_modal": {
       "title": "تقديم إثبات",
@@ -563,14 +575,130 @@
       "release_success": "صدر — txid {{txid}}",
       "refund_success": "تم رد المبلغ — txid {{txid}}",
       "dispute_opened": "فتح النزاع",
-      "proof_submitted": "تم تقديم الدليل",
+      "proof_submitted": "تم تقديم الدليل: {{id}}",
       "delete_success": "تم حذف الاتفاقية",
-      "failed_load": "فشل تحميل الاتفاقيات"
+      "failed_load": "فشل تحميل الاتفاقيات",
+      "delete_failed": "فشل الحذف: {{reason}}",
+      "refund_initiated": "بدأ استرداد الأموال",
+      "refund_failed": "فشل استرداد الأموال",
+      "pack_exported": "تم تصدير حزمة الاتفاقية إلى {{path}}",
+      "copied": "منقول",
+      "submission_failed": "فشل التقديم",
+      "funds_released": "الأموال المفرج عنها · txid: {{txid}}",
+      "release_failed": "فشل الإصدار",
+      "escrow_funded": "الضمان الممول · txid: {{txid}}",
+      "funding_failed": "فشل التمويل",
+      "agreement_imported": "تم استيراد الاتفاقية: {{id}}",
+      "invoice_parse_warning": "تم الاستيراد، ولكن لا يمكن تحليل حقول الفاتورة للتعبئة المسبقة",
+      "invoice_imported": "الفاتورة مستوردة",
+      "failed_open_dispute": "فشل في فتح النزاع",
+      "signature_valid": "التوقيع صالح (الموقع {{signer}})",
+      "signature_invalid": "التوقيع غير صالح: {{reason}}",
+      "agreement_signed_short": "تم توقيع الاتفاقية.",
+      "sign_failed": "فشل التوقيع"
     },
     "refund": {
       "blocked_default": "أهلية استرداد الأموال غير معروفة",
       "blocked_reason": "استرداد الأموال غير متاح: {{reason}}",
       "timeout_not_reached": "المهلة لم تصل بعد"
+    },
+    "page_subtitle": "اتفاقيات التسوية على السلسلة",
+    "tooltips": {
+      "help": "تساعد الاتفاقيات",
+      "import_invoice": "استيراد فاتورة دفع JSON وإنشاء اتفاقية منها",
+      "clear_search": "مسح البحث",
+      "choose_save_location": "اختر حفظ الموقع",
+      "you_are_buyer": "عنوان المحفظة الذي اخترته هو مشتري هذه الاتفاقية",
+      "you_are_seller": "عنوان محفظتك المحدد هو بائع هذه الاتفاقية",
+      "copy_full_hash": "انسخ تجزئة الاتفاقية الكاملة",
+      "submit_proof_delivery": "أرسل إثبات التسليم الخاص بك",
+      "resolver_required": "مطلوب شهادة محلل لتسوية هذا النزاع. اتصل بحلفك المعين.",
+      "deadline_passed": "لقد مر الموعد النهائي لهذا الاتفاق دون حل.",
+      "share_text": "انسخ ملخص النص العادي لهذه الاتفاقية إلى الحافظة",
+      "delete_local": "احذف هذه الاتفاقية من متجرك المحلي. ولا تتأثر نسخة الطرف المقابل.",
+      "save_friendly_name": "احفظ اسمًا مألوفًا لهذه الاتفاقية (مخزنًا محليًا)",
+      "verify_signature_file": "تحقق من ملف التوقيع (.sig أو .json) مقابل هذه الاتفاقية"
+    },
+    "buttons": {
+      "import_invoice": "فاتورة الاستيراد",
+      "import_pack": "حزمة الاستيراد",
+      "browse": "تصفح",
+      "delete_agreement": "حذف الاتفاقية"
+    },
+    "page_views": {
+      "agreements": "الاتفاقيات",
+      "disputes": "النزاعات"
+    },
+    "status_filters": {
+      "all": "الجميع",
+      "pending": "قيد الانتظار",
+      "open": "يفتح",
+      "funded": "ممولة",
+      "released": "مطلق سراحه",
+      "refunded": "ردها"
+    },
+    "proof_types": {
+      "delivery_confirmed": "تم تأكيد التسليم",
+      "payment_received": "تم استلام الدفع",
+      "otc_release": "إصدار OTC",
+      "milestone_complete": "اكتمل الحدث المهم"
+    },
+    "search_placeholder": "البحث حسب المعرف أو عنوان المشتري/البائع أو التسمية...",
+    "role_badges": {
+      "buyer": "أنت: المشتري",
+      "seller": "أنت : بائع"
+    },
+    "labels": {
+      "hash": "التجزئة:",
+      "release_reason": "سبب الإصدار:",
+      "proof_not_final": "الدليل ليس نهائيا بعد",
+      "agreement_hash": "تجزئة الاتفاقية",
+      "proof_type": "نوع الإثبات",
+      "attested_by": "مصدق بواسطة",
+      "evidence_summary": "ملخص الأدلة",
+      "proof_file": "ملف الإثبات",
+      "create_from_evidence": "خلق من الأدلة",
+      "secret_preimage": "الصورة الأولية السرية (ست عشري)",
+      "pack_file": "ملف الحزمة",
+      "invoice_file": "ملف الفاتورة",
+      "invoice_id": "معرف الفاتورة",
+      "recipient": "متلقي",
+      "amount": "كمية",
+      "reference": "مرجع",
+      "expires_height": "انتهاء الصلاحية (الارتفاع)",
+      "dispute_reason": "السبب (اختياري)",
+      "agreement": "اتفاق",
+      "txid": "تكسيد",
+      "value": "قيمة",
+      "policy": "سياسة",
+      "signatures": "التوقيعات",
+      "buyer": "المشتري",
+      "seller": "بائع",
+      "signer_wallet": "عنوان محفظة التوقيع",
+      "role": "دور:",
+      "reason": "سبب:"
+    },
+    "placeholders": {
+      "your_wallet_address": "عنوان محفظتك",
+      "secret_preimage": "اختياري · سداسي عشري مكون من 64 حرفًا",
+      "dispute_reason": "قم بوصف الخطأ الذي حدث - وتتم مشاركة ذلك مع المحلل."
+    },
+    "modals": {
+      "submit_proof_title": "تقديم إثبات",
+      "import_pack_title": "حزمة اتفاقية الاستيراد",
+      "import_invoice_title": "فاتورة الاستيراد",
+      "open_dispute_title": "نزاع مفتوح؟",
+      "audit_title": "تدقيق الاتفاقية",
+      "sign_title": "توقيع الاتفاقية"
+    },
+    "audit": {
+      "fetching": "جارٍ جلب سجل التدقيق…"
+    },
+    "empty": {
+      "no_signatures": "لم يتم التحقق من التوقيعات حتى الآن. استخدم الزر أعلاه للتحقق من واحد.",
+      "no_wallet_addresses": "لا توجد عناوين المحفظة",
+      "no_disputes": "لا خلافات.",
+      "disputes_offline": "(العقدة غير متصلة بالإنترنت — قد لا تكون قائمة النزاعات متاحة.)"
     }
   },
   "settlement": {
@@ -616,7 +744,9 @@
         "payment_placeholder": "على سبيل المثال التحويل البنكي، باي بال...",
         "memo": "مذكرة (اختياري)",
         "memo_otc_placeholder": "وصف التجارة...",
-        "memo_merchant_placeholder": "وصف الطلب..."
+        "memo_merchant_placeholder": "وصف الطلب...",
+        "total_escrow_hours": "إجمالي نافذة الضمان (ساعات)",
+        "party_placeholder": "س... أو ف..."
       }
     },
     "seller_dashboard": "لوحة تحكم البائع",
@@ -625,9 +755,23 @@
     "buyer_status_unavailable": "حالة المشتري غير متوفرة.",
     "toasts": {
       "fee_unavailable": "تقدير الرسوم غير متاح",
-      "agreement_created": "تم إنشاء الاتفاقية!"
+      "agreement_created": "تم إنشاء الاتفاقية!",
+      "invoice_loaded": "تم تحميل الفاتورة - قم بمراجعتها وتأكيدها",
+      "summary_copied": "تم نسخ الملخص",
+      "payload_copied": "تم نسخ الحمولة",
+      "copied": "منقول",
+      "invoice_json_copied": "تم نسخ الفاتورة بتنسيق JSON",
+      "invoice_saved": "تم حفظ الفاتورة في {{path}}",
+      "save_failed": "فشل الحفظ: {{reason}}"
     },
-    "page_title_hub": "محور التسوية"
+    "page_title_hub": "محور التسوية",
+    "tooltips": {
+      "help": "مساعدة التسوية"
+    },
+    "review_agreement": "مراجعة الاتفاقية",
+    "modals": {
+      "payment_invoice": "فاتورة الدفع"
+    }
   },
   "marketplace": {
     "page_title": "السوق",
@@ -639,18 +783,18 @@
     },
     "filters": {
       "search_placeholder": "عروض البحث…",
-      "min_amount": "الحد الأدنى لIRM",
-      "max_amount": "ماكس IRM",
+      "min_amount": "مين إيرتيكر",
+      "max_amount": "ماكس إيرمتيكر",
       "payment_method": "طريقة الدفع"
     },
     "create_offer": {
       "title": "إنشاء عرض بيع",
       "how_works_title": "كيف يعمل البيع خارج البورصة",
-      "how_works_step_1": "يمكنك إنشاء هذا العرض (IRM (IRM) مقفلة في الضمان الآن).",
+      "how_works_step_1": "قمت بإنشاء هذا العرض (تم تأمين IRM في الضمان الآن).",
       "how_works_step_2": "يقوم المشتري بتمويل الضمان من خلال حصته في IRM.",
       "how_works_step_3": "يدفع لك المشتري خارج السلسلة باستخدام الإرشادات أدناه.",
       "how_works_step_4": "لقد قمت بتأكيد استلام الدفعة.",
-      "how_works_step_5": "يقوم الضمان بتحرير IRM للمشتري.",
+      "how_works_step_5": "يقوم الضمان بإصدار IRM للمشتري.",
       "escrow_note": "يحمي الضمان الموجود على السلسلة كلا الجانبين - ولا يمكن لأي منكما أن يختفي بالمال.",
       "fields": {
         "amount_label": "IRM للبيع",
@@ -665,7 +809,7 @@
         "payment_method_placeholder": "على سبيل المثال التحويل البنكي، باي بال، USDT، BTC، نقدًا",
         "payment_method_hint": "ملصق قصير يساعد المشترين على تصفية العروض - اختر السكة التي يجب عليهم استخدامها.",
         "price_label": "السعر أو سعر الصرف (اختياري)",
-        "price_placeholder": "على سبيل المثال سعر السوق + 2%، 0.05 دولار أمريكي لكل IRM",
+        "price_placeholder": "على سبيل المثال سعر السوق + 2%، 0.05 دولار لكل IRM",
         "payment_details_label": "تفاصيل الدفع الخاصة بك (ما تريد إرساله إليك)",
         "payment_details_hint": "يرى المشتري هذه التعليمات بعد تمويل الضمان. كن محددًا - التفاصيل الخاطئة تعني ضياع الوقت.",
         "custom_id_label": "معرف العرض المخصص (اختياري)",
@@ -682,7 +826,8 @@
       "title": "خذ العرض",
       "completed_trades": "الصفقات المكتملة",
       "take_button": "خذ العرض",
-      "taking": "أخذ…"
+      "taking": "أخذ…",
+      "title_modal": "خذ هذا العرض"
     },
     "feeds": {
       "discover_button": "اكتشف الخلاصات",
@@ -697,7 +842,21 @@
       "min_must_be_positive": "يجب أن يكون الحد الأدنى لمبلغ التجارة رقمًا موجبًا",
       "min_cannot_exceed": "الحد الأدنى لا يمكن أن يتجاوز مبلغ العرض",
       "amount_exceeds_supply": "لا يمكن أن يتجاوز المبلغ {{max}} IRM (إجمالي العرض)",
-      "failed_to_load": "فشل تحميل العروض: {{reason}}"
+      "failed_to_load": "فشل تحميل العروض: {{reason}}",
+      "enter_positive_amount": "أدخل مبلغًا موجبًا",
+      "failed_load_my": "فشل تحميل عروضك: {{reason}}",
+      "failed_load_feeds": "فشل تحميل الخلاصات: {{reason}}",
+      "failed_add_feed": "فشلت إضافة الخلاصة: {{reason}}",
+      "feed_removed": "تمت إزالة الخلاصة",
+      "failed_remove_feed": "فشلت إزالة الخلاصة: {{reason}}",
+      "offer_exported": "تم تصدير العرض إلى {{path}}",
+      "export_failed": "فشل التصدير: {{reason}}",
+      "offer_deleted": "تم حذف العرض",
+      "delete_failed": "فشل الحذف: {{reason}}",
+      "offer_imported": "العرض مستورد",
+      "import_failed": "فشل الاستيراد: {{reason}}",
+      "sync_failed": "فشلت المزامنة: {{reason}}",
+      "default_feeds_added": "تمت إضافة الخلاصات الافتراضية"
     }
   },
   "miner": {

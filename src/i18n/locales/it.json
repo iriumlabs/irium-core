@@ -451,7 +451,7 @@
       "addr_invalid_chars": "Carattere non valido nell'indirizzo",
       "enter_positive_amount": "Inserisci un importo positivo valido",
       "errors": {
-        "insufficient": "Non disponi di IRM sufficiente per completare questa transazione. Controlla il tuo saldo e prova un importo inferiore.",
+        "insufficient": "Non hai abbastanza IRM per completare questa transazione. Controlla il tuo saldo e prova un importo inferiore.",
         "unconfirmed": "I tuoi fondi non sono ancora confermati. Attendi almeno 1 conferma prima di inviare.",
         "double_spend": "Questa transazione è in conflitto con un'altra transazione in sospeso. Attendi e riprova.",
         "generic": "Impossibile trasmettere la transazione. Verifica che il nodo sia online e riprova.",
@@ -459,7 +459,7 @@
       }
     },
     "receive": {
-      "title": "Ricevi l'IRM",
+      "title": "Ricevi IRM",
       "scan_qr_hint": "Scansiona questo codice QR o copia l'indirizzo qui sotto"
     },
     "security": {
@@ -493,7 +493,7 @@
       "txid_copied": "ID transazione copiato",
       "address_added": "Indirizzo aggiunto",
       "address_hidden": "Indirizzo nascosto",
-      "address_unhidden": "Indirizzo ripristinato",
+      "address_unhidden": "Indirizzo non nascosto",
       "wallet_renamed": "Portafoglio rinominato",
       "rename_failed": "Rinomina non riuscita: {{reason}}",
       "delete_failed": "Eliminazione non riuscita: {{reason}}",
@@ -507,7 +507,19 @@
       "failed_load_addresses": "Impossibile caricare gli indirizzi",
       "failed_load_transactions": "Impossibile caricare le transazioni",
       "node_must_be_online": "Il nodo deve essere online per inviare transazioni",
-      "set_as_primary": "Imposta come primario"
+      "set_as_primary": "Imposta come primario",
+      "no_address_returned": "Nessun indirizzo restituito",
+      "no_seed_backup": "Questo portafoglio non dispone di seed backup: utilizza invece la chiave WIF o l'esportazione del file di backup",
+      "no_address_loaded": "Nessun indirizzo caricato",
+      "restored_backup": "Portafoglio ripristinato dal backup",
+      "wif_saved": "Chiave WIF salvata",
+      "need_12_words": "Inserisci almeno 12 parole mnemoniche",
+      "enter_wif": "Immettere una chiave WIF",
+      "imported_successfully": "Portafoglio importato correttamente",
+      "copied": "Copiato",
+      "recovery_copied": "Frase di recupero copiata",
+      "wif_copied": "WIF copiato",
+      "name_invalid_chars": "Il nome del portafoglio non può contenere: / \\ : * ? \" < > |"
     }
   },
   "agreements": {
@@ -534,14 +546,14 @@
       "audit_modal_open": "Verifica dell'accordo"
     },
     "actions": {
-      "fund": "Deposito di fondi",
-      "release": "Pubblicazione",
-      "refund": "Rimborso",
-      "dispute": "Contenzioso aperto",
-      "submit_proof": "Invia prova",
-      "verify_signatures": "Verifica le firme",
-      "sign_agreement": "Firmare l'accordo",
-      "delete": "Eliminare"
+      "action_required_sign": "Azione richiesta: firmare l'accordo",
+      "open_dispute": "Apertura della controversia",
+      "awaiting_resolver": "In attesa di risolutore",
+      "view_audit": "Visualizza controllo",
+      "share_text": "Condividi testo",
+      "delete": "Eliminare",
+      "submitting": "Invio…",
+      "sign": "Cartello"
     },
     "proof_modal": {
       "title": "Invia prova",
@@ -563,14 +575,130 @@
       "release_success": "Rilasciato — txid {{txid}}",
       "refund_success": "Rimborsato: txid {{txid}}",
       "dispute_opened": "Aperta la controversia",
-      "proof_submitted": "Prova presentata",
+      "proof_submitted": "Prova inviata: {{id}}",
       "delete_success": "Accordo cancellato",
-      "failed_load": "Impossibile caricare gli accordi"
+      "failed_load": "Impossibile caricare gli accordi",
+      "delete_failed": "Eliminazione non riuscita: {{reason}}",
+      "refund_initiated": "Rimborso avviato",
+      "refund_failed": "Rimborso non riuscito",
+      "pack_exported": "Pacchetto di accordi esportato in {{path}}",
+      "copied": "Copiato",
+      "submission_failed": "Invio non riuscito",
+      "funds_released": "Fondi rilasciati · txid: {{txid}}",
+      "release_failed": "Rilascio non riuscito",
+      "escrow_funded": "Finanziato in garanzia · txid: {{txid}}",
+      "funding_failed": "Il finanziamento è fallito",
+      "agreement_imported": "Contratto importato: {{id}}",
+      "invoice_parse_warning": "Importato, ma non è stato possibile analizzare i campi della fattura per la precompilazione",
+      "invoice_imported": "Fattura importata",
+      "failed_open_dispute": "Impossibile aprire la controversia",
+      "signature_valid": "Firma valida (firmatario {{signer}})",
+      "signature_invalid": "Firma non valida: {{reason}}",
+      "agreement_signed_short": "Accordo firmato.",
+      "sign_failed": "Firma non riuscita"
     },
     "refund": {
       "blocked_default": "Idoneità al rimborso sconosciuta",
       "blocked_reason": "Rimborso non disponibile: {{reason}}",
       "timeout_not_reached": "Timeout non ancora raggiunto"
+    },
+    "page_subtitle": "Accordi di transazione a catena",
+    "tooltips": {
+      "help": "Gli accordi aiutano",
+      "import_invoice": "Importa una fattura di pagamento JSON e crea un accordo da essa",
+      "clear_search": "Cancella ricerca",
+      "choose_save_location": "Scegli la posizione di salvataggio",
+      "you_are_buyer": "L'indirizzo del tuo portafoglio selezionato è l'acquirente di questo contratto",
+      "you_are_seller": "L'indirizzo del tuo portafoglio selezionato è il venditore di questo contratto",
+      "copy_full_hash": "Copia l'hash completo dell'accordo",
+      "submit_proof_delivery": "Invia la prova di consegna",
+      "resolver_required": "Per risolvere questa controversia è necessaria un'attestazione di risolutore. Contatta il tuo risolutore designato.",
+      "deadline_passed": "La scadenza del presente accordo è scaduta senza alcuna risoluzione.",
+      "share_text": "Copia negli appunti un riepilogo in testo semplice del presente accordo",
+      "delete_local": "Elimina questo accordo dal tuo negozio locale. La copia della controparte non è interessata.",
+      "save_friendly_name": "Salva un nome descrittivo per questo accordo (memorizzato localmente)",
+      "verify_signature_file": "Verifica un file di firma (.sig o .json) rispetto a questo accordo"
+    },
+    "buttons": {
+      "import_invoice": "Fattura di importazione",
+      "import_pack": "Pacchetto di importazione",
+      "browse": "Sfoglia",
+      "delete_agreement": "Elimina accordo"
+    },
+    "page_views": {
+      "agreements": "Accordi",
+      "disputes": "Controversie"
+    },
+    "status_filters": {
+      "all": "Tutto",
+      "pending": "In attesa di",
+      "open": "Aprire",
+      "funded": "Finanziato",
+      "released": "Rilasciato",
+      "refunded": "Rimborsato"
+    },
+    "proof_types": {
+      "delivery_confirmed": "Consegna confermata",
+      "payment_received": "Pagamento ricevuto",
+      "otc_release": "Rilascio OTC",
+      "milestone_complete": "Traguardo completato"
+    },
+    "search_placeholder": "Cerca per ID, indirizzo acquirente/venditore o etichetta...",
+    "role_badges": {
+      "buyer": "Tu sei: Acquirente",
+      "seller": "Tu sei: Venditore"
+    },
+    "labels": {
+      "hash": "Hash:",
+      "release_reason": "Motivo del rilascio:",
+      "proof_not_final": "Dimostrazione non ancora definitiva",
+      "agreement_hash": "Hash dell'accordo",
+      "proof_type": "Tipo di prova",
+      "attested_by": "Attestato da",
+      "evidence_summary": "Riepilogo delle prove",
+      "proof_file": "File di prova",
+      "create_from_evidence": "Creare dalle prove",
+      "secret_preimage": "Preimmagine segreta (esadecimale)",
+      "pack_file": "Pacchetto file",
+      "invoice_file": "File di fattura",
+      "invoice_id": "ID fattura",
+      "recipient": "Destinatario",
+      "amount": "Quantità",
+      "reference": "Riferimento",
+      "expires_height": "Scadenza (altezza)",
+      "dispute_reason": "Motivo (facoltativo)",
+      "agreement": "Accordo",
+      "txid": "Txid",
+      "value": "Valore",
+      "policy": "Politica",
+      "signatures": "Firme",
+      "buyer": "Acquirente",
+      "seller": "Venditore",
+      "signer_wallet": "Indirizzo del portafoglio del firmatario",
+      "role": "Ruolo:",
+      "reason": "Motivo:"
+    },
+    "placeholders": {
+      "your_wallet_address": "L'indirizzo del tuo portafoglio",
+      "secret_preimage": "Opzionale · 64 caratteri esadecimali",
+      "dispute_reason": "Descrivi cosa è andato storto: questo viene condiviso con il risolutore."
+    },
+    "modals": {
+      "submit_proof_title": "Invia prova",
+      "import_pack_title": "Pacchetto accordi di importazione",
+      "import_invoice_title": "Fattura di importazione",
+      "open_dispute_title": "Controversia aperta?",
+      "audit_title": "Verifica dell'accordo",
+      "sign_title": "Firmare l'accordo"
+    },
+    "audit": {
+      "fetching": "Recupero record di audit…"
+    },
+    "empty": {
+      "no_signatures": "Nessuna firma ancora verificata. Utilizza il pulsante qui sopra per verificarne uno.",
+      "no_wallet_addresses": "Nessun indirizzo di portafoglio",
+      "no_disputes": "Nessuna controversia.",
+      "disputes_offline": "(Il nodo è offline: l'elenco delle controversie potrebbe non essere disponibile.)"
     }
   },
   "settlement": {
@@ -616,7 +744,9 @@
         "payment_placeholder": "per esempio. Bonifico bancario, PayPal...",
         "memo": "Promemoria (facoltativo)",
         "memo_otc_placeholder": "Descrizione commerciale...",
-        "memo_merchant_placeholder": "Descrizione dell'ordine..."
+        "memo_merchant_placeholder": "Descrizione dell'ordine...",
+        "total_escrow_hours": "Finestra di deposito a garanzia totale (ore)",
+        "party_placeholder": "D... o P..."
       }
     },
     "seller_dashboard": "Pannello di controllo del venditore",
@@ -625,9 +755,23 @@
     "buyer_status_unavailable": "Stato dell'acquirente non disponibile.",
     "toasts": {
       "fee_unavailable": "Stima della tariffa non disponibile",
-      "agreement_created": "Accordo creato!"
+      "agreement_created": "Accordo creato!",
+      "invoice_loaded": "Fattura caricata: rivedi e conferma",
+      "summary_copied": "Riepilogo copiato",
+      "payload_copied": "Carico utile copiato",
+      "copied": "Copiato",
+      "invoice_json_copied": "Fattura JSON copiata",
+      "invoice_saved": "Fattura salvata in {{path}}",
+      "save_failed": "Salvataggio non riuscito: {{reason}}"
     },
-    "page_title_hub": "Centro di insediamento"
+    "page_title_hub": "Centro di insediamento",
+    "tooltips": {
+      "help": "Aiuto per la liquidazione"
+    },
+    "review_agreement": "Accordo di revisione",
+    "modals": {
+      "payment_invoice": "Fattura di pagamento"
+    }
   },
   "marketplace": {
     "page_title": "Mercato",
@@ -639,15 +783,15 @@
     },
     "filters": {
       "search_placeholder": "Cerca offerte...",
-      "min_amount": "IRM minimo",
-      "max_amount": "IRM massimo",
+      "min_amount": "Min IRM",
+      "max_amount": "Max IRM",
       "payment_method": "Metodo di pagamento"
     },
     "create_offer": {
       "title": "Crea offerta di vendita",
       "how_works_title": "Come funziona la vendita OTC",
-      "how_works_step_1": "Crei questa offerta (l'IRM è ora bloccato in deposito a garanzia).",
-      "how_works_step_2": "Un acquirente finanzia il deposito a garanzia con la propria quota IRM.",
+      "how_works_step_1": "Crei tu questa offerta (l'IRM è ora bloccato nel deposito a garanzia).",
+      "how_works_step_2": "Un acquirente finanzia il deposito a garanzia con la sua quota IRM.",
       "how_works_step_3": "L'acquirente ti paga fuori catena utilizzando le istruzioni seguenti.",
       "how_works_step_4": "Confermi il pagamento ricevuto.",
       "how_works_step_5": "L'impegno rilascia l'IRM all'acquirente.",
@@ -682,7 +826,8 @@
       "title": "Accetta l'offerta",
       "completed_trades": "Operazioni completate",
       "take_button": "Accetta l'offerta",
-      "taking": "Prendendo…"
+      "taking": "Prendendo…",
+      "title_modal": "Accetta questa offerta"
     },
     "feeds": {
       "discover_button": "Scopri i feed",
@@ -697,7 +842,21 @@
       "min_must_be_positive": "L'importo minimo della transazione deve essere un numero positivo",
       "min_cannot_exceed": "Il minimo non può superare l'importo dell'offerta",
       "amount_exceeds_supply": "L'importo non può superare {{max}} IRM (fornitura totale)",
-      "failed_to_load": "Impossibile caricare le offerte: {{reason}}"
+      "failed_to_load": "Impossibile caricare le offerte: {{reason}}",
+      "enter_positive_amount": "Inserisci un importo positivo",
+      "failed_load_my": "Impossibile caricare le tue offerte: {{reason}}",
+      "failed_load_feeds": "Impossibile caricare i feed: {{reason}}",
+      "failed_add_feed": "Impossibile aggiungere il feed: {{reason}}",
+      "feed_removed": "Mangime rimosso",
+      "failed_remove_feed": "Impossibile rimuovere il feed: {{reason}}",
+      "offer_exported": "Offerta esportata in {{path}}",
+      "export_failed": "Esportazione non riuscita: {{reason}}",
+      "offer_deleted": "Offerta eliminata",
+      "delete_failed": "Eliminazione non riuscita: {{reason}}",
+      "offer_imported": "Offerta importata",
+      "import_failed": "Importazione non riuscita: {{reason}}",
+      "sync_failed": "Sincronizzazione non riuscita: {{reason}}",
+      "default_feeds_added": "Feed predefiniti aggiunti"
     }
   },
   "miner": {

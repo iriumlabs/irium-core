@@ -82,7 +82,7 @@
     "peers_label": "ピア",
     "synced": "同期済み",
     "syncing": "同期中",
-    "tip_copied": "チップハッシュがコピーされました",
+    "tip_copied": "ヒントのハッシュがコピーされました",
     "copy_failed": "コピーに失敗しました",
     "mainnet": "メインネット",
     "synced_lower": "同期された",
@@ -431,10 +431,10 @@
       "manage_description": "ウォレットファイル、インポート、隠しアドレス"
     },
     "send": {
-      "title": "IRM を送信する",
+      "title": "IRMを送信する",
       "to_address_label": "宛先アドレス",
       "to_address_placeholder": "Q…またはP…アドレス",
-      "amount_label": "金額（IRM）",
+      "amount_label": "金額 (IRM)",
       "amount_placeholder": "0.0000",
       "amount_in_sats": "= {{sats}} に座る",
       "available_balance": "利用可能: {{amount}}",
@@ -459,7 +459,7 @@
       }
     },
     "receive": {
-      "title": "IRMの受信",
+      "title": "IRMを受信する",
       "scan_qr_hint": "このQRコードをスキャンするか、以下のアドレスをコピーしてください"
     },
     "security": {
@@ -493,7 +493,7 @@
       "txid_copied": "トランザクションIDがコピーされました",
       "address_added": "住所を追加しました",
       "address_hidden": "住所非表示",
-      "address_unhidden": "アドレスが復元されました",
+      "address_unhidden": "住所非表示",
       "wallet_renamed": "ウォレットの名前が変更されました",
       "rename_failed": "名前の変更に失敗しました: {{reason}}",
       "delete_failed": "削除に失敗しました: {{reason}}",
@@ -507,7 +507,19 @@
       "failed_load_addresses": "アドレスの読み込みに失敗しました",
       "failed_load_transactions": "トランザクションのロードに失敗しました",
       "node_must_be_online": "トランザクションを送信するにはノードがオンラインである必要があります",
-      "set_as_primary": "プライマリとして設定"
+      "set_as_primary": "プライマリとして設定",
+      "no_address_returned": "住所が返されませんでした",
+      "no_seed_backup": "このウォレットにはシード バックアップがありません。代わりに WIF キーまたはエクスポート バックアップ ファイルを使用してください",
+      "no_address_loaded": "アドレスが読み込まれていません",
+      "restored_backup": "バックアップからウォレットを復元",
+      "wif_saved": "WIFキーが保存されました",
+      "need_12_words": "少なくとも 12 個の記憶単語を入力してください",
+      "enter_wif": "WIFキーを入力してください",
+      "imported_successfully": "ウォレットが正常にインポートされました",
+      "copied": "コピーされました",
+      "recovery_copied": "リカバリフレーズをコピーしました",
+      "wif_copied": "WIFがコピーされました",
+      "name_invalid_chars": "ウォレット名に次の文字を含めることはできません: / \\ : * ? \" < > |"
     }
   },
   "agreements": {
@@ -534,14 +546,14 @@
       "audit_modal_open": "契約監査"
     },
     "actions": {
-      "fund": "ファンドエスクロー",
-      "release": "リリース",
-      "refund": "返金",
-      "dispute": "オープンな紛争",
-      "submit_proof": "証拠を提出する",
-      "verify_signatures": "署名を検証する",
-      "sign_agreement": "契約書に署名する",
-      "delete": "消去"
+      "action_required_sign": "必要なアクション: 契約書に署名する",
+      "open_dispute": "オープン紛争",
+      "awaiting_resolver": "リゾルバーを待っています",
+      "view_audit": "監査の表示",
+      "share_text": "テキストを共有する",
+      "delete": "消去",
+      "submitting": "送信中…",
+      "sign": "サイン"
     },
     "proof_modal": {
       "title": "証拠を提出する",
@@ -563,14 +575,130 @@
       "release_success": "リリース済み — txid {{txid}}",
       "refund_success": "返金されました — txid {{txid}}",
       "dispute_opened": "紛争が開始されました",
-      "proof_submitted": "提出された証拠",
+      "proof_submitted": "提出された証拠: {{id}}",
       "delete_success": "契約が削除されました",
-      "failed_load": "契約書をロードできませんでした"
+      "failed_load": "契約書をロードできませんでした",
+      "delete_failed": "削除に失敗しました: {{reason}}",
+      "refund_initiated": "払い戻しが開始されました",
+      "refund_failed": "返金に失敗しました",
+      "pack_exported": "契約パックが {{path}} にエクスポートされました",
+      "copied": "コピーされました",
+      "submission_failed": "送信に失敗しました",
+      "funds_released": "資金が解放されました · txid: {{txid}}",
+      "release_failed": "リリースに失敗しました",
+      "escrow_funded": "エスクローによる資金提供 · txid: {{txid}}",
+      "funding_failed": "資金調達に失敗しました",
+      "agreement_imported": "インポートされた契約書: {{id}}",
+      "invoice_parse_warning": "インポートされましたが、事前入力用の請求書フィールドを解析できませんでした",
+      "invoice_imported": "請求書がインポートされました",
+      "failed_open_dispute": "異議申し立てを開始できませんでした",
+      "signature_valid": "署名は有効です (署名者 {{signer}})",
+      "signature_invalid": "署名が無効です: {{reason}}",
+      "agreement_signed_short": "契約書が署名されました。",
+      "sign_failed": "署名に失敗しました"
     },
     "refund": {
       "blocked_default": "返金対象か不明",
       "blocked_reason": "返金不可: {{reason}}",
       "timeout_not_reached": "まだタイムアウトに達していません"
+    },
+    "page_subtitle": "オンチェーン決済契約",
+    "tooltips": {
+      "help": "契約が役立つ",
+      "import_invoice": "支払い請求書の JSON をインポートし、そこから契約を作成します",
+      "clear_search": "検索をクリア",
+      "choose_save_location": "保存場所を選択してください",
+      "you_are_buyer": "あなたが選択したウォレットアドレスはこの契約の購入者です",
+      "you_are_seller": "あなたが選択したウォレットアドレスはこの契約の販売者です",
+      "copy_full_hash": "完全な合意ハッシュをコピーする",
+      "submit_proof_delivery": "配達証明を提出してください",
+      "resolver_required": "この紛争を解決するには、リゾルバーの証明書が必要です。指定されたリゾルバーにお問い合わせください。",
+      "deadline_passed": "この協定は解決がないまま期限を過ぎてしまいました。",
+      "share_text": "この契約のプレーンテキストの概要をクリップボードにコピーします",
+      "delete_local": "この契約をローカル ストアから削除してください。相手方のコピーには影響しません。",
+      "save_friendly_name": "この契約のフレンドリ名を保存します (ローカルに保存)",
+      "verify_signature_file": "この契約に基づいて署名ファイル (.sig または .json) を検証します。"
+    },
+    "buttons": {
+      "import_invoice": "請求書のインポート",
+      "import_pack": "インポートパック",
+      "browse": "ブラウズ",
+      "delete_agreement": "契約の削除"
+    },
+    "page_views": {
+      "agreements": "協定",
+      "disputes": "紛争"
+    },
+    "status_filters": {
+      "all": "全て",
+      "pending": "保留中",
+      "open": "開ける",
+      "funded": "資金提供済み",
+      "released": "リリースされました",
+      "refunded": "返金されました"
+    },
+    "proof_types": {
+      "delivery_confirmed": "配達確認済み",
+      "payment_received": "支払いを受領しました",
+      "otc_release": "OTCリリース",
+      "milestone_complete": "マイルストーン完了"
+    },
+    "search_placeholder": "ID、購入者/販売者の住所、またはラベルで検索…",
+    "role_badges": {
+      "buyer": "あなたは: 購入者です",
+      "seller": "あなたは: 販売者です"
+    },
+    "labels": {
+      "hash": "ハッシュ：",
+      "release_reason": "リリース理由:",
+      "proof_not_final": "証拠はまだ最終的ではない",
+      "agreement_hash": "合意ハッシュ",
+      "proof_type": "プルーフタイプ",
+      "attested_by": "証明者",
+      "evidence_summary": "証拠の概要",
+      "proof_file": "プルーフファイル",
+      "create_from_evidence": "証拠から作成する",
+      "secret_preimage": "秘密のプリイメージ (16 進数)",
+      "pack_file": "パックファイル",
+      "invoice_file": "請求書ファイル",
+      "invoice_id": "請求書ID",
+      "recipient": "受信者",
+      "amount": "額",
+      "reference": "参照",
+      "expires_height": "有効期限 (高さ)",
+      "dispute_reason": "理由（任意）",
+      "agreement": "合意",
+      "txid": "チシド",
+      "value": "価値",
+      "policy": "ポリシー",
+      "signatures": "署名",
+      "buyer": "買い手",
+      "seller": "売り手",
+      "signer_wallet": "署名者のウォレットアドレス",
+      "role": "役割：",
+      "reason": "理由："
+    },
+    "placeholders": {
+      "your_wallet_address": "あなたのウォレットアドレス",
+      "secret_preimage": "オプション · 64 文字の 16 進数",
+      "dispute_reason": "何が問題だったかを説明します。これはリゾルバーと共有されます。"
+    },
+    "modals": {
+      "submit_proof_title": "証拠の提出",
+      "import_pack_title": "輸入契約パック",
+      "import_invoice_title": "請求書のインポート",
+      "open_dispute_title": "オープン紛争?",
+      "audit_title": "契約監査",
+      "sign_title": "契約書に署名する"
+    },
+    "audit": {
+      "fetching": "監査レコードを取得しています…"
+    },
+    "empty": {
+      "no_signatures": "まだ署名が検証されていません。上のボタンを使用して確認してください。",
+      "no_wallet_addresses": "ウォレットアドレスがありません",
+      "no_disputes": "異論はありません。",
+      "disputes_offline": "(ノードはオフラインです - 紛争リストは利用できない可能性があります。)"
     }
   },
   "settlement": {
@@ -604,7 +732,7 @@
       "fields": {
         "party_a": "当事者A",
         "party_b": "当事者B",
-        "amount_irm": "金額（IRM）",
+        "amount_irm": "金額 (IRM)",
         "deadline_hours": "締切（時間）",
         "cooldown_hours": "クールダウンウィンドウ (時間)",
         "milestones": "マイルストーンの数",
@@ -616,7 +744,9 @@
         "payment_placeholder": "例えば銀行振込、PayPal...",
         "memo": "メモ（任意）",
         "memo_otc_placeholder": "取引説明...",
-        "memo_merchant_placeholder": "注文の説明..."
+        "memo_merchant_placeholder": "注文の説明...",
+        "total_escrow_hours": "合計エスクロー ウィンドウ (時間)",
+        "party_placeholder": "Q...またはP..."
       }
     },
     "seller_dashboard": "販売者ダッシュボード",
@@ -625,9 +755,23 @@
     "buyer_status_unavailable": "購入者のステータスが利用できません。",
     "toasts": {
       "fee_unavailable": "料金の見積もりは利用できません",
-      "agreement_created": "契約書が作成されました！"
+      "agreement_created": "契約書が作成されました！",
+      "invoice_loaded": "請求書が読み込まれました - 確認して確認します",
+      "summary_copied": "概要をコピーしました",
+      "payload_copied": "ペイロードがコピーされました",
+      "copied": "コピーされました",
+      "invoice_json_copied": "請求書の JSON がコピーされました",
+      "invoice_saved": "請求書は {{path}} に保存されました",
+      "save_failed": "保存に失敗しました: {{reason}}"
     },
-    "page_title_hub": "決済ハブ"
+    "page_title_hub": "決済ハブ",
+    "tooltips": {
+      "help": "決済のお手伝い"
+    },
+    "review_agreement": "契約書を確認する",
+    "modals": {
+      "payment_invoice": "支払い請求書"
+    }
   },
   "marketplace": {
     "page_title": "市場",
@@ -640,7 +784,7 @@
     "filters": {
       "search_placeholder": "オファーを検索…",
       "min_amount": "最小 IRM",
-      "max_amount": "最大 IRM",
+      "max_amount": "マックス IRM",
       "payment_method": "支払方法"
     },
     "create_offer": {
@@ -650,7 +794,7 @@
       "how_works_step_2": "買い手は、IRM シェアをエスクローに資金として提供します。",
       "how_works_step_3": "購入者は、以下の手順に従ってオフチェーンで支払います。",
       "how_works_step_4": "支払いの受領を確認します。",
-      "how_works_step_5": "エスクローは IRM を購入者に解放します。",
+      "how_works_step_5": "エスクローは IRM を購入者にリリースします。",
       "escrow_note": "オンチェーンエスクローは双方を保護します。どちらもお金を持って失踪することはできません。",
       "fields": {
         "amount_label": "販売する IRM",
@@ -682,7 +826,8 @@
       "title": "オファーを受ける",
       "completed_trades": "完了した取引",
       "take_button": "オファーを受ける",
-      "taking": "撮影中…"
+      "taking": "撮影中…",
+      "title_modal": "このオファーを利用してください"
     },
     "feeds": {
       "discover_button": "フィードを発見する",
@@ -696,8 +841,22 @@
       "feed_added": "フィードを追加しました",
       "min_must_be_positive": "最低取引額は正の数である必要があります",
       "min_cannot_exceed": "最低額がオファー金額を超えることはできません",
-      "amount_exceeds_supply": "量は {{max}} IRM (総供給量) を超えることはできません",
-      "failed_to_load": "オファーの読み込みに失敗しました: {{reason}}"
+      "amount_exceeds_supply": "金額は {{max}} IRM (総供給量) を超えることはできません",
+      "failed_to_load": "オファーの読み込みに失敗しました: {{reason}}",
+      "enter_positive_amount": "正の金額を入力してください",
+      "failed_load_my": "オファーを読み込めませんでした: {{reason}}",
+      "failed_load_feeds": "フィードの読み込みに失敗しました: {{reason}}",
+      "failed_add_feed": "フィードの追加に失敗しました: {{reason}}",
+      "feed_removed": "フィードが削除されました",
+      "failed_remove_feed": "フィードの削除に失敗しました: {{reason}}",
+      "offer_exported": "オファーは {{path}} にエクスポートされました",
+      "export_failed": "エクスポートに失敗しました: {{reason}}",
+      "offer_deleted": "オファーが削除されました",
+      "delete_failed": "削除に失敗しました: {{reason}}",
+      "offer_imported": "インポートされたオファー",
+      "import_failed": "インポートに失敗しました: {{reason}}",
+      "sync_failed": "同期に失敗しました: {{reason}}",
+      "default_feeds_added": "デフォルトのフィードが追加されました"
     }
   },
   "miner": {
@@ -928,7 +1087,7 @@
       "step_agreements": "協定",
       "intro": "販売するものと価格を定義する",
       "fields": {
-        "amount_label": "金額（IRM）",
+        "amount_label": "金額 (IRM)",
         "offer_id_label": "オファーID",
         "seller_address_label": "販売者の住所",
         "seller_address_hint": "ウォレットから自動検出されます。購入者はここで支払いを送金します。",
