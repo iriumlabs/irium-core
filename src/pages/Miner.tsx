@@ -1403,11 +1403,19 @@ function GpuMinerTab() {
 
 // ── STRATUM POOL TAB ──────────────────────────────────────────
 
+// Pool presets — Irium Official Pool at the top (first-launch default
+// promotes our own infrastructure over third-party mining pools). The
+// CPU/GPU profile (port 3335) carries a lower default difficulty and
+// targets hobbyist hardware; the ASIC profile (port 3333) targets
+// modern SHA-256 ASICs at a higher base difficulty. Both run on
+// irium-vps from pool/irium-stratum/ in the source tree.
 const PRESET_POOLS = [
-  { name: 'F2Pool',   url: 'stratum+tcp://irium.f2pool.com:3333'   },
-  { name: 'ViaBTC',  url: 'stratum+tcp://irium.viabtc.com:3333'   },
-  { name: 'AntPool', url: 'stratum+tcp://irium.antpool.com:3333'  },
-  { name: 'Custom',  url: ''                                        },
+  { name: 'Irium Official Pool (CPU/GPU)', url: 'stratum+tcp://pool.iriumlabs.org:3335' },
+  { name: 'Irium Official Pool (ASIC)',    url: 'stratum+tcp://pool.iriumlabs.org:3333' },
+  { name: 'F2Pool',                         url: 'stratum+tcp://irium.f2pool.com:3333'   },
+  { name: 'ViaBTC',                         url: 'stratum+tcp://irium.viabtc.com:3333'   },
+  { name: 'AntPool',                        url: 'stratum+tcp://irium.antpool.com:3333'  },
+  { name: 'Custom',                         url: ''                                       },
 ];
 
 // Stratum URL validator. The pool URL must be a valid Stratum v1 endpoint:
@@ -1430,7 +1438,7 @@ function StratumTab() {
   const status = useStore((s) => s.stratumStatus);
 
   const [connectLoading, setConnectLoading] = useState(false);
-  const [poolUrl, setPoolUrl] = useState('stratum+tcp://irium.f2pool.com:3333');
+  const [poolUrl, setPoolUrl] = useState('stratum+tcp://pool.iriumlabs.org:3335');
   const [worker, setWorker] = useState('');
   const [password, setPassword] = useState('');
   const [selectedPreset, setSelectedPreset] = useState(0);
