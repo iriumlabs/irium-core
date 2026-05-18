@@ -171,6 +171,26 @@ html, body, #root {
 * { scrollbar-width: none; }
 *::-webkit-scrollbar { display: none; }
 
+/* Opt-in visible scrollbar for tall page containers. Apply `.scroll-visible`
+   to a scrolling element to expose a slim, theme-coloured scrollbar that
+   matches the rest of the UI. Used by Miner / Explorer / Agreements /
+   Settlement where the content reliably overflows on smaller screens. */
+.scroll-visible {
+  scrollbar-width: thin;
+  scrollbar-color: #1E2A45 transparent;
+}
+.scroll-visible::-webkit-scrollbar {
+  display: block;
+  width: 6px;
+  height: 6px;
+}
+.scroll-visible::-webkit-scrollbar-track { background: transparent; }
+.scroll-visible::-webkit-scrollbar-thumb {
+  background: #1E2A45;
+  border-radius: 3px;
+}
+.scroll-visible::-webkit-scrollbar-thumb:hover { background: #6366F1; }
+
 ::selection { background: rgba(110,198,255,0.30); color: #fff; }
 
 :focus-visible {
