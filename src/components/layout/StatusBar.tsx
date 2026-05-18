@@ -1,4 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useStore } from '../../lib/store';
@@ -6,6 +7,7 @@ import { useStore } from '../../lib/store';
 const CHAIN_NODES = 7;
 
 const StatusBar = memo(function StatusBar() {
+  const { t } = useTranslation();
   const nodeStatus  = useStore((s) => s.nodeStatus);
   const rpcUrl      = useStore((s) => s.settings.rpc_url);
   const appVersion  = useStore((s) => s.appVersion);
@@ -44,9 +46,9 @@ const StatusBar = memo(function StatusBar() {
     if (!nodeStatus?.tip) return;
     try {
       await navigator.clipboard.writeText(nodeStatus.tip);
-      toast.success('Tip hash copied');
+      toast.success(t('status_bar.tip_copied'));
     } catch {
-      toast.error('Failed to copy');
+      toast.error(t('status_bar.copy_failed'));
     }
   };
 
@@ -99,7 +101,7 @@ const StatusBar = memo(function StatusBar() {
         </span>
         <span style={{ color: 'rgba(110,198,255,0.45)', fontSize: 10 }}>v{appVersion}</span>
         <Dot />
-        <span style={{ color: 'rgba(238,240,255,0.40)' }}>Mainnet</span>
+        <span style={{ color: 'rgba(238,240,255,0.40)' }}>{t('status_bar.mainnet')}</span>
 
         {/* Chain node visualisation */}
         {running && (
@@ -190,7 +192,7 @@ const StatusBar = memo(function StatusBar() {
               animate={{ opacity: [0.75, 1, 0.75] }}
               transition={{ duration: 2.5, repeat: Infinity }}
             >
-              synced
+              {t('status_bar.synced_lower')}
             </motion.span>
           </>
         )}
@@ -220,7 +222,7 @@ const StatusBar = memo(function StatusBar() {
           <>
             <Dot />
             <span
-              title="UPnP active — port 38291 mapped on router, inbound peers enabled"
+              title={t('status_bar.upnp_tooltip')}
               style={{ color: 'rgba(52,211,153,0.75)', fontSize: 10, letterSpacing: '0.04em' }}
             >
               UPnP
@@ -244,9 +246,9 @@ const StatusBar = memo(function StatusBar() {
           style={{ color: 'rgba(238,240,255,0.30)' }}
           onClick={handleCopyTip}
           whileHover={{ color: 'rgba(110,198,255,0.85)' }}
-          title="Click to copy tip hash"
+          title={t('status_bar.click_copy_tip')}
         >
-          <span style={{ color: 'rgba(110,198,255,0.30)' }}>tip</span>
+          <span style={{ color: 'rgba(110,198,255,0.30)' }}>{t('status_bar.tip_label')}</span>
           <span>{nodeStatus.tip.slice(0, 8)}…{nodeStatus.tip.slice(-6)}</span>
         </motion.div>
       )}

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -76,6 +77,7 @@ function mergeBlocks(existing: ExplorerBlock[], incoming: ExplorerBlock[]): Expl
 // ── Copy button ───────────────────────────────────────────────
 
 function CopyBtn({ text }: { text: string }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -87,7 +89,7 @@ function CopyBtn({ text }: { text: string }) {
         });
       }}
       className="opacity-0 group-hover:opacity-40 hover:!opacity-80 transition-opacity ml-1 flex-shrink-0"
-      title="Copy"
+      title={t('common.copy')}
     >
       {copied
         ? <CheckCircle2 size={11} style={{ color: '#34d399' }} />
@@ -289,6 +291,7 @@ const TH_STYLE: React.CSSProperties = {
 // ── Block table row ───────────────────────────────────────────
 
 function BlockRow({ block, onClick }: { block: ExplorerBlock; onClick: () => void }) {
+  const { t } = useTranslation();
   return (
     <motion.tr
       initial={{ opacity: 0, y: 4 }}
@@ -343,7 +346,7 @@ function BlockRow({ block, onClick }: { block: ExplorerBlock; onClick: () => voi
       <td className="pl-2 pr-4 py-2.5 text-right whitespace-nowrap">
         <span
           style={{ fontSize: 11, color: '#34d399', fontVariantNumeric: 'tabular-nums', fontFamily: '"JetBrains Mono", monospace' }}
-          title="Estimated from launch halving schedule — iriumd does not expose a parsed reward field per block"
+          title={t('explorer.blocks_table.estimated_tooltip')}
         >
           {blockReward(block.height)}
           <span style={{ color: 'rgba(255,255,255,0.30)', marginLeft: 4 }}>~</span>
@@ -356,6 +359,7 @@ function BlockRow({ block, onClick }: { block: ExplorerBlock; onClick: () => voi
 // ── Main page ─────────────────────────────────────────────────
 
 export default function Explorer() {
+  const { t } = useTranslation();
   const nodeStatus  = useStore((s) => s.nodeStatus);
   const location    = useLocation();
 
@@ -454,7 +458,7 @@ export default function Explorer() {
         setPendingBlock({ height: h, retrying: false });
       } else {
         // Other failures (node offline, network) still get a toast.
-        toast.error(`Couldn't load block ${h.toLocaleString('en-US')}: ${msg}`);
+        toast.error(t('explorer.toasts.block_load_error', { height: h.toLocaleString('en-US'), reason: msg }));
       }
     }
   }, []);
@@ -687,25 +691,25 @@ export default function Explorer() {
                 WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
                 fontFamily: '"Space Grotesk", sans-serif', lineHeight: 1,
               }}>
-                Block Explorer
+                {t('explorer.page_title_block_explorer')}
               </h1>
               {live && (
                 <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full" style={{ background: 'rgba(52,211,153,0.10)', border: '1px solid rgba(52,211,153,0.22)' }}>
                   <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#34d399' }} />
-                  <span style={{ fontSize: 9.5, color: '#34d399', fontWeight: 700, letterSpacing: '0.1em', fontFamily: '"Space Grotesk", sans-serif' }}>LIVE</span>
+                  <span style={{ fontSize: 9.5, color: '#34d399', fontWeight: 700, letterSpacing: '0.1em', fontFamily: '"Space Grotesk", sans-serif' }}>{t('explorer.live_badge')}</span>
                 </span>
               )}
             </div>
             <div className="mt-1" style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, color: 'rgba(110,198,255,0.50)' }}>
               {live
-                ? `#${height.toLocaleString('en-US')} · ${peerCount}p · ${synced ? 'synced' : `${((height / (tip || 1)) * 100).toFixed(1)}% sync`}`
-                : running ? 'Loading chain data…' : 'Node offline — start node on Dashboard'}
+                ? `#${height.toLocaleString('en-US')} · ${peerCount}p · ${synced ? t('explorer.synced') : `${((height / (tip || 1)) * 100).toFixed(1)}% ${t('explorer.sync_suffix')}`}`
+                : running ? t('explorer.loading_chain') : t('explorer.node_offline_hint')}
             </div>
           </div>
 
           <button onClick={handleRefresh} disabled={refreshing} className="btn-secondary text-xs gap-2">
             <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
-            {refreshing ? 'Refreshing…' : 'Refresh'}
+            {refreshing ? t('common.loading') : t('dashboard.refresh')}
           </button>
         </div>
       </div>
@@ -720,18 +724,18 @@ export default function Explorer() {
               className="col-span-2 sm:col-span-3 lg:col-span-6 py-3 text-center text-sm"
               style={{ color: 'rgba(255,255,255,0.22)' }}
             >
-              Start the node on the Dashboard to see network stats
+              {t('explorer.start_node_hint')}
             </div>
           ) : !initialLoaded ? (
             Array.from({ length: 6 }).map((_, i) => <StatCardSkeleton key={i} />)
           ) : (
             <>
-              <StatCard icon={Layers}     label="Block Height"      value={`#${height.toLocaleString('en-US')}`}                         sub={tip > 0 && !synced ? `tip #${tip.toLocaleString('en-US')}` : 'chain tip'}   accent="#6ec6ff" />
-              <StatCard icon={Coins}      label="Circulating Supply" value={computeCirculatingSupply(height)}                      sub={`Next halving: #${nextHalvingBlock(height).toLocaleString('en-US')}`}           accent="#34d399" />
-              <StatCard icon={Zap}        label="Network Hashrate"   value={hashrateInfo?.hashrate != null ? formatHashrate(hashrateInfo.hashrate) : '—'} sub="proof-of-work"                                accent="#fbbf24" />
-              <StatCard icon={TrendingUp} label="Difficulty (LWMA)"  value={hashrateInfo?.difficulty != null ? formatDifficulty(hashrateInfo.difficulty) : '—'} sub="LWMA-144 target"                        accent="#a78bfa" />
-              <StatCard icon={Users}      label="Peers"              value={peerCount.toLocaleString('en-US')}                            sub="connected"                                                            accent="#6ec6ff" />
-              <StatCard icon={Cpu}        label="Active Miners"      value={activeMiners.toLocaleString('en-US')}                         sub="recent blocks"                                                        accent="#fb923c" />
+              <StatCard icon={Layers}     label={t('explorer.stats.block_height')}      value={`#${height.toLocaleString('en-US')}`}                         sub={tip > 0 && !synced ? t('explorer.stats.tip_height', { height: tip.toLocaleString('en-US') }) : t('explorer.stats.chain_tip')}   accent="#6ec6ff" />
+              <StatCard icon={Coins}      label={t('explorer.stats.circulating_supply')} value={computeCirculatingSupply(height)}                      sub={t('explorer.stats.next_halving', { height: nextHalvingBlock(height).toLocaleString('en-US') })}           accent="#34d399" />
+              <StatCard icon={Zap}        label={t('explorer.stats.network_hashrate')}   value={hashrateInfo?.hashrate != null ? formatHashrate(hashrateInfo.hashrate) : '—'} sub={t('explorer.stats.pow_sub')}                                accent="#fbbf24" />
+              <StatCard icon={TrendingUp} label={t('explorer.stats.difficulty_lwma')}  value={hashrateInfo?.difficulty != null ? formatDifficulty(hashrateInfo.difficulty) : '—'} sub={t('explorer.stats.lwma_sub')}                        accent="#a78bfa" />
+              <StatCard icon={Users}      label={t('explorer.stats.peers')}              value={peerCount.toLocaleString('en-US')}                            sub={t('explorer.stats.connected_sub')}                                                            accent="#6ec6ff" />
+              <StatCard icon={Cpu}        label={t('explorer.stats.active_miners')}      value={activeMiners.toLocaleString('en-US')}                         sub={t('explorer.stats.recent_blocks_sub')}                                                        accent="#fb923c" />
             </>
           )}
         </div>
@@ -739,12 +743,12 @@ export default function Explorer() {
         {/* ── Search ─────────────────────────────────────── */}
         {running && (
           <div>
-            <SectionLabel title="Search" />
+            <SectionLabel title={t('explorer.section_search')} />
             {/* Tab bar */}
             <div className="flex items-center gap-1.5 mb-3">
-              <TabBtn active={searchTab === 'block'}   onClick={() => { setSearchTab('block');   clearSearch(); setSearchQ(''); }} icon={Layers}         label="Block" />
-              <TabBtn active={searchTab === 'tx'}      onClick={() => { setSearchTab('tx');      clearSearch(); setSearchQ(''); }} icon={ArrowRightLeft} label="Transaction" />
-              <TabBtn active={searchTab === 'address'} onClick={() => { setSearchTab('address'); clearSearch(); setSearchQ(''); }} icon={Wallet}         label="Address" />
+              <TabBtn active={searchTab === 'block'}   onClick={() => { setSearchTab('block');   clearSearch(); setSearchQ(''); }} icon={Layers}         label={t('explorer.search_tabs.block')} />
+              <TabBtn active={searchTab === 'tx'}      onClick={() => { setSearchTab('tx');      clearSearch(); setSearchQ(''); }} icon={ArrowRightLeft} label={t('explorer.search_tabs.tx')} />
+              <TabBtn active={searchTab === 'address'} onClick={() => { setSearchTab('address'); clearSearch(); setSearchQ(''); }} icon={Wallet}         label={t('explorer.search_tabs.address')} />
             </div>
             {/* Search input */}
             <form onSubmit={handleSearch} className="flex gap-2">
@@ -776,7 +780,7 @@ export default function Explorer() {
                 style={{ background: 'rgba(110,198,255,0.12)', border: '1px solid rgba(110,198,255,0.28)', color: '#6ec6ff', borderRadius: 7, fontFamily: '"Space Grotesk", sans-serif' }}
               >
                 {searching ? <RefreshCw size={11} className="animate-spin" /> : <Search size={11} />}
-                Look up
+                {t('explorer.look_up')}
               </button>
             </form>
             <AnimatePresence>
@@ -790,7 +794,7 @@ export default function Explorer() {
                 <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                   <SearchResultCard
                     result={searchResult}
-                    title={searchTab === 'block' ? 'Block Details' : searchTab === 'tx' ? 'Transaction' : 'Address Info'}
+                    title={searchTab === 'block' ? t('explorer.search_results.block') : searchTab === 'tx' ? t('explorer.search_results.tx') : t('explorer.search_results.address')}
                   />
                 </motion.div>
               )}
@@ -801,7 +805,7 @@ export default function Explorer() {
         {/* ── Block Table ─────────────────────────────────── */}
         <div>
           <SectionLabel
-            title="Blocks"
+            title={t('explorer.section_blocks')}
             right={
               blocks.length > 0 ? (
                 <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10, color: 'rgba(110,198,255,0.35)', whiteSpace: 'nowrap' }}>

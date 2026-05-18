@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Loader2, Trash2, ArrowDown, Search } from 'lucide-react';
 import { node } from '../lib/tauri';
 import { useStore } from '../lib/store';
 
 export default function Logs() {
+  const { t } = useTranslation();
   const nodeStatus = useStore((s) => s.nodeStatus);
   const [lines, setLines] = useState<string[]>([]);
   const [filter, setFilter] = useState('');
@@ -64,23 +66,23 @@ export default function Logs() {
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="page-title">Node Logs</h1>
+          <h1 className="page-title">{t('logs.page_title')}</h1>
           <p className="page-subtitle">
-            {running ? 'Live iriumd output · refreshes every 3s' : 'Node is offline — start the node to see logs'}
+            {running ? t('logs.page_subtitle_live') : t('logs.page_subtitle_offline')}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {loading && <Loader2 size={14} className="animate-spin text-white/30" />}
           <button
             onClick={() => setAutoScroll(true)}
-            title="Scroll to bottom"
+            title={t('logs.scroll_to_bottom')}
             className={`btn-ghost p-2 ${autoScroll ? 'text-irium-400' : 'text-white/30'}`}
           >
             <ArrowDown size={15} />
           </button>
           <button
             onClick={() => setLines([])}
-            title="Clear display"
+            title={t('logs.clear_display')}
             className="btn-ghost p-2 text-white/30 hover:text-white/70"
           >
             <Trash2 size={15} />
@@ -93,7 +95,7 @@ export default function Logs() {
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
         <input
           className="input pl-8 text-xs font-mono"
-          placeholder="Filter logs…"
+          placeholder={t('logs.filter_placeholder')}
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
@@ -112,13 +114,13 @@ export default function Logs() {
       >
         {!running && lines.length === 0 && (
           <div className="flex items-center justify-center h-full text-white/20 text-sm font-sans">
-            Start the node from the Dashboard to see logs here
+            {t('logs.empty_offline')}
           </div>
         )}
         {running && loading && lines.length === 0 && (
           <div className="flex items-center justify-center h-full gap-2 text-white/20 text-sm font-sans">
             <Loader2 size={14} className="animate-spin" />
-            Loading logs…
+            {t('logs.loading')}
           </div>
         )}
         {filtered.map((line, i) => (
@@ -131,8 +133,8 @@ export default function Logs() {
 
       {/* Footer */}
       <div className="flex-shrink-0 flex items-center justify-between text-xs text-white/20">
-        <span>{filtered.length} line{filtered.length !== 1 ? 's' : ''}{filter ? ' (filtered)' : ''}</span>
-        <span>{autoScroll ? 'Auto-scroll on' : 'Auto-scroll paused'}</span>
+        <span>{t('logs.line_count', { count: filtered.length })}{filter ? t('logs.filtered_suffix') : ''}</span>
+        <span>{autoScroll ? t('logs.autoscroll_on') : t('logs.autoscroll_paused')}</span>
       </div>
     </motion.div>
   );

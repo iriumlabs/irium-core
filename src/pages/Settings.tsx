@@ -238,9 +238,9 @@ export default function Settings() {
       if (info) setUpdateInfo(info);
     }).catch((e) => {
       console.warn('Update check failed:', e);
-      toast('Could not check for updates. Check your internet connection.');
+      toast(t('settings.toasts.update_check_internet'));
     });
-  }, [setUpdateInfo]);
+  }, [setUpdateInfo, t]);
 
   const TEXT_SETTING_KEYS: ReadonlyArray<string> = ['rpc_url', 'wallet_path', 'data_dir', 'external_ip'];
 
@@ -255,7 +255,7 @@ export default function Settings() {
       saveDebounceRef.current = setTimeout(() => {
         updateSettings({ [key]: value } as Partial<typeof local>);
         if (key === 'rpc_url') rpc.setUrl(value as string).catch(() => {});
-        toast.success('Settings saved', { duration: 2000 });
+        toast.success(t('common.settings_saved'), { duration: 2000 });
       }, 500);
     } else {
       updateSettings({ [key]: value } as Partial<typeof local>);
@@ -303,12 +303,12 @@ export default function Settings() {
       setRpcOk(true);
       const height = resp.data?.height;
       if (typeof height === "number") {
-        toast.success(`Connected to node at height ${height.toLocaleString('en-US')}`);
+        toast.success(t('settings.toasts.connected_at_height', { height: height.toLocaleString('en-US') }));
       } else {
-        toast.success('Connected to node successfully');
+        toast.success(t('settings.toasts.connected_no_height'));
       }
     } catch (e: unknown) {
-      setRpcError(e instanceof Error ? e.message : "Connection failed");
+      setRpcError(e instanceof Error ? e.message : t('settings.toasts.connection_failed'));
     } finally {
       setTestingRpc(false);
     }
@@ -321,7 +321,7 @@ export default function Settings() {
       const result = await diagnostics.run();
       setDiagResult(result);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Diagnostics failed');
+      toast.error(e instanceof Error ? e.message : t('settings.toasts.diagnostics_failed'));
     } finally {
       setRunningDiag(false);
     }
@@ -338,7 +338,7 @@ export default function Settings() {
       ),
     ];
     navigator.clipboard.writeText(lines.join('\n'));
-    toast.success('Report copied to clipboard');
+    toast.success(t('settings.toasts.report_copied'));
   };
 
   const reset = async () => {
@@ -357,7 +357,7 @@ export default function Settings() {
 
     localStorage.setItem(FORCE_ONBOARDING_KEY, '1');
 
-    toast.success('Reset to defaults — reloading…');
+    toast.success(t('settings.toasts.reset_reloading'));
     setTimeout(() => window.location.reload(), 600);
   };
 
@@ -376,7 +376,7 @@ export default function Settings() {
     // Listen to status events (PENDING / DOWNLOADED / DONE / ERROR / UPTODATE).
     const unlistenStatus = await onUpdaterEvent(({ status, error }) => {
       if (status === 'ERROR') {
-        setInstallError(error ?? 'Update failed');
+        setInstallError(error ?? t('settings.toasts.update_failed'));
         setInstallState('error');
       } else if (status === 'DONE') {
         setInstallState('installed');
@@ -400,7 +400,7 @@ export default function Settings() {
     try {
       const result = await checkUpdate();
       if (!result.shouldUpdate) {
-        toast.success('You are on the latest version');
+        toast.success(t('settings.toasts.latest_version'));
         setInstallState('idle');
         unlistenStatus();
         unlistenProgress();
@@ -422,7 +422,7 @@ export default function Settings() {
     try {
       await relaunch();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not restart');
+      toast.error(e instanceof Error ? e.message : t('settings.toasts.could_not_restart'));
     }
   };
 
@@ -432,12 +432,12 @@ export default function Settings() {
       const info = await update.check();
       if (info?.available) {
         setUpdateInfo(info);
-        toast.success(`Update available: v${info.latest_version}`);
+        toast.success(t('settings.toasts.update_available', { version: info.latest_version }));
       } else {
-        toast.success('You are on the latest version');
+        toast.success(t('settings.toasts.latest_version'));
       }
     } catch {
-      toast.error('Update check failed');
+      toast.error(t('settings.toasts.update_check_failed'));
     } finally {
       setCheckingUpdate(false);
     }
@@ -450,13 +450,13 @@ export default function Settings() {
       if (info) {
         setNodeUpdateInfo(info);
         if (info.has_update) {
-          toast.success(`Node update available — ${info.commits_behind} commit${info.commits_behind !== 1 ? 's' : ''} behind`);
+          toast.success(t('settings.toasts.node_update_available', { count: info.commits_behind }));
         } else {
-          toast.success('Node source is up to date');
+          toast.success(t('settings.toasts.node_up_to_date'));
         }
       }
     } catch {
-      toast.error('Node update check failed');
+      toast.error(t('settings.toasts.node_update_check_failed'));
     } finally {
       setCheckingNodeUpdate(false);
     }
@@ -467,13 +467,13 @@ export default function Settings() {
     try {
       const result = await nodeUpdate.pull();
       if (result?.success) {
-        toast.success(`Pulled ${result.new_commit_short} — rebuild binaries to apply`);
+        toast.success(t('settings.toasts.pulled_rebuild', { commit: result.new_commit_short }));
         setNodeUpdateInfo((prev) => prev ? { ...prev, has_update: false, current_commit: result.new_commit, current_commit_short: result.new_commit_short } : prev);
       } else {
-        toast.error('Failed to pull update');
+        toast.error(t('settings.toasts.pull_failed'));
       }
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Pull failed');
+      toast.error(e instanceof Error ? e.message : t('settings.toasts.pull_failed'));
     } finally {
       setPullingNodeUpdate(false);
     }
@@ -482,8 +482,12 @@ export default function Settings() {
   const handleResetClick = () => {
     const hasCustomWallet = !!local.wallet_path;
     if (confirmReset) {
-      if (hasCustomWallet && resetInput !== 'RESET') {
-        toast.error('Type RESET in the field to confirm');
+      // Trim whitespace so a pasted "RESET " (trailing space) still passes.
+      // toUpperCase() runs on the input's onChange but doesn't trim — without
+      // this the user types RESET, clicks confirm, and nothing happens because
+      // ` RESET` / `RESET ` silently fails the strict equality check.
+      if (hasCustomWallet && resetInput.trim() !== 'RESET') {
+        toast.error(t('settings.toasts.type_reset_to_confirm'));
         return;
       }
       reset();
@@ -493,7 +497,12 @@ export default function Settings() {
       setConfirmReset(true);
       setResetInput('');
       if (confirmResetTimerRef.current) clearTimeout(confirmResetTimerRef.current);
-      confirmResetTimerRef.current = setTimeout(() => { setConfirmReset(false); setResetInput(''); }, 10000);
+      // 30s — old 10s window expired before users finished reading the warning
+      // and typing RESET, which silently reverted confirmReset to false and
+      // hid the input. Long enough for a deliberate confirmation, short enough
+      // that an accidentally-clicked button doesn't leave the page in a
+      // confirm-armed state indefinitely.
+      confirmResetTimerRef.current = setTimeout(() => { setConfirmReset(false); setResetInput(''); }, 30000);
     }
   };
 
@@ -508,21 +517,21 @@ export default function Settings() {
     try {
       const cleared = await node.clearState();
       if (!cleared) {
-        toast.error('Failed to clear chain state — check node is stopped and try again');
+        toast.error(t('settings.toasts.clear_state_failed'));
         setClearingState(false);
         return;
       }
-      toast.success('Chain state cleared — restarting node from scratch…');
+      toast.success(t('settings.toasts.chain_state_cleared'));
       await new Promise((r) => setTimeout(r, 800));
       const result = await node.start(undefined, local.external_ip);
       if (result.success) {
-        toast.success('Node restarting…');
+        toast.success(t('settings.toasts.node_restarting'));
         startAggressivePoll(15_000);
       } else {
         toast.error(result.message);
       }
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Clear state failed');
+      toast.error(e instanceof Error ? e.message : t('settings.toasts.clear_state_failed'));
     } finally {
       setClearingState(false);
     }
@@ -534,9 +543,9 @@ export default function Settings() {
       const ip = await node.detectPublicIp(detectServiceUrl);
       patch('external_ip', ip);
       setShowDetectPanel(false);
-      toast.success(`Detected IP: ${ip} — settings auto-saved`);
+      toast.success(t('settings.toasts.detected_ip', { ip }));
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Detection failed');
+      toast.error(e instanceof Error ? e.message : t('settings.toasts.detection_failed'));
     } finally {
       setFetchingIp(false);
     }
@@ -547,12 +556,12 @@ export default function Settings() {
     try {
       const ip = await node.tryUpnpPortMap();
       if (ip) {
-        toast.success(`UPnP mapped TCP 38291 — external IP: ${ip}`);
+        toast.success(t('settings.toasts.upnp_mapped', { ip }));
       } else {
-        toast.error('UPnP failed — router may not support it or port is already mapped');
+        toast.error(t('settings.toasts.upnp_failed_router'));
       }
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'UPnP failed');
+      toast.error(e instanceof Error ? e.message : t('settings.toasts.upnp_failed'));
     } finally {
       setRetryingUpnp(false);
     }
@@ -563,10 +572,8 @@ export default function Settings() {
       <div className="reading-col space-y-5" style={{ maxWidth: 1100 }}>
       {/* Header */}
       <div>
-        <h1 className="page-title">Settings</h1>
-        <p className="page-subtitle">
-          Configure your node connection, wallet paths, and display preferences.
-        </p>
+        <h1 className="page-title">{t('settings.page_title')}</h1>
+        <p className="page-subtitle">{t('settings.page_subtitle')}</p>
       </div>
 
       {/* Update-available banner. Same updateInfo Zustand slice the top-of-app
@@ -593,15 +600,15 @@ export default function Settings() {
               <div className="min-w-0">
                 <p className="text-sm font-semibold" style={{ color: 'var(--t1)' }}>
                   {installState === 'installed'
-                    ? `Update installed - v${updateInfo.latest_version} ready`
-                    : `A new version of Irium Core is available: v${updateInfo.latest_version}`}
+                    ? t('settings.update_banner.title_installed', { version: updateInfo.latest_version })
+                    : t('settings.update_banner.title_available', { version: updateInfo.latest_version })}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--t3)' }}>
                   {installState === 'installed'
-                    ? 'Restart the app to start using the new version.'
+                    ? t('settings.update_banner.sub_installed')
                     : installState === 'downloading'
-                    ? `Downloading update… ${downloadProgress}%`
-                    : `You're on v${updateInfo.current_version}.`}
+                    ? t('settings.update_banner.sub_downloading', { percent: downloadProgress })
+                    : t('settings.update_banner.sub_current', { version: updateInfo.current_version })}
                 </p>
               </div>
             </div>
@@ -612,7 +619,7 @@ export default function Settings() {
                 className="btn-primary px-4 py-2 text-xs flex items-center gap-1.5 flex-shrink-0"
               >
                 <Download size={13} />
-                Install Update
+                {t('settings.update_banner.install')}
               </button>
             )}
             {installState === 'downloading' && (
@@ -621,7 +628,7 @@ export default function Settings() {
                 className="btn-primary px-4 py-2 text-xs flex items-center gap-1.5 flex-shrink-0 opacity-70"
               >
                 <RefreshCw size={13} className="animate-spin" />
-                Downloading…
+                {t('settings.update_banner.downloading')}
               </button>
             )}
             {installState === 'installed' && (
@@ -630,7 +637,7 @@ export default function Settings() {
                 className="btn-primary px-4 py-2 text-xs flex items-center gap-1.5 flex-shrink-0"
               >
                 <RefreshCw size={13} />
-                Restart Now
+                {t('settings.update_banner.restart_now')}
               </button>
             )}
             {installState === 'error' && (
@@ -639,7 +646,7 @@ export default function Settings() {
                 className="btn-secondary px-4 py-2 text-xs flex items-center gap-1.5 flex-shrink-0"
               >
                 <RefreshCw size={13} />
-                Retry
+                {t('settings.update_banner.retry')}
               </button>
             )}
           </div>
@@ -672,12 +679,12 @@ export default function Settings() {
                   onClick={() => {
                     const url = updateInfo.release_url
                       ?? 'https://github.com/iriumlabs/irium-core/releases/latest';
-                    openExternal(url).catch(() => toast.error('Could not open browser'));
+                    openExternal(url).catch(() => toast.error(t('settings.toasts.could_not_open_browser')));
                   }}
                   className="mt-1 underline text-[11px]"
                   style={{ color: 'rgba(238,240,255,0.55)' }}
                 >
-                  Open releases page in browser instead
+                  {t('settings.update_banner.open_releases')}
                 </button>
               </div>
             </div>
@@ -694,10 +701,10 @@ export default function Settings() {
       >
         {/* Node / RPC */}
         <motion.div variants={sectionVariants}>
-          <Section title="Node Connection" icon={Server}>
+          <Section title={t('settings.sections.node_connection')} icon={Server}>
             <FieldRow
-              label="RPC URL"
-              description="URL for your local iriumd instance"
+              label={t('settings.fields.rpc_url')}
+              description={t('settings.fields.rpc_url_description')}
             >
               <div className="flex gap-2">
                 <input
@@ -754,12 +761,12 @@ export default function Settings() {
                     )}
                   </AnimatePresence>
                   {testingRpc
-                    ? "Testing…"
+                    ? t('settings.test_states.testing')
                     : rpcOk === true
-                    ? "Connected"
+                    ? t('settings.test_states.connected')
                     : rpcError
-                    ? "Failed"
-                    : "Test"}
+                    ? t('settings.test_states.failed')
+                    : t('settings.test_states.test')}
                 </button>
               </div>
 
@@ -773,7 +780,7 @@ export default function Settings() {
                     exit={{ opacity: 0, y: -4 }}
                     className="mt-1.5 text-xs text-emerald-400 flex items-center gap-1"
                   >
-                    <CheckCircle size={12} /> Connected successfully
+                    <CheckCircle size={12} /> {t('settings.test_states.connected_successfully')}
                   </motion.p>
                 )}
                 {rpcError && (
@@ -791,8 +798,8 @@ export default function Settings() {
             </FieldRow>
 
             <FieldRow
-              label="Auto-start node"
-              description="Launch iriumd automatically when Irium Core opens"
+              label={t('settings.fields.auto_start_node')}
+              description={t('settings.fields.auto_start_description')}
             >
               <Toggle
                 checked={local.auto_start_node}
@@ -804,29 +811,29 @@ export default function Settings() {
 
         {/* Wallet */}
         <motion.div variants={sectionVariants}>
-          <Section title="Wallet" icon={FolderOpen}>
+          <Section title={t('settings.sections.wallet')} icon={FolderOpen}>
             <FieldRow
-              label="Wallet file path"
-              description="Custom path to your wallet file (leave blank for default)"
+              label={t('settings.fields.wallet_file_path')}
+              description={t('settings.fields.wallet_path_description')}
             >
               <input
                 type="text"
                 value={local.wallet_path ?? ""}
                 onChange={(e) => patch("wallet_path", e.target.value || undefined)}
-                placeholder="~/.irium/wallet.json (default)"
+                placeholder={t('settings.fields.wallet_path_placeholder')}
                 className="input w-full font-mono text-sm"
               />
             </FieldRow>
 
             <FieldRow
-              label="Data directory"
-              description="Custom iriumd data directory (leave blank for default)"
+              label={t('settings.fields.data_directory')}
+              description={t('settings.fields.data_dir_description')}
             >
               <input
                 type="text"
                 value={local.data_dir ?? ""}
                 onChange={(e) => patch("data_dir", e.target.value || undefined)}
-                placeholder="~/.irium (default)"
+                placeholder={t('settings.fields.data_dir_placeholder')}
                 className="input w-full font-mono text-sm"
               />
             </FieldRow>
@@ -835,23 +842,23 @@ export default function Settings() {
 
         {/* Display */}
         <motion.div variants={sectionVariants}>
-          <Section title="Display" icon={Monitor}>
+          <Section title={t('settings.sections.display')} icon={Monitor}>
             <FieldRow
-              label="Theme"
-              description="App color palette — applies instantly"
+              label={t('settings.fields.theme')}
+              description={t('settings.fields.theme_description')}
             >
               <div className="flex gap-3 flex-wrap">
-                {THEMES.map((t) => {
-                  const isActive = local.theme === t.id;
+                {THEMES.map((theme) => {
+                  const isActive = local.theme === theme.id;
                   return (
                     <button
-                      key={t.id}
+                      key={theme.id}
                       onClick={() => {
-                        setLocal((prev) => ({ ...prev, theme: t.id }));
-                        updateSettings({ theme: t.id });
-                        toast.success('Settings saved', { duration: 2000 });
+                        setLocal((prev) => ({ ...prev, theme: theme.id }));
+                        updateSettings({ theme: theme.id });
+                        toast.success(t('common.settings_saved'), { duration: 2000 });
                       }}
-                      title={t.label}
+                      title={t(`settings.themes.${theme.id}`)}
                       className="rounded-xl p-2.5 flex flex-col items-center gap-2 transition-all"
                       style={{
                         background: isActive ? 'rgba(110,198,255,0.10)' : 'rgba(255,255,255,0.04)',
@@ -861,13 +868,13 @@ export default function Settings() {
                     >
                       <div
                         className="w-12 h-12 rounded-lg"
-                        style={{ background: t.preview, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.10)' }}
+                        style={{ background: theme.preview, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.10)' }}
                       />
                       <span
                         className="text-[10px] font-mono"
                         style={{ color: isActive ? 'var(--brand)' : 'rgba(238,240,255,0.45)' }}
                       >
-                        {t.label}
+                        {t(`settings.themes.${theme.id}`)}
                       </span>
                     </button>
                   );
@@ -876,8 +883,8 @@ export default function Settings() {
             </FieldRow>
 
             <FieldRow
-              label="Currency display"
-              description="How to show Irium amounts throughout the app"
+              label={t('settings.fields.currency_display')}
+              description={t('settings.fields.currency_description')}
             >
               <div className="flex gap-2">
                 {(["IRM", "sats"] as const).map((opt) => (
@@ -897,8 +904,8 @@ export default function Settings() {
             </FieldRow>
 
             <FieldRow
-              label="Minimize to tray"
-              description="Keep node running when the window is closed"
+              label={t('settings.fields.minimize_to_tray')}
+              description={t('settings.fields.minimize_description')}
             >
               <Toggle
                 checked={local.minimize_to_tray}
@@ -941,30 +948,30 @@ export default function Settings() {
 
         {/* Network info */}
         <motion.div variants={sectionVariants}>
-          <Section title="Network" icon={Globe}>
+          <Section title={t('settings.sections.network')} icon={Globe}>
             <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-white/40">Network</span>
+                <span className="text-white/40">{t('settings.network_info.network')}</span>
                 <span className="font-mono text-emerald-400">Mainnet</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-white/40">P2P port</span>
+                <span className="text-white/40">{t('settings.network_info.p2p_port')}</span>
                 <span className="font-mono text-white">38291</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-white/40">RPC port</span>
+                <span className="text-white/40">{t('settings.network_info.rpc_port')}</span>
                 <span className="font-mono text-white">38300</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-white/40">Address prefix</span>
+                <span className="text-white/40">{t('settings.network_info.address_prefix')}</span>
                 <span className="font-mono text-white">P / Q</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-white/40">Consensus</span>
+                <span className="text-white/40">{t('settings.network_info.consensus')}</span>
                 <span className="font-mono text-white">SHA-256d PoW</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-white/40">Total supply</span>
+                <span className="text-white/40">{t('settings.network_info.total_supply')}</span>
                 <span className="font-mono text-white">100,000,000 IRM</span>
               </div>
             </div>
@@ -1004,11 +1011,11 @@ export default function Settings() {
                 : 'rgba(255,255,255,0.2)';
 
               const statusEl =
-                statusKind === 'active-upnp'   ? <span className="text-emerald-400">Active (UPnP) — TCP 38291 open</span>
-              : statusKind === 'active-manual' ? <span className="text-emerald-400">Active (manual) — {inboundCount} inbound peer{inboundCount === 1 ? '' : 's'}</span>
-              : statusKind === 'detecting'     ? <span className="text-amber-400">Detecting… ({Math.max(0, 60 - elapsedSec)}s)</span>
-              : statusKind === 'inactive'      ? <span className="text-amber-400">Inactive — outbound only</span>
-              : <span className="text-white/30">Node offline</span>;
+                statusKind === 'active-upnp'   ? <span className="text-emerald-400">{t('settings.port_reachability.active_upnp')}</span>
+              : statusKind === 'active-manual' ? <span className="text-emerald-400">{t('settings.port_reachability.active_manual', { count: inboundCount })}</span>
+              : statusKind === 'detecting'     ? <span className="text-amber-400">{t('settings.port_reachability.detecting', { seconds: Math.max(0, 60 - elapsedSec) })}</span>
+              : statusKind === 'inactive'      ? <span className="text-amber-400">{t('settings.port_reachability.inactive')}</span>
+              : <span className="text-white/30">{t('settings.port_reachability.node_offline')}</span>;
 
               return (
                 <div className="mt-1 rounded-lg border border-white/10 bg-white/5 px-4 py-3 space-y-2">
@@ -1018,14 +1025,14 @@ export default function Settings() {
                         className="inline-block w-2 h-2 rounded-full"
                         style={{ background: dotColor }}
                       />
-                      <span className="text-sm text-white/70">Port Reachability</span>
+                      <span className="text-sm text-white/70">{t('settings.port_reachability.title')}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-mono">{statusEl}</span>
                       <button
                         onClick={handleRetryUpnp}
                         disabled={retryingUpnp || !running}
-                        title="Retry UPnP port mapping"
+                        title={t('settings.buttons.retry_upnp')}
                         className="btn-secondary px-2.5 py-1 text-xs flex items-center gap-1 disabled:opacity-40"
                       >
                         {retryingUpnp ? (
@@ -1033,27 +1040,24 @@ export default function Settings() {
                         ) : (
                           <RefreshCw size={11} />
                         )}
-                        Retry
+                        {t('settings.port_reachability.retry')}
                       </button>
                     </div>
                   </div>
                   {nodeStatus?.upnp_external_ip && (
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-white/40">External IP</span>
+                      <span className="text-white/40">{t('settings.port_reachability.external_ip_label')}</span>
                       <span className="font-mono text-white/70">{nodeStatus.upnp_external_ip}</span>
                     </div>
                   )}
                   {statusKind === 'detecting' && (
                     <p className="text-xs text-white/30 leading-relaxed">
-                      Waiting up to 60s for an inbound peer to confirm reachability. PEX needs a
-                      moment to propagate your address to other nodes after start.
+                      {t('settings.port_reachability.detecting_paragraph')}
                     </p>
                   )}
                   {statusKind === 'inactive' && (
                     <p className="text-xs text-white/30 leading-relaxed">
-                      UPnP failed and no inbound peers have arrived. Configure manual port
-                      forwarding on your router (TCP 38291) or enable UPnP, then click Retry.
-                      Outbound connections still work in this state.
+                      {t('settings.port_reachability.inactive_paragraph')}
                     </p>
                   )}
                 </div>
@@ -1064,32 +1068,24 @@ export default function Settings() {
 
         {/* Security info */}
         <motion.div variants={sectionVariants}>
-          <Section title="Security" icon={Shield}>
+          <Section title={t('settings.sections.security')} icon={Shield}>
             <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20 text-blue-300 text-xs">
               <Info size={14} className="mt-0.5 shrink-0" />
-              <span>
-                Irium Core stores your wallet file locally. Your private keys never leave your
-                machine. The wallet file is encrypted. Always back up your seed phrase and keep it
-                offline.
-              </span>
+              <span>{t('settings.security_info.wallet_local')}</span>
             </div>
             <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20 text-amber-400 text-xs">
               <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-              <span>
-                If you set <code className="font-mono">IRIUM_RPC_TOKEN</code> on your node, the
-                GUI currently uses the default unauthenticated connection. Token-based auth support
-                is coming in a future release.
-              </span>
+              <span>{t('settings.security_info.rpc_token_warning')}</span>
             </div>
           </Section>
         </motion.div>
 
         {/* Connection Diagnostics */}
         <motion.div variants={sectionVariants}>
-          <Section title="Connection Diagnostics" icon={Activity}>
+          <Section title={t('settings.sections.connection_diagnostics')} icon={Activity}>
             <div className="flex items-center justify-between">
               <p className="text-xs text-white/40">
-                Runs 7 checks against your node, wallet, and binary setup.
+                {t('settings.diagnostics.description')}
               </p>
               <button
                 onClick={runDiagnostics}
@@ -1101,7 +1097,7 @@ export default function Settings() {
                 ) : (
                   <Activity size={13} />
                 )}
-                {runningDiag ? 'Running…' : 'Run Diagnostics'}
+                {runningDiag ? t('settings.diagnostics.running') : t('settings.diagnostics.run')}
               </button>
             </div>
 
@@ -1120,14 +1116,14 @@ export default function Settings() {
                       <span className={diagResult.passed === diagResult.total ? 'text-emerald-400' : 'text-amber-400'}>
                         {diagResult.passed}/{diagResult.total}
                       </span>
-                      {' '}checks passed
+                      {' '}{t('settings.diagnostics.checks_passed_suffix')}
                     </span>
                     <button
                       onClick={copyDiagReport}
                       className="flex items-center gap-1 text-xs text-white/50 hover:text-white transition-colors"
                     >
                       <Copy size={11} />
-                      Copy Report
+                      {t('settings.diagnostics.copy_report')}
                     </button>
                   </div>
 
@@ -1166,10 +1162,10 @@ export default function Settings() {
 
         {/* Recent Errors */}
         <motion.div variants={sectionVariants}>
-          <Section title="Recent Errors" icon={AlertTriangle}>
+          <Section title={t('settings.sections.recent_errors')} icon={AlertTriangle}>
             <div className="flex items-center justify-between">
               <p className="text-xs text-white/40">
-                {errorLog.length === 0 ? 'No errors recorded.' : `${errorLog.length} error${errorLog.length !== 1 ? 's' : ''} recorded.`}
+                {errorLog.length === 0 ? t('settings.errors_section.none') : t('settings.errors_section.count', { count: errorLog.length })}
               </p>
               {errorLog.length > 0 && (
                 <button
@@ -1177,7 +1173,7 @@ export default function Settings() {
                   className="btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5"
                 >
                   <XCircle size={12} />
-                  Clear
+                  {t('settings.errors_section.clear')}
                 </button>
               )}
             </div>
@@ -1208,28 +1204,28 @@ export default function Settings() {
 
         {/* About */}
         <motion.div variants={sectionVariants}>
-          <Section title="About" icon={Cpu}>
+          <Section title={t('settings.sections.about')} icon={Cpu}>
             <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-white/40">Application</span>
+                <span className="text-white/40">{t('settings.about_info.application')}</span>
                 <span className="font-mono text-white">Irium Core GUI</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-white/40">Version</span>
+                <span className="text-white/40">{t('settings.about_info.version')}</span>
                 <span className="font-mono text-white">{appVersion}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-white/40">Framework</span>
+                <span className="text-white/40">{t('settings.about_info.framework')}</span>
                 <span className="font-mono text-white">Tauri + React</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-white/40">License</span>
+                <span className="text-white/40">{t('settings.about_info.license')}</span>
                 <span className="font-mono text-white">MIT</span>
               </div>
             </div>
 
             <div className="flex items-center justify-between pt-1">
-              <p className="text-xs text-white/40">Check GitHub releases for a newer GUI version.</p>
+              <p className="text-xs text-white/40">{t('settings.about_info.check_github_releases')}</p>
               <button
                 onClick={checkForUpdates}
                 disabled={checkingUpdate}
@@ -1240,7 +1236,7 @@ export default function Settings() {
                 ) : (
                   <RefreshCw size={13} />
                 )}
-                {checkingUpdate ? 'Checking…' : 'Check for Updates'}
+                {checkingUpdate ? t('settings.about_info.checking') : t('settings.about_info.check_updates')}
               </button>
             </div>
           </Section>
@@ -1248,10 +1244,9 @@ export default function Settings() {
 
         {/* Node Source / irium repo */}
         <motion.div variants={sectionVariants}>
-          <Section title="Node Source" icon={GitBranch}>
+          <Section title={t('settings.sections.node_source')} icon={GitBranch}>
             <p className="text-xs text-white/40">
-              The node binaries (iriumd, irium-wallet, irium-miner) are compiled directly
-              from the{' '}
+              {t('settings.node_source_info.description_before_link')}{' '}
               <a
                 href="https://github.com/iriumlabs/irium"
                 target="_blank"
@@ -1260,23 +1255,21 @@ export default function Settings() {
               >
                 iriumlabs/irium <ExternalLink size={10} />
               </a>{' '}
-              repository, which is embedded as a git submodule. No features are ever
-              missed — every capability added to the irium repo is automatically
-              available to this app.
+              {t('settings.node_source_info.description_after_link')}
             </p>
 
             {/* Current build commit */}
             <div className="rounded-lg bg-white/5 border border-white/10 px-4 py-3 space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-white/40">Built from commit</span>
+                <span className="text-white/40">{t('settings.node_source_info.built_from_commit')}</span>
                 <span className="font-mono text-white">
-                  {nodeUpdateInfo?.current_commit_short ?? 'loading…'}
+                  {nodeUpdateInfo?.current_commit_short ?? t('settings.node_source_info.loading')}
                 </span>
               </div>
               {nodeUpdateInfo && (
                 <>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-white/40">Latest on main</span>
+                    <span className="text-white/40">{t('settings.node_source_info.latest_on_main')}</span>
                     <span className="font-mono text-white">{nodeUpdateInfo.latest_commit_short}</span>
                   </div>
                   {nodeUpdateInfo.has_update && (
@@ -1284,17 +1277,17 @@ export default function Settings() {
                       <AlertTriangle size={13} className="mt-0.5 shrink-0 text-amber-400" />
                       <div className="text-xs">
                         <p className="text-amber-300 font-medium">
-                          {nodeUpdateInfo.commits_behind} commit{nodeUpdateInfo.commits_behind !== 1 ? 's' : ''} behind
+                          {t('settings.node_source_info.commits_behind', { count: nodeUpdateInfo.commits_behind })}
                         </p>
                         <p className="text-white/40 mt-0.5 font-mono truncate">{nodeUpdateInfo.latest_message}</p>
-                        <p className="text-white/30 mt-0.5">by {nodeUpdateInfo.latest_author}</p>
+                        <p className="text-white/30 mt-0.5">{t('settings.node_source_info.by_author', { author: nodeUpdateInfo.latest_author })}</p>
                       </div>
                     </div>
                   )}
                   {!nodeUpdateInfo.has_update && nodeUpdateInfo.current_commit !== 'unknown' && (
                     <div className="flex items-center gap-2 pt-1 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
                       <CheckCircle size={13} className="shrink-0 text-emerald-400" />
-                      <p className="text-xs text-emerald-300">Node source is up to date</p>
+                      <p className="text-xs text-emerald-300">{t('settings.toasts.node_up_to_date')}</p>
                     </div>
                   )}
                 </>
@@ -1312,7 +1305,7 @@ export default function Settings() {
                 ) : (
                   <RefreshCw size={13} />
                 )}
-                {checkingNodeUpdate ? 'Checking…' : 'Check for Node Update'}
+                {checkingNodeUpdate ? t('settings.node_source_info.checking') : t('settings.node_source_info.check_node_update')}
               </button>
 
               {nodeUpdateInfo?.has_update && (
@@ -1326,7 +1319,7 @@ export default function Settings() {
                   ) : (
                     <Download size={13} />
                   )}
-                  {pullingNodeUpdate ? 'Pulling…' : 'Pull Update'}
+                  {pullingNodeUpdate ? t('settings.node_source_info.pulling') : t('settings.node_source_info.pull_update')}
                 </button>
               )}
 
@@ -1338,7 +1331,7 @@ export default function Settings() {
                   className="btn-secondary px-4 py-2 text-xs flex items-center gap-1.5"
                 >
                   <ExternalLink size={13} />
-                  View Changes
+                  {t('settings.node_source_info.view_changes')}
                 </a>
               )}
             </div>
@@ -1348,10 +1341,10 @@ export default function Settings() {
 
         {/* Node Data */}
         <motion.div variants={sectionVariants}>
-          <Section title="Node Data" icon={Trash2}>
+          <Section title={t('settings.sections.node_data')} icon={Trash2}>
             <FieldRow
-              label="External IP"
-              description="Your public IP address announced to the network so peers can dial back to your node. Nothing is sent automatically — you control when detection happens."
+              label={t('settings.fields.external_ip')}
+              description={t('settings.node_data_info.external_ip_description')}
             >
               <div className="flex flex-col gap-2 w-72">
                 <div className="flex items-center gap-2">
@@ -1367,13 +1360,13 @@ export default function Settings() {
                     className="btn-secondary px-3 py-2 text-xs flex items-center gap-1.5 shrink-0"
                   >
                     <Globe size={12} />
-                    Detect
+                    {t('settings.node_data_info.detect')}
                   </button>
                 </div>
                 {showDetectPanel && (
                   <div className="rounded-lg border border-white/10 bg-white/5 p-3 space-y-2">
                     <p className="text-xs text-white/50">
-                      Enter a URL that returns your public IP as plain text. The request will only be sent when you click Fetch.
+                      {t('settings.node_data_info.detect_panel_paragraph')}
                     </p>
                     <input
                       type="text"
@@ -1388,13 +1381,13 @@ export default function Settings() {
                         className="btn-primary px-3 py-1.5 text-xs flex items-center gap-1.5 disabled:opacity-50"
                       >
                         {fetchingIp ? <RefreshCw size={12} className="animate-spin" /> : <Globe size={12} />}
-                        {fetchingIp ? 'Fetching…' : 'Fetch'}
+                        {fetchingIp ? t('settings.node_data_info.fetching') : t('settings.node_data_info.fetch')}
                       </button>
                       <button
                         onClick={() => setShowDetectPanel(false)}
                         className="btn-secondary px-3 py-1.5 text-xs"
                       >
-                        Cancel
+                        {t('settings.node_data_info.cancel')}
                       </button>
                     </div>
                   </div>
@@ -1402,8 +1395,8 @@ export default function Settings() {
               </div>
             </FieldRow>
             <FieldRow
-              label="Clear chain state"
-              description="Wipe block data and resync from scratch. Wallet and agreements are preserved."
+              label={t('settings.buttons.clear_chain_state')}
+              description={t('settings.node_data_info.clear_state_description')}
             >
               <div className="flex items-center gap-2">
                 <button
@@ -1422,10 +1415,10 @@ export default function Settings() {
                   ) : (
                     <Trash2 size={13} />
                   )}
-                  {clearingState ? 'Clearing…' : confirmClear ? 'Confirm — this will resync!' : 'Clear & Resync'}
+                  {clearingState ? t('settings.node_data_info.clearing') : confirmClear ? t('settings.node_data_info.confirm_resync') : t('settings.node_data_info.clear_resync')}
                 </button>
                 {confirmClear && (
-                  <p className="text-xs text-red-400/70">Click again to confirm. Blocks will be re-downloaded.</p>
+                  <p className="text-xs text-red-400/70">{t('settings.node_data_info.confirm_hint')}</p>
                 )}
               </div>
             </FieldRow>
@@ -1434,10 +1427,10 @@ export default function Settings() {
 
         {/* Developer */}
         <motion.div variants={sectionVariants}>
-          <Section title="Developer" icon={Cpu}>
+          <Section title={t('settings.sections.developer')} icon={Cpu}>
             <FieldRow
-              label="Reset onboarding"
-              description="Show the first-run setup wizard again on next launch"
+              label={t('settings.developer_info.reset_onboarding')}
+              description={t('settings.developer_info.reset_onboarding_description')}
             >
               <button
                 onClick={() => {
@@ -1447,11 +1440,11 @@ export default function Settings() {
                   // user back into the app on the next launch.
                   localStorage.removeItem(ONBOARDING_KEY);
                   localStorage.setItem(FORCE_ONBOARDING_KEY, '1');
-                  toast.success('Onboarding reset — restart the app to see the wizard');
+                  toast.success(t('settings.toasts.onboarding_reset'));
                 }}
                 className="btn-secondary px-4 py-2 text-sm"
               >
-                Reset onboarding
+                {t('settings.developer_info.reset_onboarding')}
               </button>
             </FieldRow>
           </Section>
@@ -1475,7 +1468,7 @@ export default function Settings() {
                 className="flex items-center gap-2"
               >
                 <AlertTriangle size={14} className="text-amber-400" />
-                <span className="text-amber-400">Are you sure?</span>
+                <span className="text-amber-400">{t('settings.action_bar.are_you_sure')}</span>
               </motion.span>
             ) : (
               <motion.span
@@ -1486,7 +1479,7 @@ export default function Settings() {
                 className="flex items-center gap-2"
               >
                 <RotateCcw size={14} />
-                Reset to defaults
+                {t('settings.action_bar.reset_to_defaults')}
               </motion.span>
             )}
           </AnimatePresence>
@@ -1503,15 +1496,24 @@ export default function Settings() {
                 <p className="text-xs text-amber-300 flex items-start gap-2">
                   <AlertTriangle size={13} className="flex-shrink-0 mt-0.5 text-amber-400" />
                   <span>
-                    Your wallet is at a custom path: <span className="font-mono text-amber-200 break-all">{local.wallet_path}</span>.
-                    After reset you will need to re-import it. Type <strong>RESET</strong> to confirm.
+                    {t('settings.action_bar.wallet_custom_warning_before')} <span className="font-mono text-amber-200 break-all">{local.wallet_path}</span>{t('settings.action_bar.wallet_custom_warning_after')}
                   </span>
                 </p>
                 <input
                   className="input text-xs py-1.5"
-                  placeholder="Type RESET to confirm"
+                  placeholder={t('settings.action_bar.reset_placeholder')}
                   value={resetInput}
                   onChange={(e) => setResetInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    // Enter submits when the confirmation has been typed
+                    // correctly. Without this the user has to type RESET
+                    // and then physically click the button again, which is
+                    // unintuitive — typing RESET feels like the action.
+                    if (e.key === 'Enter' && resetInput.trim() === 'RESET') {
+                      e.preventDefault();
+                      handleResetClick();
+                    }
+                  }}
                   autoFocus
                 />
               </div>
@@ -1544,11 +1546,9 @@ export default function Settings() {
               <div className="flex items-start gap-3">
                 <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-400" />
                 <div>
-                  <p className="text-sm font-semibold text-white">Update Node Source</p>
+                  <p className="text-sm font-semibold text-white">{t('settings.node_update_modal.title')}</p>
                   <p className="mt-1.5 text-xs text-white/50 leading-relaxed">
-                    This will pull the latest iriumd source code and rebuild the node binary. If the
-                    new code is unstable it may break your running node and require a restart. Only
-                    proceed if you know what you are doing.
+                    {t('settings.node_update_modal.body')}
                   </p>
                 </div>
               </div>
@@ -1557,13 +1557,13 @@ export default function Settings() {
                   onClick={() => setShowNodeUpdateConfirm(false)}
                   className="flex-1 px-4 py-2 text-xs rounded-lg border border-white/10 text-white/60 hover:text-white/80 hover:border-white/20 transition-colors"
                 >
-                  Cancel
+                  {t('settings.node_update_modal.cancel')}
                 </button>
                 <button
                   onClick={() => { setShowNodeUpdateConfirm(false); pullNodeUpdate(); }}
                   className="flex-1 px-4 py-2 text-xs rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 transition-colors font-medium"
                 >
-                  I understand, update anyway
+                  {t('settings.node_update_modal.proceed')}
                 </button>
               </div>
             </motion.div>

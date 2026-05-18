@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -41,6 +42,7 @@ const TEMPLATES: ReadonlyArray<{
 ];
 
 export default function SellerWizard() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -134,7 +136,7 @@ export default function SellerWizard() {
       });
       if (!outPath) return;
       await offers.export(offerResult.id, outPath as string);
-      toast.success('Offer exported');
+      toast.success(t('wizards.seller.offer_exported'));
     } catch (e) {
       toast.error(String(e));
     }
@@ -143,7 +145,7 @@ export default function SellerWizard() {
   const handleCopyOfferId = () => {
     if (!offerResult?.id) return;
     navigator.clipboard.writeText(offerResult.id);
-    toast.success('Offer ID copied');
+    toast.success(t('wizards.seller.offer_id_copied'));
   };
 
   const handleBack = useCallback(() => {
@@ -195,7 +197,7 @@ export default function SellerWizard() {
               className="space-y-5"
             >
               <div>
-                <h2 className="font-display font-bold text-xl text-white">Choose Settlement Type</h2>
+                <h2 className="font-display font-bold text-xl text-white">{t('wizards.seller.step_choose')}</h2>
                 <p className="text-white/40 text-sm mt-1">
                   Pick the template that best describes what you are selling. This becomes part of the offer your buyer sees.
                 </p>
@@ -257,13 +259,13 @@ export default function SellerWizard() {
               {/* Scrollable fields — button stays pinned below */}
               <div className="flex-1 overflow-y-auto p-6 space-y-5 min-h-0">
                 <div>
-                  <h2 className="font-display font-bold text-xl text-white">Create Your Offer</h2>
+                  <h2 className="font-display font-bold text-xl text-white">{t('wizards.seller.create_your_offer')}</h2>
                   <p className="text-white/40 text-sm mt-1">Define what you're selling and the price</p>
                 </div>
 
                 {/* Seller Address */}
                 <div className="space-y-1">
-                  <label className="label">Seller Address</label>
+                  <label className="label">{t('wizards.seller.fields.seller_address_label')}</label>
                   <div className="relative">
                     <select
                       className="input w-full appearance-none pr-8"
@@ -298,7 +300,7 @@ export default function SellerWizard() {
                     (numeric input + sats preview) so the field is clearly
                     visible and the user sees the on-chain value as they type. */}
                 <div className="space-y-1">
-                  <label className="label">Amount (IRM)</label>
+                  <label className="label">{t('wizards.seller.fields.amount_label')}</label>
                   <input
                     className={`input ${error && !amountIrm ? 'border-red-500/50' : ''}`}
                     type="number"
@@ -317,7 +319,7 @@ export default function SellerWizard() {
 
                 {/* Payment Method */}
                 <div className="space-y-1">
-                  <label className="label">Payment Method</label>
+                  <label className="label">{t('wizards.seller.fields.payment_method_label')}</label>
                   <input
                     list="payment-suggestions"
                     className={`input ${error && !paymentMethod ? 'border-red-500/50' : ''}`}
@@ -366,7 +368,7 @@ export default function SellerWizard() {
                   <textarea
                     className="input resize-none"
                     rows={3}
-                    placeholder="Bank details, crypto address, or other instructions for the buyer…"
+                    placeholder={t('wizards.seller.fields.payment_instructions_placeholder')}
                     value={paymentInstructions}
                     onChange={(e) => setPaymentInstructions(e.target.value)}
                   />
@@ -397,7 +399,7 @@ export default function SellerWizard() {
           {step === 2 && offerResult && (
             <motion.div key="s2-share" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="card p-6 space-y-5">
               <div>
-                <h2 className="font-display font-bold text-xl text-white">Share Your Offer</h2>
+                <h2 className="font-display font-bold text-xl text-white">{t('wizards.seller.share_your_offer')}</h2>
                 <p className="text-white/40 text-sm mt-1">Send the offer ID or file to your buyer</p>
               </div>
 

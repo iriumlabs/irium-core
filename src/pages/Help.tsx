@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { open as shellOpen } from '@tauri-apps/api/shell';
@@ -69,6 +70,14 @@ const FAQS = [
   {
     q: 'How do I connect to the mining pool?',
     a: 'Go to the Mining page and select the Stratum Pool tab. Enter the pool URL stratum+tcp://pool.iriumlabs.org:3333 for ASIC/modern miners or stratum+tcp://pool.iriumlabs.org:3335 for CPU/GPU miners. Your username should be your IRM address followed by a worker name, for example PwjVf7nY19UWW2i9HCEPyZt81975M6iKdW.worker1.',
+  },
+  {
+    q: 'macOS says Irium Core is damaged or quarantined. How do I fix it?',
+    a: 'macOS quarantines apps downloaded outside the App Store. To fix this: (1) open Terminal; (2) run: xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app — this removes the quarantine flag from the entire app bundle. If you still see "damaged", run: codesign --force --deep --sign - /Applications/Irium\\ Core.app then re-launch. The first launch may take 10-20 seconds while Gatekeeper re-verifies the signature. If iriumd itself was quarantined (you see "iriumd is damaged" in the logs), run: xattr -d com.apple.quarantine ~/.irium/binaries/iriumd to unquarantine just the node binary.',
+  },
+  {
+    q: 'My node has quarantined blocks. How do I recover?',
+    a: 'iriumd quarantines block files it cannot validate (typically after a crash mid-write or a corrupted reorg). Quarantined blocks live in ~/.irium/blocks/quarantine/. To safely recover: (1) stop iriumd (Dashboard → Stop Node); (2) move the quarantine folder aside: mv ~/.irium/blocks/quarantine ~/.irium/blocks/quarantine.bak; (3) restart iriumd from the Dashboard. The node will re-fetch the missing blocks from peers automatically. If the resync gets stuck at the same height, use Settings → Clear chain state for a clean resync from genesis (your wallet and agreements are preserved).',
   },
 ];
 
@@ -578,6 +587,7 @@ const SECTION_CONTENT: Record<string, React.ReactNode> = {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Help() {
+  const { t } = useTranslation();
   const location = useLocation();
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -619,8 +629,8 @@ export default function Help() {
       {/* Scrollable content */}
       <div ref={contentRef} className="flex-1 overflow-y-auto px-8 py-6 space-y-12">
         <div>
-          <h1 className="page-title">Help &amp; About</h1>
-          <p className="page-subtitle">App information, documentation, and FAQ.</p>
+          <h1 className="page-title">{t('help.page_title')}</h1>
+          <p className="page-subtitle">{t('help.subtitle')}</p>
         </div>
 
         {/* About renders directly (no card wrapper — it has its own sub-cards) */}

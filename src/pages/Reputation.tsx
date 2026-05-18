@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import { fetch as tauriFetch, ResponseType } from "@tauri-apps/api/http";
 import { useStore } from "../lib/store";
@@ -198,6 +199,7 @@ function StatCard({
 // the parent component since they don't make sense when comparing two
 // sellers head-to-head.
 function SellerProfileBlock({ data, resultVisible }: { data: ReputationData; resultVisible: boolean }) {
+  const { t } = useTranslation();
   const risk = RISK_CONFIG[data.risk] ?? RISK_CONFIG.unknown;
   const hasData = data.total_agreements > 0;
   const successPct = data.success_rate ? parseFloat(data.success_rate) : 0;
@@ -242,7 +244,7 @@ function SellerProfileBlock({ data, resultVisible }: { data: ReputationData; res
               {data.sybil_suppressed && (
                 <span
                   className="badge badge-warning text-xs px-2 py-0.5 inline-flex items-center gap-1"
-                  title="Seller has fewer than 3 completed agreements — their score is provisional and they could be a new identity created to inflate reputation."
+                  title={t('reputation.warnings.few_completed')}
                 >
                   <AlertTriangle size={11} /> Sybil-suppressed
                 </span>
@@ -250,7 +252,7 @@ function SellerProfileBlock({ data, resultVisible }: { data: ReputationData; res
               {data.self_trade_count > 0 && (
                 <span
                   className="badge badge-warning text-xs px-2 py-0.5"
-                  title="Detected agreements where buyer and seller appear to share a key derivation root. Inflated counts here may indicate fake reputation building."
+                  title={t('reputation.risk.sybil_detected')}
                 >
                   Self-trades: {data.self_trade_count}
                 </span>
@@ -258,7 +260,7 @@ function SellerProfileBlock({ data, resultVisible }: { data: ReputationData; res
               {data.dispute_rate && parseFloat(data.dispute_rate) >= 10 && (
                 <span
                   className="badge badge-warning text-xs px-2 py-0.5"
-                  title="More than 10% of this seller's agreements ended in dispute. Inspect their dispute history before trading."
+                  title={t('reputation.risk.high_disputes')}
                 >
                   High disputes: {data.dispute_rate}%
                 </span>
@@ -294,6 +296,7 @@ function SellerProfileBlock({ data, resultVisible }: { data: ReputationData; res
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function Reputation() {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
@@ -452,15 +455,15 @@ export default function Reputation() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="page-title">Reputation</h1>
+          <h1 className="page-title">{t('reputation.page_title')}</h1>
           <p className="page-subtitle">
-            Query the on-chain reputation score for any Irium address or public key.
+            {t('reputation.page_subtitle')}
           </p>
         </div>
         <button
           onClick={() => navigate('/help#reputation')}
           className="btn-ghost p-2 text-white/40 hover:text-white/80 flex-shrink-0 mt-1"
-          title="Reputation help"
+          title={t('reputation.tooltips.help')}
         >
           <HelpCircle size={18} />
         </button>
@@ -479,7 +482,7 @@ export default function Reputation() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKey}
-            placeholder="Q-prefix address or 64-hex public key…"
+            placeholder={t('reputation.search_placeholder')}
             disabled={loading}
             className={`input pl-9 w-full font-mono text-sm disabled:opacity-60 disabled:cursor-not-allowed transition-opacity ${
               shimmer ? "shimmer" : ""
@@ -495,7 +498,7 @@ export default function Reputation() {
         </button>
         <button
           onClick={() => setCompareMode((v) => !v)}
-          title="Compare two sellers side by side"
+          title={t('reputation.compare_tooltip')}
           className={`btn-secondary px-4 py-2 text-sm shrink-0 ${compareMode ? 'bg-irium-500/30 border-irium-500/40 text-irium-200' : ''}`}
         >
           Compare
@@ -515,7 +518,7 @@ export default function Reputation() {
               value={secondQuery}
               onChange={(e) => setSecondQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') lookupSecond(); }}
-              placeholder="Second seller's Q-prefix address or 64-hex pubkey…"
+              placeholder={t('reputation.compare_placeholder')}
               disabled={secondLoading}
               className={`input pl-9 w-full font-mono text-sm disabled:opacity-60 disabled:cursor-not-allowed transition-opacity ${
                 secondShimmer ? "shimmer" : ""
@@ -689,7 +692,7 @@ export default function Reputation() {
                     {data.sybil_suppressed && (
                       <span
                         className="badge badge-warning text-xs px-2 py-0.5 inline-flex items-center gap-1"
-                        title="Seller has fewer than 3 completed agreements — their score is provisional and they could be a new identity created to inflate reputation."
+                        title={t('reputation.warnings.few_completed')}
                       >
                         <AlertTriangle size={11} /> Sybil-suppressed
                       </span>
@@ -697,7 +700,7 @@ export default function Reputation() {
                     {data.self_trade_count > 0 && (
                       <span
                         className="badge badge-warning text-xs px-2 py-0.5"
-                        title="Detected agreements where buyer and seller appear to share a key derivation root. Inflated counts here may indicate fake reputation building."
+                        title={t('reputation.risk.sybil_detected')}
                       >
                         Self-trades: {data.self_trade_count}
                       </span>
@@ -705,7 +708,7 @@ export default function Reputation() {
                     {data.dispute_rate && parseFloat(data.dispute_rate) >= 10 && (
                       <span
                         className="badge badge-warning text-xs px-2 py-0.5"
-                        title="More than 10% of this seller's agreements ended in dispute. Inspect their dispute history before trading."
+                        title={t('reputation.risk.high_disputes')}
                       >
                         High disputes: {data.dispute_rate}%
                       </span>
@@ -863,6 +866,7 @@ function OutcomeModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useTranslation();
   const [choice, setChoice] = useState<ReputationOutcome | null>(null);
   const [proofResponseSecs, setProofResponseSecs] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -878,10 +882,10 @@ function OutcomeModal({
         Number.isFinite(secs) ? secs : undefined,
       );
       if (result.success) {
-        toast.success(`Recorded "${choice}" for this seller`);
+        toast.success(t('reputation.outcome_recorded', { choice }));
         onSuccess();
       } else {
-        toast.error(result.message ?? 'Failed to record outcome');
+        toast.error(result.message ?? t('reputation.failed_to_record'));
       }
     } catch (e) {
       toast.error(String(e));
@@ -909,7 +913,7 @@ function OutcomeModal({
         className="card w-full max-w-md p-6 rounded-2xl"
       >
         <div className="mb-2">
-          <h2 className="font-display font-bold text-lg text-white">Record Outcome</h2>
+          <h2 className="font-display font-bold text-lg text-white">{t('reputation.record_outcome.title')}</h2>
           <p className="text-xs text-white/40 mt-0.5">
             with <span className="font-mono text-white/60">{truncated}</span>
           </p>
@@ -952,7 +956,7 @@ function OutcomeModal({
         </div>
 
         <div className="mb-5">
-          <label className="label">Proof response time (optional, seconds)</label>
+          <label className="label">{t('reputation.record_outcome.response_time_label')}</label>
           <input
             type="number"
             min="0"

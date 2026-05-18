@@ -1,4 +1,5 @@
 import { useState, memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Wallet, ShieldCheck, ShoppingBag,
@@ -13,26 +14,27 @@ import { useStore } from '../../lib/store';
 // (ShieldCheck, ShoppingBag, FileText, Star) above are intentionally
 // preserved so the entries can be reinstated by re-adding them here.
 const NAV = [
-  { to: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard'   },
-  { to: '/explorer',    icon: Globe,           label: 'Explorer'    },
-  { to: '/wallet',      icon: Wallet,          label: 'Wallet'      },
-  { to: '/settlement',  icon: ShieldCheck,     label: 'Settlement'  },
-  { to: '/marketplace', icon: ShoppingBag,     label: 'Marketplace' },
-  { to: '/agreements',  icon: FileText,        label: 'Agreements'  },
-  { to: '/reputation',  icon: Star,            label: 'Reputation'  },
-  { to: '/miner',       icon: Cpu,             label: 'Miner'       },
-  { to: '/logs',        icon: Terminal,        label: 'Logs'        },
-];
+  { to: '/dashboard',   icon: LayoutDashboard, labelKey: 'nav.dashboard'   },
+  { to: '/explorer',    icon: Globe,           labelKey: 'nav.explorer'    },
+  { to: '/wallet',      icon: Wallet,          labelKey: 'nav.wallet'      },
+  { to: '/settlement',  icon: ShieldCheck,     labelKey: 'nav.settlement'  },
+  { to: '/marketplace', icon: ShoppingBag,     labelKey: 'nav.marketplace' },
+  { to: '/agreements',  icon: FileText,        labelKey: 'nav.agreements'  },
+  { to: '/reputation',  icon: Star,            labelKey: 'nav.reputation'  },
+  { to: '/miner',       icon: Cpu,             labelKey: 'nav.miner'       },
+  { to: '/logs',        icon: Terminal,        labelKey: 'nav.logs'        },
+] as const;
 
 const ACTIVE_BG = 'linear-gradient(135deg, rgba(110,198,255,0.16) 0%, rgba(167,139,250,0.10) 100%)';
 
 const Sidebar = memo(function Sidebar() {
+  const { t } = useTranslation();
   const nodeStatus = useStore((s) => s.nodeStatus);
   const [expanded, setExpanded] = useState(false);
 
   const nodeLabel =
-    nodeStatus?.running && nodeStatus?.synced ? 'Live' :
-    nodeStatus?.running ? 'Syncing…' : 'Offline';
+    nodeStatus?.running && nodeStatus?.synced ? t('sidebar.live') :
+    nodeStatus?.running ? t('sidebar.syncing') : t('sidebar.offline');
 
   const nodeDotClass =
     nodeStatus?.running && nodeStatus?.synced ? 'dot-live' :
@@ -92,7 +94,7 @@ const Sidebar = memo(function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 flex flex-col py-3 gap-0.5 overflow-y-auto overflow-x-hidden">
-        {NAV.map(({ to, icon: Icon, label }) => (
+        {NAV.map(({ to, icon: Icon, labelKey }) => (
           <NavLink
             key={to}
             to={to}
@@ -130,7 +132,7 @@ const Sidebar = memo(function Sidebar() {
                     pointerEvents: 'none',
                   }}
                 >
-                  {label}
+                  {t(labelKey)}
                 </span>
               </>
             )}
@@ -186,7 +188,7 @@ const Sidebar = memo(function Sidebar() {
                   pointerEvents: 'none',
                 }}
               >
-                Settings
+                {t('nav.settings')}
               </span>
             </>
           )}
@@ -221,7 +223,7 @@ const Sidebar = memo(function Sidebar() {
                   pointerEvents: 'none',
                 }}
               >
-                Help
+                {t('nav.help')}
               </span>
             </>
           )}

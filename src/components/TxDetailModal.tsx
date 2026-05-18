@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -49,6 +50,7 @@ interface BlockRpcResponse {
 }
 
 function TxCopyBtn({ text }: { text: string }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -60,7 +62,7 @@ function TxCopyBtn({ text }: { text: string }) {
         });
       }}
       className="opacity-0 group-hover:opacity-50 hover:!opacity-90 transition-opacity ml-1.5 flex-shrink-0"
-      title="Copy"
+      title={t('common.copy')}
     >
       {copied
         ? <CheckCircle2 size={11} style={{ color: '#34d399' }} />
@@ -132,6 +134,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export default function TxDetailModal({ tx, onClose }: { tx: Transaction; onClose: () => void }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const nodeStatus = useStore((s) => s.nodeStatus);
 
@@ -201,7 +204,7 @@ export default function TxDetailModal({ tx, onClose }: { tx: Transaction; onClos
   const minerAddress  = blockData?.miner_address;
 
   // Type/direction badge — coinbase wins over send/receive.
-  const typeLabel  = isCoinbase ? 'Mining Reward' : isSend ? 'Sent' : 'Received';
+  const typeLabel  = isCoinbase ? t('dashboard.tx_row.mining_reward') : isSend ? t('dashboard.tx_row.sent') : t('dashboard.tx_row.received');
   const typeColor  = isCoinbase ? '#34d399' : isSend ? '#f87171' : '#34d399';
   const typeBg     = isCoinbase
     ? 'rgba(52,211,153,0.10)'
@@ -292,28 +295,28 @@ export default function TxDetailModal({ tx, onClose }: { tx: Transaction; onClos
           <div className="space-y-4">
             {/* ── Status ─────────────────────────────────────────────── */}
             <div>
-              <SectionLabel>Status</SectionLabel>
+              <SectionLabel>{t('tx_detail.status')}</SectionLabel>
               <div className="space-y-2.5">
-                <DetailRow label="Status">
+                <DetailRow label={t('tx_detail.status')}>
                   <PlainValue color={isConfirmed ? '#34d399' : '#fbbf24'}>
-                    {isConfirmed ? 'Confirmed' : 'Unconfirmed'}
+                    {isConfirmed ? t('dashboard.tx_row.confirmed') : t('tx_detail.unconfirmed')}
                   </PlainValue>
                 </DetailRow>
-                <DetailRow label="Confirmations">
+                <DetailRow label={t('tx_detail.confirmations')}>
                   <MonoValue color={isConfirmed ? 'rgba(255,255,255,0.85)' : '#fbbf24'}>
                     {confirmations.toLocaleString('en-US')}
                   </MonoValue>
                 </DetailRow>
-                <DetailRow label="Time"><PlainValue>{timeStr}</PlainValue></DetailRow>
+                <DetailRow label={t('tx_detail.time')}><PlainValue>{timeStr}</PlainValue></DetailRow>
               </div>
             </div>
 
             {/* ── Block (only when confirmed) ────────────────────────── */}
             {isConfirmed && (
               <div>
-                <SectionLabel>Block</SectionLabel>
+                <SectionLabel>{t('tx_detail.block_section')}</SectionLabel>
                 <div className="space-y-2.5">
-                  <DetailRow label="Block Height">
+                  <DetailRow label={t('tx_detail.block_height')}>
                     <button
                       onClick={goToBlock}
                       className="flex items-center gap-1 transition-colors"
@@ -324,20 +327,20 @@ export default function TxDetailModal({ tx, onClose }: { tx: Transaction; onClos
                       }}
                       onMouseEnter={(e) => (e.currentTarget.style.color = '#a78bfa')}
                       onMouseLeave={(e) => (e.currentTarget.style.color = '#6ec6ff')}
-                      title="Open this block in Explorer"
+                      title={t('tx_detail.open_block_explorer')}
                     >
                       #{txHeight.toLocaleString('en-US')}
                       <ExternalLink size={11} />
                     </button>
                   </DetailRow>
                   {txData?.block_hash && (
-                    <DetailRow label="Block Hash">
+                    <DetailRow label={t('tx_detail.block_hash')}>
                       <MonoValue>{txData.block_hash}</MonoValue>
                       <TxCopyBtn text={txData.block_hash} />
                     </DetailRow>
                   )}
                   {typeof txData?.index === 'number' && (
-                    <DetailRow label="Index in Block">
+                    <DetailRow label={t('tx_detail.index_in_block')}>
                       <MonoValue>#{txData.index}</MonoValue>
                     </DetailRow>
                   )}
@@ -348,17 +351,17 @@ export default function TxDetailModal({ tx, onClose }: { tx: Transaction; onClos
             {/* ── Mining (coinbase) ──────────────────────────────────── */}
             {isCoinbase && (txData?.output_value != null || minerAddress) && (
               <div>
-                <SectionLabel>Mining</SectionLabel>
+                <SectionLabel>{t('tx_detail.mining_section')}</SectionLabel>
                 <div className="space-y-2.5">
                   {txData?.output_value != null && (
-                    <DetailRow label="Block Reward">
+                    <DetailRow label={t('tx_detail.block_reward')}>
                       <MonoValue color="#34d399">
                         {formatIRM(txData.output_value)}
                       </MonoValue>
                     </DetailRow>
                   )}
                   {minerAddress && (
-                    <DetailRow label="Miner">
+                    <DetailRow label={t('tx_detail.miner')}>
                       <MonoValue>{minerAddress}</MonoValue>
                       <TxCopyBtn text={minerAddress} />
                     </DetailRow>
@@ -369,36 +372,36 @@ export default function TxDetailModal({ tx, onClose }: { tx: Transaction; onClos
 
             {/* ── Transaction details ────────────────────────────────── */}
             <div>
-              <SectionLabel>Transaction</SectionLabel>
+              <SectionLabel>{t('tx_detail.transaction_section')}</SectionLabel>
               <div className="space-y-2.5">
                 {txData?.txid && (
-                  <DetailRow label="TXID">
+                  <DetailRow label={t('tx_detail.txid_label')}>
                     <MonoValue>{txData.txid}</MonoValue>
                     <TxCopyBtn text={txData.txid} />
                   </DetailRow>
                 )}
                 {typeof txData?.inputs === 'number' && (
-                  <DetailRow label="Inputs">
+                  <DetailRow label={t('tx_detail.inputs')}>
                     <MonoValue>{txData.inputs}</MonoValue>
                   </DetailRow>
                 )}
                 {typeof txData?.outputs === 'number' && (
-                  <DetailRow label="Outputs">
+                  <DetailRow label={t('tx_detail.outputs')}>
                     <MonoValue>{txData.outputs}</MonoValue>
                   </DetailRow>
                 )}
                 {txData?.output_value != null && !isCoinbase && (
-                  <DetailRow label="Total Output">
+                  <DetailRow label={t('tx_detail.total_output')}>
                     <MonoValue>{formatIRM(txData.output_value)}</MonoValue>
                   </DetailRow>
                 )}
                 {tx.fee != null && (
-                  <DetailRow label="Fee">
-                    <MonoValue>{tx.fee.toLocaleString('en-US')} sats</MonoValue>
+                  <DetailRow label={t('tx_detail.fee')}>
+                    <MonoValue>{t('tx_detail.fee_value', { sats: tx.fee.toLocaleString('en-US') })}</MonoValue>
                   </DetailRow>
                 )}
                 {tx.address && !isCoinbase && (
-                  <DetailRow label={isSend ? 'To (your)' : 'Receiving'}>
+                  <DetailRow label={isSend ? t('tx_detail.to_your') : t('tx_detail.receiving')}>
                     <MonoValue>{tx.address}</MonoValue>
                     <TxCopyBtn text={tx.address} />
                   </DetailRow>
@@ -413,7 +416,7 @@ export default function TxDetailModal({ tx, onClose }: { tx: Transaction; onClos
                 style={{ borderTop: '1px solid rgba(110,198,255,0.10)' }}
               >
                 <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.40)' }}>
-                  Full details not available yet.
+                  {t('tx_detail.full_details_unavailable')}
                 </span>
                 <button
                   onClick={() => {
@@ -423,7 +426,7 @@ export default function TxDetailModal({ tx, onClose }: { tx: Transaction; onClos
                   className="flex items-center gap-1.5 text-xs"
                   style={{ color: '#6ec6ff' }}
                 >
-                  <ExternalLink size={11} /> View on Explorer
+                  <ExternalLink size={11} /> {t('tx_detail.view_on_explorer')}
                 </button>
               </div>
             )}

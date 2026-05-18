@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import {
   TrendingUp,
@@ -55,6 +56,7 @@ const OPERATION_STEPS: Record<OperationType, { label: string; detail: string; ms
 };
 
 function NodeOperationBanner({ type }: { type: OperationType }) {
+  const { t } = useTranslation();
   const [elapsed, setElapsed] = useState(0);
   const steps = OPERATION_STEPS[type];
 
@@ -155,8 +157,8 @@ function NodeOperationBanner({ type }: { type: OperationType }) {
             style={{ color, letterSpacing: '0.16em' }}
           >
             {completed
-              ? `Connected${peers > 0 ? ` to ${peers} peer${peers === 1 ? '' : 's'}` : ''}`
-              : isStart ? 'Starting node' : 'Clearing & restarting'}
+              ? (peers > 0 ? t('dashboard.operation_banner.connected_with_peers', { count: peers }) : t('dashboard.operation_banner.connected'))
+              : isStart ? t('dashboard.operation_banner.starting') : t('dashboard.operation_banner.clearing')}
           </span>
         </div>
 
@@ -224,12 +226,12 @@ function NodeOperationBanner({ type }: { type: OperationType }) {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-display font-bold" style={{ color }}>
                 {completed
-                  ? `Connected to ${peers} peer${peers === 1 ? '' : 's'}`
+                  ? t('dashboard.operation_banner.connected_with_peers', { count: peers })
                   : `${activeStep.label}${dots}`}
               </p>
               <p className="text-xs mt-1" style={{ color: 'rgba(238,240,255,0.55)' }}>
                 {completed
-                  ? 'Node is online and synced with the network.'
+                  ? t('dashboard.operation_banner.completed_subtitle')
                   : <>{activeStep.detail} · <span className="font-mono">{(elapsed / 1000).toFixed(0)}s</span></>}
               </p>
             </div>
@@ -272,7 +274,7 @@ function NodeOperationBanner({ type }: { type: OperationType }) {
               className="text-[11px] mt-3 leading-relaxed"
               style={{ color: 'rgba(238,240,255,0.45)' }}
             >
-              This may take a moment if no peers are immediately available. The node is actively trying to reach the Irium network.
+              {t('dashboard.operation_banner.slow_connect_hint')}
             </motion.p>
           )}
         </AnimatePresence>
@@ -411,6 +413,7 @@ function NetworkGraphic() {
 }
 
 function DecentralizationBanner({ onDismiss }: { onDismiss: () => void }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   return (
     <motion.div
@@ -433,12 +436,10 @@ function DecentralizationBanner({ onDismiss }: { onDismiss: () => void }) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-sm font-display font-bold" style={{ color: '#6ec6ff' }}>
-                Your node isn't reachable by the network
+                {t('dashboard.decentral.title')}
               </p>
               <p className="text-xs mt-1 leading-relaxed" style={{ color: 'rgba(238,240,255,0.55)' }}>
-                You're connected outbound but other nodes can't dial back to you. For a healthy
-                decentralized network every node should be a full two-way peer. Set your public IP
-                so the network knows how to reach you.
+                {t('dashboard.decentral.body')}
               </p>
             </div>
             <button
@@ -472,10 +473,10 @@ function DecentralizationBanner({ onDismiss }: { onDismiss: () => void }) {
                 e.currentTarget.style.boxShadow   = '0 0 14px rgba(110,198,255,0.18)';
               }}
             >
-              Set External IP
+              {t('dashboard.decentral.set_external_ip')}
             </button>
             <span className="text-xs" style={{ color: 'rgba(238,240,255,0.45)' }}>
-              Sync and wallet work without this
+              {t('dashboard.decentral.subtle_hint')}
             </span>
           </div>
         </div>
@@ -485,6 +486,7 @@ function DecentralizationBanner({ onDismiss }: { onDismiss: () => void }) {
 }
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const nodeStatus = useStore((s) => s.nodeStatus);
   const setNodeStarting = useStore((s) => s.setNodeStarting);
@@ -556,13 +558,13 @@ export default function Dashboard() {
     setOperation('clearing');
     try {
       await node.clearState();
-      addNotification({ type: 'info', title: 'State cleared', message: 'Restarting node from scratch…' });
+      addNotification({ type: 'info', title: t('dashboard.notifications.state_cleared'), message: t('dashboard.notifications.restarting_scratch') });
       await new Promise((r) => setTimeout(r, 500));
       const result = await node.start(undefined, externalIp);
       if (result.success) {
         setNodeStarting(true);
         setOperation('starting');
-        addNotification({ type: 'info', title: 'Node restarting…', message: result.message });
+        addNotification({ type: 'info', title: t('dashboard.notifications.node_restarting'), message: result.message });
         startAggressivePoll(15_000);
       } else {
         toast.error(result.message);
@@ -580,17 +582,17 @@ export default function Dashboard() {
       const result = await node.start(undefined, externalIp);
       if (!result.success) {
         toast.error(result.message);
-        addNotification({ type: 'error', title: 'Failed to start node', message: result.message });
+        addNotification({ type: 'error', title: t('dashboard.notifications.failed_to_start_node'), message: result.message });
         setOperation(null);
       } else {
         setNodeStarting(true);
-        addNotification({ type: 'info', title: 'Node starting…', message: result.message });
+        addNotification({ type: 'info', title: t('dashboard.notifications.node_starting'), message: result.message });
         startAggressivePoll(15_000);
       }
     } catch (e) {
       const msg = String(e);
       toast.error(msg);
-      addNotification({ type: 'error', title: 'Node start error', message: msg });
+      addNotification({ type: 'error', title: t('dashboard.notifications.node_start_error'), message: msg });
       setOperation(null);
     }
   };
@@ -603,7 +605,7 @@ export default function Dashboard() {
       const result = await node.start(undefined, externalIp);
       if (result.success) {
         setNodeStarting(true);
-        addNotification({ type: 'info', title: 'Node restarting…', message: result.message });
+        addNotification({ type: 'info', title: t('dashboard.notifications.node_restarting'), message: result.message });
         startAggressivePoll(15_000);
       } else {
         toast.error(result.message);
@@ -644,12 +646,12 @@ export default function Dashboard() {
       <div className="px-8 py-6 space-y-6 w-full">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="page-title">Dashboard</h1>
-            <p className="page-subtitle">Irium blockchain overview · live</p>
+            <h1 className="page-title">{t('dashboard.page_title')}</h1>
+            <p className="page-subtitle">{t('dashboard.page_subtitle')}</p>
           </div>
           <button onClick={loadData} className="btn-secondary text-xs gap-2" disabled={loading}>
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-            {loading ? 'Refreshing…' : 'Refresh'}
+            {loading ? t('dashboard.refreshing') : t('dashboard.refresh')}
           </button>
         </div>
 
@@ -700,10 +702,10 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <p className="text-sm font-display font-bold" style={{ color: '#fbbf24' }}>
-                      iriumd is not running
+                      {t('dashboard.banners.iriumd_not_running')}
                     </p>
                     <p className="text-xs mt-0.5" style={{ color: 'rgba(251,191,36,0.65)' }}>
-                      Start the node to sync with the Irium network.
+                      {t('dashboard.banners.start_to_sync')}
                     </p>
                   </div>
                 </div>
@@ -711,7 +713,7 @@ export default function Dashboard() {
                   onClick={handleStartNode}
                   className="btn-primary flex-shrink-0 text-sm relative"
                 >
-                  Start Node
+                  {t('dashboard.banners.start_node')}
                 </button>
               </div>
             </motion.div>
@@ -746,10 +748,10 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-display font-bold" style={{ color: '#6ec6ff' }}>
-                      Searching for peers…
+                      {t('dashboard.banners.searching_for_peers')}
                     </p>
                     <p className="text-xs mt-0.5" style={{ color: 'rgba(238,240,255,0.55)' }}>
-                      Block #{nodeStatus.height.toLocaleString('en-US')} · iriumd is discovering the network. If stuck, try Clear &amp; Restart.
+                      {t('dashboard.banners.peer_search_subtitle', { height: nodeStatus.height.toLocaleString('en-US') })}
                     </p>
                   </div>
                 </div>
@@ -775,7 +777,7 @@ export default function Dashboard() {
                     e.currentTarget.style.boxShadow   = '0 0 16px rgba(110,198,255,0.18)';
                   }}
                 >
-                  <RefreshCw size={12} className={operation === 'clearing' ? 'animate-spin' : ''} /> Clear &amp; Restart
+                  <RefreshCw size={12} className={operation === 'clearing' ? 'animate-spin' : ''} /> {t('dashboard.banners.clear_restart')}
                 </button>
               </div>
             </motion.div>
@@ -810,10 +812,10 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-display font-bold" style={{ color: '#fbbf24' }}>
-                      Sync stalled — {(nodeStatus.network_tip - nodeStatus.height).toLocaleString('en-US')} blocks behind
+                      {t('dashboard.banners.sync_stalled', { count: (nodeStatus.network_tip - nodeStatus.height).toLocaleString('en-US') })}
                     </p>
                     <p className="text-xs mt-0.5" style={{ color: 'rgba(238,240,255,0.55)' }}>
-                      Block #{nodeStatus.height.toLocaleString('en-US')} / #{nodeStatus.network_tip.toLocaleString('en-US')} · Chain state may be corrupted. Clear &amp; Restart to resync from scratch.
+                      {t('dashboard.banners.sync_stalled_subtitle', { height: nodeStatus.height.toLocaleString('en-US'), tip: nodeStatus.network_tip.toLocaleString('en-US') })}
                     </p>
                   </div>
                 </div>
@@ -837,7 +839,7 @@ export default function Dashboard() {
                     e.currentTarget.style.borderColor = 'rgba(245,158,11,0.55)';
                   }}
                 >
-                  <RefreshCw size={12} className={operation === 'clearing' ? 'animate-spin' : ''} /> Clear &amp; Restart
+                  <RefreshCw size={12} className={operation === 'clearing' ? 'animate-spin' : ''} /> {t('dashboard.banners.clear_restart')}
                 </button>
               </div>
             </motion.div>
@@ -872,10 +874,10 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-display font-bold" style={{ color: '#fbbf24' }}>
-                      Block height hasn't increased in {Math.round((Date.now() - heightLastChanged!) / 60000)}m
+                      {t('dashboard.banners.height_stuck', { minutes: Math.round((Date.now() - heightLastChanged!) / 60000) })}
                     </p>
                     <p className="text-xs mt-0.5" style={{ color: 'rgba(238,240,255,0.55)' }}>
-                      If your node appears stuck, try restarting or clearing the chain state.
+                      {t('dashboard.banners.height_stuck_subtitle')}
                     </p>
                   </div>
                 </div>
@@ -900,7 +902,7 @@ export default function Dashboard() {
                       e.currentTarget.style.borderColor = 'rgba(245,158,11,0.55)';
                     }}
                   >
-                    <RefreshCw size={12} className={operation ? 'animate-spin' : ''} /> Restart Node
+                    <RefreshCw size={12} className={operation ? 'animate-spin' : ''} /> {t('dashboard.banners.restart_node')}
                   </button>
                   <button
                     onClick={() => navigate('/settings')}
@@ -919,7 +921,7 @@ export default function Dashboard() {
                       e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)';
                     }}
                   >
-                    Clear Chain State
+                    {t('dashboard.banners.clear_chain_state')}
                   </button>
                   <button
                     onClick={() => {
@@ -933,7 +935,7 @@ export default function Dashboard() {
                       border: '1px solid rgba(255,255,255,0.10)',
                       color: 'rgba(238,240,255,0.45)',
                     }}
-                    title="Dismiss for 1 hour"
+                    title={t('dashboard.banners.dismiss_1h')}
                   >
                     <X size={12} />
                   </button>
@@ -973,7 +975,7 @@ export default function Dashboard() {
               : <span className="dot-syncing flex-shrink-0" />
             }
             <span className="font-mono text-sm">
-              <span className="text-white/40 text-xs mr-1">Block</span>
+              <span className="text-white/40 text-xs mr-1">{t('dashboard.ticker.block')}</span>
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.span
                   key={nodeStatus?.height ?? 'none'}
@@ -996,12 +998,12 @@ export default function Dashboard() {
             <span className="text-white/20">·</span>
             {/* Show sync/connect state instead of tip hash when not live */}
             {!nodeStatus?.running ? (
-              <span className="text-white/30 text-xs">Node offline</span>
+              <span className="text-white/30 text-xs">{t('dashboard.ticker.node_offline')}</span>
             ) : nodeStatus.peers === 0 ? (
-              <span className="text-indigo-400/70 text-xs animate-pulse">Connecting to peers…</span>
+              <span className="text-indigo-400/70 text-xs animate-pulse">{t('dashboard.ticker.connecting_to_peers')}</span>
             ) : !nodeStatus.synced ? (
               <span className="text-amber-400/70 text-xs">
-                Syncing {nodeStatus.height.toLocaleString('en-US')} / {nodeStatus.network_tip.toLocaleString('en-US')}
+                {t('dashboard.ticker.syncing_progress', { height: nodeStatus.height.toLocaleString('en-US'), tip: nodeStatus.network_tip.toLocaleString('en-US') })}
               </span>
             ) : (
               <span className="font-mono text-xs text-white/35 truncate min-w-0">
@@ -1031,54 +1033,50 @@ export default function Dashboard() {
                   change rapidly as old blocks are processed. The actual
                   balance only renders once nodeStatus.synced flips true. */}
               <StatCard
-                title="Confirmed Balance"
+                title={t('dashboard.stats.confirmed_balance')}
                 value={
                   !nodeStatus?.running
                     ? '—'
                     : !nodeStatus.synced
-                      ? 'Syncing…'
+                      ? t('dashboard.stats.syncing')
                       : formatIRM(balanceCount)
                 }
                 sub={
                   !nodeStatus?.running
-                    ? 'Node offline'
+                    ? t('dashboard.stats.node_offline')
                     : !nodeStatus.synced
-                      ? `Catching up · #${(nodeStatus.height ?? 0).toLocaleString('en-US')}${
-                          nodeStatus.network_tip
-                            ? ` / #${nodeStatus.network_tip.toLocaleString('en-US')}`
-                            : ''
-                        }`
+                      ? t('dashboard.stats.catching_up', { height: (nodeStatus.height ?? 0).toLocaleString('en-US'), tip: nodeStatus.network_tip ? `/ #${nodeStatus.network_tip.toLocaleString('en-US')}` : '' })
                       : balance
                         ? balance.unconfirmed > 0
-                          ? `+${formatIRM(balance.unconfirmed)} pending`
-                          : 'All confirmed'
-                        : 'Wallet not open'
+                          ? t('dashboard.stats.pending', { amount: formatIRM(balance.unconfirmed) })
+                          : t('dashboard.stats.all_confirmed')
+                        : t('dashboard.stats.wallet_not_open')
                 }
                 icon={<TrendingUp size={18} />}
                 color="irium"
               />
               <StatCard
-                title="Block Height"
+                title={t('dashboard.stats.block_height')}
                 value={heightCount.toLocaleString('en-US')}
                 sub={
                   !nodeStatus?.running
-                    ? 'Node offline'
+                    ? t('dashboard.stats.node_offline')
                     : !nodeStatus.synced
-                    ? `Syncing — ${nodeStatus.height.toLocaleString('en-US')} / ${nodeStatus.network_tip > 0 ? nodeStatus.network_tip.toLocaleString('en-US') : '?'}`
+                    ? t('dashboard.stats.syncing_height', { height: nodeStatus.height.toLocaleString('en-US'), tip: nodeStatus.network_tip > 0 ? nodeStatus.network_tip.toLocaleString('en-US') : '?' })
                     : heightLastChanged && (Date.now() - heightLastChanged) > 30 * 60 * 1000 && (nodeStatus?.peers ?? 0) > 0
-                    ? `At tip · no new blocks (${Math.round((Date.now() - heightLastChanged) / 60000)}m)`
-                    : 'At chain tip'
+                    ? t('dashboard.stats.at_tip_no_new', { minutes: Math.round((Date.now() - heightLastChanged) / 60000) })
+                    : t('dashboard.stats.at_chain_tip')
                 }
                 icon={<Activity size={18} />}
                 color="blue"
               />
               <StatCard
-                title="Peers"
+                title={t('dashboard.stats.peers')}
                 value={String(peerList.length)}
                 sub={
                   peerList.length > 0
-                    ? `${peerList.filter(p => p.source === 'live' || p.dialable).length} active · ${peerList.length} known`
-                    : nodeStatus?.running ? 'No peers — connecting…' : 'Node offline'
+                    ? t('dashboard.stats.peers_sub', { active: peerList.filter(p => p.source === 'live' || p.dialable).length, known: peerList.length })
+                    : nodeStatus?.running ? t('dashboard.stats.no_peers_connecting') : t('dashboard.stats.node_offline')
                 }
                 icon={<Users size={18} />}
                 color="green"
@@ -1094,11 +1092,11 @@ export default function Dashboard() {
               onClick={() => peerList.length > 0 && setPeersExpanded((v) => !v)}
               style={{ cursor: peerList.length > 0 ? 'pointer' : 'default' }}
             >
-              <h2 className="font-display font-semibold text-white/90">Network Peers</h2>
+              <h2 className="font-display font-semibold text-white/90">{t('dashboard.peers.title')}</h2>
               <div className="flex items-center gap-2">
                 {peerList.length > 0 ? (
                   <>
-                    <span className="badge badge-irium">{peerList.length} known</span>
+                    <span className="badge badge-irium">{t('dashboard.peers.known_count', { count: peerList.length })}</span>
                     <ChevronDown
                       size={14}
                       className="transition-transform duration-200 text-white/40"
@@ -1106,7 +1104,7 @@ export default function Dashboard() {
                     />
                   </>
                 ) : (
-                  <span className="text-xs text-white/30 animate-pulse">Discovering peers…</span>
+                  <span className="text-xs text-white/30 animate-pulse">{t('dashboard.peers.discovering')}</span>
                 )}
               </div>
             </button>
@@ -1124,10 +1122,10 @@ export default function Dashboard() {
                     <table className="w-full text-xs border-separate" style={{ borderSpacing: 0 }}>
                       <thead>
                         <tr>
-                          <th className="text-left pb-2 pr-4 font-semibold uppercase tracking-wider text-white/25" style={{ fontSize: 9.5 }}>Address</th>
-                          <th className="text-left pb-2 pr-4 font-semibold uppercase tracking-wider text-white/25" style={{ fontSize: 9.5 }}>Dialable</th>
-                          <th className="text-left pb-2 pr-4 font-semibold uppercase tracking-wider text-white/25" style={{ fontSize: 9.5 }}>Height</th>
-                          <th className="text-left pb-2 font-semibold uppercase tracking-wider text-white/25" style={{ fontSize: 9.5 }}>Last Seen</th>
+                          <th className="text-left pb-2 pr-4 font-semibold uppercase tracking-wider text-white/25" style={{ fontSize: 9.5 }}>{t('dashboard.peers.col_address')}</th>
+                          <th className="text-left pb-2 pr-4 font-semibold uppercase tracking-wider text-white/25" style={{ fontSize: 9.5 }}>{t('dashboard.peers.col_dialable')}</th>
+                          <th className="text-left pb-2 pr-4 font-semibold uppercase tracking-wider text-white/25" style={{ fontSize: 9.5 }}>{t('dashboard.peers.col_height')}</th>
+                          <th className="text-left pb-2 font-semibold uppercase tracking-wider text-white/25" style={{ fontSize: 9.5 }}>{t('dashboard.peers.col_last_seen')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1138,8 +1136,8 @@ export default function Dashboard() {
                             </td>
                             <td className="py-1.5 pr-4">
                               {p.dialable
-                                ? <span className="text-green-400 font-semibold">Yes</span>
-                                : <span className="text-white/25">No</span>}
+                                ? <span className="text-green-400 font-semibold">{t('common.yes')}</span>
+                                : <span className="text-white/25">{t('common.no')}</span>}
                             </td>
                             <td className="py-1.5 pr-4 font-mono text-white/45">
                               {p.height ? `#${p.height.toLocaleString('en-US')}` : '—'}
@@ -1163,8 +1161,8 @@ export default function Dashboard() {
             the chart now spans full width. */}
         <div className="card p-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display font-semibold text-white/90">Recent Activity</h2>
-            {recentTx.length > 0 && <span className="badge badge-irium">Last 10 txs</span>}
+            <h2 className="font-display font-semibold text-white/90">{t('dashboard.activity.title')}</h2>
+            {recentTx.length > 0 && <span className="badge badge-irium">{t('dashboard.activity.last_n_txs')}</span>}
           </div>
             {/* H-12 fix: show shimmer while initial load is in flight so the
                 user doesn't see "No transaction history yet" flash on every
@@ -1195,7 +1193,7 @@ export default function Dashboard() {
                       color: 'white',
                       fontSize: 12,
                     }}
-                    formatter={(v: number) => [`${v.toFixed(4)} IRM`, 'Amount']}
+                    formatter={(v: number) => [`${v.toFixed(4)} IRM`, t('dashboard.activity.amount_label')]}
                   />
                   <Area
                     type="monotone"
@@ -1209,13 +1207,13 @@ export default function Dashboard() {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <EmptyState icon={<Activity />} text="No transaction history yet" />
+              <EmptyState icon={<Activity />} text={t('dashboard.activity.empty_chart')} />
             )}
         </div>
 
         <div className="card p-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display font-semibold text-white/90">Recent Transactions</h2>
+            <h2 className="font-display font-semibold text-white/90">{t('dashboard.section_titles.recent_transactions')}</h2>
           </div>
           {/* H-12 fix: shimmer during initial load instead of "No transactions yet" flash. */}
           {loading ? (
@@ -1225,9 +1223,9 @@ export default function Dashboard() {
               ))}
             </div>
           ) : txLoadError ? (
-            <p className="text-xs text-rose-400/70 py-2">Could not load recent transactions</p>
+            <p className="text-xs text-rose-400/70 py-2">{t('dashboard.activity.load_error')}</p>
           ) : recentTx.length === 0 ? (
-            <EmptyState icon={<Package />} text="No transactions yet" />
+            <EmptyState icon={<Package />} text={t('dashboard.activity.empty_tx_list')} />
           ) : (
             <motion.div
               className="space-y-1"
@@ -1322,6 +1320,7 @@ function StatCard({
 }
 
 function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const isSend = tx.direction === 'send';
   const isCoinbase = tx.is_coinbase === true;
@@ -1332,7 +1331,7 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
   const typeBg    = isCoinbase ? 'bg-green-500/10' : isSend ? 'bg-red-500/10' : 'bg-green-500/10';
   const typeColor = isCoinbase ? 'text-green-400' : isSend ? 'text-red-400' : 'text-green-400';
   const TypeIcon = isCoinbase ? Pickaxe : isSend ? ArrowUpRight : ArrowDownLeft;
-  const typeLabel = isCoinbase ? 'Mining Reward' : isSend ? 'Sent' : 'Received';
+  const typeLabel = isCoinbase ? t('dashboard.tx_row.mining_reward') : isSend ? t('dashboard.tx_row.sent') : t('dashboard.tx_row.received');
 
   // Confirmations — shared helper so Dashboard and Wallet show the same
   // value for the same tx. Falls back to tx.confirmations when no height
@@ -1351,7 +1350,7 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
   const copyTxid = (e: React.MouseEvent) => {
     e.stopPropagation();
     navigator.clipboard.writeText(tx.txid);
-    toast.success('TXID copied');
+    toast.success(t('dashboard.tx_row.txid_copied'));
   };
 
   // Middle-truncate helper. Uses three literal dots (not ellipsis char) to
@@ -1362,17 +1361,17 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
   // Type-specific detail tail rendered after "Block #N" (or the full
   // mempool string when the tx isn't yet in a block).
   const detailTail = (() => {
-    if (!tx.height) return 'Mempool · awaiting confirmation';
+    if (!tx.height) return t('dashboard.tx_row.mempool_awaiting');
     const parts: string[] = [];
     if (isCoinbase) {
-      if (tx.address) parts.push(`Miner: ${shortMid(tx.address, 6, 4)}`);
+      if (tx.address) parts.push(t('dashboard.tx_row.miner_label', { addr: shortMid(tx.address, 6, 4) }));
     } else if (isSend) {
-      if (tx.fee != null && tx.fee > 0) parts.push(`Fee: ${tx.fee.toLocaleString('en-US')} sats`);
-      parts.push(`TXID: ${shortMid(tx.txid, 8, 5)}`);
+      if (tx.fee != null && tx.fee > 0) parts.push(t('dashboard.tx_row.fee_label', { sats: tx.fee.toLocaleString('en-US') }));
+      parts.push(t('dashboard.tx_row.txid_label', { txid: shortMid(tx.txid, 8, 5) }));
     } else {
-      parts.push(`TXID: ${shortMid(tx.txid, 8, 5)}`);
+      parts.push(t('dashboard.tx_row.txid_label', { txid: shortMid(tx.txid, 8, 5) }));
     }
-    parts.push(`${confirmations} conf`);
+    parts.push(t('dashboard.tx_row.conf_label', { count: confirmations }));
     return parts.join(' · ');
   })();
 
@@ -1403,9 +1402,9 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
                   onClick={goToBlock}
                   className="text-xs hover:underline flex-shrink-0"
                   style={{ color: '#6ec6ff' }}
-                  title="Open in Explorer"
+                  title={t('common.open_in_explorer')}
                 >
-                  Block #{tx.height.toLocaleString('en-US')}
+                  {t('dashboard.tx_row.block_label', { n: tx.height.toLocaleString('en-US') })}
                 </button>
               </>
             )}
@@ -1419,7 +1418,7 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
             {isSend ? '−' : '+'}{formatIRM(Math.abs(tx.amount))}
           </span>
           <span className={`badge ${isConfirmed ? 'badge-success' : 'badge-warning'}`}>
-            {isConfirmed ? 'Confirmed' : 'Pending'}
+            {isConfirmed ? t('dashboard.tx_row.confirmed') : t('dashboard.tx_row.pending')}
           </span>
           <span className="font-mono text-xs text-white/45 tabular-nums">{confirmations}</span>
         </div>
@@ -1430,7 +1429,7 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
         <button
           onClick={copyTxid}
           className="text-white/30 hover:text-white/85 transition-colors flex-shrink-0 mt-0.5"
-          title="Copy TXID"
+          title={t('common.copy_txid')}
         >
           <Copy size={9} />
         </button>

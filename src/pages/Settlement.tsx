@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeftRight, Briefcase, Target, Landmark,
@@ -495,6 +496,7 @@ function BuyerDashboardCard({ address }: { address: string }) {
 // ── Main component ───────────────────────────────────────────────
 
 export default function SettlementPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const nodeStatus = useStore((s) => s.nodeStatus);
@@ -654,7 +656,7 @@ export default function SettlementPage() {
     setView('wizard');
     setWizardStep(0);
     setErrors({});
-    toast.success('Invoice loaded — review and confirm');
+    toast.success(t('settlement.toasts.invoice_loaded'));
     // Replace history entry so refresh doesn't re-fire this effect.
     navigate('/settlement', { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -793,7 +795,7 @@ export default function SettlementPage() {
       }
       setResult(res);
       setView('success');
-      toast.success('Agreement created!');
+      toast.success(t('settlement.toasts.agreement_created'));
     } catch (e) {
       toast.error(String(e));
     } finally {
@@ -803,10 +805,10 @@ export default function SettlementPage() {
 
   const copySummary = useCallback(() => {
     if (!result || !selectedTemplate) return;
-    const t = TEMPLATES.find((x) => x.id === selectedTemplate)!;
+    const tmpl = TEMPLATES.find((x) => x.id === selectedTemplate)!;
     const amtSats = Math.round(parseFloat(form.amountIrm || '0') * SATS_PER_IRM);
     const lines = [
-      `Irium ${t.name} Agreement`,
+      `Irium ${tmpl.name} Agreement`,
       `ID: ${result.agreement_id}`,
       result.hash ? `Hash: ${result.hash}` : '',
       `Amount: ${form.amountIrm} IRM (${amtSats.toLocaleString('en-US')} sats)`,
@@ -815,8 +817,8 @@ export default function SettlementPage() {
         .map(r => `${r.label}: ${r.value}`),
     ].filter(Boolean).join('\n');
     navigator.clipboard.writeText(lines);
-    toast.success('Summary copied');
-  }, [result, selectedTemplate, form]);
+    toast.success(t('settlement.toasts.summary_copied'));
+  }, [result, selectedTemplate, form, t]);
 
   const resetAll = () => {
     setView('hub');
@@ -841,7 +843,7 @@ export default function SettlementPage() {
       {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="page-title">Settlement Hub</h1>
+          <h1 className="page-title">{t('settlement.page_title_hub')}</h1>
           <p className="page-subtitle">
             Trustless on-chain settlements using Irium's proof-based escrow system
           </p>
@@ -849,7 +851,7 @@ export default function SettlementPage() {
         <button
           onClick={() => navigate('/help#settlement')}
           className="btn-ghost p-2 text-white/40 hover:text-white/80 flex-shrink-0 mt-1"
-          title="Settlement help"
+          title={t('settlement.tooltips.help')}
         >
           <HelpCircle size={18} />
         </button>
@@ -1147,7 +1149,7 @@ export default function SettlementPage() {
                       <label className="label">{getLabels(selectedTemplate).partyA}</label>
                       <input
                         className={`input ${errors.partyA ? 'border-red-500/50' : ''}`}
-                        placeholder="Q... or P..."
+                        placeholder={t('settlement.wizard.fields.party_placeholder')}
                         value={form.partyA}
                         onChange={setField('partyA')}
                       />
@@ -1163,7 +1165,7 @@ export default function SettlementPage() {
                       <label className="label">{getLabels(selectedTemplate).partyB}</label>
                       <input
                         className={`input ${errors.partyB ? 'border-red-500/50' : ''}`}
-                        placeholder="Q... or P..."
+                        placeholder={t('settlement.wizard.fields.party_placeholder')}
                         value={form.partyB}
                         onChange={setField('partyB')}
                       />
@@ -1176,7 +1178,7 @@ export default function SettlementPage() {
 
                     {/* Amount */}
                     <ShakeField error={errors.amountIrm}>
-                      <label className="label">Amount (IRM)</label>
+                      <label className="label">{t('settlement.wizard.fields.amount_irm')}</label>
                       <input
                         className={`input ${errors.amountIrm ? 'border-red-500/50' : ''}`}
                         type="number"
@@ -1208,7 +1210,7 @@ export default function SettlementPage() {
                     {/* Deadline */}
                     {selectedTemplate !== 'milestone' && selectedTemplate !== 'contractor' && selectedTemplate !== 'merchant_delayed' && (
                       <ShakeField error={errors.deadlineHours}>
-                        <label className="label">Deadline (hours)</label>
+                        <label className="label">{t('settlement.wizard.fields.deadline_hours')}</label>
                         <input
                           className={`input ${errors.deadlineHours ? 'border-red-500/50' : ''}`}
                           type="number"
@@ -1229,7 +1231,7 @@ export default function SettlementPage() {
                     {selectedTemplate === 'merchant_delayed' && (
                       <>
                         <ShakeField error={errors.cooldownHours}>
-                          <label className="label">Cool-down Window (hours)</label>
+                          <label className="label">{t('settlement.wizard.fields.cooldown_hours')}</label>
                           <input
                             className={`input ${errors.cooldownHours ? 'border-red-500/50' : ''}`}
                             type="number"
@@ -1248,7 +1250,7 @@ export default function SettlementPage() {
                           )}
                         </ShakeField>
                         <div>
-                          <label className="label">Total Escrow Window (hours)</label>
+                          <label className="label">{t('settlement.wizard.fields.total_escrow_hours')}</label>
                           <input
                             className="input"
                             type="number"
@@ -1262,10 +1264,10 @@ export default function SettlementPage() {
                           </p>
                         </div>
                         <div>
-                          <label className="label">Memo (optional)</label>
+                          <label className="label">{t('settlement.wizard.fields.memo')}</label>
                           <input
                             className="input"
-                            placeholder="Order description..."
+                            placeholder={t('settlement.wizard.fields.memo_merchant_placeholder')}
                             maxLength={500}
                             value={form.memo}
                             onChange={setField('memo')}
@@ -1282,10 +1284,10 @@ export default function SettlementPage() {
                     {/* Scope — freelance and contractor (M-15 maxLength=200) */}
                     {(selectedTemplate === 'freelance' || selectedTemplate === 'contractor') && (
                       <div>
-                        <label className="label">Work Scope (optional)</label>
+                        <label className="label">{t('settlement.wizard.fields.scope')}</label>
                         <textarea
                           className="input h-20 resize-none"
-                          placeholder="Describe the deliverables..."
+                          placeholder={t('settlement.wizard.fields.scope_placeholder')}
                           maxLength={200}
                           value={form.scope}
                           onChange={setField('scope')}
@@ -1301,7 +1303,7 @@ export default function SettlementPage() {
                     {/* Milestone count — milestone and contractor */}
                     {(selectedTemplate === 'milestone' || selectedTemplate === 'contractor') && (
                       <ShakeField error={errors.milestoneCount}>
-                        <label className="label">Number of Milestones</label>
+                        <label className="label">{t('settlement.wizard.fields.milestones')}</label>
                         <input
                           className={`input ${errors.milestoneCount ? 'border-red-500/50' : ''}`}
                           type="number"
@@ -1338,7 +1340,7 @@ export default function SettlementPage() {
                             cryptic errors. Caps match the values used by the
                             backend's max-memo-size constants. */}
                         <div>
-                          <label className="label">Asset Reference (optional)</label>
+                          <label className="label">{t('settlement.wizard.fields.asset_reference')}</label>
                           <input
                             className="input"
                             placeholder="e.g. BTC, ETH, USDT..."
@@ -1348,7 +1350,7 @@ export default function SettlementPage() {
                           />
                         </div>
                         <div>
-                          <label className="label">Payment Method (optional)</label>
+                          <label className="label">{t('settlement.wizard.fields.payment_method')}</label>
                           <input
                             className="input"
                             placeholder="e.g. Bank transfer, PayPal..."
@@ -1358,10 +1360,10 @@ export default function SettlementPage() {
                           />
                         </div>
                         <div>
-                          <label className="label">Memo (optional)</label>
+                          <label className="label">{t('settlement.wizard.fields.memo')}</label>
                           <input
                             className="input"
-                            placeholder="Trade description..."
+                            placeholder={t('settlement.wizard.fields.memo_otc_placeholder')}
                             maxLength={500}
                             value={form.memo}
                             onChange={setField('memo')}
@@ -1401,7 +1403,7 @@ export default function SettlementPage() {
                   className="max-w-lg space-y-4"
                 >
                   <div className="mb-2">
-                    <h2 className="font-display font-bold text-xl text-white">Review Agreement</h2>
+                    <h2 className="font-display font-bold text-xl text-white">{t('settlement.review_agreement')}</h2>
                     <p className="text-white/40 text-sm mt-0.5">Verify all details before confirming</p>
                   </div>
 
@@ -1439,7 +1441,7 @@ export default function SettlementPage() {
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(payloadPreview);
-                              toast.success('Payload copied');
+                              toast.success(t('settlement.toasts.payload_copied'));
                             }}
                             className="text-xs text-irium-400 hover:text-irium-300 flex items-center gap-1"
                           >
@@ -1540,7 +1542,7 @@ export default function SettlementPage() {
                 />
               </motion.svg>
 
-              <h2 className="font-display font-bold text-3xl text-white mb-2">Agreement Created</h2>
+              <h2 className="font-display font-bold text-3xl text-white mb-2">{t('settlement.wizard.step_success')}</h2>
               <p className="text-white/40 text-sm mb-8">The settlement is now active on the Irium blockchain.</p>
 
               <div className="glass rounded-xl p-5 mb-6 text-left space-y-4">
@@ -1548,8 +1550,8 @@ export default function SettlementPage() {
                   <div className="text-xs text-white/40 mb-1">Agreement ID</div>
                   <div className="flex items-center justify-between gap-3">
                     <span className="font-mono text-sm text-white/80 break-all">{result.agreement_id}</span>
-                    <button onClick={() => { navigator.clipboard.writeText(result.agreement_id); toast.success('Copied'); }}
-                      className="btn-ghost p-1.5 shrink-0" title="Copy ID">
+                    <button onClick={() => { navigator.clipboard.writeText(result.agreement_id); toast.success(t('settlement.toasts.copied')); }}
+                      className="btn-ghost p-1.5 shrink-0" title={t('common.copy_id')}>
                       <Copy size={14} />
                     </button>
                   </div>
@@ -1560,8 +1562,8 @@ export default function SettlementPage() {
                     <div className="text-xs text-white/40 mb-1">Transaction Hash</div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="font-mono text-sm text-white/60">{truncateHash(result.hash)}</span>
-                      <button onClick={() => { navigator.clipboard.writeText(result.hash!); toast.success('Copied'); }}
-                        className="btn-ghost p-1.5 shrink-0" title="Copy Hash">
+                      <button onClick={() => { navigator.clipboard.writeText(result.hash!); toast.success(t('settlement.toasts.copied')); }}
+                        className="btn-ghost p-1.5 shrink-0" title={t('common.copy_hash')}>
                         <Copy size={14} />
                       </button>
                     </div>
@@ -1667,6 +1669,7 @@ interface InvoiceModalProps {
 }
 
 function InvoiceModal({ recipient, amountIrm, reference, onClose }: InvoiceModalProps) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [invoice, setInvoice] = useState<Record<string, unknown> | null>(null);
@@ -1694,7 +1697,7 @@ function InvoiceModal({ recipient, amountIrm, reference, onClose }: InvoiceModal
 
   const handleCopy = () => {
     navigator.clipboard.writeText(invoiceJson);
-    toast.success('Invoice JSON copied');
+    toast.success(t('settlement.toasts.invoice_json_copied'));
   };
 
   const handleSave = async () => {
@@ -1709,9 +1712,9 @@ function InvoiceModal({ recipient, amountIrm, reference, onClose }: InvoiceModal
       // Re-generate with outPath so the backend writes the file directly.
       // The renderer's fs scope is restrictive; this bypasses it cleanly.
       await invoices.generate(recipient, amountIrm, reference, undefined, path);
-      toast.success('Invoice saved to ' + path);
+      toast.success(t('settlement.toasts.invoice_saved', { path }));
     } catch (e) {
-      toast.error('Save failed: ' + String(e));
+      toast.error(t('settlement.toasts.save_failed', { reason: String(e) }));
     } finally {
       setSaving(false);
     }
@@ -1734,7 +1737,7 @@ function InvoiceModal({ recipient, amountIrm, reference, onClose }: InvoiceModal
         className="card w-full max-w-lg rounded-2xl p-6 overflow-y-auto max-h-[90vh]"
       >
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-display font-bold text-lg text-white">Payment Invoice</h2>
+          <h2 className="font-display font-bold text-lg text-white">{t('settlement.modals.payment_invoice')}</h2>
           <button onClick={onClose} className="btn-ghost text-white/40 p-1">
             <X size={16} />
           </button>

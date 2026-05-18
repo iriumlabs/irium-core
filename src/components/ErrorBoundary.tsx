@@ -1,5 +1,6 @@
 import React from 'react';
 import { XCircle } from 'lucide-react';
+import i18n from '../i18n';
 
 interface Props {
   children: React.ReactNode;
@@ -36,10 +37,10 @@ export default class ErrorBoundary extends React.Component<Props, State> {
           <XCircle size={48} className="text-red-400" />
           <div className="text-center space-y-2">
             <h1 className="font-display font-bold text-xl text-white">
-              Something went wrong
+              {i18n.t('errors.boundary_title')}
             </h1>
             <p className="text-white/50 text-sm max-w-sm">
-              An unexpected error occurred. Please reload the app.
+              {i18n.t('errors.boundary_message')}
             </p>
           </div>
           <div className="flex gap-3">
@@ -47,13 +48,13 @@ export default class ErrorBoundary extends React.Component<Props, State> {
               onClick={() => window.location.reload()}
               className="btn-primary"
             >
-              Reload App
+              {i18n.t('errors.boundary_reload')}
             </button>
             <button
               onClick={this.handleCopy}
               className="btn-secondary"
             >
-              Copy Error
+              {i18n.t('errors.boundary_copy')}
             </button>
           </div>
           {import.meta.env.DEV && (

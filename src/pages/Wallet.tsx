@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { save as saveDialog, open as openDialog } from "@tauri-apps/api/dialog";
 import { motion, AnimatePresence } from "framer-motion";
@@ -38,6 +39,7 @@ import type { AddressInfo, Transaction, SendResult, WalletCreateResult } from ".
  * ───────────────────────────────────────────────────────────────────────── */
 
 export default function WalletPage() {
+  const { t } = useTranslation();
   const balance = useStore((s) => s.balance);
   const nodeStatus = useStore((s) => s.nodeStatus);
   const settings = useStore((s) => s.settings);
@@ -140,7 +142,7 @@ export default function WalletPage() {
     } catch {
       // Only surface errors when the node is supposed to be running —
       // offline wallets are a valid mode.
-      if (nodeStatusRef.current?.running) toast.error('Failed to load addresses');
+      if (nodeStatusRef.current?.running) toast.error(t('wallet.toasts.failed_load_addresses'));
     } finally {
       hasLoadedOnceRef.current = true;
       setLoadingAddresses(false);
@@ -206,7 +208,7 @@ export default function WalletPage() {
           }
         } catch {
           if (targetGen === txsWantedGenRef.current && nodeStatusRef.current?.running) {
-            toast.error('Failed to load transactions');
+            toast.error(t('wallet.toasts.failed_load_transactions'));
           }
         } finally {
           if (targetGen === txsWantedGenRef.current) {
@@ -236,7 +238,7 @@ export default function WalletPage() {
     setAddingAddress(true);
     try {
       const newAddr = await wallet.newAddress();
-      if (!newAddr) { toast.error('No address returned'); return; }
+      if (!newAddr) { toast.error(t('wallet.toasts.no_address_returned')); return; }
       // Pull the WIF for the new address (best-effort)
       let wif: string | undefined;
       try { wif = await wallet.readWif(newAddr) ?? undefined; } catch { /* ok */ }
@@ -284,7 +286,7 @@ export default function WalletPage() {
   useEffect(() => {
     const openSend = () => {
       if (nodeStatusRef.current?.running) setShowSend(true);
-      else toast.error('Node must be online to send transactions');
+      else toast.error(t('wallet.toasts.node_must_be_online'));
     };
     const openReceive = () => setShowReceive(true);
     window.addEventListener('irium:open-send', openSend);
@@ -322,7 +324,7 @@ export default function WalletPage() {
     } catch (e) {
       const msg = String(e).toLowerCase();
       if (msg.includes('seed') || msg.includes('no seed') || msg.includes('not found') || msg.includes('mnemonic')) {
-        toast.error('This wallet has no seed backup — use WIF Key or Export Backup File instead');
+        toast.error(t('wallet.toasts.no_seed_backup'));
       } else {
         toast.error(String(e));
       }
@@ -337,7 +339,7 @@ export default function WalletPage() {
     // following the active selection is the least-surprising behaviour
     // (the hero and Transactions list already scope to this address).
     const selectedAddr = addresses[activeAddrIdx]?.address;
-    if (!selectedAddr) { toast.error('No address loaded'); return; }
+    if (!selectedAddr) { toast.error(t('wallet.toasts.no_address_loaded')); return; }
     setExportingSecurityWif(true);
     try {
       const outPath = await saveDialog({
@@ -347,7 +349,7 @@ export default function WalletPage() {
       });
       if (!outPath) return;
       await wallet.exportWif(selectedAddr, outPath as string);
-      toast.success('WIF key exported');
+      toast.success(t('wallet.toasts.wif_exported'));
     } catch (e) {
       toast.error(String(e));
     } finally {
@@ -365,7 +367,7 @@ export default function WalletPage() {
       });
       if (!outPath) return;
       await wallet.backup(outPath as string);
-      toast.success('Wallet backup saved');
+      toast.success(t('wallet.toasts.backup_saved'));
     } catch (e) {
       toast.error(String(e));
     } finally {
@@ -439,7 +441,7 @@ export default function WalletPage() {
                   {activeAddress}
                 </span>
                 <button
-                  onClick={() => { navigator.clipboard.writeText(activeAddress); toast.success('Address copied'); }}
+                  onClick={() => { navigator.clipboard.writeText(activeAddress); toast.success(t('wallet.toasts.address_copied')); }}
                   className="text-white/45 hover:text-white transition-colors flex-shrink-0"
                   title="Copy address"
                 >
@@ -825,7 +827,7 @@ export default function WalletPage() {
                   updateSettings({ wallet_path: newPath });
                 }
                 await loadWalletFiles();
-                toast.success('Wallet renamed');
+                toast.success(t('wallet.toasts.wallet_renamed'));
               } catch (e) {
                 toast.error(`Rename failed: ${e}`);
               }
@@ -868,11 +870,11 @@ export default function WalletPage() {
             onSetPrimary={(idx) => {
               setAddresses(prev => [prev[idx], ...prev.filter((_, i) => i !== idx)]);
               setActiveAddrIdx(0);
-              toast.success('Set as primary');
+              toast.success(t('wallet.toasts.set_as_primary'));
             }}
             onRemove={(_idx, addr) => {
               hideAddress(addr);
-              toast.success('Address hidden');
+              toast.success(t('wallet.toasts.address_hidden'));
             }}
             onAddAddress={requestAddAddress}
             onShowQr={(addr) => setQrAddress(addr)}
@@ -1060,7 +1062,7 @@ export default function WalletPage() {
                       setRestoringBackup(true);
                       try {
                         await wallet.restoreBackup(restoreBackupPath);
-                        toast.success('Wallet restored from backup');
+                        toast.success(t('wallet.toasts.restored_backup'));
                         setShowRestoreBackupConfirm(false);
                         loadData();
                       } catch (e) {
@@ -1109,6 +1111,7 @@ function AddressCard({
   onRemove?: () => void;
   onSetPrimary?: () => void;
 }) {
+  const { t } = useTranslation();
   const [exportingWif, setExportingWif] = useState(false);
   // Read labels from store so the badge stays in sync with edits made in
   // the Manage Wallets panel.
@@ -1126,7 +1129,7 @@ function AddressCard({
       });
       if (!outPath) return;
       await wallet.exportWif(addr.address, outPath as string);
-      toast.success('WIF key exported');
+      toast.success(t('wallet.toasts.wif_exported'));
     } catch (e) {
       toast.error(String(e));
     } finally {
@@ -1247,7 +1250,7 @@ function AddressCard({
         </div>
         <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(addr.address); toast.success("Address copied"); }}
+            onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(addr.address); toast.success(t('wallet.toasts.address_copied')); }}
             className="btn-ghost p-1.5 text-white/40 hover:text-white"
             title="Copy address"
           >
@@ -1284,12 +1287,13 @@ function AddressCard({
 
 // ── Transaction row ───────────────────────────────────────────
 function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const isSend = tx.direction === "send";
   const isCoinbase = tx.is_coinbase === true;
   // Type-specific styling. Coinbase wins over the send/receive direction —
   // mining rewards are conceptually different from a regular incoming tx.
-  const typeLabel = isCoinbase ? "Mining Reward" : isSend ? "Sent" : "Received";
+  const typeLabel = isCoinbase ? t('dashboard.tx_row.mining_reward') : isSend ? t('dashboard.tx_row.sent') : t('dashboard.tx_row.received');
   const typeColor = isCoinbase ? "text-green-400" : isSend ? "text-red-400" : "text-green-400";
   const typeBg    = isCoinbase ? "bg-green-500/10" : isSend ? "bg-red-500/10" : "bg-green-500/10";
   const TypeIcon  = isCoinbase ? Pickaxe : isSend ? ArrowUpRight : ArrowDownLeft;
@@ -1310,7 +1314,7 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
   const copyTxid = (e: React.MouseEvent) => {
     e.stopPropagation();
     navigator.clipboard.writeText(tx.txid);
-    toast.success("TXID copied");
+    toast.success(t('wallet.toasts.txid_copied'));
   };
 
   // Middle-truncate helper. Uses three literal dots (not ellipsis char) to
@@ -1439,6 +1443,7 @@ function CreateWalletModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<CreateWalletTab>(restrictToImport ? 'import' : defaultTab);
   const [importMethod, setImportMethod] = useState<ImportMethod>(defaultImportTab);
 
@@ -1538,7 +1543,7 @@ function CreateWalletModal({
       });
       if (!outPath) return;
       await wallet.exportWif(createResult.address, outPath as string);
-      toast.success('WIF key saved');
+      toast.success(t('wallet.toasts.wif_saved'));
     } catch (e) {
       toast.error(String(e));
     } finally {
@@ -1552,10 +1557,10 @@ function CreateWalletModal({
       let resolvedPath: string | null = null;
       if (importMethod === 'mnemonic') {
         const words = mnemonic.trim();
-        if (words.split(/\s+/).length < 12) { toast.error("Enter at least 12 mnemonic words"); setImporting(false); return; }
+        if (words.split(/\s+/).length < 12) { toast.error(t('wallet.toasts.need_12_words')); setImporting(false); return; }
         resolvedPath = await wallet.importMnemonic(words);
       } else {
-        if (!wif.trim()) { toast.error("Enter a WIF key"); setImporting(false); return; }
+        if (!wif.trim()) { toast.error(t('wallet.toasts.enter_wif')); setImporting(false); return; }
         resolvedPath = await wallet.importWif(wif.trim());
       }
       if (typeof resolvedPath === 'string' && resolvedPath.length > 0 && resolvedPath.endsWith('.json')) {
@@ -1570,7 +1575,7 @@ function CreateWalletModal({
       } else if (resolvedPath) {
         throw new Error(`Wallet binary returned invalid path: ${resolvedPath}`);
       }
-      toast.success("Wallet imported successfully");
+      toast.success(t('wallet.toasts.imported_successfully'));
       onSuccess();
     } catch (e) {
       toast.error(String(e));
@@ -1672,7 +1677,7 @@ function CreateWalletModal({
                       <div className="flex items-center gap-2 p-3 rounded-lg bg-white/5 border border-white/5">
                         <span className="font-mono text-xs text-white/80 break-all flex-1">{createResult.address}</span>
                         <button
-                          onClick={() => { navigator.clipboard.writeText(createResult.address); toast.success("Copied"); }}
+                          onClick={() => { navigator.clipboard.writeText(createResult.address); toast.success(t('wallet.toasts.copied')); }}
                           className="btn-ghost p-1 text-white/30 hover:text-white flex-shrink-0"
                         >
                           <Copy size={11} />
@@ -1708,7 +1713,7 @@ function CreateWalletModal({
                         </div>
                         {!mnemonicBlurred && (
                           <button
-                            onClick={() => { navigator.clipboard.writeText(mnemonicWords.join(' ')); toast.success('Recovery phrase copied'); }}
+                            onClick={() => { navigator.clipboard.writeText(mnemonicWords.join(' ')); toast.success(t('wallet.toasts.recovery_copied')); }}
                             className="btn-ghost flex items-center gap-2 text-white/40 hover:text-white mt-1"
                           >
                             <Copy size={11} /> Copy Phrase
@@ -1728,7 +1733,7 @@ function CreateWalletModal({
                           <div className={clsx("flex items-center gap-2 p-3 rounded-lg bg-white/5 border border-white/5 transition-all duration-300", wifBlurred && "blur-sm select-none pointer-events-none")}>
                             <span className="font-mono text-xs text-white/80 break-all flex-1">{wifValue}</span>
                             <button
-                              onClick={() => { navigator.clipboard.writeText(wifValue); toast.success("WIF copied"); }}
+                              onClick={() => { navigator.clipboard.writeText(wifValue); toast.success(t('wallet.toasts.wif_copied')); }}
                               className="btn-ghost p-1 text-white/30 hover:text-white flex-shrink-0"
                             >
                               <Copy size={11} />
@@ -1883,6 +1888,7 @@ function SendModal({
 }) {
   // Read live balance from store so the modal always shows current data
   // even if the user opened it minutes ago (H3: stale balance fix).
+  const { t } = useTranslation();
   const liveAddresses = useStore((s) => s.addresses);
   const liveBalance = liveAddresses.find((a) => a.address === fromAddress)?.balance;
   const availableBalance = liveBalance !== undefined ? liveBalance : availableBalanceProp;
@@ -2017,7 +2023,7 @@ function SendModal({
                   <button
                     onClick={() => {
                       const amt = parseFloat(sendAmountIrm);
-                      if (isNaN(amt) || amt <= 0) { toast.error('Enter a valid positive amount'); return; }
+                      if (isNaN(amt) || amt <= 0) { toast.error(t('wallet.send.enter_positive_amount')); return; }
                       if (validateAddress(sendTo)) setSendStep("confirm");
                     }}
                     disabled={!sendTo || !sendAmountIrm || insufficientFunds}
@@ -2124,7 +2130,7 @@ function SendModal({
                   <div className="card p-3 flex items-start gap-2.5">
                     <span className="font-mono text-xs text-white/70 break-all flex-1 select-all leading-relaxed">{sentTxid}</span>
                     <button
-                      onClick={() => { navigator.clipboard.writeText(sentTxid ?? ''); toast.success('Transaction ID copied'); }}
+                      onClick={() => { navigator.clipboard.writeText(sentTxid ?? ''); toast.success(t('wallet.toasts.txid_copied')); }}
                       className="shrink-0 p-1 text-white/35 hover:text-white/70 transition-colors"
                       title="Copy transaction ID"
                     >
@@ -2156,6 +2162,7 @@ function SendModal({
 
 // ── Receive Modal ─────────────────────────────────────────────
 function ReceiveModal({ address, onClose }: { address: string; onClose: () => void }) {
+  const { t } = useTranslation();
   useEffect(() => {
     const handler = () => onClose();
     window.addEventListener('irium:close-modal', handler);
@@ -2192,7 +2199,7 @@ function ReceiveModal({ address, onClose }: { address: string; onClose: () => vo
               {address || "No address available"}
             </div>
             <button
-              onClick={() => { if (address) { navigator.clipboard.writeText(address); toast.success("Address copied"); } }}
+              onClick={() => { if (address) { navigator.clipboard.writeText(address); toast.success(t('wallet.toasts.address_copied')); } }}
               className="btn-primary mx-auto gap-2"
               disabled={!address}
             >
@@ -2218,6 +2225,7 @@ function NewAddressModal({
   onClose: () => void;
   onShowRecoveryPhrase?: () => void;
 }) {
+  const { t } = useTranslation();
   const [revealWif, setRevealWif] = useState(false);
   return (
     <>
@@ -2265,7 +2273,7 @@ function NewAddressModal({
             </div>
             <div className="font-mono text-[11px] text-white/80 break-all text-center px-2">{info.address}</div>
             <button
-              onClick={() => { navigator.clipboard.writeText(info.address); toast.success('Address copied'); }}
+              onClick={() => { navigator.clipboard.writeText(info.address); toast.success(t('wallet.toasts.address_copied')); }}
               className="btn-ghost text-xs gap-1.5"
             >
               <Copy size={12} /> Copy address
@@ -2302,7 +2310,7 @@ function NewAddressModal({
               )}
               {revealWif && (
                 <button
-                  onClick={() => { navigator.clipboard.writeText(info.wif!); toast.success('WIF copied'); }}
+                  onClick={() => { navigator.clipboard.writeText(info.wif!); toast.success(t('wallet.toasts.wif_copied')); }}
                   className="btn-ghost text-xs gap-1.5"
                 >
                   <Copy size={12} /> Copy WIF
@@ -2360,6 +2368,7 @@ function EyeOff(props: { size?: number }) {
 
 // ── Address QR modal — small popup showing one address as QR ────────────────
 function AddressQrModal({ address, onClose }: { address: string; onClose: () => void }) {
+  const { t } = useTranslation();
   return (
     <>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" onClick={onClose} />
@@ -2386,7 +2395,7 @@ function AddressQrModal({ address, onClose }: { address: string; onClose: () => 
           </div>
           <div className="font-mono text-[11px] text-white/75 break-all text-center max-w-[220px]">{address}</div>
           <button
-            onClick={() => { navigator.clipboard.writeText(address); toast.success('Address copied'); }}
+            onClick={() => { navigator.clipboard.writeText(address); toast.success(t('wallet.toasts.address_copied')); }}
             className="btn-ghost text-xs gap-1.5 w-full justify-center"
           >
             <Copy size={12} /> Copy
@@ -2458,6 +2467,7 @@ function ManageWalletsPanel({
   backingUp: boolean;
   onImportBackupFile: () => void;
 }) {
+  const { t } = useTranslation();
   const [exportingWifAddr, setExportingWifAddr] = useState<string | null>(null);
   // Per-row delete-confirmation state. Holds the WalletFileInfo of the
   // file the user is in the process of deleting (null when no modal open).
@@ -2497,7 +2507,7 @@ function ManageWalletsPanel({
     const trimmed = name.trim();
     if (!trimmed) return;
     if (/[/\\:*?"<>|]/.test(trimmed)) {
-      toast.error('Wallet name cannot contain: / \\ : * ? " < > |');
+      toast.error(t('wallet.toasts.name_invalid_chars'));
       return;
     }
     const currentName = path.split(/[\\/]/).pop()?.replace(/\.json$/i, '') ?? '';
@@ -2542,7 +2552,7 @@ function ManageWalletsPanel({
       });
       if (!outPath) return;
       await wallet.exportWif(addr, outPath as string);
-      toast.success('WIF key exported');
+      toast.success(t('wallet.toasts.wif_exported'));
     } catch (e) { toast.error(String(e)); }
     finally { setExportingWifAddr(null); }
   };
@@ -2919,7 +2929,7 @@ function ManageWalletsPanel({
                         <Hash size={11} /> QR
                       </button>
                       <button
-                        onClick={() => { navigator.clipboard.writeText(addr.address); toast.success('Address copied'); }}
+                        onClick={() => { navigator.clipboard.writeText(addr.address); toast.success(t('wallet.toasts.address_copied')); }}
                         className="btn-ghost text-[10px] py-1 px-2 gap-1"
                         style={{ color: 'rgba(238,240,255,0.65)' }}
                         title="Copy"
@@ -2988,7 +2998,7 @@ function ManageWalletsPanel({
                       <div className="font-mono text-[11px] text-white/65 break-all leading-relaxed">{addr}</div>
                     </div>
                     <button
-                      onClick={() => { onUnhide(addr); toast.success('Address unhidden'); }}
+                      onClick={() => { onUnhide(addr); toast.success(t('wallet.toasts.address_unhidden')); }}
                       className="btn-ghost text-[10px] py-1 px-2 gap-1 flex-shrink-0"
                       style={{ color: '#6ec6ff' }}
                       title="Unhide this address"
