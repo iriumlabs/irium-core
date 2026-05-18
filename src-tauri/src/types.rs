@@ -612,6 +612,14 @@ pub struct FoundBlock {
     pub bits: String,
     pub nonce: u64,
     pub miner_address: Option<String>,
+    // True when the canonical block at this height was mined by a different
+    // address than the user's wallet — i.e. our miner submitted a candidate
+    // but lost the race. The UI hides orphaned rows by default and offers a
+    // toggle to surface them with a greyed-out style. Set by
+    // update_block_details() once the chain RPC has returned the canonical
+    // miner_address for this height.
+    #[serde(default)]
+    pub orphaned: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

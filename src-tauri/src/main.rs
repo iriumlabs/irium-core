@@ -3754,6 +3754,12 @@ fn update_tray_status(app: tauri::AppHandle, mining: bool) -> Result<(), String>
 // Returns (height, optional hash). The hash is only available when the
 // sidecar is in json-log mode (the text-mode GPU output prints the hash
 // on a separate following line, which we skip for simplicity here).
+// Bug fix (Mac orphan reports): only match POST-SUBMIT confirmed-accept
+// signals. The previous "Mined block at height N" / `event:"mined_block"`
+// matches fired *before* the miner submitted the block to iriumd, so any
+// candidate that subsequently lost the race to another miner still ended
+// up in the Found Blocks list. Keeping only the accepted-by-node signal
+// guarantees the entry corresponds to a block iriumd ingested.
 fn parse_block_found(line: &str) -> Option<(u64, Option<String>)> {
     let trimmed = line.trim();
     if trimmed.starts_with('{') {
@@ -3761,7 +3767,7 @@ fn parse_block_found(line: &str) -> Option<(u64, Option<String>)> {
             let event = v.get("event").and_then(|e| e.as_str()).unwrap_or("");
             let is_accepted_submit = event == "submit_block"
                 && v.get("status").and_then(|s| s.as_str()) == Some("accepted");
-            if is_accepted_submit || event == "mined_block" {
+            if is_accepted_submit {
                 let height = v.get("height").and_then(|h| h.as_u64())?;
                 let hash = v.get("hash").and_then(|h| h.as_str()).map(String::from);
                 return Some((height, hash));
@@ -3769,13 +3775,15 @@ fn parse_block_found(line: &str) -> Option<(u64, Option<String>)> {
         }
         return None;
     }
-    for marker in &["Block accepted by node at height ", "Mined block at height "] {
-        if let Some(idx) = line.find(marker) {
-            let tail = &line[idx + marker.len()..];
-            let num: String = tail.chars().take_while(|c| c.is_ascii_digit()).collect();
-            if let Ok(h) = num.parse::<u64>() {
-                return Some((h, None));
-            }
+    // Only the confirmed-acceptance text marker. The pre-submit
+    // "Mined block at height N" GPU/CPU optimism line is intentionally
+    // not matched — wait for the iriumd-confirmed `Block accepted` line.
+    let marker = "Block accepted by node at height ";
+    if let Some(idx) = line.find(marker) {
+        let tail = &line[idx + marker.len()..];
+        let num: String = tail.chars().take_while(|c| c.is_ascii_digit()).collect();
+        if let Ok(h) = num.parse::<u64>() {
+            return Some((h, None));
         }
     }
     None
@@ -3807,6 +3815,9 @@ fn record_found_block(
         bits: String::new(),
         nonce: 0,
         miner_address: None,
+        // Will be flipped to true by update_block_details if the chain RPC
+        // reports a different miner_address (i.e. our candidate lost).
+        orphaned: false,
     };
     if let Ok(mut list) = found_blocks.lock() {
         if list.iter().any(|b| b.height == height) {
@@ -3911,10 +3922,18 @@ async fn fetch_block_details(rpc_url: &str, height: u64) -> Option<BlockDetails>
 // newest-to-oldest so simultaneous block-found events at different heights
 // don't trample each other. Only overwrites hash if the RPC gave us one
 // (text-mode miner output may have already set it from stdout).
+//
+// `our_miner_address` is the address the user is mining to (Some when the
+// wallet has registered an address, None during pool/stratum sessions where
+// the worker label is not a Q-address). When the chain RPC returns a
+// miner_address that doesn't match, the entry is flagged `orphaned = true`
+// — the candidate we recorded was beaten by another miner to the same
+// height. UI hides orphaned rows behind a "Show orphaned blocks" toggle.
 fn update_block_details(
     found_blocks: &Arc<Mutex<Vec<FoundBlock>>>,
     height: u64,
     details: BlockDetails,
+    our_miner_address: Option<&str>,
 ) {
     if let Ok(mut list) = found_blocks.lock() {
         if let Some(b) = list.iter_mut().rev().find(|b| b.height == height) {
@@ -3929,6 +3948,18 @@ fn update_block_details(
             // Only overwrite miner_address when the RPC actually returned one
             // — otherwise a later empty fetch would clobber a good value.
             if details.miner_address.is_some() {
+                // Compare against our wallet's mining address. If the chain
+                // accepted a block at this height from a different miner,
+                // flag the entry orphaned so the UI can hide / grey it out.
+                if let Some(ours) = our_miner_address {
+                    if details.miner_address.as_deref() != Some(ours) {
+                        b.orphaned = true;
+                    } else {
+                        // Explicit reset: a retry that confirms ownership
+                        // should clear any stale orphaned flag.
+                        b.orphaned = false;
+                    }
+                }
                 b.miner_address = details.miner_address;
             }
         }
@@ -3975,6 +4006,7 @@ async fn start_miner(
     let sync_ref = Arc::clone(&state.miner_sync_status);
     let blocks_found_ref = Arc::clone(&state.blocks_found);
     let found_blocks_ref = Arc::clone(&state.found_blocks);
+    let miner_addr_ref   = Arc::clone(&state.miner_address);
     let rpc_url_for_reward = rpc_url.clone();
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx.recv().await {
@@ -3984,33 +4016,34 @@ async fn start_miner(
                 _ => break,
             };
 
-            // Bug 1 fix — record block-found events before the other
-            // pattern checks. A block-found line never matches the
-            // hashrate regex, so the order doesn't shadow either signal.
+            // Record block-found events before the other pattern checks.
+            // After the fix, parse_block_found only matches POST-SUBMIT
+            // confirmed-accept signals, so an entry here corresponds to a
+            // block iriumd has ingested. We still verify ownership below
+            // by comparing the canonical miner_address against our wallet.
             if let Some((height, hash)) = parse_block_found(&line) {
                 record_found_block(&blocks_found_ref, &found_blocks_ref, height, hash);
-                // Fire-and-forget detail fetch with three attempts. The first
-                // parse_block_found match for a given height usually arrives
-                // before the miner has submitted the block to iriumd (CPU
-                // text mode emits "Mined block at height N" BEFORE the
-                // submit_block_to_node call). Retries at +3s and +13s give
-                // iriumd time to commit the block to its chain DB and the
-                // index to become queryable via /rpc/block?height=N.
-                let fb_for_reward = Arc::clone(&found_blocks_ref);
-                let rpc_for_reward = rpc_url_for_reward.clone();
+                // Fire-and-forget detail fetch with three attempts. The
+                // accepted-marker fires AFTER submit_block returns, so the
+                // first fetch usually succeeds; retries at +3s and +13s
+                // belt-and-brace against transient RPC errors.
+                let fb_for_reward     = Arc::clone(&found_blocks_ref);
+                let addr_for_reward   = Arc::clone(&miner_addr_ref);
+                let rpc_for_reward    = rpc_url_for_reward.clone();
                 tauri::async_runtime::spawn(async move {
+                    let our = addr_for_reward.lock().ok().and_then(|g| g.clone());
                     if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
-                        update_block_details(&fb_for_reward, height, details);
+                        update_block_details(&fb_for_reward, height, details, our.as_deref());
                         return;
                     }
                     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
                     if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
-                        update_block_details(&fb_for_reward, height, details);
+                        update_block_details(&fb_for_reward, height, details, our.as_deref());
                         return;
                     }
                     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
                     if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
-                        update_block_details(&fb_for_reward, height, details);
+                        update_block_details(&fb_for_reward, height, details, our.as_deref());
                     }
                 });
                 continue;
@@ -4257,6 +4290,7 @@ async fn start_gpu_miner(
     let hashrate_ref = Arc::clone(&state.miner_hashrate);
     let blocks_found_ref = Arc::clone(&state.blocks_found);
     let found_blocks_ref = Arc::clone(&state.found_blocks);
+    let miner_addr_ref   = Arc::clone(&state.miner_address);
     let temp_ref = Arc::clone(&state.gpu_temperature_c);
     let power_ref = Arc::clone(&state.gpu_power_w);
     let rpc_url_for_reward = rpc_url.clone();
@@ -4269,27 +4303,26 @@ async fn start_gpu_miner(
             };
             if let Some((height, hash)) = parse_block_found(&line) {
                 record_found_block(&blocks_found_ref, &found_blocks_ref, height, hash);
-                // Retry pattern mirrors the CPU loop: pre-submit fetches fail
-                // until iriumd has indexed the block. The new GPU miner emits
-                // a "[GPU] Block accepted by node at height N!" line after
-                // submit_block returns, so even without retries we'd usually
-                // get one good fetch — the retries are belt-and-braces against
-                // a slow iriumd or transient RPC error.
-                let fb_for_reward = Arc::clone(&found_blocks_ref);
-                let rpc_for_reward = rpc_url_for_reward.clone();
+                // parse_block_found now only matches POST-SUBMIT accepted
+                // signals, so the first fetch normally succeeds; retries at
+                // +3s and +13s defend against transient RPC errors.
+                let fb_for_reward   = Arc::clone(&found_blocks_ref);
+                let addr_for_reward = Arc::clone(&miner_addr_ref);
+                let rpc_for_reward  = rpc_url_for_reward.clone();
                 tauri::async_runtime::spawn(async move {
+                    let our = addr_for_reward.lock().ok().and_then(|g| g.clone());
                     if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
-                        update_block_details(&fb_for_reward, height, details);
+                        update_block_details(&fb_for_reward, height, details, our.as_deref());
                         return;
                     }
                     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
                     if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
-                        update_block_details(&fb_for_reward, height, details);
+                        update_block_details(&fb_for_reward, height, details, our.as_deref());
                         return;
                     }
                     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
                     if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
-                        update_block_details(&fb_for_reward, height, details);
+                        update_block_details(&fb_for_reward, height, details, our.as_deref());
                     }
                 });
                 continue;

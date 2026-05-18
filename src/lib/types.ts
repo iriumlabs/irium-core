@@ -440,6 +440,11 @@ export interface FoundBlock {
   bits: string;
   nonce: number;
   miner_address?: string;
+  // True when the chain's canonical miner for this height differs from the
+  // user's wallet address (i.e. another miner won the race). Defaulted to
+  // false by the Rust shell; older shells that don't emit it will leave
+  // this undefined which JS treats as falsy — back-compatible.
+  orphaned?: boolean;
 }
 
 export interface StratumStatus {
