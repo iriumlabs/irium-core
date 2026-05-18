@@ -72,10 +72,15 @@ function setByPath(obj, dotPath, value) {
 // gets translated as part of surrounding words).
 function protectPlaceholders(s) {
   const placeholders = [];
-  const protectedStr = s.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_match, name) => {
+  let protectedStr = s.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_match, name) => {
     placeholders.push(name);
     return `__PH${placeholders.length - 1}__`;
   });
+  // Protect "IRM" (the Irium currency ticker) from translation. Without this
+  // Google expands it to "Information Rights Management" in Arabic, and
+  // transliterates it to ИРМ / आईआरएम in Russian / Hindi. The marker is
+  // intentionally an unambiguous all-caps token that survives translation.
+  protectedStr = protectedStr.replace(/\bIRM\b/g, 'IRMTICKER');
   return { protectedStr, placeholders };
 }
 
@@ -85,6 +90,8 @@ function restorePlaceholders(s, placeholders) {
     // Be liberal about how Google may have re-cased the marker
     out = out.replace(new RegExp(`__\\s*PH\\s*${i}\\s*__`, 'gi'), `{{${placeholders[i]}}}`);
   }
+  // Restore IRM ticker. Match case-insensitively in case Google lowercased.
+  out = out.replace(/IRM\s*TICKER/gi, 'IRM');
   return out;
 }
 

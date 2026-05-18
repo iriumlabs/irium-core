@@ -434,7 +434,7 @@
       "title": "Отправить IRM",
       "to_address_label": "По адресу",
       "to_address_placeholder": "Q… или P… адрес",
-      "amount_label": "Сумма (ИРМ)",
+      "amount_label": "Сумма (IRM)",
       "amount_placeholder": "0.0000",
       "amount_in_sats": "= {{sats}} субботы",
       "available_balance": "Доступно: {{amount}}",
@@ -604,7 +604,7 @@
       "fields": {
         "party_a": "Сторона А",
         "party_b": "Сторона Б",
-        "amount_irm": "Сумма (ИРМ)",
+        "amount_irm": "Сумма (IRM)",
         "deadline_hours": "Срок (часы)",
         "cooldown_hours": "Окно охлаждения (часы)",
         "milestones": "Количество этапов",
@@ -928,7 +928,7 @@
       "step_agreements": "Соглашения",
       "intro": "Определите, что вы продаете, и цену",
       "fields": {
-        "amount_label": "Сумма (ИРМ)",
+        "amount_label": "Сумма (IRM)",
         "offer_id_label": "Идентификатор предложения",
         "seller_address_label": "Адрес продавца",
         "seller_address_hint": "Автоматически определяется из вашего кошелька. Покупатели отправят оплату сюда.",

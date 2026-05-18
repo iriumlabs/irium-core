@@ -639,7 +639,7 @@
     },
     "filters": {
       "search_placeholder": "Buscar ofertas…",
-      "min_amount": "MIR mín.",
+      "min_amount": "IRM mín.",
       "max_amount": "IRM máx.",
       "payment_method": "Método de pago"
     },
