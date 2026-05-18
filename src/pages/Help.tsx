@@ -7,7 +7,9 @@ import {
   ShieldCheck, ShoppingBag, FileText, Star, Info,
   Github, Globe, Pickaxe, ChevronDown, ExternalLink,
   Server, HelpCircle, Bug, Check, AlertTriangle, RefreshCw, Trash2,
+  Network, Activity,
 } from 'lucide-react';
+import type { PortCheckResult } from '../lib/types';
 import toast from 'react-hot-toast';
 import { node } from '../lib/tauri';
 import { useStore } from '../lib/store';
@@ -123,6 +125,145 @@ function FaqItem({ q, a }: { q: string; a: string }) {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Port Forwarding guide ─────────────────────────────────────────────────────
+//
+// Step-by-step manual port-forwarding instructions for users whose router
+// doesn't support UPnP (or has it disabled). Pairs with a Test Connection
+// button that calls the backend check_port_open command which combines a
+// fresh UPnP probe with iriumd's irium_inbound_accepted_total counter so the
+// user gets an authoritative answer either way.
+function PortForwarding() {
+  const { t } = useTranslation();
+  const [testing, setTesting] = useState(false);
+  const [result, setResult] = useState<PortCheckResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const runTest = async () => {
+    setTesting(true);
+    setError(null);
+    try {
+      const r = await node.checkPortOpen();
+      setResult(r ?? null);
+    } catch (e) {
+      setError(String(e));
+      setResult(null);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <div className="card p-5">
+      <div className="flex items-center gap-2.5 mb-3">
+        <Network size={16} className="text-irium-400 flex-shrink-0" />
+        <h2 className="font-display font-semibold text-white/90 text-base">
+          {t('help.port_forwarding.section_title')}
+        </h2>
+      </div>
+      <p className="text-sm text-white/55 leading-relaxed mb-4">
+        {t('help.port_forwarding.intro')}
+      </p>
+
+      <p className="text-xs text-white/45 uppercase tracking-wider font-display font-bold mb-3">
+        {t('help.port_forwarding.steps_heading')}
+      </p>
+      <ol className="space-y-3 mb-5">
+        {[
+          {
+            title: t('help.port_forwarding.step1_title'),
+            lines: [
+              t('help.port_forwarding.step1_windows'),
+              t('help.port_forwarding.step1_mac'),
+            ],
+          },
+          {
+            title: t('help.port_forwarding.step2_title'),
+            lines: [t('help.port_forwarding.step2_body')],
+          },
+          {
+            title: t('help.port_forwarding.step3_title'),
+            lines: [t('help.port_forwarding.step3_body')],
+          },
+          {
+            title: t('help.port_forwarding.step4_title'),
+            lines: [
+              t('help.port_forwarding.step4_service_name'),
+              t('help.port_forwarding.step4_external_port'),
+              t('help.port_forwarding.step4_internal_port'),
+              t('help.port_forwarding.step4_internal_ip'),
+              t('help.port_forwarding.step4_protocol'),
+              t('help.port_forwarding.step4_enable'),
+              t('help.port_forwarding.step4_save'),
+            ],
+          },
+          {
+            title: t('help.port_forwarding.step5_title'),
+            lines: [t('help.port_forwarding.step5_body')],
+          },
+        ].map((step, i) => (
+          <li key={i} className="flex gap-3">
+            <span
+              className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold font-display text-white mt-0.5"
+              style={{ background: 'linear-gradient(135deg, #6ec6ff 0%, #a78bfa 100%)' }}
+            >
+              {i + 1}
+            </span>
+            <div className="flex-1 text-sm text-white/65 leading-relaxed">
+              <div className="font-medium text-white/85 mb-0.5">{step.title}</div>
+              {step.lines.map((line, j) => (
+                <div key={j} className="text-white/55">
+                  {line}
+                </div>
+              ))}
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      <div
+        className="rounded-xl px-4 py-3 text-sm leading-relaxed mb-4"
+        style={{ background: 'rgba(110,198,255,0.07)', border: '1px solid rgba(110,198,255,0.15)' }}
+      >
+        <strong className="text-white">{t('help.port_forwarding.upnp_note_label')}</strong>{' '}
+        <span className="text-white/70">{t('help.port_forwarding.upnp_note')}</span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={runTest}
+          disabled={testing}
+          className="btn-primary gap-2 text-sm"
+        >
+          {testing ? <RefreshCw size={13} className="animate-spin" /> : <Activity size={13} />}
+          {testing ? t('help.port_forwarding.testing') : t('help.port_forwarding.test_button')}
+        </button>
+        {result && (
+          <span
+            className="text-xs px-3 py-1.5 rounded-lg border"
+            style={
+              result.open
+                ? { background: 'rgba(52,211,153,0.10)', borderColor: 'rgba(52,211,153,0.30)', color: '#34d399' }
+                : { background: 'rgba(244,63,94,0.10)', borderColor: 'rgba(244,63,94,0.30)', color: '#fda4af' }
+            }
+          >
+            {result.open ? t('help.port_forwarding.result_open') : t('help.port_forwarding.result_closed')}
+          </span>
+        )}
+      </div>
+      {result && (
+        <p className="text-[11px] text-white/40 mt-2">
+          {t('help.port_forwarding.result_details', { reason: result.reason })}
+        </p>
+      )}
+      {error && (
+        <p className="text-xs text-red-400 mt-2">
+          {t('help.port_forwarding.test_failed', { reason: error })}
+        </p>
+      )}
     </div>
   );
 }
@@ -406,6 +547,11 @@ function AboutSection() {
           </ul>
         </div>
       </div>
+
+      {/* Port forwarding guide — placed before the FAQ so users hitting
+          connectivity issues see the step-by-step instructions immediately
+          rather than scrolling past the FAQ list. */}
+      <PortForwarding />
 
       {/* FAQ */}
       <div>

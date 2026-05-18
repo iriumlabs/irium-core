@@ -866,11 +866,111 @@ async fn try_upnp(port: u16) -> Option<String> {
     Some(ext_ip)
 }
 
+// UPnP mapping refresh cadence. Most consumer routers expire UPnP port
+// mappings between 30 minutes and 2 hours. Re-mapping every 30 minutes
+// keeps the port reachable for the lifetime of the app process without
+// hammering the router. Kept just under the smallest common expiry so
+// even the most aggressive routers stay current.
+const UPNP_REFRESH_INTERVAL_SECS: u64 = 30 * 60;
+// Tracks whether the background refresh task is already running for this
+// app process. AtomicBool so the check is free without grabbing a lock,
+// and so multiple try_upnp_port_map invocations don't spawn duplicates.
+static UPNP_REFRESH_RUNNING: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
 #[tauri::command]
 async fn try_upnp_port_map(state: State<'_, AppState>) -> Result<Option<String>, String> {
     let ip = try_upnp(38291).await;
     *state.upnp_external_ip.lock().map_err(lock_err)? = ip.clone();
+
+    // FIX 6: keep the UPnP mapping alive while the app is running. Routers
+    // commonly expire mappings after 1 hour; refreshing every 30 minutes is
+    // well inside that envelope. Only spawn the refresher once per process
+    // (the AtomicBool gate); subsequent UPnP retries from the UI just
+    // update the cached IP, they don't spawn additional timers.
+    if ip.is_some()
+        && !UPNP_REFRESH_RUNNING.swap(true, std::sync::atomic::Ordering::SeqCst)
+    {
+        let upnp_external_ip_ref = Arc::clone(&state.upnp_external_ip);
+        tauri::async_runtime::spawn(async move {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(
+                    UPNP_REFRESH_INTERVAL_SECS,
+                ))
+                .await;
+                let fresh = try_upnp(38291).await;
+                if let Ok(mut g) = upnp_external_ip_ref.lock() {
+                    *g = fresh;
+                }
+                // No event emission on refresh — silent maintenance. A
+                // failed refresh shows up to the UI on the next get_node_status
+                // poll via upnp_active flipping false, which is enough signal.
+            }
+        });
+    }
+
     Ok(ip)
+}
+
+// check_port_open: port-forwarding self-test for the Help page's Test
+// Connection button. Two signals are combined:
+//   1. Live UPnP probe via try_upnp(38291) — if the router accepts the
+//      mapping, port 38291 is open at least via UPnP and an external IP
+//      can be reported.
+//   2. iriumd's irium_inbound_accepted_total counter — non-zero means an
+//      external peer has actually completed a TCP connection to us, which
+//      is the strongest possible proof that forwarding works regardless
+//      of how it was configured (UPnP, manual DMZ, manual rule).
+// Either signal flips `open` to true. When both are false we tell the
+// user their port appears closed and to try manual port forwarding.
+//
+// Note: this is a node-side probe — no third-party port-check service is
+// contacted. Both signals are read from the local iriumd RPC, so the
+// command works regardless of network policy on the user's side.
+#[tauri::command]
+async fn check_port_open(state: State<'_, AppState>) -> Result<PortCheckResult, String> {
+    // Fresh UPnP attempt — try_upnp returns Some(external_ip) on success.
+    // Also cache the result on AppState so a subsequent get_node_status
+    // reflects the fresh value without waiting for the next manual retry.
+    let upnp_external_ip = try_upnp(38291).await;
+    if let Ok(mut guard) = state.upnp_external_ip.lock() {
+        *guard = upnp_external_ip.clone();
+    }
+
+    // Scrape iriumd /metrics for irium_inbound_accepted_total. Failures
+    // here are non-fatal — we fall back to 0 and let the UPnP signal
+    // decide, which mirrors how get_node_metrics handles offline nodes.
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let client = reqwest::Client::new();
+    let mut inbound_count: u64 = 0;
+    if let Ok(resp) = client
+        .get(format!("{}/metrics", rpc_url))
+        .timeout(Duration::from_secs(3))
+        .send()
+        .await
+    {
+        if let Ok(text) = resp.text().await {
+            for line in text.lines() {
+                let line = line.trim();
+                if line.starts_with('#') || line.is_empty() { continue; }
+                if let Some(rest) = line.strip_prefix("irium_inbound_accepted_total ") {
+                    if let Ok(v) = rest.trim().parse::<u64>() {
+                        inbound_count = v;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    let open = upnp_external_ip.is_some() || inbound_count > 0;
+    let reason = match (upnp_external_ip.as_deref(), inbound_count) {
+        (Some(ip), 0)  => format!("Port 38291 is open — UPnP mapped successfully (external IP {})", ip),
+        (Some(ip), n)  => format!("Port 38291 is open — UPnP active ({}) and {} inbound peer(s) accepted", ip, n),
+        (None, n) if n > 0 => format!("Port 38291 is open — {} inbound peer(s) accepted (manual forwarding)", n),
+        (None, _)      => "Port 38291 appears closed — try manual port forwarding above".to_string(),
+    };
+    Ok(PortCheckResult { open, reason, upnp_external_ip, inbound_count })
 }
 
 #[tauri::command]
@@ -4515,8 +4615,26 @@ async fn get_found_blocks(state: State<'_, AppState>) -> Result<Vec<FoundBlock>,
 // STRATUM POOL MINING
 // ============================================================
 
+// Detect lines from the irium-miner sidecar that indicate a connection-level
+// failure the user needs to see. Share-rejected lines explicitly excluded so
+// a routine stratum rejection doesn't fire a stratum_error event — those go
+// through the existing counter path. Case-insensitive on "error"/"dns"/
+// "invalid" because the upstream messages come from many TCP/DNS layers.
+fn is_stratum_error_line(line: &str) -> bool {
+    if line.contains("[stratum] share rejected") {
+        return false;
+    }
+    let lower = line.to_lowercase();
+    line.contains("Connection refused")
+        || lower.contains("dns")
+        || line.contains("failed to connect")
+        || lower.contains("invalid")
+        || lower.contains("error")
+}
+
 #[tauri::command]
 async fn stratum_connect(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     pool_url: String,
     worker: String,
@@ -4540,18 +4658,22 @@ async fn stratum_connect(
     let home_dir = dirs::home_dir().unwrap_or_default();
     let irium_dir = home_dir.join(".irium");
 
-    let mut env = HashMap::new();
-    env.insert("IRIUM_MINER_ADDRESS".to_string(), mining_addr.clone());
-    env.insert("IRIUM_RPC_URL".to_string(), rpc_url.clone());
-    env.insert("IRIUM_NODE_RPC".to_string(), rpc_url);
-    env.insert("IRIUM_STRATUM_URL".to_string(), pool_url.clone());
-    env.insert("IRIUM_STRATUM_USER".to_string(), worker.clone());
-    env.insert("IRIUM_STRATUM_PASS".to_string(), password);
+    let build_env = |pool: &str, user: &str, pass: &str, addr: &str, rpc: &str| {
+        let mut env = HashMap::new();
+        env.insert("IRIUM_MINER_ADDRESS".to_string(), addr.to_string());
+        env.insert("IRIUM_RPC_URL".to_string(), rpc.to_string());
+        env.insert("IRIUM_NODE_RPC".to_string(), rpc.to_string());
+        env.insert("IRIUM_STRATUM_URL".to_string(), pool.to_string());
+        env.insert("IRIUM_STRATUM_USER".to_string(), user.to_string());
+        env.insert("IRIUM_STRATUM_PASS".to_string(), pass.to_string());
+        env
+    };
 
-    let (mut rx, child) = Command::new_sidecar("irium-miner")
+    let env = build_env(&pool_url, &worker, &password, &mining_addr, &rpc_url);
+    let (rx, child) = Command::new_sidecar("irium-miner")
         .map_err(|e| format!("irium-miner not found: {}", e))?
         .envs(env)
-        .current_dir(irium_dir)
+        .current_dir(irium_dir.clone())
         .spawn()
         .map_err(|e| format!("Failed to start pool miner: {}", e))?;
 
@@ -4560,28 +4682,121 @@ async fn stratum_connect(
     if let Ok(mut a) = state.stratum_shares_accepted.lock() { *a = 0; }
     if let Ok(mut r) = state.stratum_shares_rejected.lock() { *r = 0; }
 
-    let hashrate_ref = Arc::clone(&state.miner_hashrate);
+    // Clone every Arc the monitor task needs. We can't move the State<'_>
+    // wrapper into the task — its lifetime is bound to this command call.
+    let app_clone = app.clone();
+    let miner_process_ref = Arc::clone(&state.miner_process);
+    let miner_start_time_ref = Arc::clone(&state.miner_start_time);
+    let miner_address_ref = Arc::clone(&state.miner_address);
+    let pool_url_state_ref = Arc::clone(&state.pool_url);
     let shares_accepted_ref = Arc::clone(&state.stratum_shares_accepted);
     let shares_rejected_ref = Arc::clone(&state.stratum_shares_rejected);
+    let hashrate_ref = Arc::clone(&state.miner_hashrate);
+    let pool_url_owned = pool_url.clone();
+    let worker_owned = worker.clone();
+    let password_owned = password.clone();
+    let mining_addr_owned = mining_addr.clone();
+    let rpc_url_owned = rpc_url.clone();
+
     tauri::async_runtime::spawn(async move {
-        while let Some(event) = rx.recv().await {
-            let line = match event {
-                CommandEvent::Stdout(l) => l,
-                CommandEvent::Stderr(l) => l,
-                _ => break,
-            };
-            // C-10 fix: parse share-result lines emitted by irium-miner's
-            // stratum_reader (v1.9.13+). substring match on the prefix —
-            // accepted is on stdout, rejected is on stderr but both funnel
-            // through `line` here. Substring (not starts_with) tolerates
-            // optional log prefixes a future build might prepend.
-            if line.contains("[stratum] share accepted") {
-                if let Ok(mut a) = shares_accepted_ref.lock() { *a = a.saturating_add(1); }
-            } else if line.contains("[stratum] share rejected") {
-                if let Ok(mut r) = shares_rejected_ref.lock() { *r = r.saturating_add(1); }
+        // attempts: 1 = original connection, 2 = post-disconnect retry. The
+        // user-spec is one auto-reconnect, so a 2-iteration loop is enough.
+        let mut current_rx = rx;
+        let mut attempt: u32 = 1;
+        const MAX_ATTEMPTS: u32 = 2;
+
+        loop {
+            // Drain stdout/stderr from the active sidecar.
+            while let Some(event) = current_rx.recv().await {
+                let line = match event {
+                    CommandEvent::Stdout(l) => l,
+                    CommandEvent::Stderr(l) => l,
+                    _ => break,
+                };
+                // C-10 fix: parse share-result lines emitted by irium-miner's
+                // stratum_reader (v1.9.13+). substring match on the prefix —
+                // accepted is on stdout, rejected is on stderr but both funnel
+                // through `line` here. Substring (not starts_with) tolerates
+                // optional log prefixes a future build might prepend.
+                if line.contains("[stratum] share accepted") {
+                    if let Ok(mut a) = shares_accepted_ref.lock() { *a = a.saturating_add(1); }
+                } else if line.contains("[stratum] share rejected") {
+                    if let Ok(mut r) = shares_rejected_ref.lock() { *r = r.saturating_add(1); }
+                }
+                if let Some(khs) = parse_hashrate_khs(&line) {
+                    if let Ok(mut h) = hashrate_ref.lock() { *h = khs; }
+                }
+                // FIX 4: surface error-like lines to the frontend. Previously
+                // these were silently swallowed — a wrong pool URL produced
+                // no user-visible feedback.
+                if is_stratum_error_line(&line) {
+                    let _ = app_clone.emit_all("stratum_error", line.clone());
+                }
             }
-            if let Some(khs) = parse_hashrate_khs(&line) {
-                if let Ok(mut h) = hashrate_ref.lock() { *h = khs; }
+
+            // Sidecar exited — clear the GUI-side miner_process handle.
+            if let Ok(mut g) = miner_process_ref.lock() { *g = None; }
+
+            // Distinguish a user-initiated disconnect (stratum_disconnect
+            // clears pool_url before killing the sidecar) from a crash /
+            // pool-side drop. Only auto-reconnect for the latter.
+            let user_disconnected = pool_url_state_ref
+                .lock()
+                .map(|g| g.is_none())
+                .unwrap_or(true);
+            if user_disconnected {
+                break;
+            }
+
+            if attempt >= MAX_ATTEMPTS {
+                let _ = app_clone.emit_all(
+                    "stratum_failed",
+                    "Pool connection lost. Please reconnect.".to_string(),
+                );
+                // Reset pool_url so the GUI flips back to disconnected state.
+                if let Ok(mut g) = pool_url_state_ref.lock() { *g = None; }
+                break;
+            }
+
+            // FIX 5: one-shot reconnect. Tell the UI we're retrying, wait
+            // 5 seconds, then attempt to respawn the sidecar with the same
+            // params. If the spawn itself fails we still surface a
+            // stratum_failed event so the UI never gets stuck "reconnecting".
+            let _ = app_clone.emit_all(
+                "stratum_disconnected",
+                "Pool disconnected — reconnecting in 5s".to_string(),
+            );
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            attempt += 1;
+
+            let env = build_env(
+                &pool_url_owned, &worker_owned, &password_owned,
+                &mining_addr_owned, &rpc_url_owned,
+            );
+            match Command::new_sidecar("irium-miner")
+                .ok()
+                .and_then(|cmd| cmd.envs(env).current_dir(irium_dir.clone()).spawn().ok())
+            {
+                Some((new_rx, new_child)) => {
+                    if let Ok(mut g) = miner_process_ref.lock() { *g = Some(new_child); }
+                    if let Ok(mut t) = miner_start_time_ref.lock() {
+                        *t = Some(std::time::Instant::now());
+                    }
+                    if let Ok(mut a) = miner_address_ref.lock() {
+                        *a = Some(mining_addr_owned.clone());
+                    }
+                    current_rx = new_rx;
+                    // Loop body falls through to the inner `while let` to
+                    // drain the new receiver.
+                }
+                None => {
+                    let _ = app_clone.emit_all(
+                        "stratum_failed",
+                        "Pool reconnect failed — sidecar would not start.".to_string(),
+                    );
+                    if let Ok(mut g) = pool_url_state_ref.lock() { *g = None; }
+                    break;
+                }
             }
         }
     });
@@ -6539,6 +6754,7 @@ fn main() {
             save_discovered_peers,
             check_binaries,
             try_upnp_port_map,
+            check_port_open,
             get_app_version,
             check_network_reachable,
             get_system_info,

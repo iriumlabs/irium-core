@@ -196,17 +196,25 @@ export default function Settings() {
   // Track when the node first started running (this session). Drives the
   // "Detecting..." → "Inactive" timeout on the UPnP card so we don't show
   // "Inactive — outbound only" the instant the node starts (PEX takes a
-  // minute to propagate our dialable address to other peers). Resets when
-  // running flips false → null, so a restart re-enters the detecting window.
+  // minute to propagate our dialable address to other peers).
+  //
+  // One-way latch: once set, the ref is NEVER cleared by this effect — not
+  // even when nodeStatus.running flips back to false. A previous version
+  // null'd the ref on any running=false event, which caused two real-world
+  // bugs:
+  //   1. Any brief poll glitch (RPC timeout, network hiccup) wiped the
+  //      timestamp, then the next running=true tick re-armed a fresh 60s
+  //      window — users got stuck on "Detecting…" forever in flaky
+  //      conditions.
+  //   2. Multiple back-to-back hiccups produced the "loops, never resolves"
+  //      pattern reported by users.
+  // The ref is cleared only when the component unmounts (natural lifecycle
+  // via useRef going out of scope), so an app restart still re-arms it.
   const nodeRunningSinceRef = useRef<number | null>(null);
   const [nowTick, setNowTick] = useState(0); // re-render every second to update elapsed time
   useEffect(() => {
-    if (nodeStatus?.running) {
-      if (nodeRunningSinceRef.current === null) {
-        nodeRunningSinceRef.current = Date.now();
-      }
-    } else {
-      nodeRunningSinceRef.current = null;
+    if (nodeStatus?.running && nodeRunningSinceRef.current === null) {
+      nodeRunningSinceRef.current = Date.now();
     }
   }, [nodeStatus?.running]);
   // Tick once per second while node is running and we're still inside the

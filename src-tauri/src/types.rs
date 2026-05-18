@@ -607,6 +607,19 @@ pub struct RichListResponse {
     pub entries: Vec<RichListEntry>,
 }
 
+// Port-forwarding self-test result for the Help page's Test Connection
+// button. `open` is the headline boolean the UI renders as green/red.
+// `reason` is a human-readable explanation surfaced inline. The two
+// underlying signals (UPnP external IP + accepted inbound count) are
+// carried alongside so the UI can show full diagnostic context.
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct PortCheckResult {
+    pub open: bool,
+    pub reason: String,
+    pub upnp_external_ip: Option<String>,
+    pub inbound_count: u64,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GpuMinerStatus {
     pub running: bool,

@@ -19,7 +19,7 @@ import type {
   DisputeEntry, DisputeOpenResult,
   NetworkMetrics, ExplorerAgreement, ExplorerStats,
   ExplorerNetworkStats, ExplorerPeer, ExplorerBlock, NetworkHashrateInfo,
-  RichListResponse,
+  RichListResponse, PortCheckResult,
   FeedDiscoverResult,
   AgreementSignResult, AgreementVerifySignatureResult,
   AgreementDecryptResult, AgreementStoreListResult,
@@ -69,6 +69,12 @@ export const node = {
 
   tryUpnpPortMap: () =>
     safeInvoke<string | null>('try_upnp_port_map'),
+
+  // Port-forwarding self-test for the Help page's Test Connection button.
+  // Combines a live UPnP probe with iriumd's inbound_accepted_total
+  // counter — either non-zero result flips `open` to true.
+  checkPortOpen: () =>
+    safeInvoke<PortCheckResult>('check_port_open'),
 
   getAppVersion: () =>
     safeInvoke<string>('get_app_version'),

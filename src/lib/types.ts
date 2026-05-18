@@ -819,6 +819,17 @@ export interface RichListResponse {
   entries: RichListEntry[];
 }
 
+// Returned by check_port_open. `open` is the simple boolean the UI uses
+// to flip a green/red status; `reason` is a human-readable explanation.
+// `upnp_external_ip` and `inbound_count` carry the two underlying signals
+// so the UI can display full diagnostic context when useful.
+export interface PortCheckResult {
+  open: boolean;
+  reason: string;
+  upnp_external_ip: string | null;
+  inbound_count: number;
+}
+
 // ============================================================
 // FEED OPS
 // ============================================================

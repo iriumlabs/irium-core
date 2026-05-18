@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import toast from 'react-hot-toast';
 import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { miner, gpuMiner, stratum, wallet } from '../lib/tauri';
 import { useStore } from '../lib/store';
 import type { LucideIcon } from 'lucide-react';
@@ -1409,6 +1410,20 @@ const PRESET_POOLS = [
   { name: 'Custom',  url: ''                                        },
 ];
 
+// Stratum URL validator. The pool URL must be a valid Stratum v1 endpoint:
+//   stratum+tcp://host:port      (plaintext, the common case)
+//   stratum+ssl://host:port      (TLS-wrapped, some larger pools)
+// `host` may be a hostname, IPv4, or IPv6 literal; `port` must be 1-65535.
+// Previously any non-empty string was accepted, which silently sent garbage
+// URLs to the sidecar where the failure was swallowed — see the v1.9.18
+// audit notes for the bad-UX trail. Returns true when the URL is valid.
+function isValidStratumUrl(url: string): boolean {
+  const m = url.trim().match(/^stratum\+(tcp|ssl):\/\/([^\s:\/]+):(\d{1,5})$/);
+  if (!m) return false;
+  const port = Number(m[3]);
+  return port >= 1 && port <= 65535;
+}
+
 function StratumTab() {
   const { t } = useTranslation();
   // Status comes from the global poll, so connection state survives nav.
@@ -1423,10 +1438,35 @@ function StratumTab() {
   // the CPU/GPU tabs so dropping in-progress shares isn't a single click.
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
 
+  // Listen for stratum events from the Rust monitor task. The backend
+  // surfaces three distinct events:
+  //   stratum_error        → unparsed-but-suspicious sidecar log line (toast)
+  //   stratum_disconnected → sidecar crashed / pool dropped (auto-retry pending)
+  //   stratum_failed       → reconnect gave up (user must reconnect manually)
+  // All three are best-effort: missing them just means the user sees the
+  // existing connected/share counters instead.
+  useEffect(() => {
+    const unlistenPromises: Promise<UnlistenFn>[] = [
+      listen<string>('stratum_error', (e) => {
+        toast.error(t('miner.toasts.pool_error', { message: e.payload }));
+      }),
+      listen<string>('stratum_disconnected', () => {
+        toast(t('miner.toasts.pool_disconnected_reconnecting'), { icon: '⚠️' });
+      }),
+      listen<string>('stratum_failed', () => {
+        toast.error(t('miner.toasts.pool_connection_lost'));
+      }),
+    ];
+    return () => {
+      unlistenPromises.forEach((p) => p.then((u) => u()).catch(() => {}));
+    };
+  }, [t]);
+
   const loading = status === null;
 
   const handleConnect = async () => {
     if (!poolUrl.trim()) { toast.error(t('miner.toasts.pool_url_required')); return; }
+    if (!isValidStratumUrl(poolUrl)) { toast.error(t('miner.toasts.pool_url_invalid')); return; }
     if (!worker.trim()) { toast.error(t('miner.toasts.worker_required')); return; }
     setConnectLoading(true);
     try {

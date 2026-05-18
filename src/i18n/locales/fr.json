@@ -894,6 +894,10 @@
     "fields": {
       "mining_address_label": "Adresse minière",
       "mining_address_placeholder": "Collez votre adresse minière Irium (Q... ou P...)",
+      "address_picker_other": "Autre adresse…",
+      "address_picker_no_wallets": "Aucune adresse de portefeuille – choisissez Autre",
+      "address_picker_custom_placeholder": "Entrez n'importe quelle adresse P ou Q",
+      "address_invalid_inline": "Adresse invalide. Doit commencer par P ou Q",
       "threads_label": "Sujets",
       "stratum_url_label": "URL du pool",
       "stratum_url_placeholder": "strate+tcp://pool.example.com:3333",
@@ -1197,6 +1201,30 @@
       "block": "Détails du bloc",
       "tx": "Transaction",
       "address": "Informations sur l'adresse"
+    },
+    "tabs": {
+      "overview": "Aperçu",
+      "rich_list": "Liste riche"
+    },
+    "richlist": {
+      "title": "Meilleurs détenteurs d'IRM",
+      "subtitle": "Classé par solde dépensable sur le bout de chaîne actuel",
+      "total_supply": "Offre totale",
+      "at_height": "à la hauteur #{{height}}",
+      "showing_top": "Affichage du haut {{count}}",
+      "col_rank": "Rang",
+      "col_address": "Adresse",
+      "col_balance_irm": "Solde (IRM)",
+      "col_percentage": "% de l'offre",
+      "col_utxos": "UTXO",
+      "you_badge": "Toi",
+      "refresh": "Rafraîchir",
+      "loading": "Chargement de la liste riche…",
+      "load_more": "Charger les 500 premiers",
+      "load_more_loading": "Chargement des 500 meilleurs…",
+      "load_error": "Échec du chargement de la liste riche : {{reason}}",
+      "empty": "Aucun solde P2PKH sur la chaîne pour l'instant.",
+      "node_offline_hint": "Démarrez le nœud sur le tableau de bord pour charger la liste riche."
     }
   },
   "help": {
@@ -1318,6 +1346,36 @@
       "a10": "macOS met en quarantaine les applications téléchargées en dehors de l'App Store. Pour résoudre ce problème : (1) ouvrez le terminal ; (2) exécutez : xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app — cela supprime l'indicateur de quarantaine de l'ensemble de l'application. Si vous voyez toujours « endommagé », exécutez : codedesign --force --deep --sign - /Applications/Irium\\ Core.app puis relancez. Le premier lancement peut prendre 10 à 20 secondes pendant que Gatekeeper revérifie la signature. Si iriumd lui-même a été mis en quarantaine (vous voyez \"iriumd est endommagé\" dans les journaux), exécutez : xattr -d com.apple.quarantine ~/.irium/binaries/iriumd pour annuler la quarantaine uniquement le binaire du nœud.",
       "q11": "Mon nœud a des blocs mis en quarantaine. Comment récupérer ?",
       "a11": "iriumd met en quarantaine les fichiers qu'il ne peut pas valider (généralement après un crash en cours d'écriture ou une réorganisation corrompue). Les blocs mis en quarantaine se trouvent dans ~/.irium/blocks/orphaned_<timestamp>/. Vous pouvez les effacer de la section Récupération des blocs en quarantaine ci-dessus (arrêtez d'abord le nœud). Le nœud récupérera automatiquement les blocs manquants auprès de ses pairs au prochain démarrage. Si la resynchronisation reste bloquée à la même hauteur, utilisez Paramètres → Effacer l'état de la chaîne pour une resynchronisation propre depuis Genesis (votre portefeuille et vos accords sont préservés)."
+    },
+    "port_forwarding": {
+      "section_title": "Comment transférer des ports pour une meilleure connectivité",
+      "intro": "Irium utilise le port 38291 pour les connexions P2P. Le transfert de ce port permet à d'autres nœuds de se connecter directement à vous, améliorant ainsi votre connectivité réseau et vos performances d'exploitation minière.",
+      "steps_heading": "Étapes pour la plupart des routeurs :",
+      "step1_title": "Trouvez votre adresse IP locale",
+      "step1_windows": "Windows : ouvrez l'invite de commande, tapez ipconfig. Recherchez l'adresse IPv4 (par exemple 192.168.1.100).",
+      "step1_mac": "Mac : Préférences Système → Réseau.",
+      "step2_title": "Connectez-vous à votre routeur",
+      "step2_body": "Ouvrez un navigateur et accédez à 192.168.1.1 ou 192.168.0.1. Connectez-vous avec le nom d'utilisateur et le mot de passe de votre routeur (généralement imprimés sur le routeur).",
+      "step3_title": "Rechercher les paramètres de redirection de port",
+      "step3_body": "Recherchez : Redirection de port, NAT, serveur virtuel ou applications (le nom varie selon la marque du routeur).",
+      "step4_title": "Ajouter une nouvelle règle",
+      "step4_service_name": "Nom du service : Irium P2P",
+      "step4_external_port": "Port externe : 38291",
+      "step4_internal_port": "Port interne : 38291",
+      "step4_internal_ip": "IP interne : votre IP locale de l'étape 1",
+      "step4_protocol": "Protocole : TCP",
+      "step4_enable": "Activer : Oui",
+      "step4_save": "Enregistrez la règle.",
+      "step5_title": "Vérifiez que cela a fonctionné",
+      "step5_body": "La barre d'état en bas de l'application affiche UPnP lorsque la redirection de port est active. Un point vert signifie que des homologues connectés ont été trouvés.",
+      "upnp_note_label": "Note:",
+      "upnp_note": "UPnP est activé par défaut dans Irium et tentera de transférer le port automatiquement. La redirection de port manuelle n'est nécessaire que si UPnP n'est pas pris en charge par votre routeur.",
+      "test_button": "Tester la connexion",
+      "testing": "Essai…",
+      "result_open": "Le port 38291 est ouvert – super !",
+      "result_closed": "Le port 38291 semble fermé – essayez la redirection de port manuelle ci-dessus.",
+      "result_details": "Détails : {{reason}}",
+      "test_failed": "Impossible d'exécuter la vérification du port : {{reason}}"
     },
     "quarantine": {
       "section_title": "Récupération des blocs mis en quarantaine",
