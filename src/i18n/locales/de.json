@@ -1230,7 +1230,13 @@
       "load_error": "Poolstatistiken konnten nicht geladen werden – Proxy ist möglicherweise nicht erreichbar",
       "empty": "Poolstatistiken nicht verfügbar",
       "accepted_shares": "Akzeptierte Aktien",
-      "rejected_shares": "Abgelehnte Aktien"
+      "rejected_shares": "Abgelehnte Aktien",
+      "hashrate": "Geschätzte Hashrate",
+      "hashrate_collecting": "Daten sammeln…",
+      "hashrate_avg_window": "{{minutes}}min durchschn",
+      "confidence_low": "Geringes Vertrauen",
+      "confidence_medium": "Mittleres Selbstvertrauen",
+      "confidence_high": "Hohes Selbstvertrauen"
     },
     "richlist": {
       "title": "Top IRM-Inhaber",
@@ -1691,6 +1697,12 @@
     "title": "Knoten ist offline.",
     "body": "Starten Sie es über das Dashboard, um diese Funktion zu nutzen.",
     "open_dashboard": "Öffnen Sie das Dashboard"
+  },
+  "quarantine_banner": {
+    "title": "{{count}} isolierte Blockdatei(en) aus einer früheren Sitzung gefunden.",
+    "subtitle": "Diese Blöcke können nicht im Bergbauverlauf angezeigt werden, bis sie wiederhergestellt sind.",
+    "recover_now": "Jetzt erholen",
+    "dismiss": "Zurückweisen"
   },
   "titlebar": {
     "miner_active_confirm": "Der Bergbau ist aktiv. Der Miner läuft im Hintergrund weiter.\n\nKlicken Sie auf „OK“, um es in die Taskleiste zu minimieren, oder auf „Abbrechen“, um das Fenster geöffnet zu lassen und zunächst das Mining zu stoppen, wenn Sie es vollständig beenden möchten."

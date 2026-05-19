@@ -1230,7 +1230,13 @@
       "load_error": "Havuz istatistikleri yüklenemedi — proxy'ye ulaşılamıyor olabilir",
       "empty": "Havuz istatistikleri kullanılamıyor",
       "accepted_shares": "Kabul edilen paylaşımlar",
-      "rejected_shares": "Reddedilen paylaşımlar"
+      "rejected_shares": "Reddedilen paylaşımlar",
+      "hashrate": "Tahmini Hashrate",
+      "hashrate_collecting": "Veri toplanıyor…",
+      "hashrate_avg_window": "{{minutes}}dk ortalama",
+      "confidence_low": "Düşük güven",
+      "confidence_medium": "Orta güven",
+      "confidence_high": "Yüksek güven"
     },
     "richlist": {
       "title": "En İyi IRM Sahipleri",
@@ -1691,6 +1697,12 @@
     "title": "Düğüm çevrimdışı.",
     "body": "Bu özelliği kullanmak için Kontrol Panelinden başlatın.",
     "open_dashboard": "Kontrol Panelini Aç"
+  },
+  "quarantine_banner": {
+    "title": "Önceki bir oturuma ait {{count}} karantinaya alınmış blok dosyası/dosyaları bulundu.",
+    "subtitle": "Bu bloklar kurtarılana kadar madencilik geçmişinde gösterilemez.",
+    "recover_now": "Şimdi Kurtar",
+    "dismiss": "Azletmek"
   },
   "titlebar": {
     "miner_active_confirm": "Madencilik aktif. Madenci arka planda çalışmaya devam edecektir.\n\nTepsiye simge durumuna küçültmek için Tamam'a tıklayın veya pencereyi açık tutmak ve tamamen çıkmak istiyorsanız önce madenciliği durdurmak için İptal'e tıklayın."

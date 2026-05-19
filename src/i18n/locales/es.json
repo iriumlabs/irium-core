@@ -1230,7 +1230,13 @@
       "load_error": "No se pudieron cargar las estadísticas del grupo: es posible que no se pueda acceder al proxy",
       "empty": "Estadísticas del grupo no disponibles",
       "accepted_shares": "Acciones aceptadas",
-      "rejected_shares": "Acciones rechazadas"
+      "rejected_shares": "Acciones rechazadas",
+      "hashrate": "Hashrate estimado",
+      "hashrate_collecting": "Recopilando datos…",
+      "hashrate_avg_window": "{{minutes}}min promedio",
+      "confidence_low": "Baja confianza",
+      "confidence_medium": "Confianza media",
+      "confidence_high": "Alta confianza"
     },
     "richlist": {
       "title": "Principales titulares de IRM",
@@ -1691,6 +1697,12 @@
     "title": "El nodo está fuera de línea.",
     "body": "Inícielo desde el Panel de control para utilizar esta función.",
     "open_dashboard": "Abrir panel"
+  },
+  "quarantine_banner": {
+    "title": "Se encontraron {{count}} archivos de bloque en cuarentena de una sesión anterior.",
+    "subtitle": "Estos bloques no se pueden mostrar en el historial minero hasta que se recuperen.",
+    "recover_now": "Recuperar ahora",
+    "dismiss": "Despedir"
   },
   "titlebar": {
     "miner_active_confirm": "La minería está activa. El minero seguirá ejecutándose en segundo plano.\n\nHaga clic en Aceptar para minimizar en la bandeja o en Cancelar para mantener la ventana abierta y detener la minería primero si desea salir por completo."

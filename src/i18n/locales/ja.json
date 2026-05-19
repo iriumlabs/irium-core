@@ -1230,7 +1230,13 @@
       "load_error": "プール統計をロードできませんでした - プロキシに到達できない可能性があります",
       "empty": "プールの統計情報は利用できません",
       "accepted_shares": "引受株式数",
-      "rejected_shares": "拒否された株式"
+      "rejected_shares": "拒否された株式",
+      "hashrate": "推定ハッシュレート",
+      "hashrate_collecting": "データを収集中…",
+      "hashrate_avg_window": "平均{{minutes}}分",
+      "confidence_low": "低い信頼性",
+      "confidence_medium": "中程度の信頼度",
+      "confidence_high": "高い信頼性"
     },
     "richlist": {
       "title": "トップ IRM ホルダー",
@@ -1691,6 +1697,12 @@
     "title": "ノードがオフラインです。",
     "body": "この機能を使用するには、ダッシュボードから起動します。",
     "open_dashboard": "ダッシュボードを開く"
+  },
+  "quarantine_banner": {
+    "title": "以前のセッションで隔離されたブロック ファイル {{count}} が見つかりました。",
+    "subtitle": "これらのブロックは、回復されるまでマイニング履歴に表示されません。",
+    "recover_now": "今すぐ回復する",
+    "dismiss": "却下する"
   },
   "titlebar": {
     "miner_active_confirm": "マイニングが活発に行われています。マイナーはバックグラウンドで実行を続けます。\n\n[OK] をクリックしてトレイに最小化するか、完全に終了したい場合は [キャンセル] をクリックしてウィンドウを開いたままにし、マイニングを停止します。"

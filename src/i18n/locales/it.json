@@ -1230,7 +1230,13 @@
       "load_error": "Impossibile caricare le statistiche del pool: il proxy potrebbe essere irraggiungibile",
       "empty": "Statistiche del pool non disponibili",
       "accepted_shares": "Azioni accettate",
-      "rejected_shares": "Azioni rifiutate"
+      "rejected_shares": "Azioni rifiutate",
+      "hashrate": "Hashrate stimato",
+      "hashrate_collecting": "Raccolta dati…",
+      "hashrate_avg_window": "{{minutes}}min",
+      "confidence_low": "Bassa fiducia",
+      "confidence_medium": "Confidenza media",
+      "confidence_high": "Alta fiducia"
     },
     "richlist": {
       "title": "I migliori supporti IRM",
@@ -1691,6 +1697,12 @@
     "title": "Il nodo è offline.",
     "body": "Avvialo dalla Dashboard per utilizzare questa funzionalità.",
     "open_dashboard": "Apri Dashboard"
+  },
+  "quarantine_banner": {
+    "title": "Trovati {{count}} file di blocco in quarantena da una sessione precedente.",
+    "subtitle": "Questi blocchi non possono essere visualizzati nella cronologia di mining finché non vengono ripristinati.",
+    "recover_now": "Recupera ora",
+    "dismiss": "Congedare"
   },
   "titlebar": {
     "miner_active_confirm": "L'estrazione mineraria è attiva. Il minatore continuerà a funzionare in background.\n\nFare clic su OK per ridurre a icona nel vassoio o su Annulla per mantenere la finestra aperta e interrompere prima l'estrazione se si desidera uscire completamente."

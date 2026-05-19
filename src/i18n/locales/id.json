@@ -79,7 +79,7 @@
   },
   "status_bar": {
     "height_label": "Tinggi",
-    "peers_label": "Teman sejawat",
+    "peers_label": "Rekan-rekan",
     "synced": "Disinkronkan",
     "syncing": "Sinkronisasi",
     "tip_copied": "Tip hash disalin",
@@ -312,7 +312,7 @@
     "stats": {
       "confirmed_balance": "Saldo Terkonfirmasi",
       "block_height": "Tinggi Blok",
-      "peers": "Teman sejawat",
+      "peers": "Rekan-rekan",
       "syncing": "Menyinkronkan…",
       "node_offline": "Simpul offline",
       "catching_up": "Mengejar · #{{height}} {{tip}}",
@@ -1117,7 +1117,7 @@
     "stats": {
       "block_height": "Tinggi Blok",
       "circulating_supply": "Persediaan yang Beredar",
-      "peers": "Teman sejawat",
+      "peers": "Rekan-rekan",
       "active_miners": "Penambang Aktif",
       "next_halving": "Pembagian dua berikutnya: #{{height}}",
       "chain_tip": "ujung rantai",
@@ -1230,7 +1230,13 @@
       "load_error": "Tidak dapat memuat statistik kumpulan — proxy mungkin tidak dapat dijangkau",
       "empty": "Statistik kumpulan tidak tersedia",
       "accepted_shares": "Saham yang diterima",
-      "rejected_shares": "Saham yang ditolak"
+      "rejected_shares": "Saham yang ditolak",
+      "hashrate": "Perkiraan Hashrate",
+      "hashrate_collecting": "Mengumpulkan data…",
+      "hashrate_avg_window": "{{minutes}}menit rata-rata",
+      "confidence_low": "Kepercayaan diri yang rendah",
+      "confidence_medium": "Kepercayaan diri sedang",
+      "confidence_high": "Kepercayaan diri yang tinggi"
     },
     "richlist": {
       "title": "Pemegang IRM Teratas",
@@ -1691,6 +1697,12 @@
     "title": "Node sedang offline.",
     "body": "Mulai dari Dasbor untuk menggunakan fitur ini.",
     "open_dashboard": "Buka Dasbor"
+  },
+  "quarantine_banner": {
+    "title": "Ditemukan {{count}} file blok yang dikarantina dari sesi sebelumnya.",
+    "subtitle": "Blok-blok ini tidak dapat ditampilkan dalam riwayat penambangan sampai ditemukan kembali.",
+    "recover_now": "Pulihkan Sekarang",
+    "dismiss": "Membubarkan"
   },
   "titlebar": {
     "miner_active_confirm": "Penambangan aktif. Penambang akan terus berjalan di latar belakang.\n\nKlik OK untuk memperkecil ke baki, atau Batal untuk membiarkan jendela tetap terbuka dan menghentikan penambangan terlebih dahulu jika Anda ingin berhenti sepenuhnya."
