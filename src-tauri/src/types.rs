@@ -607,6 +607,50 @@ pub struct RichListResponse {
     pub entries: Vec<RichListEntry>,
 }
 
+// Public pool stats — fetched by get_pool_stats from the iriumlabs.org
+// stats proxy (http://207.244.247.86:3337/stats). Mirrors the JSON shape
+// the proxy emits. All counts are best-effort: if the proxy is unreachable
+// or returns malformed data, get_pool_stats returns Default::default().
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+pub struct PoolProfileStats {
+    pub active_miners: u64,
+    pub accepted_shares: u64,
+    pub rejected_shares: u64,
+    pub blocks_found: u64,
+    pub integrity: String,
+    #[serde(default)]
+    pub hashrate_estimate_hps: Option<f64>,
+    #[serde(default)]
+    pub hashrate_window_seconds: u64,
+    #[serde(default)]
+    pub hashrate_confidence: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+pub struct PoolStats {
+    pub pool: String,
+    pub url: String,
+    pub asic_port: u16,
+    pub cpu_gpu_port: u16,
+    pub asic: PoolProfileStats,
+    pub cpu_gpu: PoolProfileStats,
+    pub total_miners: u64,
+    pub total_blocks_found: u64,
+}
+
+// Port-forwarding self-test result for the Help page's Test Connection
+// button. `open` is the headline boolean the UI renders as green/red.
+// `reason` is a human-readable explanation surfaced inline. The two
+// underlying signals (UPnP external IP + accepted inbound count) are
+// carried alongside so the UI can show full diagnostic context.
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct PortCheckResult {
+    pub open: bool,
+    pub reason: String,
+    pub upnp_external_ip: Option<String>,
+    pub inbound_count: u64,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GpuMinerStatus {
     pub running: bool,

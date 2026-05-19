@@ -11,12 +11,27 @@ import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import toast from 'react-hot-toast';
 import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { miner, gpuMiner, stratum, wallet } from '../lib/tauri';
 import { useStore } from '../lib/store';
 import type { LucideIcon } from 'lucide-react';
 import type { FoundBlock, GpuPlatform, AddressInfo } from '../lib/types';
+import { formatIRM } from '../lib/types';
 import NodeOfflineBanner from '../components/NodeOfflineBanner';
 import clsx from 'clsx';
+
+// ── Mining-address validation ─────────────────────────────────────────────────
+// Used inline by both CPU and GPU miner tabs to gate the Start button and to
+// surface a red error message below the address picker. Real Irium P2PKH
+// addresses are always exactly 34 characters with a leading P or Q (verified
+// against the live richlist on iriumd v1.9.18). An empty string returns null
+// because that just disables the button — no error is shown yet.
+const MINER_ADDR_LEN = 34;
+function validateMinerAddress(addr: string): boolean {
+  const a = addr.trim();
+  if (a.length !== MINER_ADDR_LEN) return false;
+  return /^[QP]/.test(a);
+}
 
 // ── Address picker ────────────────────────────────────────────────────────────
 // Dropdown of wallet addresses with a final "Other address…" escape hatch
@@ -218,9 +233,15 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
 // the canonical block at that height was mined by a different address.
 // Orphaned rows are hidden by default; a toggle exposes them with a
 // greyed-out style so power users can audit their orphan rate.
+// Confirmations after which a block is considered "mature" — at this point
+// any reward iriumd hasn't surfaced is not coming, so we drop the "~ est"
+// estimate hint. 6 matches the conventional Bitcoin-derived maturity gate.
+const FOUND_BLOCK_MATURITY = 6;
+
 function FoundBlocksList() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const tipHeight = useStore((s) => s.nodeStatus?.height ?? 0);
   const [blocks, setBlocks] = useState<FoundBlock[]>([]);
   const [showOrphaned, setShowOrphaned] = useState(false);
 
@@ -275,7 +296,20 @@ function FoundBlocksList() {
         <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
           {visible.map((b, i) => {
             const ageSecs = Math.max(0, Math.floor(Date.now() / 1000) - b.timestamp);
-            const reward = b.reward_sats > 0 ? `${(b.reward_sats / 100_000_000).toFixed(4)} IRM` : '—';
+            // Reward display rules (FIX 3):
+            //  - Known reward (sats > 0): exact value via formatIRM → "50 IRM"
+            //    for whole numbers, "50.1234 IRM" for fractional sats.
+            //  - Unknown reward AND block immature (< 6 confs): show "—" with a
+            //    subtle "~ est" estimate hint so the user knows the value may
+            //    still arrive once iriumd indexes the block.
+            //  - Unknown reward AND block mature (>= 6 confs): just "—". By
+            //    this point iriumd has had time to surface the reward, so the
+            //    estimate hint would be misleading.
+            const confirmations = Math.max(0, tipHeight - b.height + 1);
+            const isMature = confirmations >= FOUND_BLOCK_MATURITY;
+            const hasReward = b.reward_sats > 0;
+            const reward = hasReward ? formatIRM(b.reward_sats) : '—';
+            const showEstimateHint = !hasReward && !isMature;
             const isOrphan = b.orphaned === true;
             return (
               <div
@@ -346,11 +380,27 @@ function FoundBlocksList() {
                   {formatBlockAge(ageSecs)}
                 </span>
                 <span
-                  className="font-mono flex-shrink-0"
+                  className="font-mono flex-shrink-0 inline-flex items-center gap-1"
                   style={{ color: 'rgba(238,240,255,0.55)', fontFamily: '"JetBrains Mono", monospace' }}
-                  title={b.reward_sats > 0 ? undefined : 'Reward unknown — miner stdout does not report it'}
+                  title={
+                    isOrphan
+                      ? undefined
+                      : hasReward
+                        ? undefined
+                        : showEstimateHint
+                          ? 'Reward not yet indexed by the node — value will fill in once mature'
+                          : 'Reward unknown — miner stdout does not report it'
+                  }
                 >
                   {isOrphan ? '—' : reward}
+                  {!isOrphan && showEstimateHint && (
+                    <span
+                      className="text-[9px] uppercase tracking-wider"
+                      style={{ color: 'rgba(251,191,36,0.65)' }}
+                    >
+                      ~ est
+                    </span>
+                  )}
                 </span>
                 <ExternalLink
                   size={11}
@@ -686,6 +736,14 @@ function CpuMinerTab() {
             placeholder={t('miner.fields.address_picker_custom_placeholder')}
             disabled={status?.running}
           />
+          {/* Inline validation error: shown once the user has typed something
+              but the value isn't a valid Irium P/Q address. Empty input does
+              not trip the error — that case just disables Start. */}
+          {address.trim().length > 0 && !validateMinerAddress(address) && (
+            <p className="text-xs mt-1.5" style={{ color: '#f87171' }}>
+              {t('miner.fields.address_invalid_inline')}
+            </p>
+          )}
           <button onClick={() => navigate('/wallet')} className="mt-1.5 flex items-center gap-1 text-xs transition-colors" style={{ color: '#6ec6ff' }}>
             View wallet <ArrowRight size={11} />
           </button>
@@ -722,7 +780,7 @@ function CpuMinerTab() {
 
         <div className="flex items-center gap-3 pt-1">
           {!status?.running ? (
-            <button onClick={handleStart} disabled={startLoading || !address.trim()} className="btn-primary">
+            <button onClick={handleStart} disabled={startLoading || !validateMinerAddress(address)} className="btn-primary">
               {startLoading ? <RefreshCw size={13} className="animate-spin" /> : <Play size={13} fill="currentColor" />}
               {startLoading ? 'Starting…' : 'Start Mining'}
             </button>
@@ -1148,6 +1206,12 @@ function GpuMinerTab() {
             placeholder={t('miner.fields.address_picker_custom_placeholder')}
             disabled={status?.running}
           />
+          {/* Inline validation error — same gate as the CPU tab. */}
+          {address.trim().length > 0 && !validateMinerAddress(address) && (
+            <p className="text-xs mt-1.5" style={{ color: '#f87171' }}>
+              {t('miner.fields.address_invalid_inline')}
+            </p>
+          )}
           <button onClick={() => navigate('/wallet')} className="mt-1.5 flex items-center gap-1 text-xs transition-colors" style={{ color: '#6ec6ff' }}>
             View wallet <ArrowRight size={11} />
           </button>
@@ -1170,7 +1234,7 @@ function GpuMinerTab() {
           {!status?.running ? (
             <button
               onClick={handleStart}
-              disabled={startLoading || !address.trim() || noGpuFound || gpuPlatforms === null}
+              disabled={startLoading || !validateMinerAddress(address) || noGpuFound || gpuPlatforms === null}
               className="btn-primary"
               style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)', boxShadow: '0 4px 16px rgba(59,130,246,0.35)' }}
             >
@@ -1339,12 +1403,34 @@ function GpuMinerTab() {
 
 // ── STRATUM POOL TAB ──────────────────────────────────────────
 
+// Pool presets — Irium Official Pool at the top (first-launch default
+// promotes our own infrastructure over third-party mining pools). The
+// CPU/GPU profile (port 3335) carries a lower default difficulty and
+// targets hobbyist hardware; the ASIC profile (port 3333) targets
+// modern SHA-256 ASICs at a higher base difficulty. Both run on
+// irium-vps from pool/irium-stratum/ in the source tree.
 const PRESET_POOLS = [
-  { name: 'F2Pool',   url: 'stratum+tcp://irium.f2pool.com:3333'   },
-  { name: 'ViaBTC',  url: 'stratum+tcp://irium.viabtc.com:3333'   },
-  { name: 'AntPool', url: 'stratum+tcp://irium.antpool.com:3333'  },
-  { name: 'Custom',  url: ''                                        },
+  { name: 'Irium Official Pool (CPU/GPU)', url: 'stratum+tcp://pool.iriumlabs.org:3335' },
+  { name: 'Irium Official Pool (ASIC)',    url: 'stratum+tcp://pool.iriumlabs.org:3333' },
+  { name: 'F2Pool',                         url: 'stratum+tcp://irium.f2pool.com:3333'   },
+  { name: 'ViaBTC',                         url: 'stratum+tcp://irium.viabtc.com:3333'   },
+  { name: 'AntPool',                        url: 'stratum+tcp://irium.antpool.com:3333'  },
+  { name: 'Custom',                         url: ''                                       },
 ];
+
+// Stratum URL validator. The pool URL must be a valid Stratum v1 endpoint:
+//   stratum+tcp://host:port      (plaintext, the common case)
+//   stratum+ssl://host:port      (TLS-wrapped, some larger pools)
+// `host` may be a hostname, IPv4, or IPv6 literal; `port` must be 1-65535.
+// Previously any non-empty string was accepted, which silently sent garbage
+// URLs to the sidecar where the failure was swallowed — see the v1.9.18
+// audit notes for the bad-UX trail. Returns true when the URL is valid.
+function isValidStratumUrl(url: string): boolean {
+  const m = url.trim().match(/^stratum\+(tcp|ssl):\/\/([^\s:\/]+):(\d{1,5})$/);
+  if (!m) return false;
+  const port = Number(m[3]);
+  return port >= 1 && port <= 65535;
+}
 
 function StratumTab() {
   const { t } = useTranslation();
@@ -1352,7 +1438,7 @@ function StratumTab() {
   const status = useStore((s) => s.stratumStatus);
 
   const [connectLoading, setConnectLoading] = useState(false);
-  const [poolUrl, setPoolUrl] = useState('stratum+tcp://irium.f2pool.com:3333');
+  const [poolUrl, setPoolUrl] = useState('stratum+tcp://pool.iriumlabs.org:3335');
   const [worker, setWorker] = useState('');
   const [password, setPassword] = useState('');
   const [selectedPreset, setSelectedPreset] = useState(0);
@@ -1360,10 +1446,35 @@ function StratumTab() {
   // the CPU/GPU tabs so dropping in-progress shares isn't a single click.
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
 
+  // Listen for stratum events from the Rust monitor task. The backend
+  // surfaces three distinct events:
+  //   stratum_error        → unparsed-but-suspicious sidecar log line (toast)
+  //   stratum_disconnected → sidecar crashed / pool dropped (auto-retry pending)
+  //   stratum_failed       → reconnect gave up (user must reconnect manually)
+  // All three are best-effort: missing them just means the user sees the
+  // existing connected/share counters instead.
+  useEffect(() => {
+    const unlistenPromises: Promise<UnlistenFn>[] = [
+      listen<string>('stratum_error', (e) => {
+        toast.error(t('miner.toasts.pool_error', { message: e.payload }));
+      }),
+      listen<string>('stratum_disconnected', () => {
+        toast(t('miner.toasts.pool_disconnected_reconnecting'), { icon: '⚠️' });
+      }),
+      listen<string>('stratum_failed', () => {
+        toast.error(t('miner.toasts.pool_connection_lost'));
+      }),
+    ];
+    return () => {
+      unlistenPromises.forEach((p) => p.then((u) => u()).catch(() => {}));
+    };
+  }, [t]);
+
   const loading = status === null;
 
   const handleConnect = async () => {
     if (!poolUrl.trim()) { toast.error(t('miner.toasts.pool_url_required')); return; }
+    if (!isValidStratumUrl(poolUrl)) { toast.error(t('miner.toasts.pool_url_invalid')); return; }
     if (!worker.trim()) { toast.error(t('miner.toasts.worker_required')); return; }
     setConnectLoading(true);
     try {

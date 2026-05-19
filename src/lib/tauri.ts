@@ -19,7 +19,7 @@ import type {
   DisputeEntry, DisputeOpenResult,
   NetworkMetrics, ExplorerAgreement, ExplorerStats,
   ExplorerNetworkStats, ExplorerPeer, ExplorerBlock, NetworkHashrateInfo,
-  RichListResponse,
+  RichListResponse, PortCheckResult, PoolStats,
   FeedDiscoverResult,
   AgreementSignResult, AgreementVerifySignatureResult,
   AgreementDecryptResult, AgreementStoreListResult,
@@ -69,6 +69,12 @@ export const node = {
 
   tryUpnpPortMap: () =>
     safeInvoke<string | null>('try_upnp_port_map'),
+
+  // Port-forwarding self-test for the Help page's Test Connection button.
+  // Combines a live UPnP probe with iriumd's inbound_accepted_total
+  // counter — either non-zero result flips `open` to true.
+  checkPortOpen: () =>
+    safeInvoke<PortCheckResult>('check_port_open'),
 
   getAppVersion: () =>
     safeInvoke<string>('get_app_version'),
@@ -556,6 +562,13 @@ export const rpc = {
   // aggregation is done on the node side under a single chain-lock.
   richlist: (limit?: number) =>
     safeInvoke<RichListResponse>('get_richlist', { limit }),
+
+  // Official-pool stats — hits the iriumlabs.org public proxy via the
+  // Rust get_pool_stats Tauri command. Returns a PoolStats snapshot.
+  // Failure path returns null; the Explorer surface handles that with an
+  // empty state rather than a toast (the section is informational).
+  poolStats: () =>
+    safeInvoke<PoolStats>('get_pool_stats'),
 
   offersFeed: () =>
     safeInvoke<unknown>('rpc_get_offers_feed'),

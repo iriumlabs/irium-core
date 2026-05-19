@@ -16,7 +16,6 @@ import {
   Circle,
   Loader2,
   X,
-  ChevronDown,
   Pickaxe,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -510,7 +509,6 @@ export default function Dashboard() {
   const [heightWarnDismissedUntil, setHeightWarnDismissedUntil] = useState(
     () => parseInt(localStorage.getItem(HEIGHT_WARN_DISMISSED_KEY) ?? '0', 10)
   );
-  const [peersExpanded, setPeersExpanded] = useState(false);
   const [recentTx, setRecentTx] = useState<Transaction[]>([]);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1087,72 +1085,19 @@ export default function Dashboard() {
 
         {nodeStatus?.running && (
           <div className="card p-4">
-            <button
-              className="flex items-center justify-between w-full mb-0 text-left"
-              onClick={() => peerList.length > 0 && setPeersExpanded((v) => !v)}
-              style={{ cursor: peerList.length > 0 ? 'pointer' : 'default' }}
-            >
+            {/* Network Peers — count-only display. The peer-IP table was removed
+                in v1.0.34-WIP per privacy review: surfacing /ip4/.../tcp/...
+                multiaddrs in the UI leaked correlatable information to anyone
+                who shouldered the user's screen. Per-peer IPs are still
+                available in iriumd's P2P logs for advanced debugging. */}
+            <div className="flex items-center justify-between">
               <h2 className="font-display font-semibold text-white/90">{t('dashboard.peers.title')}</h2>
-              <div className="flex items-center gap-2">
-                {peerList.length > 0 ? (
-                  <>
-                    <span className="badge badge-irium">{t('dashboard.peers.known_count', { count: peerList.length })}</span>
-                    <ChevronDown
-                      size={14}
-                      className="transition-transform duration-200 text-white/40"
-                      style={{ transform: peersExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
-                    />
-                  </>
-                ) : (
-                  <span className="text-xs text-white/30 animate-pulse">{t('dashboard.peers.discovering')}</span>
-                )}
-              </div>
-            </button>
-            <AnimatePresence initial={false}>
-              {peersExpanded && peerList.length > 0 && (
-                <motion.div
-                  key="peers-list"
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2, ease: 'easeOut' }}
-                  className="overflow-hidden"
-                >
-                  <div className="mt-3 overflow-x-auto">
-                    <table className="w-full text-xs border-separate" style={{ borderSpacing: 0 }}>
-                      <thead>
-                        <tr>
-                          <th className="text-left pb-2 pr-4 font-semibold uppercase tracking-wider text-white/25" style={{ fontSize: 9.5 }}>{t('dashboard.peers.col_address')}</th>
-                          <th className="text-left pb-2 pr-4 font-semibold uppercase tracking-wider text-white/25" style={{ fontSize: 9.5 }}>{t('dashboard.peers.col_dialable')}</th>
-                          <th className="text-left pb-2 pr-4 font-semibold uppercase tracking-wider text-white/25" style={{ fontSize: 9.5 }}>{t('dashboard.peers.col_height')}</th>
-                          <th className="text-left pb-2 font-semibold uppercase tracking-wider text-white/25" style={{ fontSize: 9.5 }}>{t('dashboard.peers.col_last_seen')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {peerList.map((p, i) => (
-                          <tr key={i} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                            <td className="py-1.5 pr-4 font-mono text-white/55 max-w-[220px]" style={{ fontSize: 11 }}>
-                              <span className="block truncate" title={p.multiaddr}>{p.multiaddr || '—'}</span>
-                            </td>
-                            <td className="py-1.5 pr-4">
-                              {p.dialable
-                                ? <span className="text-green-400 font-semibold">{t('common.yes')}</span>
-                                : <span className="text-white/25">{t('common.no')}</span>}
-                            </td>
-                            <td className="py-1.5 pr-4 font-mono text-white/45">
-                              {p.height ? `#${p.height.toLocaleString('en-US')}` : '—'}
-                            </td>
-                            <td className="py-1.5 text-white/35">
-                              {p.last_seen ? timeAgo(p.last_seen) : '—'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </motion.div>
+              {peerList.length > 0 ? (
+                <span className="badge badge-irium">{t('dashboard.peers.known_count', { count: peerList.length })}</span>
+              ) : (
+                <span className="text-xs text-white/30 animate-pulse">{t('dashboard.peers.discovering')}</span>
               )}
-            </AnimatePresence>
+            </div>
           </div>
         )}
 
