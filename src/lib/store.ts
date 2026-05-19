@@ -133,6 +133,16 @@ interface AppStore {
   // survives app restarts. Maps to --batch via DEFAULT_BATCH_SIZE (4194304).
   gpuIntensity: number;
   setGpuIntensity: (v: number) => void;
+
+  // Quarantine recovery banner. Populated once per session when the node
+  // first reaches a running state — App.tsx calls scan_quarantined_blocks
+  // and stores the file count here so the Dashboard and Miner pages can
+  // surface it. Dismissal is session-only (not persisted): a fresh launch
+  // will re-evaluate.
+  quarantinedBlockCount: number;
+  setQuarantinedBlockCount: (count: number) => void;
+  quarantineBannerDismissed: boolean;
+  dismissQuarantineBanner: () => void;
 }
 
 interface ErrorEntry {
@@ -435,6 +445,11 @@ export const useStore = create<AppStore>((set) => ({
 
   gpuIntensity: loadGpuIntensity(),
   setGpuIntensity: (gpuIntensity) => { saveGpuIntensity(gpuIntensity); set({ gpuIntensity }); },
+
+  quarantinedBlockCount: 0,
+  setQuarantinedBlockCount: (quarantinedBlockCount) => set({ quarantinedBlockCount }),
+  quarantineBannerDismissed: false,
+  dismissQuarantineBanner: () => set({ quarantineBannerDismissed: true }),
 }));
 
 const SETTINGS_KEY = "irium_core_settings";

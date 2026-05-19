@@ -1696,6 +1696,12 @@
     "body": "Start it from the Dashboard to use this feature.",
     "open_dashboard": "Open Dashboard"
   },
+  "quarantine_banner": {
+    "title": "Found {{count}} quarantined block file(s) from a previous session.",
+    "subtitle": "These blocks cannot be shown in mining history until recovered.",
+    "recover_now": "Recover Now",
+    "dismiss": "Dismiss"
+  },
   "titlebar": {
     "miner_active_confirm": "Mining is active. The miner will continue running in the background.\n\nClick OK to minimize to tray, or Cancel to keep the window open and stop mining first if you want to quit completely."
   },

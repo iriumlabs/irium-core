@@ -18,6 +18,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { FoundBlock, GpuPlatform, AddressInfo } from '../lib/types';
 import { formatIRM } from '../lib/types';
 import NodeOfflineBanner from '../components/NodeOfflineBanner';
+import QuarantineRecoveryBanner from '../components/QuarantineRecoveryBanner';
 import clsx from 'clsx';
 
 // ── Mining-address validation ─────────────────────────────────────────────────
@@ -1682,6 +1683,7 @@ export default function Miner() {
     >
       <div className="w-full space-y-5 px-8 py-6">
       <NodeOfflineBanner />
+      <QuarantineRecoveryBanner />
       {/* Header */}
       <div>
         <h1 className="page-title">{t('miner.page_title')}</h1>

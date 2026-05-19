@@ -153,7 +153,9 @@ function AppLayout() {
   const nodeStatus = useStore((s) => s.nodeStatus);
   const setNodeStarting = useStore((s) => s.setNodeStarting);
   const setNodeOperation = useStore((s) => s.setNodeOperation);
+  const setQuarantinedBlockCount = useStore((s) => s.setQuarantinedBlockCount);
   const autoStartFired = useRef(false);
+  const quarantineScanFired = useRef(false);
 
   // Mirror settings.theme onto <html data-theme="..."> so every CSS variable
   // override in globals.css applies in one flip. Default "midnight" matches
@@ -196,6 +198,25 @@ function AppLayout() {
       setNodeOperation(null);
     });
   }, [nodeStatus, settings.auto_start_node, settings.external_ip, setNodeStarting, setNodeOperation]);
+
+  // Quarantine-scan trigger. Fires exactly once per session when the node
+  // first reaches a running state. The result populates the store so the
+  // Dashboard and Miner pages can show a recovery banner; we never re-scan
+  // after the first hit (the scan reads the disk and is non-trivial on big
+  // chains). A fresh app launch re-evaluates from scratch.
+  useEffect(() => {
+    if (quarantineScanFired.current) return;
+    if (!nodeStatus?.running) return;
+    quarantineScanFired.current = true;
+    node.scanQuarantinedBlocks()
+      .then((result) => {
+        setQuarantinedBlockCount(result?.files ?? 0);
+      })
+      .catch(() => {
+        // Silent — banner just stays hidden if the IPC call fails.
+        setQuarantinedBlockCount(0);
+      });
+  }, [nodeStatus?.running, setQuarantinedBlockCount]);
 
   useEffect(() => {
     // Silent startup check
