@@ -222,6 +222,21 @@
       "consensus": "共识",
       "total_supply": "总供应量"
     },
+    "connected_peers": {
+      "title": "互联同行",
+      "count_one": "{{count}} 对等连接",
+      "count_other": "{{count}} 对等点已连接",
+      "count": "{{count}} 对等点已连接",
+      "show_addresses": "显示对等 IP 地址",
+      "hide_addresses": "隐藏对等 IP 地址",
+      "empty": "尚未连接对等方。启动节点以发现对等点。",
+      "dialable_yes": "可拨号",
+      "dialable_no": "仅限出境",
+      "height_label": "高度：",
+      "last_seen_label": "最后一次见到：",
+      "agent_label": "代理人：",
+      "privacy_note": "对等 IP 仅存储在您的应用程序本地，绝不会发送到任何地方。关闭以再次隐藏它们。"
+    },
     "port_reachability": {
       "title": "端口可达性",
       "active_upnp": "活动 (UPnP) — TCP 38291 打开",
@@ -508,7 +523,7 @@
       "wif_exported": "WIF 密钥导出到 {{path}}",
       "backup_exported": "备份保存到 {{path}}",
       "backup_saved": "钱包备份已保存",
-      "failed_load_addresses": "加载地址失败",
+      "failed_load_addresses": "Failed to load addresses",
       "failed_load_transactions": "无法加载交易",
       "node_must_be_online": "节点必须在线才能发送交易",
       "set_as_primary": "设置为主",
@@ -839,8 +854,21 @@
       "already_added": "已添加",
       "add_feed": "添加提要"
     },
+    "browse": {
+      "remote_filter_warning": "您仅查看远程优惠。此过滤器隐藏您自己的本地优惠。",
+      "switch_to_all": "切换到全部",
+      "auto_shared_hint": "您的报价会通过 P2P 自动与连接的同行共享。无需手动设置。",
+      "nat_faq_title": "在 NAT 还是 CGNAT 后面？",
+      "nat_faq_receiving_label": "收到别人的offer",
+      "nat_faq_receiving_body": "总是有效。无论您自己的 NAT 状态如何，您的节点都会从可公开访问的对等点获取数据 - 任何正常的互联网连接都可以浏览市场。",
+      "nat_faq_sharing_label": "与他人分享您的优惠",
+      "nat_faq_sharing_body": "要求您的节点可访问。对等点从 http://<your-ip>:38300/offers/feed 获取，这意味着公共 IPv4 和开放端口 38300。当检测到外部端点时，桌面钱包会自动尝试 UPnP 端口转发。",
+      "nat_faq_cgnat_label": "CGNAT 或严格 NAT 背后",
+      "nat_faq_cgnat_body": "您仍然可以购买其他人的优惠。为了让其他人看到您的报价，选项有：(a) 向您的 ISP 请求公共 IPv4，(b) 在 VPS 上运行 iriumd，或 (c) 使用 `irium-wallet Offer-export` 导出报价并直接与您的交易对手共享 JSON，对方使用 `offer-import` 导入它。"
+    },
     "toasts": {
       "offer_created": "创建报价：{{id}}",
+      "offer_created_browse_ready": "优惠创建成功 — 在“浏览”选项卡中可见",
       "offer_taken": "接受报价 — 协议 {{id}}",
       "feed_added": "添加饲料",
       "min_must_be_positive": "最小交易金额必须为正数",
@@ -912,6 +940,7 @@
       "device": "设备",
       "gpu_address_placeholder": "普…",
       "intensity_label": "强度 — {{value}}%",
+      "intensity_mac_note": "macOS 上的强度上限为 50%，以防止 GPU 看门狗在批次中杀死内核。 GPU 矿工会自动检测看门狗停顿，并在发现它们时干净地停止。",
       "pool_preset": "池预设"
     },
     "found_blocks": {
@@ -1390,9 +1419,11 @@
       "q9": "如何连接矿池？",
       "a9": "进入“挖矿”页面，选择“地层矿池”选项卡。输入矿池 URL stratum+tcp://pool.iriumlabs.org:3333（适用于 ASIC/modern 矿工）或 stratum+tcp://pool.iriumlabs.org:3335（适用于 CPU/GPU 矿工）。您的用户名应该是您的 IRM 地址，后跟工作人员名称，例如 PwjVf7nY19UWW2i9HCEPyZt81975M6iKdW.worker1。",
       "q10": "macOS 表示 Irium Core 已损坏或被隔离。我该如何修复它？",
-      "a10": "macOS 隔离从 App Store 外部下载的应用程序。要解决此问题：（1）打开终端； (2) 运行： xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app — 这将从整个应用程序包中删除隔离标志。如果仍然看到“损坏”，请运行：codesign --force --deep --sign - /Applications/Irium\\ Core.app，然后重新启动。首次启动可能需要 10-20 秒，同时 Gatekeeper 重新验证签名。如果 iriumd 本身被隔离（您在日志中看到“iriumd 已损坏”），请运行： xattr -d com.apple.quarantine ~/.irium/binaries/iriumd 以仅取消��离节点二进制文件。",
+      "a10": "macOS 隔离从 App Store 外部下载的应用程序。要解决此问题：（1）打开终端； (2) 运行： xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app — 这将从整个应用程序包中删除隔离标志。如果仍然看到“损坏”，请运行：codesign --force --deep --sign - /Applications/Irium\\ Core.app，然后重新启动。首次启动可能需要 10-20 秒，同时 Gatekeeper 重新验证签名。如果 iriumd 本身被隔离（您在日志中看到“iriumd 已损坏”），请运行： xattr -d com.apple.quarantine ~/.irium/binaries/iriumd 以仅取消���离节点二进制文件。",
       "q11": "我的节点有隔离的块。我该如何恢复？",
-      "a11": "iriumd 隔离它无法验证的块文件（通常是在写入过程中崩溃或重组损坏之后）。隔离的块位于 ~/.irium/blocks/orphaned_<timestamp>/ 中。您可以从上面的隔离块恢复部分清除它们（首先停止节点）。节点将在下次启动时自动从对等方重新获取丢失的块。如果重新同步卡在相同的高度，请使用“设置”→“清除链状态”以从创世开始进行干净的重新同步（您的钱包和协议将被保留）。"
+      "a11": "iriumd 隔离它无法验证的块文件（通常是在写入过程中崩溃或重组损坏之后）。隔离的块位于 ~/.irium/blocks/orphaned_<timestamp>/ 中。您可以从上面的隔离块恢复部分清除它们（首先停止节点）。节点将在下次启动时自动从对等方重新获取丢失的块。如果重新同步卡在相同的高度，请使用“设置”→“清除链状态”以从创世开始进行干净的重新同步（您的钱包和协议将被保留）。",
+      "q12": "我支持 NAT 或 CGNAT。其他人可以看到我的市场优惠吗？",
+      "a12": "市场有两个方向，具有不同的可达性要求。从其他人那里接收报价总是有效的——无论您自己的 NAT 状态如何，您的节点都会从可公开访问的对等点获取信息；任何正常的互联网连接都可以浏览市场。共享您的优惠需要您的节点可访问：对等点从 http://<your-ip>:38300/offers/feed 获取，这意味着公共 IPv4 和开放端口 38300。当检测到外部端点时，桌面钱包会自动尝试 UPnP 端口转发。如果您位于 CGNAT 或严格 NAT 后面且无法公开端口 38300，​​您仍然可以从其他人那里购买报价，但为了让他们看到您的报价，您可以：(a) 向您的 ISP 请求公共 IPv4，(b) 在 VPS 上运行 iriumd，或 (c) 使用“irium-wallet Offer-export”导出报价并直接共享 JSON — 交易对手使用“offer-import”导入它。"
     },
     "port_forwarding": {
       "section_title": "如何转发端口以获得更好的连接",

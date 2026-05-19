@@ -222,6 +222,21 @@
       "consensus": "의견 일치",
       "total_supply": "총 공급량"
     },
+    "connected_peers": {
+      "title": "연결된 피어",
+      "count_one": "{{count}} 피어가 연결되었습니다.",
+      "count_other": "{{count}} 피어가 연결되었습니다.",
+      "count": "{{count}} 피어가 연결되었습니다.",
+      "show_addresses": "피어 IP 주소 표시",
+      "hide_addresses": "피어 IP 주소 숨기기",
+      "empty": "아직 연결된 동료가 없습니다. 피어를 검색하려면 노드를 시작하세요.",
+      "dialable_yes": "전화 걸기 가능",
+      "dialable_no": "아웃바운드 전용",
+      "height_label": "키:",
+      "last_seen_label": "마지막으로 본 시간:",
+      "agent_label": "대리인:",
+      "privacy_note": "피어 IP는 앱에 로컬로만 저장되며 어디에도 전송되지 않습니다. 다시 숨기려면 끄세요."
+    },
     "port_reachability": {
       "title": "포트 연결성",
       "active_upnp": "활성(UPnP) — TCP 38291 열림",
@@ -839,8 +854,21 @@
       "already_added": "이미 추가됨",
       "add_feed": "피드 추가"
     },
+    "browse": {
+      "remote_filter_warning": "귀하는 원격 제안만 보고 계십니다. 귀하의 지역 제안은 이 필터에 의해 숨겨집니다.",
+      "switch_to_all": "모두로 전환",
+      "auto_shared_hint": "귀하의 제안은 P2P를 통해 연결된 동료와 자동으로 공유됩니다. 수동 설정이 필요하지 않습니다.",
+      "nat_faq_title": "NAT 또는 CGNAT 뒤에 있습니까?",
+      "nat_faq_receiving_label": "다른 사람으로부터 제안 받기",
+      "nat_faq_receiving_body": "항상 작동합니다. 노드는 NAT 상태에 관계없이 공개적으로 연결 가능한 피어에서 가져옵니다. 일반 인터넷 연결이면 누구나 마켓플레이스를 탐색할 수 있습니다.",
+      "nat_faq_sharing_label": "귀하의 제안을 다른 사람들과 공유하기",
+      "nat_faq_sharing_body": "노드에 연결할 수 있어야 합니다. 피어는 http://<your-ip>:38300/offers/feed에서 가져옵니다. 이는 공개 IPv4 및 개방형 포트 38300을 의미합니다. 외부 엔드포인트가 감지되면 데스크탑 지갑이 자동으로 UPnP 포트 전달을 시도합니다.",
+      "nat_faq_cgnat_label": "CGNAT 또는 엄격한 NAT 뒤",
+      "nat_faq_cgnat_body": "다른 사람의 제안을 계속 구매할 수 있습니다. 다른 사람이 귀하의 제안을 볼 수 있도록 하는 옵션은 다음과 같습니다: (a) ISP에 공개 IPv4를 요청하거나, (b) VPS에서 iriumd를 실행하거나, (c) `irium-wallet Offer-export`를 사용하여 제안을 내보내고 `offer-import`를 통해 이를 가져오는 상대방과 JSON을 직접 공유합니다."
+    },
     "toasts": {
       "offer_created": "생성된 제안: {{id}}",
+      "offer_created_browse_ready": "제안이 성공적으로 생성되었습니다. 찾아보기 탭에 표시됩니다.",
       "offer_taken": "제안 수락 — 동의 {{id}}",
       "feed_added": "피드가 추가됨",
       "min_must_be_positive": "최소 거래 금액은 양수여야 합니다.",
@@ -912,6 +940,7 @@
       "device": "장치",
       "gpu_address_placeholder": "피…",
       "intensity_label": "강도 — {{value}}%",
+      "intensity_mac_note": "GPU 감시가 배치 중간에 커널을 종료하는 것을 방지하기 위해 macOS에서는 강도가 50%로 제한되었습니다. GPU 마이너는 감시 장치 정지를 자동으로 감지하고 어쨌든 발견하면 완전히 중지합니다.",
       "pool_preset": "풀 프리셋"
     },
     "found_blocks": {
@@ -1390,9 +1419,11 @@
       "q9": "마이닝 풀에 어떻게 연결하나요?",
       "a9": "마이닝 페이지로 이동하여 Stratum Pool 탭을 선택하세요. ASIC/현대 채굴기의 경우 풀 URLstratum+tcp://pool.iriumlabs.org:3333을 입력하고, CPU/GPU 채굴기의 경우에는stratum+tcp://pool.iriumlabs.org:3335를 입력하세요. 사용자 이름은 IRM 주소와 작업자 이름이어야 합니다(예: PwjVf7nY19UWW2i9HCEPyZt81975M6iKdW.worker1).",
       "q10": "macOS에서는 Irium Core가 손상되었거나 격리되었다고 말합니다. 어떻게 해결하나요?",
-      "a10": "macOS는 App Store 외부에서 다운로드한 앱을 격리합니다. 이 문제를 해결하려면: (1) 터미널을 엽니다. (2) 실행: xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app - 전체 앱 번들에서 격리 플래그를 제거합니다. 여전히 \"손상됨\"이 표시되면 다음을 실행하세요: codesign --force --deep --sign - /Applications/Irium\\ Core.app 그런 다음 다시 시작하세요. 첫 번째 실행은 Gatekeeper가 서명을 다시 확인하는 동안 10~20초 정도 걸릴 수 있습니다. iriumd 자체가 격리된 경우(로그에 \"iriumd�� 손상됨\"이 표시됨) xattr -d com.apple.quarantine ~/.irium/binaries/iriumd를 실행하여 노드 바이너리만 격리 해제합니다.",
+      "a10": "macOS는 App Store 외부에서 다운로드한 앱을 격리합니다. 이 문제를 해결하려면: (1) 터미널을 엽니다. (2) 실행: xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app - 전체 앱 번들에서 격리 플래그를 제거합니다. 여전히 \"손상됨\"이 표시되면 다음을 실행하세요: codesign --force --deep --sign - /Applications/Irium\\ Core.app 그런 다음 다시 시작하세요. 첫 번째 실행은 Gatekeeper가 서명을 다시 확인하는 동안 10~20초 정도 걸릴 수 있습니다. iriumd 자체가 격리된 경우(로그에 \"iriumd가 손상됨\"이 표시됨) xattr -d com.apple.quarantine ~/.irium/binaries/iriumd를 실행하여 노드 바이너리만 격리 해제합니다.",
       "q11": "내 노드에 블록이 격리되어 있습니다. 어떻게 회복하나요?",
-      "a11": "iriumd는 검증할 수 없는 블록 파일을 격리합니다(일반적으로 쓰기 도중 충돌이 발생하거나 재구성이 손상된 후). 격리된 블록은 ~/.irium/blocks/orphaned_<타임스탬프>/에 있습니다. 위의 격리된 블록 복구 섹션에서 이를 지울 수 있습니다(먼저 노드를 중지하세요). 노드는 다음 시작 시 자동으로 피어에서 누락된 블록을 다시 가져옵니다. 재동기화가 동일한 높이에서 멈춘 경우 설정 → 체인 상태 지우기를 사용하여 처음부터 깔끔한 재동기화를 수행하세요(지갑과 계약은 유지됩니다)."
+      "a11": "iriumd는 검증할 수 없는 블록 파일을 격리합니다(일반적으로 쓰기 도중 충돌이 발생하거나 재구성이 손상된 후). 격리된 블록은 ~/.irium/blocks/orphaned_<타임스탬프>/에 있습니다. 위의 격리된 블록 복구 섹션에서 이를 지울 수 있습니다(먼저 노드를 중지하세요). 노드는 다음 시작 시 자동으로 피어에서 누락된 블록을 다시 가져옵니다. 재동기화가 동일한 높이에서 멈춘 경우 설정 → 체인 상태 지우기를 사용하여 처음부터 깔끔한 재동기화를 수행하세요(지갑과 계약은 유지됩니다).",
+      "q12": "나는 NAT 또는 CGNAT 뒤에 있습니다. 내 마켓플레이스 상품이 다른 사람에게 표시되나요?",
+      "a12": "시장에는 도달 가능성 요구 사항이 서로 다른 두 가지 방향이 있습니다. 다른 사람으로부터 제안을 받는 것은 항상 작동합니다. 귀하의 노드는 자신의 NAT 상태에 관계없이 공개적으로 연결 가능한 피어로부터 가져옵니다. 일반적인 인터넷 연결이면 마켓플레이스를 탐색할 수 있습니다. 제안을 공유하려면 노드에 연결할 수 있어야 합니다. 피어는 http://<your-ip>:38300/offers/feed에서 가져옵니다. 이는 공개 IPv4 및 개방형 포트 38300을 의미합니다. 외부 엔드포인트가 감지되면 데스크탑 지갑이 자동으로 UPnP 포트 전달을 시도합니다. CGNAT 또는 엄격한 NAT 뒤에 있고 포트 38300을 노출할 수 없는 경우에도 다른 사람으로부터 제안을 구매할 수 있지만 다른 사람이 귀하의 제안을 볼 수 있도록 하려면 다음을 수행할 수 있습니다. (a) ISP에서 공개 IPv4를 요청하거나, (b) VPS에서 iriumd를 실행하거나, (c) `irium-wallet Offer-export`로 제안을 내보내고 JSON을 직접 공유합니다. 상대방이 이를 `offer-import`로 가져옵니다."
     },
     "port_forwarding": {
       "section_title": "더 나은 연결을 위해 포트를 전달하는 방법",

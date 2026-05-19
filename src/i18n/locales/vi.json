@@ -222,6 +222,21 @@
       "consensus": "Sự đồng thuận",
       "total_supply": "Tổng nguồn cung"
     },
+    "connected_peers": {
+      "title": "Đồng nghiệp được kết nối",
+      "count_one": "{{count}} được kết nối ngang hàng",
+      "count_other": "{{count}} đồng nghiệp đã kết nối",
+      "count": "{{count}} đồng nghiệp đã kết nối",
+      "show_addresses": "Hiển thị địa chỉ IP ngang hàng",
+      "hide_addresses": "Ẩn địa chỉ IP ngang hàng",
+      "empty": "Chưa có đồng nghiệp nào được kết nối. Bắt đầu nút để khám phá các đồng nghiệp.",
+      "dialable_yes": "Có thể quay số",
+      "dialable_no": "Chỉ đi",
+      "height_label": "Chiều cao:",
+      "last_seen_label": "Nhìn thấy lần cuối:",
+      "agent_label": "Đại lý:",
+      "privacy_note": "IP ngang hàng chỉ được lưu trữ cục bộ trong ứng dụng của bạn và không bao giờ được gửi đi bất cứ đâu. Tắt để ẩn chúng một lần nữa."
+    },
     "port_reachability": {
       "title": "Khả năng tiếp cận cổng",
       "active_upnp": "Đang hoạt động (UPnP) - TCP 38291 mở",
@@ -839,8 +854,21 @@
       "already_added": "Đã thêm",
       "add_feed": "Thêm nguồn cấp dữ liệu"
     },
+    "browse": {
+      "remote_filter_warning": "Bạn chỉ đang xem các ưu đãi từ xa. Các ưu đãi địa phương của riêng bạn bị bộ lọc này ẩn đi.",
+      "switch_to_all": "Chuyển sang Tất cả",
+      "auto_shared_hint": "Ưu đãi của bạn được tự động chia sẻ với các đồng nghiệp được kết nối thông qua P2P. Không cần thiết lập thủ công.",
+      "nat_faq_title": "Đằng sau NAT hay CGNAT?",
+      "nat_faq_receiving_label": "Nhận lời đề nghị từ người khác",
+      "nat_faq_receiving_body": "Luôn hoạt động. Nút của bạn tìm nạp từ các nút ngang hàng có thể truy cập công khai bất kể trạng thái NAT của bạn như thế nào — mọi kết nối Internet thông thường đều có thể duyệt qua thị trường.",
+      "nat_faq_sharing_label": "Chia sẻ ưu đãi của bạn với người khác",
+      "nat_faq_sharing_body": "Yêu cầu nút của bạn có thể truy cập được. Các thiết bị ngang hàng tìm nạp từ http://<your-ip>:38300/offers/feed, nghĩa là IPv4 công khai và cổng mở 38300. Ví trên máy tính để bàn sẽ tự động thử chuyển tiếp cổng UPnP khi phát hiện thấy điểm cuối bên ngoài.",
+      "nat_faq_cgnat_label": "Đằng sau CGNAT hoặc NAT nghiêm ngặt",
+      "nat_faq_cgnat_body": "Bạn vẫn có thể MUA ưu đãi từ người khác. Để những người khác nhìn thấy ưu đãi CỦA BẠN, các tùy chọn là: (a) yêu cầu IPv4 công khai từ ISP của bạn, (b) chạy iriumd trên VPS hoặc (c) xuất ưu đãi bằng `xuất-xuất ưu đãi ví irium` và chia sẻ JSON trực tiếp với đối tác của bạn, người nhập nó bằng `ưu đãi-nhập`."
+    },
     "toasts": {
       "offer_created": "Ưu đãi đã tạo: {{id}}",
+      "offer_created_browse_ready": "Ưu đãi được tạo thành công — hiển thị trong tab Duyệt qua",
       "offer_taken": "Đã nhận lời đề nghị — thỏa thuận {{id}}",
       "feed_added": "Đã thêm nguồn cấp dữ liệu",
       "min_must_be_positive": "Số tiền giao dịch tối thiểu phải là số dương",
@@ -912,6 +940,7 @@
       "device": "Thiết bị",
       "gpu_address_placeholder": "P…",
       "intensity_label": "Cường độ — {{value}}%",
+      "intensity_mac_note": "Cường độ được giới hạn ở mức 50% trên macOS để ngăn cơ quan giám sát GPU tiêu diệt hạt nhân giữa đợt. Công cụ khai thác GPU tự động phát hiện các điểm giám sát và dừng lại ngay lập tức nếu nó vẫn nhìn thấy chúng.",
       "pool_preset": "Đặt trước hồ bơi"
     },
     "found_blocks": {
@@ -1392,7 +1421,9 @@
       "q10": "macOS cho biết Irium Core bị hỏng hoặc bị cách ly. Làm cách nào để khắc phục nó?",
       "a10": "macOS cách ly các ứng dụng được tải xuống bên ngoài App Store. Để khắc phục điều này: (1) mở Terminal; (2) chạy: xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app — thao tác này sẽ xóa cờ cách ly khỏi toàn bộ gói ứng dụng. Nếu bạn vẫn thấy \"hư hỏng\", hãy chạy: codesign --force --deep --sign - /Applications/Irium\\ Core.app sau đó khởi chạy lại. Lần khởi chạy đầu tiên có thể mất 10-20 giây trong khi Gatekeeper xác minh lại chữ ký. Nếu bản thân iriumd đã bị cách ly (bạn thấy \"iriumd bị hỏng\" trong nhật ký), hãy chạy: xattr -d com.apple.quarantine ~/.irium/binaries/iriumd để hủy cách ly chỉ nhị phân nút.",
       "q11": "Nút của tôi có các khối cách ly. Làm thế nào để tôi phục hồi?",
-      "a11": "iriud cách ly các tập tin chặn mà nó không thể xác thực (thường là sau sự cố khi ghi giữa chừng hoặc bản reorg bị hỏng). Các khối bị cách ly nằm trong ~/.irium/blocks/orphaned_<timestamp>/. Bạn có thể xóa chúng khỏi phần Khôi phục khối cách ly ở trên (dừng nút trước). Nút sẽ tự động tìm nạp lại các khối bị thiếu từ các nút ngang hàng vào lần bắt đầu tiếp theo. Nếu quá trình đồng bộ lại bị kẹt ở cùng độ cao, hãy sử dụng Cài đặt → Xóa trạng thái chuỗi để đồng bộ lại rõ ràng từ nguồn gốc (ví và các thỏa thuận của bạn được giữ nguyên)."
+      "a11": "iriud cách ly các tập tin chặn mà nó không thể xác thực (thường là sau sự cố khi ghi giữa chừng hoặc bản reorg bị hỏng). Các khối bị cách ly nằm trong ~/.irium/blocks/orphaned_<timestamp>/. Bạn có thể xóa chúng khỏi phần Khôi phục khối cách ly ở trên (dừng nút trước). Nút sẽ tự động tìm nạp lại các khối bị thiếu từ các nút ngang hàng vào lần bắt đầu tiếp theo. Nếu quá trình đồng bộ lại bị kẹt ở cùng độ cao, hãy sử dụng Cài đặt → Xóa trạng thái chuỗi để đồng bộ lại rõ ràng từ nguồn gốc (ví và các thỏa thuận của bạn được giữ nguyên).",
+      "q12": "Tôi đứng sau NAT hoặc CGNAT. Liệu các ưu đãi trên thị trường của tôi có hiển thị với người khác không?",
+      "a12": "Thị trường có hai hướng, với các yêu cầu về khả năng tiếp cận khác nhau. NHẬN ưu đãi từ những người khác luôn hoạt động - nút của bạn tìm nạp từ các nút ngang hàng có thể truy cập công khai bất kể trạng thái NAT của chính bạn; bất kỳ kết nối internet bình thường nào cũng có thể duyệt qua thị trường. CHIA SẺ phiếu mua hàng của bạn yêu cầu nút của bạn phải có thể truy cập được: các đồng nghiệp tìm nạp từ http://<your-ip>:38300/offers/feed, nghĩa là IPv4 công khai và cổng mở 38300. Ví máy tính để bàn tự động thử chuyển tiếp cổng UPnP khi phát hiện điểm cuối bên ngoài. Nếu bạn sử dụng CGNAT hoặc NAT nghiêm ngặt và không thể hiển thị cổng 38300, bạn vẫn có thể MUA ưu đãi từ người khác, nhưng để họ thấy ưu đãi CỦA BẠN, bạn có thể: (a) yêu cầu IPv4 công khai từ ISP của bạn, (b) chạy iriumd trên VPS hoặc (c) xuất ưu đãi bằng `xuất-xuất ưu đãi ví irium` và chia sẻ JSON trực tiếp — đối tác nhập ưu đãi đó bằng `đề nghị-nhập`."
     },
     "port_forwarding": {
       "section_title": "Cách chuyển tiếp cổng để kết nối tốt hơn",

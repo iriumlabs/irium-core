@@ -343,7 +343,7 @@
     },
     "activity": {
       "title": "Activité récente",
-      "empty_chart": "Pas encore d'historique des transactions",
+      "empty_chart": "Aucun historique de transactions pour l'instant",
       "empty_tx_list": "Aucune transaction pour l'instant",
       "load_error": "Impossible de charger les transactions récentes",
       "last_n_txs": "10 dernières émissions",
@@ -559,7 +559,7 @@
       "buyer_label": "Acheteur",
       "seller_label": "Vendeur",
       "agreement_hash": "Hachage d'accord",
-      "agreement_id": "ID d'accord",
+      "agreement_id": "Numéro d'accord",
       "friendly_name_placeholder": "Nom convivial (par exemple « ordinateur portable de John »)",
       "save_label": "Enregistrer l'étiquette",
       "audit_modal_open": "Vérification de l'accord"
@@ -1602,7 +1602,7 @@
       "find_offer_hint": "Trouver une offre du réseau",
       "review_intro": "Confirmez les détails avant d'accepter l'offre",
       "amount_to_lock": "Montant à bloquer",
-      "agreement_id_label": "ID d'accord",
+      "agreement_id_label": "Numéro d'accord",
       "lock_payment_hint": "Verrouillez votre paiement dans le contrat séquestre",
       "offers_loaded": "Offres {{count}} chargées",
       "offer_imported": "Offre importée",

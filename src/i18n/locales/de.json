@@ -222,6 +222,21 @@
       "consensus": "Konsens",
       "total_supply": "Gesamtangebot"
     },
+    "connected_peers": {
+      "title": "Verbundene Kollegen",
+      "count_one": "{{count}} Peer verbunden",
+      "count_other": "{{count}} Peers verbunden",
+      "count": "{{count}} Peers verbunden",
+      "show_addresses": "Peer-IP-Adressen anzeigen",
+      "hide_addresses": "Peer-IP-Adressen ausblenden",
+      "empty": "Es sind noch keine Peers verbunden. Starten Sie den Knoten, um Peers zu erkennen.",
+      "dialable_yes": "Wählbar",
+      "dialable_no": "Nur ausgehend",
+      "height_label": "Höhe:",
+      "last_seen_label": "Zuletzt gesehen:",
+      "agent_label": "Agent:",
+      "privacy_note": "Peer-IPs werden nur lokal in Ihrer App gespeichert und niemals irgendwohin gesendet. Schalten Sie sie aus, um sie wieder auszublenden."
+    },
     "port_reachability": {
       "title": "Port-Erreichbarkeit",
       "active_upnp": "Aktiv (UPnP) – TCP 38291 geöffnet",
@@ -839,8 +854,21 @@
       "already_added": "Bereits hinzugefügt",
       "add_feed": "Feed hinzufügen"
     },
+    "browse": {
+      "remote_filter_warning": "Sie sehen nur Remote-Angebote. Ihre eigenen lokalen Angebote werden durch diesen Filter ausgeblendet.",
+      "switch_to_all": "Wechseln Sie zu Alle",
+      "auto_shared_hint": "Ihre Angebote werden automatisch über P2P mit verbundenen Kollegen geteilt. Keine manuelle Einrichtung erforderlich.",
+      "nat_faq_title": "Hinter NAT oder CGNAT?",
+      "nat_faq_receiving_label": "Angebote von anderen erhalten",
+      "nat_faq_receiving_body": "Funktioniert immer. Ihr Knoten ruft Daten von öffentlich erreichbaren Peers ab, unabhängig von Ihrem eigenen NAT-Status – jede normale Internetverbindung kann den Marktplatz durchsuchen.",
+      "nat_faq_sharing_label": "Teilen Sie Ihre Angebote mit anderen",
+      "nat_faq_sharing_body": "Erfordert, dass Ihr Knoten erreichbar ist. Peers rufen von http://<your-ip>:38300/offers/feed ab, was eine öffentliche IPv4 und einen offenen Port 38300 bedeutet. Das Desktop-Wallet versucht automatisch eine UPnP-Portweiterleitung, wenn ein externer Endpunkt erkannt wird.",
+      "nat_faq_cgnat_label": "Hinter CGNAT oder striktem NAT",
+      "nat_faq_cgnat_body": "Sie können weiterhin Angebote von anderen KAUFEN. Damit andere IHRE Angebote sehen können, gibt es folgende Optionen: (a) Fordern Sie eine öffentliche IPv4 von Ihrem ISP an, (b) führen Sie iriumd auf einem VPS aus oder (c) exportieren Sie das Angebot mit „irium-wallet offer-export“ und teilen Sie das JSON direkt mit Ihrer Gegenpartei, die es mit „offer-import“ importiert."
+    },
     "toasts": {
       "offer_created": "Angebot erstellt: {{id}}",
+      "offer_created_browse_ready": "Angebot erfolgreich erstellt – sichtbar auf der Registerkarte „Durchsuchen“.",
       "offer_taken": "Angebot angenommen – Vereinbarung {{id}}",
       "feed_added": "Futter hinzugefügt",
       "min_must_be_positive": "Der Mindesthandelsbetrag muss eine positive Zahl sein",
@@ -912,6 +940,7 @@
       "device": "Gerät",
       "gpu_address_placeholder": "P…",
       "intensity_label": "Intensität – {{value}}%",
+      "intensity_mac_note": "Die Intensität ist unter macOS auf 50 % begrenzt, um zu verhindern, dass der GPU-Watchdog Kernel mitten im Batch beendet. Der GPU-Miner erkennt Watchdog-Störungen automatisch und stoppt sauber, wenn er sie trotzdem erkennt.",
       "pool_preset": "Pool-Voreinstellung"
     },
     "found_blocks": {
@@ -1392,7 +1421,9 @@
       "q10": "Laut macOS ist Irium Core beschädigt oder unter Quarantäne gestellt. Wie kann ich das Problem beheben?",
       "a10": "macOS stellt außerhalb des App Store heruntergeladene Apps unter Quarantäne. Um dies zu beheben: (1) Öffnen Sie das Terminal; (2) Führen Sie Folgendes aus: xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app – dadurch wird die Quarantäne-Flagge aus dem gesamten App-Bundle entfernt. Wenn immer noch „beschädigt“ angezeigt wird, führen Sie Folgendes aus: codesign --force --deep --sign - /Applications/Irium\\ Core.app und starten Sie es dann neu. Der erste Start kann 10–20 Sekunden dauern, während Gatekeeper die Signatur erneut überprüft. Wenn iriumd selbst unter Quarantäne gestellt wurde (Sie sehen in den Protokollen „iriumd ist beschädigt“), führen Sie Folgendes aus: xattr -d com.apple.quarantine ~/.irium/binaries/iriumd, um nur die Knotenbinärdatei aus der Quarantäne zu entfernen.",
       "q11": "Mein Knoten hat unter Quarantäne gestellte Blöcke. Wie erhole ich mich?",
-      "a11": "iriumd stellt Blockdateien unter Quarantäne, die es nicht validieren kann (typischerweise nach einem Absturz während des Schreibvorgangs oder einer beschädigten Neuorganisation). Unter Quarantäne gestellte Blöcke befinden sich in ~/.irium/blocks/orphaned_<timestamp>/. Sie können sie im Abschnitt „Wiederherstellung isolierter Blöcke“ oben löschen (stoppen Sie zuerst den Knoten). Der Knoten ruft die fehlenden Blöcke beim nächsten Start automatisch erneut von den Peers ab. Wenn die Neusynchronisierung auf derselben Höhe hängen bleibt, verwenden Sie Einstellungen → Kettenstatus löschen für eine saubere Neusynchronisierung von Genesis (Ihre Brieftasche und Vereinbarungen bleiben erhalten)."
+      "a11": "iriumd stellt Blockdateien unter Quarantäne, die es nicht validieren kann (typischerweise nach einem Absturz während des Schreibvorgangs oder einer beschädigten Neuorganisation). Unter Quarantäne gestellte Blöcke befinden sich in ~/.irium/blocks/orphaned_<timestamp>/. Sie können sie im Abschnitt „Wiederherstellung isolierter Blöcke“ oben löschen (stoppen Sie zuerst den Knoten). Der Knoten ruft die fehlenden Blöcke beim nächsten Start automatisch erneut von den Peers ab. Wenn die Neusynchronisierung auf derselben Höhe hängen bleibt, verwenden Sie Einstellungen → Kettenstatus löschen für eine saubere Neusynchronisierung von Genesis (Ihre Brieftasche und Vereinbarungen bleiben erhalten).",
+      "q12": "Ich stehe hinter NAT oder CGNAT. Werden meine Marktplatzangebote für andere sichtbar sein?",
+      "a12": "Der Marktplatz hat zwei Richtungen mit unterschiedlichen Anforderungen an die Erreichbarkeit. Das EMPFANGEN von Angeboten von anderen funktioniert immer – Ihr Knoten ruft von öffentlich erreichbaren Peers ab, unabhängig von Ihrem eigenen NAT-Status; Mit jeder normalen Internetverbindung kann der Marktplatz durchsucht werden. Für das Teilen Ihrer Angebote muss Ihr Knoten erreichbar sein: Peers rufen von http://<your-ip>:38300/offers/feed ab, was eine öffentliche IPv4 und einen offenen Port 38300 bedeutet. Das Desktop-Wallet versucht automatisch eine UPnP-Portweiterleitung, wenn ein externer Endpunkt erkannt wird. Wenn Sie hinter CGNAT oder striktem NAT stehen und Port 38300 nicht freigeben können, können Sie immer noch Angebote von anderen KAUFEN, aber damit diese IHRE Angebote sehen können, können Sie: (a) eine öffentliche IPv4 von Ihrem ISP anfordern, (b) iriumd auf einem VPS ausführen oder (c) das Angebot mit „irium-wallet offer-export“ exportieren und den JSON direkt teilen – die Gegenpartei importiert ihn mit „offer-import“."
     },
     "port_forwarding": {
       "section_title": "So leiten Sie Ports für eine bessere Konnektivität weiter",

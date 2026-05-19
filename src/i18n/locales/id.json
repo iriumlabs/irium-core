@@ -222,6 +222,21 @@
       "consensus": "Konsensus",
       "total_supply": "Pasokan total"
     },
+    "connected_peers": {
+      "title": "Rekan yang Terhubung",
+      "count_one": "{{count}} rekan terhubung",
+      "count_other": "{{count}} rekan terhubung",
+      "count": "{{count}} rekan terhubung",
+      "show_addresses": "Tampilkan alamat IP rekan",
+      "hide_addresses": "Sembunyikan alamat IP rekan",
+      "empty": "Belum ada rekan yang terhubung. Mulai node untuk menemukan rekan.",
+      "dialable_yes": "Dapat dihubungi",
+      "dialable_no": "Hanya keluar",
+      "height_label": "Tinggi:",
+      "last_seen_label": "Terakhir terlihat:",
+      "agent_label": "Agen:",
+      "privacy_note": "IP rekan hanya disimpan secara lokal di aplikasi Anda dan tidak pernah dikirim ke mana pun. Nonaktifkan untuk menyembunyikannya lagi."
+    },
     "port_reachability": {
       "title": "Keterjangkauan Pelabuhan",
       "active_upnp": "Aktif (UPnP) — TCP 38291 terbuka",
@@ -839,8 +854,21 @@
       "already_added": "Sudah ditambahkan",
       "add_feed": "Tambahkan umpan"
     },
+    "browse": {
+      "remote_filter_warning": "Anda hanya melihat penawaran jarak jauh. Penawaran lokal Anda disembunyikan oleh filter ini.",
+      "switch_to_all": "Beralih ke Semua",
+      "auto_shared_hint": "Penawaran Anda secara otomatis dibagikan dengan rekan-rekan yang terhubung melalui P2P. Tidak diperlukan pengaturan manual.",
+      "nat_faq_title": "Di belakang NAT atau CGNAT?",
+      "nat_faq_receiving_label": "Menerima tawaran dari orang lain",
+      "nat_faq_receiving_body": "Selalu berhasil. Node Anda mengambil dari rekan yang dapat dijangkau secara publik, apa pun status NAT Anda — koneksi internet normal apa pun dapat menjelajahi pasar.",
+      "nat_faq_sharing_label": "Berbagi penawaran Anda dengan orang lain",
+      "nat_faq_sharing_body": "Mengharuskan node Anda dapat dijangkau. Rekan mengambil dari http://<your-ip>:38300/offers/feed, yang berarti IPv4 publik dan port terbuka 38300. Dompet desktop mencoba penerusan port UPnP secara otomatis ketika titik akhir eksternal terdeteksi.",
+      "nat_faq_cgnat_label": "Di belakang CGNAT atau NAT yang ketat",
+      "nat_faq_cgnat_body": "Anda masih dapat MEMBELI penawaran dari orang lain. Agar orang lain dapat melihat penawaran ANDA, pilihannya adalah: (a) meminta IPv4 publik dari ISP Anda, (b) menjalankan iriumd di VPS, atau (c) mengekspor penawaran dengan `irium-wallet offer-export` dan membagikan JSON secara langsung dengan rekanan Anda, yang mengimpornya dengan `offer-import`."
+    },
     "toasts": {
       "offer_created": "Penawaran dibuat: {{id}}",
+      "offer_created_browse_ready": "Penawaran berhasil dibuat — terlihat di tab Telusuri",
       "offer_taken": "Penawaran diambil — persetujuan {{id}}",
       "feed_added": "Umpan ditambahkan",
       "min_must_be_positive": "Jumlah perdagangan minimum harus berupa angka positif",
@@ -912,6 +940,7 @@
       "device": "Perangkat",
       "gpu_address_placeholder": "P…",
       "intensity_label": "Intensitas — {{value}}%",
+      "intensity_mac_note": "Intensitas dibatasi hingga 50% di macOS untuk mencegah pengawas GPU mematikan kernel di tengah batch. Penambang GPU secara otomatis mendeteksi penghentian pengawas dan berhenti dengan bersih jika ia tetap melihatnya.",
       "pool_preset": "Prasetel Kolam Renang"
     },
     "found_blocks": {
@@ -1068,7 +1097,7 @@
       "local_db_note_before": "Ini menambah Anda",
       "local_db_note_emphasis": "lokal",
       "local_db_note_after": "basis data reputasi. Hanya Anda yang melihatnya. Penjual dapat meminta ekspor yang ditandatangani nanti jika kedua belah pihak setuju.",
-      "response_time_label": "Proof response time (optional, seconds)",
+      "response_time_label": "Waktu respons bukti (opsional, detik)",
       "response_time_placeholder": "misalnya 3600 selama 1 jam",
       "response_time_hint": "Berapa lama dari pendanaan hingga penyerahan bukti. Digunakan untuk sinyal reputasi avg_proof_response_secs.",
       "cancel": "Membatalkan",
@@ -1392,7 +1421,9 @@
       "q10": "macOS menyatakan Irium Core rusak atau dikarantina. Bagaimana cara memperbaikinya?",
       "a10": "macOS mengkarantina aplikasi yang diunduh di luar App Store. Untuk memperbaikinya: (1) buka Terminal; (2) jalankan: xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app — ini menghapus tanda karantina dari seluruh app bundle. Jika Anda masih melihat \"rusak\", jalankan: codesign --force --deep --sign - /Applications/Irium\\ Core.app lalu luncurkan kembali. Peluncuran pertama mungkin memakan waktu 10-20 detik sementara Gatekeeper memverifikasi ulang tanda tangan. Jika iriumd sendiri dikarantina (Anda melihat \"iriumd rusak\" di log), jalankan: xattr -d com.apple.quarantine ~/.irium/binaries/iriumd untuk membatalkan karantina hanya biner node.",
       "q11": "Node saya telah mengkarantina blok. Bagaimana cara saya pulih?",
-      "a11": "iriumd karantina memblokir file yang tidak dapat divalidasi (biasanya setelah crash saat penulisan atau reorg yang rusak). Blok yang dikarantina ada di ~/.irium/blocks/orphaned_<timestamp>/. Anda dapat menghapusnya dari bagian Pemulihan Blok Karantina di atas (hentikan node terlebih dahulu). Node akan mengambil kembali blok yang hilang dari rekannya secara otomatis pada permulaan berikutnya. Jika sinkronisasi ulang terhenti pada ketinggian yang sama, gunakan Pengaturan → Hapus status rantai untuk sinkronisasi ulang yang bersih dari genesis (dompet dan perjanjian Anda dipertahankan)."
+      "a11": "iriumd karantina memblokir file yang tidak dapat divalidasi (biasanya setelah crash saat penulisan atau reorg yang rusak). Blok yang dikarantina ada di ~/.irium/blocks/orphaned_<timestamp>/. Anda dapat menghapusnya dari bagian Pemulihan Blok Karantina di atas (hentikan node terlebih dahulu). Node akan mengambil kembali blok yang hilang dari rekannya secara otomatis pada permulaan berikutnya. Jika sinkronisasi ulang terhenti pada ketinggian yang sama, gunakan Pengaturan → Hapus status rantai untuk sinkronisasi ulang yang bersih dari genesis (dompet dan perjanjian Anda dipertahankan).",
+      "q12": "Saya mendukung NAT atau CGNAT. Apakah penawaran pasar saya akan terlihat oleh orang lain?",
+      "a12": "Pasar memiliki dua arah, dengan persyaratan keterjangkauan yang berbeda. MENERIMA penawaran dari orang lain selalu berhasil — node Anda mengambil dari rekan yang dapat dijangkau secara publik, apa pun status NAT Anda; koneksi internet normal apa pun dapat menelusuri pasar. BERBAGI penawaran Anda mengharuskan node Anda dapat dijangkau: rekan mengambil dari http://<ip-Anda>:38300/offers/feed, yang berarti IPv4 publik dan port terbuka 38300. Dompet desktop mencoba penerusan port UPnP secara otomatis ketika titik akhir eksternal terdeteksi. Jika Anda menggunakan CGNAT atau NAT ketat dan tidak dapat mengekspos port 38300, Anda masih dapat MEMBELI penawaran dari orang lain, namun agar mereka dapat melihat penawaran ANDA, Anda dapat: (a) meminta IPv4 publik dari ISP Anda, (b) menjalankan iriumd di VPS, atau (c) mengekspor penawaran dengan `irium-wallet offer-export` dan membagikan JSON secara langsung — pihak lawan mengimpornya dengan `offer-import`."
     },
     "port_forwarding": {
       "section_title": "Cara meneruskan port untuk konektivitas yang lebih baik",
