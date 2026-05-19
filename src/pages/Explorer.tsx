@@ -20,6 +20,13 @@ type PageTab = 'overview' | 'rich_list' | 'pool_stats';
 
 const HALVING_INTERVAL = 50_000;
 
+// Founder-vesting CLTV unlock height. Decoded from the genesis transaction's
+// output script: `03 f067 02 b1 75 76 a9 14 …` → height 0x0267f0 = 158704,
+// followed by OP_CHECKLOCKTIMEVERIFY OP_DROP and a standard P2PKH script.
+// Surfaced in the Rich List as a transparency signal so the community can see
+// where the missing supply lives and when it becomes spendable.
+const FOUNDER_VESTING_UNLOCK_HEIGHT = 158_704;
+
 function blockReward(height: number): string {
   const halvings = Math.floor(height / HALVING_INTERVAL);
   const reward = 50 * Math.pow(0.5, halvings);
@@ -815,6 +822,58 @@ function RichListSection({ running }: { running: boolean }) {
                 </tr>
               </thead>
               <tbody>
+                {/* Synthetic Founder Vesting row — sits above rank #1 when the
+                    rich list does not account for all minted supply. The
+                    delta (totalSupply - sum(entries)) is in non-P2PKH
+                    outputs; the bulk is the 3.5M IRM CLTV-locked genesis
+                    allocation unlocking at height 158,704 (decoded from the
+                    genesis transaction's output script: <H> OP_CLTV OP_DROP
+                    <standard P2PKH>). Any extra over 3.5M is multisig
+                    settlement-agreement outputs. */}
+                {lockedSats > 0 && (
+                  <tr
+                    style={{
+                      borderBottom: '2px solid rgba(245,158,11,0.40)',
+                      background: 'rgba(245,158,11,0.08)',
+                    }}
+                    title={t('explorer.richlist.founder_vesting_tooltip')}
+                  >
+                    <td className="pl-4 pr-2 py-2.5 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1.5" style={{ fontFamily: '"Space Grotesk", sans-serif', fontSize: 13, fontWeight: 800, color: '#fbbf24' }}>
+                        <Lock size={14} />
+                      </span>
+                    </td>
+                    <td className="px-2 py-2.5" style={{ minWidth: 280 }}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span style={{ fontFamily: '"Space Grotesk", sans-serif', fontSize: 12.5, fontWeight: 700, color: '#fde68a' }}>
+                          {t('explorer.richlist.founder_vesting_label')}
+                        </span>
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-bold rounded"
+                          style={{ background: 'rgba(245,158,11,0.25)', border: '1px solid rgba(245,158,11,0.70)', color: '#fde68a', letterSpacing: '0.10em', boxShadow: '0 0 10px rgba(245,158,11,0.30)' }}
+                        >
+                          {t('explorer.richlist.locked_badge')}
+                        </span>
+                        <span style={{ fontSize: 10.5, color: 'rgba(253,230,138,0.65)', fontFamily: '"JetBrains Mono", monospace' }}>
+                          {t('explorer.richlist.unlocks_at_height', { height: FOUNDER_VESTING_UNLOCK_HEIGHT.toLocaleString('en-US') })}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-2.5 text-right whitespace-nowrap">
+                      <span style={{ fontSize: 12, color: '#fbbf24', fontFamily: '"JetBrains Mono", monospace', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>
+                        {formatIRM(lockedSats)}
+                      </span>
+                    </td>
+                    <td className="px-2 py-2.5 text-right whitespace-nowrap">
+                      <span style={{ fontSize: 11, color: 'rgba(253,230,138,0.85)', fontFamily: '"JetBrains Mono", monospace', fontVariantNumeric: 'tabular-nums' }}>
+                        {lockedPct.toFixed(2)}%
+                      </span>
+                    </td>
+                    <td className="pl-2 pr-4 py-2.5 text-right whitespace-nowrap">
+                      <span style={{ fontSize: 11, color: 'rgba(253,230,138,0.50)', fontFamily: '"JetBrains Mono", monospace' }}>—</span>
+                    </td>
+                  </tr>
+                )}
                 {entries.map((e) => {
                   const { color: rankColor, Icon: RankIcon } = rankAccent(e.rank);
                   const isMine = myAddrs.has(e.address);
@@ -914,12 +973,10 @@ function RichListSection({ running }: { running: boolean }) {
             </div>
           )}
 
-          {/* Multi-address explanation — shown only when at least one rich-list
-              entry matches one of the wallet's addresses. The rich list is keyed
-              by single addresses, while the TopBar's hero balance aggregates
-              every address in the wallet, so the two numbers will not match
-              when the user has multiple addresses. Surface this expectation
-              explicitly so the user doesn't read it as a bug. */}
+          {/* Multi-address explanation + sum — shown only when at least one
+              rich-list entry matches one of the wallet's addresses. The rich
+              list is keyed by single addresses; we surface both the running
+              total of the user's mine matches AND the multi-address caveat. */}
           {entries.some((e) => myAddrs.has(e.address)) && (
             <div
               className="flex items-start gap-2.5 px-4 py-3"
@@ -930,11 +987,41 @@ function RichListSection({ running }: { running: boolean }) {
               }}
             >
               <UserCircle2 size={14} style={{ color: '#a78bfa', marginTop: 1, flexShrink: 0 }} />
-              <p style={{ fontSize: 11.5, color: 'rgba(237,233,254,0.85)', lineHeight: 1.5 }}>
-                {t('explorer.richlist.you_note')}
-              </p>
+              <div className="flex-1 min-w-0">
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#c4b5fd', fontFamily: '"JetBrains Mono", monospace' }}>
+                  {t('explorer.richlist.your_addresses_total', {
+                    total: formatIRM(entries.filter((e) => myAddrs.has(e.address)).reduce((acc, e) => acc + e.balance_sats, 0)),
+                  })}
+                </p>
+                <p className="mt-1" style={{ fontSize: 11.5, color: 'rgba(237,233,254,0.75)', lineHeight: 1.5 }}>
+                  {t('explorer.richlist.you_note')}
+                </p>
+              </div>
             </div>
           )}
+
+          {/* Address prefix legend. Both "P…" and "Q…" leading characters
+              appear in the rich list — common assumption is that they
+              indicate different formats, but they don't. Both come from the
+              SAME P2PKH version byte (0x39); base58check encoding maps
+              certain underlying pubkey-hashes to addresses starting with P
+              and others to Q, purely as a numeric property of the encoding.
+              A separate multisig version byte (0x28) exists for 2-of-N
+              wallets, but the rich list excludes those — every visible row
+              here is a single-sig P2PKH. */}
+          <div
+            className="flex items-start gap-2.5 px-4 py-3"
+            style={{
+              background: 'rgba(110,198,255,0.04)',
+              border: '1px solid rgba(110,198,255,0.12)',
+              borderRadius: 8,
+            }}
+          >
+            <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 16, color: 'rgba(110,198,255,0.65)', marginTop: -2, flexShrink: 0 }}>P/Q</span>
+            <p style={{ fontSize: 11.5, color: 'rgba(238,240,255,0.70)', lineHeight: 1.5 }}>
+              {t('explorer.richlist.prefix_note')}
+            </p>
+          </div>
 
           {/* Load more — only offered when the current view is the top-100 page */}
           <div className="flex flex-col items-center gap-1.5">
