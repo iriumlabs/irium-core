@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import {
   Copy, CheckCircle2, RefreshCw, Search,
   Cpu, Users, Layers, Clock, Activity, Zap, TrendingUp, Coins,
-  Wallet, ArrowRightLeft, Trophy, Medal, Award, Server,
+  Wallet, ArrowRightLeft, Trophy, Medal, Award, Server, UserCircle2,
 } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { rpc, wallet } from '../lib/tauri';
@@ -777,25 +777,26 @@ function RichListSection({ running }: { running: boolean }) {
                           #{e.rank}
                         </span>
                       </td>
-                      {/* Address — truncated, click-to-copy, optional You badge */}
-                      <td className="px-2 py-2.5">
-                        <div className="flex items-center gap-2">
+                      {/* Address — full 34-char display, click-to-copy, prominent You badge */}
+                      <td className="px-2 py-2.5" style={{ minWidth: 280 }}>
+                        <div className="flex items-center gap-2 flex-wrap">
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(e.address);
                               toast.success(t('common.copy'));
                             }}
-                            title={e.address}
+                            title={t('explorer.richlist.click_to_copy')}
                             className="font-mono text-left hover:underline"
-                            style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11.5, color: isMine ? '#a78bfa' : 'rgba(255,255,255,0.70)' }}
+                            style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10.5, letterSpacing: '0.01em', color: isMine ? '#a78bfa' : 'rgba(255,255,255,0.78)', wordBreak: 'break-all' }}
                           >
-                            {shortAddr(e.address)}
+                            {e.address}
                           </button>
                           {isMine && (
                             <span
-                              className="px-1.5 py-0.5 text-[9px] font-bold rounded"
-                              style={{ background: 'rgba(167,139,250,0.18)', border: '1px solid rgba(167,139,250,0.40)', color: '#c4b5fd', letterSpacing: '0.08em' }}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-bold rounded"
+                              style={{ background: 'rgba(167,139,250,0.30)', border: '1px solid rgba(167,139,250,0.75)', color: '#ede9fe', letterSpacing: '0.10em', boxShadow: '0 0 10px rgba(167,139,250,0.30)' }}
                             >
+                              <UserCircle2 size={11} />
                               {t('explorer.richlist.you_badge')}
                             </span>
                           )}
@@ -826,6 +827,28 @@ function RichListSection({ running }: { running: boolean }) {
             </table>
             </div>
           </div>
+
+          {/* Multi-address explanation — shown only when at least one rich-list
+              entry matches one of the wallet's addresses. The rich list is keyed
+              by single addresses, while the TopBar's hero balance aggregates
+              every address in the wallet, so the two numbers will not match
+              when the user has multiple addresses. Surface this expectation
+              explicitly so the user doesn't read it as a bug. */}
+          {entries.some((e) => myAddrs.has(e.address)) && (
+            <div
+              className="flex items-start gap-2.5 px-4 py-3"
+              style={{
+                background: 'rgba(167,139,250,0.08)',
+                border: '1px solid rgba(167,139,250,0.25)',
+                borderRadius: 8,
+              }}
+            >
+              <UserCircle2 size={14} style={{ color: '#a78bfa', marginTop: 1, flexShrink: 0 }} />
+              <p style={{ fontSize: 11.5, color: 'rgba(237,233,254,0.85)', lineHeight: 1.5 }}>
+                {t('explorer.richlist.you_note')}
+              </p>
+            </div>
+          )}
 
           {/* Load more — only offered when the current view is the top-100 page */}
           <div className="flex flex-col items-center gap-1.5">

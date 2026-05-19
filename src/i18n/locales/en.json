@@ -1248,6 +1248,8 @@
       "col_percentage": "% of Supply",
       "col_utxos": "UTXOs",
       "you_badge": "You",
+      "you_note": "One of these entries is one of your wallet addresses. Your wallet may hold multiple addresses; the total balance shown in the top bar aggregates every address you own. The rich list ranks each address individually, so a single row only reflects that one address.",
+      "click_to_copy": "Click to copy",
       "refresh": "Refresh",
       "loading": "Loading rich list…",
       "load_more": "Load top 500",
