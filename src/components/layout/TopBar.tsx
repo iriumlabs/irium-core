@@ -32,22 +32,28 @@ const TopBar = memo(function TopBar() {
   const prevBalance = useRef<number | null>(null);
   const notifRef    = useRef<HTMLDivElement>(null);
 
-  // The TopBar mirrors whichever address the user has selected on the Wallet
-  // page (or the primary by default). The fallback to wallet-wide
-  // balance.confirmed only applies before addresses have loaded for the first
-  // time — once addresses is non-empty we trust addresses[idx].balance (which
-  // may be 0 for an empty address, or undefined if the per-address RPC
-  // balance call timed out). Without this gating, a slow node could cause the
-  // TopBar to show the wallet-wide aggregate while the Wallet page's hero
-  // correctly shows 0 for the selected address.
+  // The TopBar shows the user's TOTAL spendable balance across every wallet
+  // address. Previously it mirrored the Wallet page's selected-address
+  // balance, which surprised users who held funds across multiple addresses
+  // (e.g. a mining address plus a savings address) — they'd see the TopBar
+  // disagree with the rich list's sum and wonder which one was right. Total
+  // matches the mental model of "this is my net worth". When a per-address
+  // balance came back undefined (slow RPC), the wallet binary's confirmed
+  // total is the safer fallback.
+  const summedAddressBalances = addresses.reduce(
+    (acc, a) => acc + (a.balance ?? 0),
+    0,
+  );
   const displayedConfirmed = addresses.length > 0
-    ? (addresses[activeAddrIdx]?.balance ?? 0)
+    ? summedAddressBalances
     : (balance?.confirmed ?? 0);
-  // Badge text mirrors the wallet hero / address card / manage panel via
-  // the shared getAddressBadgeText helper, so custom labels (e.g.
-  // "Mining") propagate everywhere automatically.
+  // Badge text reflects the aggregate when there's more than one address;
+  // for a single-address wallet the user's own label (or the primary
+  // marker) is more informative and matches the Wallet page's hero card.
   const activeAddr = addresses[activeAddrIdx]?.address;
-  const balanceLabelText = addresses.length > 0 && activeAddr
+  const balanceLabelText = addresses.length > 1
+    ? t('topbar.balance_all_addresses', { count: addresses.length })
+    : addresses.length === 1 && activeAddr
     ? getAddressBadgeText(activeAddr, activeAddrIdx, addressLabels)
     : null;
 

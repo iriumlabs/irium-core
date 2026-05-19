@@ -65,6 +65,7 @@
     "address_balance_tooltip": "{{label}} address balance",
     "wallet_balance_tooltip": "Wallet balance",
     "unconfirmed_tooltip": "Unconfirmed (incoming) balance",
+    "balance_all_addresses": "All addresses · {{count}}",
     "stop_button": "Stop",
     "start_node_button": "Start Node",
     "clear_all": "Clear all",
@@ -836,8 +837,14 @@
       "already_added": "Already added",
       "add_feed": "Add feed"
     },
+    "browse": {
+      "remote_filter_warning": "You are viewing remote offers only. Your own local offers are hidden by this filter.",
+      "switch_to_all": "Switch to All",
+      "network_visibility_hint": "Your offers are visible to you immediately. For other users to see them, they must add your node's offers feed: `feed-add http://YOUR-IP:38300/offers/feed`. Peers also discover your feed automatically via the P2P handshake once they connect to your node."
+    },
     "toasts": {
       "offer_created": "Offer created: {{id}}",
+      "offer_created_browse_ready": "Offer created successfully — visible in Browse tab",
       "offer_taken": "Offer taken — agreement {{id}}",
       "feed_added": "Feed added",
       "min_must_be_positive": "Minimum trade amount must be a positive number",
@@ -1254,7 +1261,13 @@
       "col_percentage": "% of Supply",
       "col_utxos": "UTXOs",
       "you_badge": "You",
-      "you_note": "One of these entries is one of your wallet addresses. Your wallet may hold multiple addresses; the total balance shown in the top bar aggregates every address you own. The rich list ranks each address individually, so a single row only reflects that one address.",
+      "you_note": "The rich list ranks each address individually, so each \"You\" row only reflects that one address's balance. Your wallet may hold several addresses — the top bar shows the sum across all of them.",
+      "your_addresses_total": "Your addresses total: {{total}}",
+      "founder_vesting_label": "Founder Vesting (CLTV-locked at genesis)",
+      "locked_badge": "LOCKED",
+      "unlocks_at_height": "unlocks at height #{{height}}",
+      "founder_vesting_tooltip": "Founder allocation locked at genesis via CLTV timelock. Not spendable until the lock height is reached.",
+      "prefix_note": "Both P and Q prefix addresses are standard single-signature wallet addresses using the same version byte 0x39. The leading character difference is a base58 encoding property of the underlying public key hash — not a type difference.",
       "click_to_copy": "Click to copy",
       "refresh": "Refresh",
       "loading": "Loading rich list…",
