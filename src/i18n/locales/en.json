@@ -1261,7 +1261,7 @@
       "locked_badge": "LOCKED",
       "unlocks_at_height": "unlocks at height #{{height}}",
       "founder_vesting_tooltip": "Founder allocation locked at genesis via CLTV timelock. Not spendable until the lock height is reached.",
-      "prefix_note": "Address prefixes: every visible row is a single-signature P2PKH address. Both \"P…\" and \"Q…\" leading characters come from the same P2PKH version byte (0x39); base58check encoding maps some underlying public-key-hashes to addresses starting with P and others to Q purely as a property of the encoding. Multisig addresses (used for 2-of-N settlement wallets) use a separate version byte and are excluded from the rich list.",
+      "prefix_note": "Both P and Q prefix addresses are standard single-signature wallet addresses using the same version byte 0x39. The leading character difference is a base58 encoding property of the underlying public key hash — not a type difference.",
       "click_to_copy": "Click to copy",
       "refresh": "Refresh",
       "loading": "Loading rich list…",

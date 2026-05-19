@@ -728,6 +728,25 @@ function RichListSection({ running }: { running: boolean }) {
     return () => clearInterval(id);
   }, [entries]);
 
+  // Rich-list-specific balance formatter. Unlike the wallet-wide formatIRM()
+  // (which obeys the user's currency preference and trims fractional
+  // zeroes), the rich list switches unit based on the exact value: whole
+  // IRM amounts (every coinbase reward and the founder vest are exact
+  // multiples of 1 IRM) display as "12,345 IRM"; anything carrying
+  // fractional sats — typical for change outputs and settlement leftovers
+  // — displays as raw sats so the user sees the precise on-chain value
+  // instead of a 4-decimal rounding. Applied to every numeric column in
+  // the table, the founder-vesting row, the Locked / Vested panel, and
+  // the "Your addresses total" footer.
+  const formatRichListBalance = (balanceSats: number): string => {
+    const isWholeNumber = balanceSats % 100_000_000 === 0;
+    if (isWholeNumber) {
+      const irm = balanceSats / 100_000_000;
+      return `${irm.toLocaleString('en-US')} IRM`;
+    }
+    return `${balanceSats.toLocaleString('en-US')} sats`;
+  };
+
   if (!running) {
     return (
       <div className="py-10 text-center text-sm" style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.07)', borderRadius: 8, color: 'rgba(255,255,255,0.30)' }}>
@@ -762,7 +781,7 @@ function RichListSection({ running }: { running: boolean }) {
           {totalSupply > 0 && (
             <div className="mt-1 space-y-0.5" style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11 }}>
               <p style={{ color: 'rgba(110,198,255,0.55)' }}>
-                {t('explorer.richlist.circulating_supply')}: <span style={{ color: '#34d399' }}>{formatIRM(circulatingSats)}</span>
+                {t('explorer.richlist.circulating_supply')}: <span style={{ color: '#34d399' }}>{formatRichListBalance(circulatingSats)}</span>
                 {updatedAgoSec !== null && (
                   <span className="ml-2" style={{ color: 'rgba(255,255,255,0.30)', fontSize: 10 }}>
                     · {t('explorer.richlist.updated_ago', { seconds: updatedAgoSec })}
@@ -770,7 +789,7 @@ function RichListSection({ running }: { running: boolean }) {
                 )}
               </p>
               <p style={{ color: 'rgba(110,198,255,0.55)' }}>
-                {t('explorer.richlist.total_supply_with_vested')}: <span style={{ color: '#d4eeff' }}>{formatIRM(totalSupply)}</span>{' '}
+                {t('explorer.richlist.total_supply_with_vested')}: <span style={{ color: '#d4eeff' }}>{formatRichListBalance(totalSupply)}</span>{' '}
                 <span style={{ color: 'rgba(255,255,255,0.30)' }}>{t('explorer.richlist.at_height', { height: genHeight.toLocaleString('en-US') })}</span>
               </p>
             </div>
@@ -861,7 +880,7 @@ function RichListSection({ running }: { running: boolean }) {
                     </td>
                     <td className="px-2 py-2.5 text-right whitespace-nowrap">
                       <span style={{ fontSize: 12, color: '#fbbf24', fontFamily: '"JetBrains Mono", monospace', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>
-                        {formatIRM(lockedSats)}
+                        {formatRichListBalance(lockedSats)}
                       </span>
                     </td>
                     <td className="px-2 py-2.5 text-right whitespace-nowrap">
@@ -920,7 +939,7 @@ function RichListSection({ running }: { running: boolean }) {
                       {/* Balance (IRM) — exact, derived from balance_sats to avoid f64 loss */}
                       <td className="px-2 py-2.5 text-right whitespace-nowrap">
                         <span style={{ fontSize: 12, color: '#34d399', fontFamily: '"JetBrains Mono", monospace', fontVariantNumeric: 'tabular-nums' }}>
-                          {formatIRM(e.balance_sats)}
+                          {formatRichListBalance(e.balance_sats)}
                         </span>
                       </td>
                       {/* % of supply */}
@@ -964,7 +983,7 @@ function RichListSection({ running }: { running: boolean }) {
                   {t('explorer.richlist.locked_title')}
                 </p>
                 <p className="mt-1" style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 13, color: '#fde68a' }}>
-                  {formatIRM(lockedSats)} <span style={{ color: 'rgba(253,230,138,0.60)', fontSize: 11 }}>({lockedPct.toFixed(2)}% {t('explorer.richlist.of_total_supply')})</span>
+                  {formatRichListBalance(lockedSats)} <span style={{ color: 'rgba(253,230,138,0.60)', fontSize: 11 }}>({lockedPct.toFixed(2)}% {t('explorer.richlist.of_total_supply')})</span>
                 </p>
                 <p className="mt-1.5" style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.55)', lineHeight: 1.5 }}>
                   {t('explorer.richlist.locked_note')}
@@ -990,7 +1009,7 @@ function RichListSection({ running }: { running: boolean }) {
               <div className="flex-1 min-w-0">
                 <p style={{ fontSize: 12, fontWeight: 700, color: '#c4b5fd', fontFamily: '"JetBrains Mono", monospace' }}>
                   {t('explorer.richlist.your_addresses_total', {
-                    total: formatIRM(entries.filter((e) => myAddrs.has(e.address)).reduce((acc, e) => acc + e.balance_sats, 0)),
+                    total: formatRichListBalance(entries.filter((e) => myAddrs.has(e.address)).reduce((acc, e) => acc + e.balance_sats, 0)),
                   })}
                 </p>
                 <p className="mt-1" style={{ fontSize: 11.5, color: 'rgba(237,233,254,0.75)', lineHeight: 1.5 }}>
