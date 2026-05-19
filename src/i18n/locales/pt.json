@@ -1230,7 +1230,13 @@
       "load_error": "Não foi possível carregar as estatísticas do pool — o proxy pode estar inacessível",
       "empty": "Estatísticas do pool indisponíveis",
       "accepted_shares": "Ações aceitas",
-      "rejected_shares": "Ações rejeitadas"
+      "rejected_shares": "Ações rejeitadas",
+      "hashrate": "Taxa de hash estimada",
+      "hashrate_collecting": "Coletando dados…",
+      "hashrate_avg_window": "{{minutes}}min média",
+      "confidence_low": "Baixa confiança",
+      "confidence_medium": "Confiança média",
+      "confidence_high": "Alta confiança"
     },
     "richlist": {
       "title": "Melhores suportes IRM",
@@ -1691,6 +1697,12 @@
     "title": "O nó está offline.",
     "body": "Inicie-o no Dashboard para usar esse recurso.",
     "open_dashboard": "Abra o painel"
+  },
+  "quarantine_banner": {
+    "title": "Foram encontrados {{count}} arquivos de bloco em quarentena de uma sessão anterior.",
+    "subtitle": "Esses blocos não podem ser mostrados no histórico de mineração até serem recuperados.",
+    "recover_now": "Recupere agora",
+    "dismiss": "Liberar"
   },
   "titlebar": {
     "miner_active_confirm": "A mineração está ativa. O minerador continuará funcionando em segundo plano.\n\nClique em OK para minimizar para a bandeja ou em Cancelar para manter a janela aberta e interromper a mineração primeiro se quiser sair completamente."

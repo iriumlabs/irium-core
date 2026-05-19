@@ -1230,7 +1230,13 @@
       "load_error": "Không thể tải số liệu thống kê nhóm - proxy có thể không truy cập được",
       "empty": "Không có số liệu thống kê về nhóm",
       "accepted_shares": "Chia sẻ được chấp nhận",
-      "rejected_shares": "Cổ phiếu bị từ chối"
+      "rejected_shares": "Cổ phiếu bị từ chối",
+      "hashrate": "Tỷ lệ băm ước tính",
+      "hashrate_collecting": "Đang thu thập dữ liệu…",
+      "hashrate_avg_window": "Trung bình {{minutes}}phút",
+      "confidence_low": "Độ tin cậy thấp",
+      "confidence_medium": "Độ tin cậy trung bình",
+      "confidence_high": "Độ tin cậy cao"
     },
     "richlist": {
       "title": "Những người nắm giữ IRM hàng đầu",
@@ -1691,6 +1697,12 @@
     "title": "Nút đang ngoại tuyến.",
     "body": "Hãy khởi động nó từ Bảng điều khiển để sử dụng tính năng này.",
     "open_dashboard": "Mở trang tổng quan"
+  },
+  "quarantine_banner": {
+    "title": "Đã tìm thấy {{count}} tệp khối cách ly từ phiên trước đó.",
+    "subtitle": "Các khối này không thể hiển thị trong lịch sử khai thác cho đến khi được phục hồi.",
+    "recover_now": "Khôi phục ngay bây giờ",
+    "dismiss": "Miễn nhiệm"
   },
   "titlebar": {
     "miner_active_confirm": "Khai thác đang hoạt động. Công cụ khai thác sẽ tiếp tục chạy ở chế độ nền.\n\nNhấp vào OK để thu nhỏ vào khay hoặc Hủy để giữ cửa sổ mở và dừng khai thác trước nếu bạn muốn thoát hoàn toàn."

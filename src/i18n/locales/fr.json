@@ -940,7 +940,7 @@
       "gpu_started": "Le mineur GPU a démarré",
       "gpu_stopped": "Le mineur GPU s'est arrêté",
       "pool_url_required": "URL du pool requise",
-      "pool_url_invalid": "Invalid pool URL. Format : strate+tcp://pool.example.com:3333",
+      "pool_url_invalid": "URL du pool non valide. Format : strate+tcp://pool.example.com:3333",
       "worker_required": "Nom du travailleur requis",
       "connecting_to_pool": "Connexion à la piscine…",
       "pool_disconnected_reconnecting": "Piscine déconnectée – reconnexion…",
@@ -1230,7 +1230,13 @@
       "load_error": "Impossible de charger les statistiques du pool : le proxy est peut-être inaccessible",
       "empty": "Statistiques de la piscine indisponibles",
       "accepted_shares": "Actions acceptées",
-      "rejected_shares": "Actions rejetées"
+      "rejected_shares": "Actions rejetées",
+      "hashrate": "Taux de hachage estimé",
+      "hashrate_collecting": "Collecte de données…",
+      "hashrate_avg_window": "{{minutes}}min moyenne",
+      "confidence_low": "Faible confiance",
+      "confidence_medium": "Confiance moyenne",
+      "confidence_high": "Confiance élevée"
     },
     "richlist": {
       "title": "Meilleurs détenteurs d'IRM",
@@ -1691,6 +1697,12 @@
     "title": "Le nœud est hors ligne.",
     "body": "Démarrez-le depuis le tableau de bord pour utiliser cette fonctionnalité.",
     "open_dashboard": "Ouvrir le tableau de bord"
+  },
+  "quarantine_banner": {
+    "title": "{{count}} fichier(s) de bloc mis en quarantaine a été trouvé lors d'une session précédente.",
+    "subtitle": "Ces blocs ne peuvent pas être affichés dans l’historique minier tant qu’ils n’ont pas été récupérés.",
+    "recover_now": "Récupérer maintenant",
+    "dismiss": "Rejeter"
   },
   "titlebar": {
     "miner_active_confirm": "L'exploitation minière est active. Le mineur continuera à fonctionner en arrière-plan.\n\nCliquez sur OK pour réduire dans la barre d'état ou sur Annuler pour garder la fenêtre ouverte et arrêter d'abord l'exploration si vous souhaitez quitter complètement."

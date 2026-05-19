@@ -1230,7 +1230,13 @@
       "load_error": "풀 통계를 로드할 수 없습니다. 프록시에 연결하지 못할 수 있습니다.",
       "empty": "풀 통계를 사용할 수 없습니다.",
       "accepted_shares": "승인된 주식",
-      "rejected_shares": "거부된 주식"
+      "rejected_shares": "거부된 주식",
+      "hashrate": "예상 해시레이트",
+      "hashrate_collecting": "데이터 수집 중…",
+      "hashrate_avg_window": "평균 {{minutes}}분",
+      "confidence_low": "낮은 신뢰도",
+      "confidence_medium": "중간 신뢰도",
+      "confidence_high": "높은 신뢰도"
     },
     "richlist": {
       "title": "상단 IRM 홀더",
@@ -1691,6 +1697,12 @@
     "title": "노드가 오프라인 상태입니다.",
     "body": "이 기능을 사용하려면 대시보드에서 시작하세요.",
     "open_dashboard": "대시보드 열기"
+  },
+  "quarantine_banner": {
+    "title": "이전 세션에서 격리된 블록 파일 {{count}}을(를) 찾았습니다.",
+    "subtitle": "이러한 블록은 복구될 때까지 채굴 기록에 표시될 수 없습니다.",
+    "recover_now": "지금 복구",
+    "dismiss": "해고하다"
   },
   "titlebar": {
     "miner_active_confirm": "채굴이 활발합니다. 광부는 백그라운드에서 계속 실행됩니다.\n\n트레이로 최소화하려면 확인을 클릭하고, 완전히 종료하려면 창을 열어두고 채굴을 먼저 중지하려면 취소를 클릭하세요."

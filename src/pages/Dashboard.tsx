@@ -31,6 +31,7 @@ import toast from 'react-hot-toast';
 import { useStore } from '../lib/store';
 import { wallet, agreements, node } from '../lib/tauri';
 import TxDetailModal from '../components/TxDetailModal';
+import QuarantineRecoveryBanner from '../components/QuarantineRecoveryBanner';
 import { startAggressivePoll } from '../hooks/useNodePoller';
 import { formatIRM, timeAgo, satsToIRM, computeConfirmations } from '../lib/types';
 import type { Agreement, Transaction, AgreementStatus, PeerInfo } from '../lib/types';
@@ -652,6 +653,8 @@ export default function Dashboard() {
             {loading ? t('dashboard.refreshing') : t('dashboard.refresh')}
           </button>
         </div>
+
+        <QuarantineRecoveryBanner />
 
         <AnimatePresence mode="wait">
           {/* ── Operation in progress ─────────────────────────── */}
