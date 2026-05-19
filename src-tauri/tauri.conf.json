@@ -52,7 +52,9 @@
           "https://127.0.0.1:38300/**",
           "http://localhost:38300/**",
           "http://localhost:5173/**",
-          "http://127.0.0.1:38310/**"
+          "http://127.0.0.1:38310/**",
+          "http://pool.iriumlabs.org/**",
+          "http://pool.iriumlabs.org:3337/**"
         ]
       },
       "window": {
@@ -131,7 +133,7 @@
       }
     },
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: asset: https://asset.localhost"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: asset: https://asset.localhost; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:38300 http://localhost:38300 http://pool.iriumlabs.org:3337"
     },
     "systemTray": {
       "iconPath": "icons/icon.png",

@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import {
   Copy, CheckCircle2, RefreshCw, Search,
   Cpu, Users, Layers, Clock, Activity, Zap, TrendingUp, Coins,
-  Wallet, ArrowRightLeft, Trophy, Medal, Award, Server,
+  Wallet, ArrowRightLeft, Trophy, Medal, Award, Server, UserCircle2, Lock,
 } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { rpc, wallet } from '../lib/tauri';
@@ -655,10 +655,24 @@ function RichListSection({ running }: { running: boolean }) {
   // mount; wallet additions during the same session are rare enough that
   // a single fetch is fine.
   const [myAddrs, setMyAddrs] = useState<Set<string>>(new Set());
+  // "Updated Xs ago" indicator. lastFetched is set on every successful
+  // fetch (including silent background refresh); nowTick ticks once per
+  // second to drive the elapsed display. The tick effect cleans up when
+  // the section unmounts or running goes false.
+  const [lastFetched, setLastFetched] = useState<number | null>(null);
+  const [nowTick, setNowTick] = useState<number>(() => Date.now());
 
-  const fetchList = useCallback(async (n: number, secondary: boolean) => {
-    if (secondary) setLoadMoreLoading(true);
-    else setLoading(true);
+  const fetchList = useCallback(async (n: number, secondary: boolean, silent: boolean = false) => {
+    // Silent path is used by the 60s auto-refresh poller so the spinner
+    // doesn't flicker every minute. Errors are still recorded so a
+    // persistent failure is surfaced eventually.
+    if (silent) {
+      // no spinner
+    } else if (secondary) {
+      setLoadMoreLoading(true);
+    } else {
+      setLoading(true);
+    }
     setErr('');
     try {
       const result = await rpc.richlist(n);
@@ -667,11 +681,12 @@ function RichListSection({ running }: { running: boolean }) {
       setTotalSupply(result.total_supply_sats);
       setGenHeight(result.generated_at_height);
       setLimit(n);
+      setLastFetched(Date.now());
     } catch (e) {
-      setErr(String(e));
+      if (!silent) setErr(String(e));
     } finally {
-      if (secondary) setLoadMoreLoading(false);
-      else setLoading(false);
+      if (!silent && secondary) setLoadMoreLoading(false);
+      else if (!silent) setLoading(false);
     }
   }, []);
 
@@ -685,6 +700,27 @@ function RichListSection({ running }: { running: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running]);
 
+  // Silent auto-refresh every 60 s while the node is running. Uses the
+  // current `limit` (refs the latest user choice — top 100 or top 500)
+  // via state instead of closing over it, so a Load-more-then-wait flow
+  // doesn't snap back to top 100. Cleaned up on unmount or running off.
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(() => {
+      fetchList(limit, false, true);
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [running, limit, fetchList]);
+
+  // 1 Hz tick for the "Updated Xs ago" label. Skipped when entries are
+  // not loaded yet (nothing to show); when entries appear, this fires
+  // until the section unmounts.
+  useEffect(() => {
+    if (!entries) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [entries]);
+
   if (!running) {
     return (
       <div className="py-10 text-center text-sm" style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.07)', borderRadius: 8, color: 'rgba(255,255,255,0.30)' }}>
@@ -694,6 +730,16 @@ function RichListSection({ running }: { running: boolean }) {
   }
 
   const totalIrm = totalSupply / SATS_PER_IRM;
+  // Derived breakdown for the supply panel. The richlist endpoint only
+  // returns P2PKH spendable balances; anything in non-P2PKH outputs
+  // (genesis CLTV vest, multisig P2SH settlement outputs) shows up as
+  // the gap between total_supply_sats and the sum of entries. We label
+  // the gap "Locked / Vested" — at the time this code lives the bulk is
+  // the founder's 3.5M IRM CLTV-locked genesis allocation.
+  const circulatingSats: number = entries ? entries.reduce((acc, e) => acc + e.balance_sats, 0) : 0;
+  const lockedSats: number = Math.max(0, totalSupply - circulatingSats);
+  const lockedPct: number = totalSupply > 0 ? (lockedSats / totalSupply) * 100 : 0;
+  const updatedAgoSec: number | null = lastFetched ? Math.max(0, Math.floor((nowTick - lastFetched) / 1000)) : null;
 
   return (
     <div className="space-y-4">
@@ -707,10 +753,20 @@ function RichListSection({ running }: { running: boolean }) {
             {t('explorer.richlist.subtitle')}
           </p>
           {totalSupply > 0 && (
-            <p className="mt-1" style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, color: 'rgba(110,198,255,0.55)' }}>
-              {t('explorer.richlist.total_supply')}: {formatIRM(totalSupply)} IRM{' '}
-              <span style={{ color: 'rgba(255,255,255,0.30)' }}>{t('explorer.richlist.at_height', { height: genHeight.toLocaleString('en-US') })}</span>
-            </p>
+            <div className="mt-1 space-y-0.5" style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11 }}>
+              <p style={{ color: 'rgba(110,198,255,0.55)' }}>
+                {t('explorer.richlist.circulating_supply')}: <span style={{ color: '#34d399' }}>{formatIRM(circulatingSats)}</span>
+                {updatedAgoSec !== null && (
+                  <span className="ml-2" style={{ color: 'rgba(255,255,255,0.30)', fontSize: 10 }}>
+                    · {t('explorer.richlist.updated_ago', { seconds: updatedAgoSec })}
+                  </span>
+                )}
+              </p>
+              <p style={{ color: 'rgba(110,198,255,0.55)' }}>
+                {t('explorer.richlist.total_supply_with_vested')}: <span style={{ color: '#d4eeff' }}>{formatIRM(totalSupply)}</span>{' '}
+                <span style={{ color: 'rgba(255,255,255,0.30)' }}>{t('explorer.richlist.at_height', { height: genHeight.toLocaleString('en-US') })}</span>
+              </p>
+            </div>
           )}
         </div>
         <button
@@ -777,25 +833,26 @@ function RichListSection({ running }: { running: boolean }) {
                           #{e.rank}
                         </span>
                       </td>
-                      {/* Address — truncated, click-to-copy, optional You badge */}
-                      <td className="px-2 py-2.5">
-                        <div className="flex items-center gap-2">
+                      {/* Address — full 34-char display, click-to-copy, prominent You badge */}
+                      <td className="px-2 py-2.5" style={{ minWidth: 280 }}>
+                        <div className="flex items-center gap-2 flex-wrap">
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(e.address);
                               toast.success(t('common.copy'));
                             }}
-                            title={e.address}
+                            title={t('explorer.richlist.click_to_copy')}
                             className="font-mono text-left hover:underline"
-                            style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11.5, color: isMine ? '#a78bfa' : 'rgba(255,255,255,0.70)' }}
+                            style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, letterSpacing: '0.01em', color: isMine ? '#a78bfa' : 'rgba(255,255,255,0.78)', wordBreak: 'break-all' }}
                           >
-                            {shortAddr(e.address)}
+                            {e.address}
                           </button>
                           {isMine && (
                             <span
-                              className="px-1.5 py-0.5 text-[9px] font-bold rounded"
-                              style={{ background: 'rgba(167,139,250,0.18)', border: '1px solid rgba(167,139,250,0.40)', color: '#c4b5fd', letterSpacing: '0.08em' }}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-bold rounded"
+                              style={{ background: 'rgba(167,139,250,0.30)', border: '1px solid rgba(167,139,250,0.75)', color: '#ede9fe', letterSpacing: '0.10em', boxShadow: '0 0 10px rgba(167,139,250,0.30)' }}
                             >
+                              <UserCircle2 size={11} />
                               {t('explorer.richlist.you_badge')}
                             </span>
                           )}
@@ -826,6 +883,58 @@ function RichListSection({ running }: { running: boolean }) {
             </table>
             </div>
           </div>
+
+          {/* Locked / Vested Funds — the delta between total_supply_sats and
+              the sum of P2PKH entry balances. This is intentionally a
+              prominent panel because community visibility into the founder
+              vest is a stated trust property of the chain. The bulk of this
+              gap is the 3.5M IRM CLTV-locked genesis allocation; any extra
+              over 3.5M is multisig P2SH outputs (settlement agreements). */}
+          {totalSupply > 0 && lockedSats > 0 && (
+            <div
+              className="flex items-start gap-3 px-4 py-3"
+              style={{
+                background: 'rgba(245,158,11,0.08)',
+                border: '1px solid rgba(245,158,11,0.30)',
+                borderRadius: 8,
+              }}
+            >
+              <Lock size={16} style={{ color: '#fbbf24', marginTop: 2, flexShrink: 0 }} />
+              <div className="flex-1 min-w-0">
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24', fontFamily: '"Space Grotesk", sans-serif', letterSpacing: '0.02em' }}>
+                  {t('explorer.richlist.locked_title')}
+                </p>
+                <p className="mt-1" style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 13, color: '#fde68a' }}>
+                  {formatIRM(lockedSats)} <span style={{ color: 'rgba(253,230,138,0.60)', fontSize: 11 }}>({lockedPct.toFixed(2)}% {t('explorer.richlist.of_total_supply')})</span>
+                </p>
+                <p className="mt-1.5" style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.55)', lineHeight: 1.5 }}>
+                  {t('explorer.richlist.locked_note')}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Multi-address explanation — shown only when at least one rich-list
+              entry matches one of the wallet's addresses. The rich list is keyed
+              by single addresses, while the TopBar's hero balance aggregates
+              every address in the wallet, so the two numbers will not match
+              when the user has multiple addresses. Surface this expectation
+              explicitly so the user doesn't read it as a bug. */}
+          {entries.some((e) => myAddrs.has(e.address)) && (
+            <div
+              className="flex items-start gap-2.5 px-4 py-3"
+              style={{
+                background: 'rgba(167,139,250,0.08)',
+                border: '1px solid rgba(167,139,250,0.25)',
+                borderRadius: 8,
+              }}
+            >
+              <UserCircle2 size={14} style={{ color: '#a78bfa', marginTop: 1, flexShrink: 0 }} />
+              <p style={{ fontSize: 11.5, color: 'rgba(237,233,254,0.85)', lineHeight: 1.5 }}>
+                {t('explorer.richlist.you_note')}
+              </p>
+            </div>
+          )}
 
           {/* Load more — only offered when the current view is the top-100 page */}
           <div className="flex flex-col items-center gap-1.5">
