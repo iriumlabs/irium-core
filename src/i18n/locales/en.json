@@ -840,7 +840,14 @@
     "browse": {
       "remote_filter_warning": "You are viewing remote offers only. Your own local offers are hidden by this filter.",
       "switch_to_all": "Switch to All",
-      "network_visibility_hint": "Your offers are visible to you immediately. For other users to see them, they must add your node's offers feed: `feed-add http://YOUR-IP:38300/offers/feed`. Peers also discover your feed automatically via the P2P handshake once they connect to your node."
+      "auto_shared_hint": "Your offers are automatically shared with connected peers via P2P. No manual setup needed.",
+      "nat_faq_title": "Behind NAT or CGNAT?",
+      "nat_faq_receiving_label": "Receiving offers from others",
+      "nat_faq_receiving_body": "Always works. Your node fetches from publicly-reachable peers regardless of your own NAT status — any normal internet connection can browse the marketplace.",
+      "nat_faq_sharing_label": "Sharing your offers with others",
+      "nat_faq_sharing_body": "Requires your node to be reachable. Peers fetch from http://<your-ip>:38300/offers/feed, which means a public IPv4 and an open port 38300. The desktop wallet attempts UPnP port-forwarding automatically when an external endpoint is detected.",
+      "nat_faq_cgnat_label": "Behind CGNAT or strict NAT",
+      "nat_faq_cgnat_body": "You can still BUY offers from others. For others to see YOUR offers, options are: (a) request a public IPv4 from your ISP, (b) run iriumd on a VPS, or (c) export the offer with `irium-wallet offer-export` and share the JSON directly with your counterparty, who imports it with `offer-import`."
     },
     "toasts": {
       "offer_created": "Offer created: {{id}}",
@@ -1397,7 +1404,9 @@
       "q10": "macOS says Irium Core is damaged or quarantined. How do I fix it?",
       "a10": "macOS quarantines apps downloaded outside the App Store. To fix this: (1) open Terminal; (2) run: xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app — this removes the quarantine flag from the entire app bundle. If you still see \"damaged\", run: codesign --force --deep --sign - /Applications/Irium\\ Core.app then re-launch. The first launch may take 10-20 seconds while Gatekeeper re-verifies the signature. If iriumd itself was quarantined (you see \"iriumd is damaged\" in the logs), run: xattr -d com.apple.quarantine ~/.irium/binaries/iriumd to unquarantine just the node binary.",
       "q11": "My node has quarantined blocks. How do I recover?",
-      "a11": "iriumd quarantines block files it cannot validate (typically after a crash mid-write or a corrupted reorg). Quarantined blocks live in ~/.irium/blocks/orphaned_<timestamp>/. You can clear them from the Quarantined Blocks Recovery section above (stop the node first). The node will re-fetch the missing blocks from peers automatically on next start. If the resync gets stuck at the same height, use Settings → Clear chain state for a clean resync from genesis (your wallet and agreements are preserved)."
+      "a11": "iriumd quarantines block files it cannot validate (typically after a crash mid-write or a corrupted reorg). Quarantined blocks live in ~/.irium/blocks/orphaned_<timestamp>/. You can clear them from the Quarantined Blocks Recovery section above (stop the node first). The node will re-fetch the missing blocks from peers automatically on next start. If the resync gets stuck at the same height, use Settings → Clear chain state for a clean resync from genesis (your wallet and agreements are preserved).",
+      "q12": "I'm behind NAT or CGNAT. Will my marketplace offers be visible to others?",
+      "a12": "The marketplace has two directions, with different reachability requirements. RECEIVING offers from others always works — your node fetches from publicly-reachable peers regardless of your own NAT status; any normal internet connection can browse the marketplace. SHARING your offers requires your node to be reachable: peers fetch from http://<your-ip>:38300/offers/feed, which means a public IPv4 and an open port 38300. The desktop wallet attempts UPnP port-forwarding automatically when an external endpoint is detected. If you're behind CGNAT or strict NAT and cannot expose port 38300, you can still BUY offers from others, but for them to see YOUR offers you can: (a) request a public IPv4 from your ISP, (b) run iriumd on a VPS, or (c) export the offer with `irium-wallet offer-export` and share the JSON directly — the counterparty imports it with `offer-import`."
     },
     "port_forwarding": {
       "section_title": "How to forward ports for better connectivity",

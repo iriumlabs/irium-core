@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, RefreshCw, Search, Globe, X, Rss, Star, Download, Upload, Compass, HelpCircle, Trash2, AlertTriangle, Radio } from 'lucide-react';
@@ -719,8 +719,18 @@ export default function MarketplacePage() {
   const [filterPayment, setFilterPayment] = useState<string>('');
 
   // ── Data loaders ─────────────────────────────────────────────
-  const loadOffers = async () => {
-    setLoading(true);
+  // Race guard for loadOffers. Without this, the user-triggered tab-entry
+  // call and the 60-s auto-refresh tick can both fire `offers.list` at
+  // once and the second response overwrites the first, occasionally with
+  // stale data when the older request was slower. The ref also lets the
+  // auto-refresh tick cleanly skip itself if a manual fetch is already
+  // in flight.
+  const isFetchingOffersRef = useRef(false);
+
+  const loadOffers = async (silent: boolean = false) => {
+    if (isFetchingOffersRef.current) return;
+    isFetchingOffersRef.current = true;
+    if (!silent) setLoading(true);
     try {
       // Parse min/max IRM inputs. parseFloat('') is NaN → undefined.
       const minIrm = filterMinIrm.trim() ? parseFloat(filterMinIrm) : undefined;
@@ -733,14 +743,20 @@ export default function MarketplacePage() {
         maxAmount: Number.isFinite(maxIrm) ? maxIrm : undefined,
         payment: filterPayment.trim() ? filterPayment.trim() : undefined,
       });
+      console.log(
+        `[Marketplace] loadOffers source=${filterSource} silent=${silent} got=${data?.length ?? 0}`,
+      );
       setOfferList(data);
     } catch (e) {
-      // Suppress toast when offline — empty state communicates the problem.
-      if (nodeStatus?.running) {
+      console.warn('[Marketplace] loadOffers failed:', e);
+      // Suppress toast on silent auto-refresh AND when offline — empty
+      // state communicates the problem in both cases.
+      if (!silent && nodeStatus?.running) {
         toast.error(t('marketplace.toasts.failed_to_load', { reason: String(e) }));
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+      isFetchingOffersRef.current = false;
     }
   };
 
@@ -789,40 +805,51 @@ export default function MarketplacePage() {
   }, [activeTab, filterSource, filterSort, filterMinIrm, filterMaxIrm, filterPayment]);
 
   // Phase 5: real-time refresh on offer.* events from the Rust WS bridge.
-  // Polling stays as a fallback when the WS connection is down.
+  // Polling stays as a fallback when the WS connection is down. Silent
+  // reload — these are spontaneous updates, the user didn't ask for the
+  // skeleton.
   useIriumEvents((event) => {
     if (event.type === 'offer.created' || event.type === 'offer.taken') {
-      if (activeTab === 'browse') loadOffers();
+      if (activeTab === 'browse') loadOffers(true);
       else if (activeTab === 'my-offers') loadMyOffers();
     }
   });
 
-  // 30-second silent auto-refresh on the Browse tab. Each tick (a) runs
+  // 60-second auto-refresh on the Browse tab. Each tick (a) runs
   // offer-feed-sync to pull from every URL in feeds.json and the P2P-
   // discovered feed list (~/.irium/discovered_feeds.json), then (b) does a
-  // fresh loadOffers() over the now-updated local cache. This is the
-  // missing link in the auto-discovery chain: iriumd already advertises
-  // its feed URL on every handshake and peers record it on receive, but
-  // nothing was scheduling the actual remote-fetch. Now any peer's offer
-  // appears in Browse within at most 30 seconds of P2P discovery.
+  // SILENT loadOffers() over the now-updated local cache so the
+  // interval doesn't visually re-render the skeleton every minute. The
+  // first call on tab entry IS visible (silent=false) so the user gets
+  // feedback that a fresh fetch is happening.
   //
-  // syncAndLoad also runs immediately on tab entry so the first paint
-  // reflects the current network state, not the stale local cache.
+  // Cadence was lowered from 30s → 60s after operators noticed the
+  // back-to-back sync+list cycle was perceptibly heavy on slower
+  // machines (the wallet binary spawn dominates and shows up in the
+  // event loop). Half the request volume halves that load.
+  //
   // feed-sync failures are swallowed — a transient unreachable feed
   // should never block the cached list from rendering.
   useEffect(() => {
     if (activeTab !== 'browse') return;
-    const syncAndLoad = async () => {
+    const syncAndLoad = async (silent: boolean = false) => {
       try {
         await feeds.sync();
       } catch {
         // silent — partial-failure responses are normal when one of N
         // discovered feeds is temporarily unreachable
       }
-      await loadOffers();
+      await loadOffers(silent);
     };
-    syncAndLoad();
-    const id = setInterval(syncAndLoad, 30_000);
+    // Tab-entry sync runs SILENTLY. The existing tab-change effect above
+    // already schedules a 400 ms-debounced `loadOffers(false)` which
+    // shows the loading skeleton; doing syncAndLoad(false) here too
+    // would produce a SECOND skeleton flash ~5 s later when feeds.sync
+    // resolves and the awaited loadOffers re-toggles the loading state.
+    // Letting the debounced call own the skeleton and this background
+    // sync update the list quietly gives the cleanest perceived UX.
+    syncAndLoad(true);
+    const id = setInterval(() => syncAndLoad(true), 60_000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
@@ -1200,16 +1227,10 @@ export default function MarketplacePage() {
             </motion.div>
           )}
 
-          {/* Network visibility hint — only shown when at least one local
-              offer is in the Browse view. Locally-saved offers live in the
-              wallet's offers/ directory; iriumd's /offers/feed reads from
-              the same directory and exposes them as the node's public
-              feed, but other users' nodes need to learn the feed URL
-              before they see anything. The standard path is
-              `feed-add http://<node-ip>:38300/offers/feed` on the buyer
-              side. Surface this so creators understand why their offer
-              is visible to themselves but not yet to the rest of the
-              network. */}
+          {/* Auto-share confirmation — surfaced when the user has at least
+              one local offer in the view. Replaces the old manual
+              `feed-add` instruction, which is obsolete since automatic
+              feed-URL exchange via P2P handshake landed in v1.0.38. */}
           {filteredOffers.some((o) => o.source === 'local') && (
             <div
               className="flex items-start gap-2.5 px-4 py-3 mt-4"
@@ -1220,11 +1241,42 @@ export default function MarketplacePage() {
               }}
             >
               <Radio size={14} style={{ color: '#6ec6ff', marginTop: 1, flexShrink: 0 }} />
-              <p style={{ fontSize: 11.5, color: 'rgba(238,240,255,0.65)', lineHeight: 1.55 }}>
-                {t('marketplace.browse.network_visibility_hint')}
+              <p style={{ fontSize: 11.5, color: 'rgba(238,240,255,0.70)', lineHeight: 1.55 }}>
+                {t('marketplace.browse.auto_shared_hint')}
               </p>
             </div>
           )}
+
+          {/* NAT / CGNAT FAQ — collapsible. The marketplace works in
+              both directions but with different reachability requirements;
+              users behind CGNAT often think their setup is broken when in
+              fact "Browse" works fine (read-direction) and only their own
+              outbound advertisements need a reachable public endpoint
+              (write-direction). Spell that out honestly so users don't
+              waste time chasing a non-issue or, worse, draw wrong
+              conclusions about why their own offers aren't appearing on
+              other nodes. */}
+          <details
+            className="mt-3"
+            style={{
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.07)',
+              borderRadius: 8,
+            }}
+          >
+            <summary
+              className="cursor-pointer px-4 py-2.5 select-none flex items-center gap-2"
+              style={{ fontSize: 11.5, color: 'rgba(238,240,255,0.65)', fontFamily: '"Space Grotesk", sans-serif', fontWeight: 600 }}
+            >
+              <HelpCircle size={13} />
+              {t('marketplace.browse.nat_faq_title')}
+            </summary>
+            <div className="px-4 pb-3 pt-1" style={{ fontSize: 11, color: 'rgba(238,240,255,0.60)', lineHeight: 1.6 }}>
+              <p>{t('marketplace.browse.nat_faq_receiving_label')}: {t('marketplace.browse.nat_faq_receiving_body')}</p>
+              <p className="mt-2">{t('marketplace.browse.nat_faq_sharing_label')}: {t('marketplace.browse.nat_faq_sharing_body')}</p>
+              <p className="mt-2">{t('marketplace.browse.nat_faq_cgnat_label')}: {t('marketplace.browse.nat_faq_cgnat_body')}</p>
+            </div>
+          </details>
         </>
       )}
 
