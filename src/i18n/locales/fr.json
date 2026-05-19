@@ -222,6 +222,21 @@
       "consensus": "Consensus",
       "total_supply": "Offre totale"
     },
+    "connected_peers": {
+      "title": "Pairs connectés",
+      "count_one": "Homologue {{count}} connecté",
+      "count_other": "{{count}} pairs connectés",
+      "count": "{{count}} pairs connectés",
+      "show_addresses": "Afficher les adresses IP des pairs",
+      "hide_addresses": "Masquer les adresses IP homologues",
+      "empty": "Aucun homologue connecté pour l'instant. Démarrez le nœud pour découvrir les pairs.",
+      "dialable_yes": "Composable",
+      "dialable_no": "Sortant uniquement",
+      "height_label": "Hauteur:",
+      "last_seen_label": "Vu pour la dernière fois :",
+      "agent_label": "Agent:",
+      "privacy_note": "Les adresses IP homologues sont uniquement stockées localement dans votre application et ne sont jamais envoyées nulle part. Désactivez-les pour les masquer à nouveau."
+    },
     "port_reachability": {
       "title": "Accessibilité des ports",
       "active_upnp": "Actif (UPnP) — TCP 38291 ouvert",
@@ -839,8 +854,21 @@
       "already_added": "Déjà ajouté",
       "add_feed": "Ajouter un flux"
     },
+    "browse": {
+      "remote_filter_warning": "Vous consultez uniquement les offres à distance. Vos propres offres locales sont masquées par ce filtre.",
+      "switch_to_all": "Passer à Tout",
+      "auto_shared_hint": "Vos offres sont automatiquement partagées avec vos pairs connectés via P2P. Aucune configuration manuelle nécessaire.",
+      "nat_faq_title": "Derrière NAT ou CGNAT ?",
+      "nat_faq_receiving_label": "Recevoir des offres des autres",
+      "nat_faq_receiving_body": "Fonctionne toujours. Votre nœud récupère auprès de pairs accessibles au public, quel que soit votre propre statut NAT : toute connexion Internet normale peut parcourir le marché.",
+      "nat_faq_sharing_label": "Partager vos offres avec d'autres",
+      "nat_faq_sharing_body": "Nécessite que votre nœud soit accessible. Les pairs récupèrent depuis http://<your-ip>:38300/offers/feed, ce qui signifie un IPv4 public et un port ouvert 38300. Le portefeuille de bureau tente automatiquement le transfert de port UPnP lorsqu'un point de terminaison externe est détecté.",
+      "nat_faq_cgnat_label": "Derrière CGNAT ou NAT strict",
+      "nat_faq_cgnat_body": "Vous pouvez toujours ACHETER des offres d’autres personnes. Pour que les autres puissent voir VOS offres, les options sont : (a) demander une IPv4 publique à votre FAI, (b) exécuter iriumd sur un VPS, ou (c) exporter l'offre avec \"irium-wallet offer-export\" et partager le JSON directement avec votre contrepartie, qui l'importe avec \"offer-import\"."
+    },
     "toasts": {
       "offer_created": "Offre créée : {{id}}",
+      "offer_created_browse_ready": "Offre créée avec succès — visible dans l'onglet Parcourir",
       "offer_taken": "Offre acceptée — accord {{id}}",
       "feed_added": "Flux ajouté",
       "min_must_be_positive": "Le montant minimum d'échange doit être un nombre positif",
@@ -912,6 +940,7 @@
       "device": "Appareil",
       "gpu_address_placeholder": "P…",
       "intensity_label": "Intensité — {{value}}%",
+      "intensity_mac_note": "Intensité plafonnée à 50 % sur macOS pour empêcher le chien de garde du GPU de tuer les noyaux en cours de lot. Le mineur GPU détecte automatiquement les blocages du chien de garde et s'arrête proprement s'il les voit quand même.",
       "pool_preset": "Préréglage de piscine"
     },
     "found_blocks": {
@@ -1392,7 +1421,9 @@
       "q10": "macOS indique qu'Irium Core est endommagé ou mis en quarantaine. Comment puis-je le réparer ?",
       "a10": "macOS met en quarantaine les applications téléchargées en dehors de l'App Store. Pour résoudre ce problème : (1) ouvrez le terminal ; (2) exécutez : xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app — cela supprime l'indicateur de quarantaine de l'ensemble de l'application. Si vous voyez toujours « endommagé », exécutez : codedesign --force --deep --sign - /Applications/Irium\\ Core.app puis relancez. Le premier lancement peut prendre 10 à 20 secondes pendant que Gatekeeper revérifie la signature. Si iriumd lui-même a été mis en quarantaine (vous voyez \"iriumd est endommagé\" dans les journaux), exécutez : xattr -d com.apple.quarantine ~/.irium/binaries/iriumd pour annuler la quarantaine uniquement le binaire du nœud.",
       "q11": "Mon nœud a des blocs mis en quarantaine. Comment récupérer ?",
-      "a11": "iriumd met en quarantaine les fichiers qu'il ne peut pas valider (généralement après un crash en cours d'écriture ou une réorganisation corrompue). Les blocs mis en quarantaine se trouvent dans ~/.irium/blocks/orphaned_<timestamp>/. Vous pouvez les effacer de la section Récupération des blocs en quarantaine ci-dessus (arrêtez d'abord le nœud). Le nœud récupérera automatiquement les blocs manquants auprès de ses pairs au prochain démarrage. Si la resynchronisation reste bloquée à la même hauteur, utilisez Paramètres → Effacer l'état de la chaîne pour une resynchronisation propre depuis Genesis (votre portefeuille et vos accords sont préservés)."
+      "a11": "iriumd met en quarantaine les fichiers qu'il ne peut pas valider (généralement après un crash en cours d'écriture ou une réorganisation corrompue). Les blocs mis en quarantaine se trouvent dans ~/.irium/blocks/orphaned_<timestamp>/. Vous pouvez les effacer de la section Récupération des blocs en quarantaine ci-dessus (arrêtez d'abord le nœud). Le nœud récupérera automatiquement les blocs manquants auprès de ses pairs au prochain démarrage. Si la resynchronisation reste bloquée à la même hauteur, utilisez Paramètres → Effacer l'état de la chaîne pour une resynchronisation propre depuis Genesis (votre portefeuille et vos accords sont préservés).",
+      "q12": "Je suis derrière NAT ou CGNAT. Mes offres Marketplace seront-elles visibles par les autres ?",
+      "a12": "Le marché a deux directions, avec des exigences d'accessibilité différentes. LA RÉCEPTION des offres des autres fonctionne toujours : votre nœud récupère auprès de pairs accessibles au public, quel que soit votre propre statut NAT ; toute connexion Internet normale peut parcourir le marché. Le PARTAGE de vos offres nécessite que votre nœud soit accessible : les pairs récupèrent depuis http://<your-ip>:38300/offers/feed, ce qui signifie un IPv4 public et un port ouvert 38300. Le portefeuille de bureau tente automatiquement la redirection de port UPnP lorsqu'un point de terminaison externe est détecté. Si vous êtes derrière CGNAT ou NAT strict et que vous ne pouvez pas exposer le port 38300, vous pouvez toujours ACHETER des offres auprès d'autres personnes, mais pour qu'ils voient VOS offres, vous pouvez : (a) demander une IPv4 publique à votre FAI, (b) exécuter iriumd sur un VPS, ou (c) exporter l'offre avec « irium-wallet offer-export » et partager le JSON directement — la contrepartie l'importe avec « offer-import »."
     },
     "port_forwarding": {
       "section_title": "Comment transférer des ports pour une meilleure connectivité",

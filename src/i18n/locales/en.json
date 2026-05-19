@@ -220,6 +220,21 @@
       "consensus": "Consensus",
       "total_supply": "Total supply"
     },
+    "connected_peers": {
+      "title": "Connected Peers",
+      "count_one": "{{count}} peer connected",
+      "count_other": "{{count}} peers connected",
+      "count": "{{count}} peers connected",
+      "show_addresses": "Show peer IP addresses",
+      "hide_addresses": "Hide peer IP addresses",
+      "empty": "No peers connected yet. Start the node to discover peers.",
+      "dialable_yes": "Dialable",
+      "dialable_no": "Outbound only",
+      "height_label": "Height:",
+      "last_seen_label": "Last seen:",
+      "agent_label": "Agent:",
+      "privacy_note": "Peer IPs are only stored locally in your app and are never sent anywhere. Toggle off to hide them again."
+    },
     "port_reachability": {
       "title": "Port Reachability",
       "active_upnp": "Active (UPnP) — TCP 38291 open",

@@ -24,6 +24,8 @@ import {
   ExternalLink,
   Trash2,
   Languages,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { fetch as tauriFetch, ResponseType } from "@tauri-apps/api/http";
 import { open as openExternal } from "@tauri-apps/api/shell";
@@ -32,7 +34,7 @@ import { relaunch } from "@tauri-apps/api/process";
 import { listen } from "@tauri-apps/api/event";
 import { useStore } from "../lib/store";
 import { rpc, diagnostics, update, nodeUpdate, node, config } from "../lib/tauri";
-import { DEFAULT_SETTINGS, type DiagnosticsResult, type NodeUpdateCheckResult, type Theme, timeAgo } from "../lib/types";
+import { DEFAULT_SETTINGS, type DiagnosticsResult, type NodeUpdateCheckResult, type Theme, timeAgo, type PeerInfo } from "../lib/types";
 import { ONBOARDING_KEY, FORCE_ONBOARDING_KEY } from "./Onboarding";
 import { startAggressivePoll } from '../hooks/useNodePoller';
 
@@ -192,6 +194,19 @@ export default function Settings() {
   const nodeStatus = useStore((s) => s.nodeStatus);
   const nodeMetrics = useStore((s) => s.nodeMetrics);
   const appVersion = useStore((s) => s.appVersion);
+  const peerList = useStore((s) => s.peerList);
+
+  // Privacy-friendly peer-address visibility. Default OFF — earlier the peer
+  // list was removed entirely after users objected to seeing IPs in the UI.
+  // It's back behind an explicit opt-in toggle that we persist in
+  // localStorage so the user only has to flip it once.
+  const SHOW_PEER_ADDRESSES_KEY = 'irium-show-peer-addresses';
+  const [showPeerAddresses, setShowPeerAddresses] = useState<boolean>(() => {
+    try { return localStorage.getItem(SHOW_PEER_ADDRESSES_KEY) === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(SHOW_PEER_ADDRESSES_KEY, showPeerAddresses ? '1' : '0'); } catch { /* ignore */ }
+  }, [showPeerAddresses]);
 
   // Track when the node first started running (this session). Drives the
   // "Detecting..." → "Inactive" timeout on the UPnP card so we don't show
@@ -1071,6 +1086,92 @@ export default function Settings() {
                 </div>
               );
             })()}
+
+            {/* Connected Peers — privacy-friendly peer list. Default OFF.
+                When the toggle is OFF only the count is shown; flipping it ON
+                reveals the full multiaddr/height/last-seen/dialable detail.
+                Preference is persisted to localStorage (SHOW_PEER_ADDRESSES_KEY). */}
+            <div className="mt-1 rounded-lg border border-white/10 bg-white/5 px-4 py-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-white/70">{t('settings.connected_peers.title')}</span>
+                  <span className="text-xs font-mono text-white/40">
+                    {t('settings.connected_peers.count', { count: peerList.length })}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-white/50">
+                  {showPeerAddresses ? <EyeOff size={12} /> : <Eye size={12} />}
+                  <span
+                    className="cursor-pointer hover:text-white transition-colors"
+                    onClick={() => setShowPeerAddresses((v) => !v)}
+                  >
+                    {showPeerAddresses
+                      ? t('settings.connected_peers.hide_addresses')
+                      : t('settings.connected_peers.show_addresses')}
+                  </span>
+                  <Toggle checked={showPeerAddresses} onChange={setShowPeerAddresses} />
+                </div>
+              </div>
+
+              {showPeerAddresses && (
+                <>
+                  {peerList.length === 0 ? (
+                    <p className="text-xs text-white/30 leading-relaxed">
+                      {t('settings.connected_peers.empty')}
+                    </p>
+                  ) : (
+                    <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
+                      {peerList.map((peer: PeerInfo, i) => (
+                        <div
+                          key={`${peer.multiaddr}-${i}`}
+                          className="flex flex-col gap-0.5 px-3 py-2 rounded-md bg-black/20 border border-white/5"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-mono text-xs text-white/80 break-all">
+                              {peer.multiaddr}
+                            </span>
+                            <span
+                              className={`text-[10px] font-mono shrink-0 px-1.5 py-0.5 rounded ${
+                                peer.dialable
+                                  ? 'bg-emerald-500/10 text-emerald-400'
+                                  : 'bg-white/5 text-white/40'
+                              }`}
+                            >
+                              {peer.dialable
+                                ? t('settings.connected_peers.dialable_yes')
+                                : t('settings.connected_peers.dialable_no')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-[10px] font-mono text-white/40">
+                            {typeof peer.height === 'number' && (
+                              <span>
+                                {t('settings.connected_peers.height_label')}{' '}
+                                <span className="text-white/60">#{peer.height.toLocaleString()}</span>
+                              </span>
+                            )}
+                            {typeof peer.last_seen === 'number' && (
+                              <span>
+                                {t('settings.connected_peers.last_seen_label')}{' '}
+                                <span className="text-white/60">{timeAgo(peer.last_seen)}</span>
+                              </span>
+                            )}
+                            {peer.agent && (
+                              <span className="truncate">
+                                {t('settings.connected_peers.agent_label')}{' '}
+                                <span className="text-white/60">{peer.agent}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-white/30 leading-relaxed">
+                    {t('settings.connected_peers.privacy_note')}
+                  </p>
+                </>
+              )}
+            </div>
           </Section>
         </motion.div>
 
