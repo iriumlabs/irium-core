@@ -40,8 +40,8 @@ const LINKS: { labelKey: string; url: string; icon: React.ElementType }[] = [
   { labelKey: 'help.links.mining_guide', url: 'https://github.com/iriumlabs/irium/blob/main/MINING.md',                icon: Pickaxe },
 ];
 
-// FAQ entries — each has a Q key and A key in help.faqs. Numbered q1..q11.
-const FAQ_KEYS: { qKey: string; aKey: string }[] = Array.from({ length: 11 }, (_, i) => ({
+// FAQ entries — each has a Q key and A key in help.faqs. Numbered q1..q12.
+const FAQ_KEYS: { qKey: string; aKey: string }[] = Array.from({ length: 12 }, (_, i) => ({
   qKey: `help.faqs.q${i + 1}`,
   aKey: `help.faqs.a${i + 1}`,
 }));

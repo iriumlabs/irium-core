@@ -222,6 +222,21 @@
       "consensus": "Consenso",
       "total_supply": "Fornitura totale"
     },
+    "connected_peers": {
+      "title": "Coetanei connessi",
+      "count_one": "{{count}} peer connesso",
+      "count_other": "{{count}} peer connessi",
+      "count": "{{count}} peer connessi",
+      "show_addresses": "Mostra gli indirizzi IP dei peer",
+      "hide_addresses": "Nascondi indirizzi IP peer",
+      "empty": "Nessun peer connesso ancora. Avvia il nodo per scoprire i peer.",
+      "dialable_yes": "Chiamabile",
+      "dialable_no": "Solo in uscita",
+      "height_label": "Altezza:",
+      "last_seen_label": "Visto l'ultima volta:",
+      "agent_label": "Agente:",
+      "privacy_note": "Gli IP peer vengono archiviati solo localmente nella tua app e non vengono mai inviati da nessuna parte. Disattiva per nasconderli di nuovo."
+    },
     "port_reachability": {
       "title": "Raggiungibilità del porto",
       "active_upnp": "Attivo (UPnP): TCP 38291 aperto",
@@ -839,8 +854,21 @@
       "already_added": "Già aggiunto",
       "add_feed": "Aggiungi alimentazione"
     },
+    "browse": {
+      "remote_filter_warning": "Stai visualizzando solo offerte remote. Le tue offerte locali vengono nascoste da questo filtro.",
+      "switch_to_all": "Passa a Tutti",
+      "auto_shared_hint": "Le tue offerte vengono automaticamente condivise con i peer connessi tramite P2P. Non è necessaria alcuna configurazione manuale.",
+      "nat_faq_title": "Dietro NAT o CGNAT?",
+      "nat_faq_receiving_label": "Ricevere offerte da altri",
+      "nat_faq_receiving_body": "Funziona sempre. Il tuo nodo recupera da peer raggiungibili pubblicamente indipendentemente dal tuo stato NAT: qualsiasi normale connessione Internet può navigare nel mercato.",
+      "nat_faq_sharing_label": "Condividere le tue offerte con gli altri",
+      "nat_faq_sharing_body": "Richiede che il tuo nodo sia raggiungibile. I peer recuperano da http://<your-ip>:38300/offers/feed, il che significa un IPv4 pubblico e una porta aperta 38300. Il portafoglio desktop tenta automaticamente il port forwarding UPnP quando viene rilevato un endpoint esterno.",
+      "nat_faq_cgnat_label": "Dietro CGNAT o NAT rigoroso",
+      "nat_faq_cgnat_body": "Puoi ancora ACQUISTARE offerte da altri. Per consentire ad altri di vedere le TUE offerte, le opzioni sono: (a) richiedere un IPv4 pubblico dal tuo ISP, (b) eseguire iriumd su un VPS o (c) esportare l'offerta con \"irium-wallet offer-export\" e condividere il JSON direttamente con la tua controparte, che lo importa con \"offer-import\"."
+    },
     "toasts": {
       "offer_created": "Offerta creata: {{id}}",
+      "offer_created_browse_ready": "Offerta creata correttamente: visibile nella scheda Sfoglia",
       "offer_taken": "Offerta accettata: accordo {{id}}",
       "feed_added": "Feed aggiunto",
       "min_must_be_positive": "L'importo minimo della transazione deve essere un numero positivo",
@@ -895,7 +923,7 @@
     "fields": {
       "mining_address_label": "Indirizzo minerario",
       "mining_address_placeholder": "Incolla il tuo indirizzo minerario Irium (Q... o P...)",
-      "address_picker_other": "Altro indirizzo...",
+      "address_picker_other": "Other address…",
       "address_picker_no_wallets": "Nessun indirizzo di portafoglio: scegli Altro",
       "address_picker_custom_placeholder": "Immettere qualsiasi indirizzo P o Q",
       "address_invalid_inline": "Indirizzo non valido. Deve iniziare con P o Q",
@@ -912,6 +940,7 @@
       "device": "Dispositivo",
       "gpu_address_placeholder": "P…",
       "intensity_label": "Intensità — {{value}}%",
+      "intensity_mac_note": "Intensità limitata al 50% su macOS per impedire al watchdog della GPU di uccidere i kernel a metà batch. Il GPU Miner rileva automaticamente gli stalli del watchdog e si ferma in modo pulito se li vede comunque.",
       "pool_preset": "Preimpostazione della piscina"
     },
     "found_blocks": {
@@ -1392,7 +1421,9 @@
       "q10": "macOS afferma che Irium Core è danneggiato o messo in quarantena. Come posso risolverlo?",
       "a10": "macOS mette in quarantena le app scaricate al di fuori dell'App Store. Per risolvere questo problema: (1) apri Terminale; (2) esegui: xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app: rimuove il flag di quarantena dall'intero bundle dell'app. Se vedi ancora \"danneggiato\", esegui: codesign --force --deep --sign - /Applications/Irium\\ Core.app quindi riavvia. Il primo avvio potrebbe richiedere 10-20 secondi mentre Gatekeeper verifica nuovamente la firma. Se iriumd stesso è stato messo in quarantena (vedi \"iriumd è danneggiato\" nei log), esegui: xattr -d com.apple.quarantine ~/.irium/binaries/iriumd per rimuovere dalla quarantena solo il file binario del nodo.",
       "q11": "Il mio nodo ha blocchi in quarantena. Come posso recuperare?",
-      "a11": "iriumd mette in quarantena i file bloccati che non può convalidare (in genere dopo un arresto anomalo durante la scrittura o una riorganizzazione danneggiata). I blocchi in quarantena risiedono in ~/.irium/blocks/orphaned_<timestamp>/. Puoi cancellarli dalla sezione Ripristino blocchi in quarantena sopra (interrompi prima il nodo). Il nodo recupererà automaticamente i blocchi mancanti dai peer al prossimo avvio. Se la risincronizzazione si blocca alla stessa altezza, utilizza Impostazioni → Cancella stato catena per una risincronizzazione pulita dalla genesi (il tuo portafoglio e i tuoi accordi vengono preservati)."
+      "a11": "iriumd mette in quarantena i file bloccati che non può convalidare (in genere dopo un arresto anomalo durante la scrittura o una riorganizzazione danneggiata). I blocchi in quarantena risiedono in ~/.irium/blocks/orphaned_<timestamp>/. Puoi cancellarli dalla sezione Ripristino blocchi in quarantena sopra (interrompi prima il nodo). Il nodo recupererà automaticamente i blocchi mancanti dai peer al prossimo avvio. Se la risincronizzazione si blocca alla stessa altezza, utilizza Impostazioni → Cancella stato catena per una risincronizzazione pulita dalla genesi (il tuo portafoglio e i tuoi accordi vengono preservati).",
+      "q12": "Sono dietro NAT o CGNAT. Le offerte del mio marketplace saranno visibili agli altri?",
+      "a12": "Il mercato ha due direzioni, con requisiti di raggiungibilità diversi. RICEVERE offerte da altri funziona sempre: il tuo nodo recupera da peer raggiungibili pubblicamente indipendentemente dal tuo stato NAT; qualsiasi normale connessione Internet può navigare nel mercato. LA CONDIVISIONE delle tue offerte richiede che il tuo nodo sia raggiungibile: i peer recuperano da http://<your-ip>:38300/offers/feed, il che significa un IPv4 pubblico e una porta aperta 38300. Il portafoglio desktop tenta automaticamente il port forwarding UPnP quando viene rilevato un endpoint esterno. Se utilizzi CGNAT o NAT rigoroso e non puoi esporre la porta 38300, puoi comunque ACQUISTARE offerte da altri, ma affinché loro possano vedere le TUE offerte puoi: (a) richiedere un IPv4 pubblico dal tuo ISP, (b) eseguire iriumd su un VPS o (c) esportare l'offerta con \"irium-wallet offer-export\" e condividere direttamente il JSON: la controparte lo importa con \"offer-import\"."
     },
     "port_forwarding": {
       "section_title": "Come inoltrare le porte per una migliore connettività",

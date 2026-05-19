@@ -222,6 +222,21 @@
       "consensus": "Consenso",
       "total_supply": "Oferta total"
     },
+    "connected_peers": {
+      "title": "Pares conectados",
+      "count_one": "{{count}} par conectado",
+      "count_other": "{{count}} pares conectados",
+      "count": "{{count}} pares conectados",
+      "show_addresses": "Mostrar direcciones IP de pares",
+      "hide_addresses": "Ocultar direcciones IP de pares",
+      "empty": "Aún no hay compañeros conectados. Inicie el nodo para descubrir pares.",
+      "dialable_yes": "Marcable",
+      "dialable_no": "Sólo salida",
+      "height_label": "Altura:",
+      "last_seen_label": "Visto por última vez:",
+      "agent_label": "Agente:",
+      "privacy_note": "Las IP de pares solo se almacenan localmente en su aplicación y nunca se envían a ninguna parte. Desactívala para ocultarlos nuevamente."
+    },
     "port_reachability": {
       "title": "Accesibilidad del puerto",
       "active_upnp": "Activo (UPnP): TCP 38291 abierto",
@@ -839,8 +854,21 @@
       "already_added": "Ya agregado",
       "add_feed": "Agregar feed"
     },
+    "browse": {
+      "remote_filter_warning": "Estás viendo ofertas remotas únicamente. Este filtro oculta sus propias ofertas locales.",
+      "switch_to_all": "Cambiar a todo",
+      "auto_shared_hint": "Sus ofertas se comparten automáticamente con pares conectados a través de P2P. No se necesita configuración manual.",
+      "nat_faq_title": "¿Detrás de NAT o CGNAT?",
+      "nat_faq_receiving_label": "Recibir ofertas de otros",
+      "nat_faq_receiving_body": "Siempre funciona. Su nodo obtiene datos de pares accesibles públicamente independientemente de su propio estado NAT: cualquier conexión a Internet normal puede navegar por el mercado.",
+      "nat_faq_sharing_label": "Compartir sus ofertas con otros",
+      "nat_faq_sharing_body": "Requiere que su nodo sea accesible. Los pares obtienen de http://<your-ip>:38300/offers/feed, lo que significa un IPv4 público y un puerto abierto 38300. La billetera de escritorio intenta reenviar el puerto UPnP automáticamente cuando se detecta un punto final externo.",
+      "nat_faq_cgnat_label": "Detrás de CGNAT o NAT estricta",
+      "nat_faq_cgnat_body": "Aún puedes COMPRAR ofertas de otros. Para que otros vean SUS ofertas, las opciones son: (a) solicitar un IPv4 público a su ISP, (b) ejecutar iriumd en un VPS o (c) exportar la oferta con `irium-wallet offer-export` y compartir el JSON directamente con su contraparte, quien lo importa con `offer-import`."
+    },
     "toasts": {
       "offer_created": "Oferta creada: {{id}}",
+      "offer_created_browse_ready": "Oferta creada correctamente: visible en la pestaña Explorar",
       "offer_taken": "Oferta aceptada - acuerdo {{id}}",
       "feed_added": "Feed agregado",
       "min_must_be_positive": "El monto mínimo de transacción debe ser un número positivo",
@@ -912,6 +940,7 @@
       "device": "Dispositivo",
       "gpu_address_placeholder": "PAGS…",
       "intensity_label": "Intensidad — {{value}}%",
+      "intensity_mac_note": "La intensidad se limitó al 50% en macOS para evitar que el organismo de control de la GPU elimine los núcleos a mitad del lote. El minero GPU detecta automáticamente los bloqueos del perro guardián y se detiene limpiamente si los ve de todos modos.",
       "pool_preset": "Preajuste de piscina"
     },
     "found_blocks": {
@@ -1392,7 +1421,9 @@
       "q10": "macOS dice que Irium Core está dañado o en cuarentena. ¿Cómo lo soluciono?",
       "a10": "macOS pone en cuarentena las aplicaciones descargadas fuera de la App Store. Para solucionar este problema: (1) abra la Terminal; (2) ejecute: xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app: esto elimina el indicador de cuarentena de todo el paquete de aplicaciones. Si aún ve \"dañado\", ejecute: codesign --force --deep --sign - /Applications/Irium\\ Core.app y luego reinicie. El primer lanzamiento puede tardar entre 10 y 20 segundos mientras Gatekeeper vuelve a verificar la firma. Si el propio iriumd fue puesto en cuarentena (ve \"iriumd está dañado\" en los registros), ejecute: xattr -d com.apple.quarantine ~/.irium/binaries/iriumd para sacar de la cuarentena solo el nodo binario.",
       "q11": "Mi nodo tiene bloques en cuarentena. ¿Cómo me recupero?",
-      "a11": "iriumd pone en cuarentena archivos de bloques que no puede validar (generalmente después de una falla en mitad de la escritura o una reorganización corrupta). Los bloques en cuarentena viven en ~/.irium/blocks/orphaned_<timestamp>/. Puede borrarlos desde la sección Recuperación de bloques en cuarentena anterior (primero detenga el nodo). El nodo recuperará automáticamente los bloques faltantes de sus pares en el próximo inicio. Si la resincronización se atasca a la misma altura, use Configuración → Borrar estado de la cadena para una resincronización limpia desde génesis (su billetera y sus acuerdos se conservan)."
+      "a11": "iriumd pone en cuarentena archivos de bloques que no puede validar (generalmente después de una falla en mitad de la escritura o una reorganización corrupta). Los bloques en cuarentena viven en ~/.irium/blocks/orphaned_<timestamp>/. Puede borrarlos desde la sección Recuperación de bloques en cuarentena anterior (primero detenga el nodo). El nodo recuperará automáticamente los bloques faltantes de sus pares en el próximo inicio. Si la resincronización se atasca a la misma altura, use Configuración → Borrar estado de la cadena para una resincronización limpia desde génesis (su billetera y sus acuerdos se conservan).",
+      "q12": "Estoy detrás de NAT o CGNAT. ¿Mis ofertas de mercado serán visibles para otros?",
+      "a12": "El mercado tiene dos direcciones, con diferentes requisitos de accesibilidad. RECIBIR ofertas de otros siempre funciona: su nodo obtiene de pares accesibles públicamente independientemente de su propio estado NAT; cualquier conexión a Internet normal puede navegar por el mercado. COMPARTIR sus ofertas requiere que su nodo sea accesible: los pares obtienen de http://<su-ip>:38300/offers/feed, lo que significa un IPv4 público y un puerto abierto 38300. La billetera de escritorio intenta reenviar el puerto UPnP automáticamente cuando se detecta un punto final externo. Si está detrás de CGNAT o NAT estricta y no puede exponer el puerto 38300, aún puede COMPRAR ofertas de otros, pero para que vean SUS ofertas, puede: (a) solicitar un IPv4 público a su ISP, (b) ejecutar iriumd en un VPS o (c) exportar la oferta con `irium-wallet offer-export` y compartir el JSON directamente; la contraparte lo importa con `offer-import`."
     },
     "port_forwarding": {
       "section_title": "Cómo reenviar puertos para una mejor conectividad",

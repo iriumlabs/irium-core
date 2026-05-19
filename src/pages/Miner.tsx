@@ -12,6 +12,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, Area
 import toast from 'react-hot-toast';
 import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { platform as osPlatform } from '@tauri-apps/api/os';
 import { miner, gpuMiner, stratum, wallet } from '../lib/tauri';
 import { useStore } from '../lib/store';
 import type { LucideIcon } from 'lucide-react';
@@ -836,6 +837,26 @@ function GpuMinerTab() {
   const intensity    = useStore((s) => s.gpuIntensity);
   const setIntensity = useStore((s) => s.setGpuIntensity);
 
+  // macOS imposes a tight GPU watchdog that silently kills long-running
+  // OpenCL kernels. The bundled irium-miner-gpu binary also enforces a
+  // 1 M-nonce per-batch cap on macOS (see irium-source v1.9.22+), but
+  // we cap the SLIDER on macOS too so the user can't request an intensity
+  // that the binary would silently downscale. 50 is the slider value that
+  // maps to a batch comfortably inside Apple Silicon's TDR window.
+  const [isMac, setIsMac] = useState(false);
+  useEffect(() => {
+    osPlatform()
+      .then((p) => setIsMac(p === 'darwin'))
+      .catch(() => { /* non-Tauri preview, ignore */ });
+  }, []);
+  const maxIntensity = isMac ? 50 : 100;
+  // Clamp current value if the user previously saved a higher slider position
+  // on a non-Mac and then opened the same wallet on a Mac. Persisted state
+  // in localStorage might say 100; ratchet down to the cap silently.
+  useEffect(() => {
+    if (intensity > maxIntensity) setIntensity(maxIntensity);
+  }, [intensity, maxIntensity, setIntensity]);
+
   const loading = status === null;
 
   const handleDetect = async (openModal: boolean) => {
@@ -1222,12 +1243,25 @@ function GpuMinerTab() {
         <div>
           <label className="label">{t('miner.fields.intensity_label', { value: intensity })}</label>
           <input
-            type="range" min={10} max={100} step={5} value={intensity}
+            type="range" min={10} max={maxIntensity} step={5} value={intensity}
             onChange={(e) => setIntensity(parseInt(e.target.value))}
             className="w-full h-1.5 rounded-full appearance-none cursor-pointer mt-1"
-            style={{ background: `linear-gradient(to right, #3B82F6 0%, #06B6D4 ${intensity}%, rgba(255,255,255,0.08) ${intensity}%, rgba(255,255,255,0.08) 100%)` }}
+            style={{ background: `linear-gradient(to right, #3B82F6 0%, #06B6D4 ${(intensity / maxIntensity) * 100}%, rgba(255,255,255,0.08) ${(intensity / maxIntensity) * 100}%, rgba(255,255,255,0.08) 100%)` }}
           />
           <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Higher intensity = more hashrate, more power usage</p>
+          {isMac && (
+            <p
+              className="text-xs mt-1.5 px-2.5 py-1.5 rounded"
+              style={{
+                color: '#fbbf24',
+                background: 'rgba(245,158,11,0.08)',
+                border: '1px solid rgba(245,158,11,0.25)',
+                lineHeight: 1.5,
+              }}
+            >
+              {t('miner.fields.intensity_mac_note')}
+            </p>
+          )}
         </div>
 
         {/* Start / Stop */}

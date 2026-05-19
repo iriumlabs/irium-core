@@ -222,6 +222,21 @@
       "consensus": "Konsensüs",
       "total_supply": "Toplam arz"
     },
+    "connected_peers": {
+      "title": "Bağlantılı Eşler",
+      "count_one": "{{count}} eş bağlantılı",
+      "count_other": "{{count}} eşler bağlı",
+      "count": "{{count}} eşler bağlı",
+      "show_addresses": "Eş IP adreslerini göster",
+      "hide_addresses": "Eş IP adreslerini gizle",
+      "empty": "Henüz bağlı eş yok. Eşleri keşfetmek için düğümü başlatın.",
+      "dialable_yes": "Çevirilebilir",
+      "dialable_no": "Yalnızca giden",
+      "height_label": "Yükseklik:",
+      "last_seen_label": "Son görülme tarihi:",
+      "agent_label": "Ajan:",
+      "privacy_note": "Eş IP'ler uygulamanızda yalnızca yerel olarak depolanır ve hiçbir zaman hiçbir yere gönderilmez. Bunları tekrar gizlemek için kapatın."
+    },
     "port_reachability": {
       "title": "Bağlantı Noktasına Erişilebilirlik",
       "active_upnp": "Aktif (UPnP) — TCP 38291 açık",
@@ -839,8 +854,21 @@
       "already_added": "Zaten eklendi",
       "add_feed": "Özet akışı ekle"
     },
+    "browse": {
+      "remote_filter_warning": "Yalnızca uzak teklifleri görüntülüyorsunuz. Kendi yerel teklifleriniz bu filtre tarafından gizlenir.",
+      "switch_to_all": "Tümüne Geç",
+      "auto_shared_hint": "Teklifleriniz P2P aracılığıyla bağlı eşlerle otomatik olarak paylaşılır. Manuel kurulum gerekmez.",
+      "nat_faq_title": "NAT'ın mı yoksa CGNAT'ın mı arkasında?",
+      "nat_faq_receiving_label": "Başkalarından teklif almak",
+      "nat_faq_receiving_body": "Her zaman çalışır. Düğümünüz, kendi NAT durumunuza bakılmaksızın herkesin erişebildiği eşlerden gelir; herhangi bir normal internet bağlantısı pazarda gezinebilir.",
+      "nat_faq_sharing_label": "Tekliflerinizi başkalarıyla paylaşma",
+      "nat_faq_sharing_body": "Düğümünüzün ulaşılabilir olmasını gerektirir. Eşler http://<ipiniz>:38300/offers/feed adresinden alınır; bu, genel bir IPv4 ve açık bir bağlantı noktası 38300 anlamına gelir. Masaüstü cüzdanı, harici bir uç nokta algılandığında otomatik olarak UPnP bağlantı noktası iletmeyi dener.",
+      "nat_faq_cgnat_label": "CGNAT veya katı NAT'ın arkasında",
+      "nat_faq_cgnat_body": "Yine de başkalarından teklif SATIN ALABİLİRSİNİZ. Diğerlerinin SİZİN tekliflerinizi görebilmesi için seçenekler şunlardır: (a) İSS'nizden genel bir IPv4 talep edin, (b) iriumd'yi bir VPS üzerinde çalıştırın veya (c) teklifi 'irium-wallet Offer-export' ile dışarı aktarın ve JSON'u, onu 'offer-import' ile içe aktaran karşı tarafınızla doğrudan paylaşın."
+    },
     "toasts": {
       "offer_created": "Teklif oluşturuldu: {{id}}",
+      "offer_created_browse_ready": "Teklif başarıyla oluşturuldu — Gözat sekmesinde görünür",
       "offer_taken": "Teklif alındı ​​— anlaşma {{id}}",
       "feed_added": "Özet akışı eklendi",
       "min_must_be_positive": "Minimum işlem tutarı pozitif bir sayı olmalıdır",
@@ -912,6 +940,7 @@
       "device": "Cihaz",
       "gpu_address_placeholder": "P…",
       "intensity_label": "Yoğunluk — {{value}}%",
+      "intensity_mac_note": "GPU gözlemcisinin toplu iş ortasında çekirdekleri öldürmesini önlemek için macOS'ta yoğunluk %50 ile sınırlandırıldı. GPU madenci, bekçi köpeği durmalarını otomatik olarak algılar ve yine de görürse temiz bir şekilde durur.",
       "pool_preset": "Havuz Ön Ayarı"
     },
     "found_blocks": {
@@ -1392,7 +1421,9 @@
       "q10": "macOS, Irium Core'un hasar gördüğünü veya karantinaya alındığını söylüyor. Nasıl düzeltebilirim?",
       "a10": "macOS, App Store dışında indirilen uygulamaları karantinaya alır. Bunu düzeltmek için: (1) Terminali açın; (2) şunu çalıştırın: xattr -dr com.apple.quarantine /Applications/Irium\\ Core.app - bu, karantina işaretini uygulama paketinin tamamından kaldırır. Hala \"hasarlı\" ifadesini görüyorsanız, şunu çalıştırın: codesign --force --deep --sign - /Applications/Irium\\ Core.app ve ardından yeniden başlatın. Gatekeeper imzayı yeniden doğrularken ilk başlatma 10-20 saniye sürebilir. Iriumd'un kendisi karantinaya alındıysa (günlüklerde \"iriumd hasar gördü\" ifadesini görüyorsanız), yalnızca ikili düğümün karantinasını kaldırmak için xattr -d com.apple.quarantine ~/.irium/binaries/iriumd komutunu çalıştırın.",
       "q11": "Düğümün karantinaya alınmış blokları var. Nasıl iyileşirim?",
-      "a11": "iriumd, doğrulayamadığı blok dosyaları karantinaya alır (genellikle yazma sırasında meydana gelen bir çökme veya bozuk bir yeniden düzenleme sonrasında). Karantinaya alınan bloklar ~/.irium/blocks/orphaned_<timestamp>/ konumunda bulunur. Bunları yukarıdaki Karantinaya Alınmış Blokları Kurtarma bölümünden temizleyebilirsiniz (önce düğümü durdurun). Düğüm, bir sonraki başlangıçta eksik blokları eşlerden otomatik olarak yeniden alacaktır. Yeniden senkronizasyon aynı yükseklikte takılı kalırsa, Genesis'ten temiz bir yeniden senkronizasyon için Ayarlar → Zincir durumunu temizle seçeneğini kullanın (cüzdanınız ve sözleşmeleriniz korunur)."
+      "a11": "iriumd, doğrulayamadığı blok dosyaları karantinaya alır (genellikle yazma sırasında meydana gelen bir çökme veya bozuk bir yeniden düzenleme sonrasında). Karantinaya alınan bloklar ~/.irium/blocks/orphaned_<timestamp>/ konumunda bulunur. Bunları yukarıdaki Karantinaya Alınmış Blokları Kurtarma bölümünden temizleyebilirsiniz (önce düğümü durdurun). Düğüm, bir sonraki başlangıçta eksik blokları eşlerden otomatik olarak yeniden alacaktır. Yeniden senkronizasyon aynı yükseklikte takılı kalırsa, Genesis'ten temiz bir yeniden senkronizasyon için Ayarlar → Zincir durumunu temizle seçeneğini kullanın (cüzdanınız ve sözleşmeleriniz korunur).",
+      "q12": "NAT veya CGNAT'ın arkasındayım. Pazar yeri tekliflerim başkaları tarafından görülebilecek mi?",
+      "a12": "Pazarın farklı erişilebilirlik gereksinimlerine sahip iki yönü vardır. Başkalarından teklif almak her zaman işe yarar; düğümünüz, kendi NAT durumunuza bakılmaksızın herkesin erişebildiği eşlerden gelir; herhangi bir normal internet bağlantısı pazarda gezinebilir. Tekliflerinizi PAYLAŞMAK, düğümünüzün ulaşılabilir olmasını gerektirir: eşler http://<ipiniz>:38300/offers/feed adresinden alınır; bu, genel bir IPv4 ve açık bir bağlantı noktası 38300 anlamına gelir. Masaüstü cüzdanı, harici bir uç nokta algılandığında otomatik olarak UPnP bağlantı noktası iletmeyi dener. CGNAT veya katı NAT arkasındaysanız ve 38300 numaralı bağlantı noktasını açığa çıkaramıyorsanız, yine de diğerlerinden teklif SATIN ALABİLİRSİNİZ, ancak onların SİZİN tekliflerinizi görebilmesi için şunları yapabilirsiniz: (a) ISP'nizden genel bir IPv4 talep edebilirsiniz, (b) iriumd'yi bir VPS üzerinde çalıştırabilirsiniz veya (c) teklifi \"irium-wallet Offer-export\" ile dışa aktarabilir ve JSON'u doğrudan paylaşabilirsiniz - karşı taraf bunu \"offer-import\" ile içe aktarır."
     },
     "port_forwarding": {
       "section_title": "Daha iyi bağlantı için bağlantı noktaları nasıl iletilir",

@@ -3135,6 +3135,18 @@ async fn offer_remove(state: State<'_, AppState>, offer_id: String) -> Result<bo
         let parsed: serde_json::Value = serde_json::from_str(&contents)
             .unwrap_or(serde_json::Value::Null);
         if parsed["offer_id"].as_str() == Some(offer_id.as_str()) {
+            // Defense-in-depth: refuse to delete an offer the UI shouldn't
+            // even have offered a delete button for. The Marketplace page
+            // gates this at the UI level, but a dev-tools or RPC-bypass
+            // path could still call offer_remove on a taken offer.
+            if parsed["status"].as_str() == Some("taken")
+                || parsed["status"].as_str() == Some("completed")
+            {
+                return Err(
+                    "Cannot delete a taken or completed offer. The agreement must be resolved first."
+                        .to_string()
+                );
+            }
             std::fs::remove_file(&path)
                 .map_err(|e| format!("Failed to delete offer: {}", e))?;
             return Ok(true);
