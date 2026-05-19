@@ -837,8 +837,14 @@
       "already_added": "Already added",
       "add_feed": "Add feed"
     },
+    "browse": {
+      "remote_filter_warning": "You are viewing remote offers only. Your own local offers are hidden by this filter.",
+      "switch_to_all": "Switch to All",
+      "network_visibility_hint": "Your offers are visible to you immediately. For other users to see them, they must add your node's offers feed: `feed-add http://YOUR-IP:38300/offers/feed`. Peers also discover your feed automatically via the P2P handshake once they connect to your node."
+    },
     "toasts": {
       "offer_created": "Offer created: {{id}}",
+      "offer_created_browse_ready": "Offer created successfully — visible in Browse tab",
       "offer_taken": "Offer taken — agreement {{id}}",
       "feed_added": "Feed added",
       "min_must_be_positive": "Minimum trade amount must be a positive number",

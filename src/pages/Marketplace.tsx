@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, RefreshCw, Search, Globe, X, Rss, Star, Download, Upload, Compass, HelpCircle, Trash2 } from 'lucide-react';
+import { Plus, RefreshCw, Search, Globe, X, Rss, Star, Download, Upload, Compass, HelpCircle, Trash2, AlertTriangle, Radio } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../lib/store';
@@ -797,6 +797,20 @@ export default function MarketplacePage() {
     }
   });
 
+  // 30-second silent auto-refresh on the Browse tab. Picks up offers
+  // created on this node by other wallet sessions and offers synced from
+  // remote feeds without the user needing to click Refresh or switch
+  // tabs. iriumd's WS bridge already emits offer.* events for offers it
+  // observes flowing through the marketplace pipeline; the poll is a
+  // belt-and-suspenders fallback for offers that bypass the WS path
+  // (e.g. locally-created offers saved straight to disk).
+  useEffect(() => {
+    if (activeTab !== 'browse') return;
+    const id = setInterval(loadOffers, 30_000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
   // ── Feed actions ─────────────────────────────────────────────
   const handleAddFeed = async () => {
     if (!addFeedUrl.trim()) return;
@@ -954,6 +968,34 @@ export default function MarketplacePage() {
       {/* ── Browse Tab ────────────────────────────────────────── */}
       {activeTab === 'browse' && (
         <>
+          {/* Remote-source filter warning — the `remote` pill hides every
+              local offer (the user's own + any imported), which is the
+              most common reason a freshly-created offer "disappears" from
+              the Browse tab. Surface this explicitly when the filter is
+              active so the user sees the cause at a glance. */}
+          {filterSource === 'remote' && (
+            <div
+              className="flex items-start gap-2.5 px-4 py-3 mb-4"
+              style={{
+                background: 'rgba(245,158,11,0.10)',
+                border: '1px solid rgba(245,158,11,0.40)',
+                borderRadius: 8,
+              }}
+            >
+              <AlertTriangle size={14} style={{ color: '#fbbf24', marginTop: 1, flexShrink: 0 }} />
+              <p style={{ fontSize: 11.5, color: 'rgba(253,230,138,0.90)', lineHeight: 1.5 }}>
+                {t('marketplace.browse.remote_filter_warning')}{' '}
+                <button
+                  onClick={() => setFilterSource('all')}
+                  className="font-display font-semibold underline"
+                  style={{ color: '#fbbf24' }}
+                >
+                  {t('marketplace.browse.switch_to_all')}
+                </button>
+              </p>
+            </div>
+          )}
+
           {/* Filter bar */}
           <motion.div
             initial={{ opacity: 0, y: -12 }}
@@ -1140,6 +1182,32 @@ export default function MarketplacePage() {
                 />
               ))}
             </motion.div>
+          )}
+
+          {/* Network visibility hint — only shown when at least one local
+              offer is in the Browse view. Locally-saved offers live in the
+              wallet's offers/ directory; iriumd's /offers/feed reads from
+              the same directory and exposes them as the node's public
+              feed, but other users' nodes need to learn the feed URL
+              before they see anything. The standard path is
+              `feed-add http://<node-ip>:38300/offers/feed` on the buyer
+              side. Surface this so creators understand why their offer
+              is visible to themselves but not yet to the rest of the
+              network. */}
+          {filteredOffers.some((o) => o.source === 'local') && (
+            <div
+              className="flex items-start gap-2.5 px-4 py-3 mt-4"
+              style={{
+                background: 'rgba(110,198,255,0.05)',
+                border: '1px solid rgba(110,198,255,0.15)',
+                borderRadius: 8,
+              }}
+            >
+              <Radio size={14} style={{ color: '#6ec6ff', marginTop: 1, flexShrink: 0 }} />
+              <p style={{ fontSize: 11.5, color: 'rgba(238,240,255,0.65)', lineHeight: 1.55 }}>
+                {t('marketplace.browse.network_visibility_hint')}
+              </p>
+            </div>
           )}
         </>
       )}
@@ -1378,7 +1446,16 @@ export default function MarketplacePage() {
           onClose={() => setShowCreateModal(false)}
           onSuccess={() => {
             setShowCreateModal(false);
+            // Switch to the Browse tab and refresh both lists so the new
+            // offer is visible immediately. Prior behaviour only refreshed
+            // My Offers, which meant a user creating from the Browse tab
+            // would see the modal close and their offer apparently
+            // vanish — locally-saved offers don't emit iriumd WS events,
+            // so the useIriumEvents fallback never fires for them.
+            setActiveTab('browse');
+            loadOffers();
             loadMyOffers();
+            toast.success(t('marketplace.toasts.offer_created_browse_ready'));
           }}
         />
       )}
