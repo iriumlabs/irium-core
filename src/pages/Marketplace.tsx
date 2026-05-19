@@ -841,14 +841,14 @@ export default function MarketplacePage() {
       }
       await loadOffers(silent);
     };
-    // Tab-entry sync runs SILENTLY. The existing tab-change effect above
-    // already schedules a 400 ms-debounced `loadOffers(false)` which
-    // shows the loading skeleton; doing syncAndLoad(false) here too
-    // would produce a SECOND skeleton flash ~5 s later when feeds.sync
-    // resolves and the awaited loadOffers re-toggles the loading state.
-    // Letting the debounced call own the skeleton and this background
-    // sync update the list quietly gives the cleanest perceived UX.
-    syncAndLoad(true);
+    // Tab-entry sync runs NON-SILENT so the user gets the loading skeleton
+    // while feeds.sync is in flight. The race guard inside loadOffers
+    // (isFetchingOffersRef) collapses any overlap with the 400 ms-debounced
+    // tab-change effect so there's no double-fetch, even though both
+    // paths fire when activeTab changes. Subsequent 60 s ticks are
+    // silent — the cached list is already rendered, the interval just
+    // refreshes it in-place when fresh data lands.
+    syncAndLoad(false);
     const id = setInterval(() => syncAndLoad(true), 60_000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
