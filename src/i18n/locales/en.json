@@ -916,6 +916,7 @@
       "device": "Device",
       "gpu_address_placeholder": "P…",
       "intensity_label": "Intensity — {{value}}%",
+      "intensity_mac_note": "Intensity capped at 50% on macOS to prevent the GPU watchdog from killing kernels mid-batch. The GPU miner automatically detects watchdog stalls and stops cleanly if it sees them anyway.",
       "pool_preset": "Pool Preset"
     },
     "found_blocks": {
