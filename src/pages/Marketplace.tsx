@@ -178,14 +178,27 @@ function OfferCard({ offer, onTake, onOpenDetail, onExport, onDelete, isOnline }
           <Download size={13} />
         </button>
       )}
-      {/* BUG 2 fix: Delete only renders for local offers. Remote offers
-          show no action — there's nothing to delete locally; the seller's
-          own node holds the canonical record. */}
+      {/* Delete button has three mutually-exclusive states:
+            - local + open/no-status: active red Trash (deletable)
+            - local + taken: disabled Trash with tooltip explaining why
+              the offer can't be removed until the agreement settles
+            - remote: "remote" badge — the canonical record lives on the
+              seller's node and there's nothing local to remove. */}
       {onDelete && isLocalOffer && (!offer.status || offer.status === 'open') && (
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
           title="Delete this offer from your local store"
           className="btn-ghost text-xs p-1.5 flex-shrink-0 text-red-400 hover:text-red-300"
+        >
+          <Trash2 size={13} />
+        </button>
+      )}
+      {onDelete && isLocalOffer && offer.status === 'taken' && (
+        <button
+          disabled
+          onClick={(e) => e.stopPropagation()}
+          title="Cannot delete — offer has been taken. Resolve the agreement first."
+          className="btn-ghost text-xs p-1.5 flex-shrink-0 text-white/20 cursor-not-allowed"
         >
           <Trash2 size={13} />
         </button>
@@ -1573,7 +1586,7 @@ export default function MarketplacePage() {
               <p className="text-sm text-white/60 mb-1">
                 Are you sure you want to delete offer <span className="font-mono text-white/80">{showDeleteOfferModal.id.slice(0, 20)}…</span>?
               </p>
-              <p className="text-xs text-white/40 mb-5">This removes it from your local store only. Buyers who already received this offer are not affected.</p>
+              <p className="text-xs text-white/40 mb-5">This removes the offer from your node immediately. Other peers who have already synced this offer will stop seeing it within their next sync cycle. Active agreements are not affected.</p>
               <div className="flex gap-3 justify-end">
                 <button className="btn-ghost text-sm py-1.5 px-4" onClick={() => setShowDeleteOfferModal(null)}>
                   Cancel
