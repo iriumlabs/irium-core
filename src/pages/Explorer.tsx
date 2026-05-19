@@ -474,6 +474,25 @@ function PoolStatsSection() {
   const integrityColor = (raw: string) =>
     raw === 'healthy' ? '#34d399' : 'rgba(255,255,255,0.40)';
 
+  // Format a hashrate in H/s into a compact unit (KH/s, MH/s, GH/s, TH/s).
+  // The pool proxy's estimate is best-effort: it uses the configured default
+  // share difficulty, so under vardiff drift the displayed number lags the
+  // true hashrate by up to ~2-4x. Confidence is signalled separately by the
+  // proxy and rendered as a small subscript.
+  const formatHashrate = (hps: number) => {
+    if (hps >= 1e12) return `${(hps / 1e12).toFixed(2)} TH/s`;
+    if (hps >= 1e9)  return `${(hps / 1e9).toFixed(2)} GH/s`;
+    if (hps >= 1e6)  return `${(hps / 1e6).toFixed(2)} MH/s`;
+    if (hps >= 1e3)  return `${(hps / 1e3).toFixed(2)} KH/s`;
+    return `${Math.round(hps)} H/s`;
+  };
+  const confidenceLabel = (c: string) =>
+    c === 'high'   ? t('explorer.pool_stats.confidence_high')
+    : c === 'medium' ? t('explorer.pool_stats.confidence_medium')
+    : t('explorer.pool_stats.confidence_low');
+  const confidenceColor = (c: string) =>
+    c === 'high' ? '#34d399' : c === 'medium' ? '#fbbf24' : 'rgba(255,255,255,0.45)';
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -558,6 +577,42 @@ function PoolStatsSection() {
                     {label}
                   </span>
                   <span className="font-mono" style={{ fontSize: 11, color: 'rgba(110,198,255,0.55)' }}>:{port}</span>
+                </div>
+                {/* Rolling-window hashrate estimate from the proxy. */}
+                <div
+                  className="mb-3 px-3 py-2 flex items-baseline justify-between gap-3"
+                  style={{
+                    background: 'rgba(110,198,255,0.05)',
+                    border: '1px solid rgba(110,198,255,0.10)',
+                    borderRadius: 6,
+                  }}
+                >
+                  <div className="flex flex-col">
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.30)', fontFamily: '"Space Grotesk", sans-serif' }}>
+                      {t('explorer.pool_stats.hashrate')}
+                    </span>
+                    {data.hashrate_estimate_hps == null ? (
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.55)', fontFamily: '"Space Grotesk", sans-serif' }}>
+                        {t('explorer.pool_stats.hashrate_collecting')}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 17, fontWeight: 800, color: '#d4eeff', fontVariantNumeric: 'tabular-nums', fontFamily: '"Space Grotesk", sans-serif', lineHeight: 1.15 }}>
+                        ~{formatHashrate(data.hashrate_estimate_hps)}
+                      </span>
+                    )}
+                  </div>
+                  {data.hashrate_estimate_hps != null && (
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span className="font-mono" style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.45)' }}>
+                        {t('explorer.pool_stats.hashrate_avg_window', {
+                          minutes: Math.max(1, Math.round(data.hashrate_window_seconds / 60)),
+                        })}
+                      </span>
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: confidenceColor(data.hashrate_confidence), fontFamily: '"Space Grotesk", sans-serif' }}>
+                        {confidenceLabel(data.hashrate_confidence)}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
                   <span style={{ color: 'rgba(255,255,255,0.40)' }}>{t('explorer.pool_stats.accepted_shares')}</span>

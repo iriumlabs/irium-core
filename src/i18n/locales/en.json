@@ -1228,7 +1228,13 @@
       "load_error": "Could not load pool stats — proxy may be unreachable",
       "empty": "Pool stats unavailable",
       "accepted_shares": "Accepted shares",
-      "rejected_shares": "Rejected shares"
+      "rejected_shares": "Rejected shares",
+      "hashrate": "Estimated Hashrate",
+      "hashrate_collecting": "Collecting data…",
+      "hashrate_avg_window": "{{minutes}}min avg",
+      "confidence_low": "Low confidence",
+      "confidence_medium": "Medium confidence",
+      "confidence_high": "High confidence"
     },
     "richlist": {
       "title": "Top IRM Holders",

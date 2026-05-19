@@ -618,6 +618,12 @@ pub struct PoolProfileStats {
     pub rejected_shares: u64,
     pub blocks_found: u64,
     pub integrity: String,
+    #[serde(default)]
+    pub hashrate_estimate_hps: Option<f64>,
+    #[serde(default)]
+    pub hashrate_window_seconds: u64,
+    #[serde(default)]
+    pub hashrate_confidence: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]

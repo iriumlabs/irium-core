@@ -1216,6 +1216,57 @@ async fn start_node(
         tracing::info!("[start_node] UPnP unavailable — outbound-only mode, not announcing public IP");
     }
 
+    // Self-advertised external endpoint for peers' PeerDirectory. Without
+    // this, peers gossip our TCP source IP, which is wrong under CGNAT (the
+    // carrier-NAT address rather than our actual external IP) and under any
+    // proxying NAT. iriumd's HandshakePayload.external_endpoint field carries
+    // this advertisement and falls back to TCP-source-IP behaviour when
+    // unset.
+    //
+    // Priority: ipify echo first (authoritative — comes from an internet-
+    // facing service). UPnP IGD's external IP is used only as fallback and
+    // ONLY when ipify failed: under CGNAT, UPnP's IP is the modem's WAN
+    // address (still 100.64/10 carrier-NAT), not the public internet. ipify
+    // sees the real public IP because it observes our packets after they
+    // cross the CGNAT.
+    //
+    // detected_ip above already holds the ipify result (it was used for own-
+    // IP self-filtering in the seed list). We re-use it here.
+    let ipify_validated = detected_ip
+        .as_deref()
+        .and_then(validate_routable_ipv4);
+    let upnp_validated = upnp_ip
+        .as_deref()
+        .and_then(validate_routable_ipv4);
+    let external_endpoint_ip = ipify_validated.clone().or_else(|| upnp_validated.clone());
+    match (&ipify_validated, &upnp_validated) {
+        (Some(a), Some(b)) if a == b => tracing::info!(
+            "[start_node] external endpoint confirmed: {} (ipify + UPnP agree)",
+            a
+        ),
+        (Some(a), Some(b)) => tracing::info!(
+            "[start_node] external endpoint: {} (ipify-validated; UPnP reported different IP {} — likely CGNAT WAN, trusting ipify)",
+            a, b
+        ),
+        (Some(a), None) => tracing::info!(
+            "[start_node] external endpoint: {} (ipify-validated)",
+            a
+        ),
+        (None, Some(b)) => tracing::info!(
+            "[start_node] external endpoint: {} (UPnP fallback — ipify unavailable)",
+            b
+        ),
+        (None, None) => tracing::info!(
+            "[start_node] external endpoint: not advertising (no routable public IPv4 detected — peers will fall back to TCP source IP)"
+        ),
+    }
+    if let Some(ref ip) = external_endpoint_ip {
+        node_env.insert(
+            "IRIUM_EXTERNAL_ENDPOINT".to_string(),
+            format!("{}:38291", ip),
+        );
+    }
+
     // Try Tauri sidecar first; fall back to launching iriumd from system PATH.
     match Command::new_sidecar("iriumd") {
         Ok(cmd) => {
@@ -5307,6 +5358,34 @@ async fn set_wallet_config(
     *state.wallet_path.lock().map_err(lock_err)? = validated_wallet_path;
     *state.data_dir.lock().map_err(lock_err)? = data_dir;
     Ok(true)
+}
+
+// Validate that a string is a globally routable IPv4 address suitable for
+// advertising as our P2P external endpoint. Mirrors the validator used
+// inside iriumd (p2p.rs::dialable_multiaddr_from_advertised) so the GUI
+// avoids spending env-var space on addresses iriumd would reject anyway.
+//
+// Returns the canonical dotted-quad form on success. Rejected: loopback,
+// RFC1918 private, RFC6598 CGNAT (100.64.0.0/10), link-local, unspecified,
+// broadcast, multicast, documentation, and any IPv6 input.
+fn validate_routable_ipv4(raw: &str) -> Option<String> {
+    use std::net::Ipv4Addr;
+    let v4: Ipv4Addr = raw.trim().parse().ok()?;
+    if v4.is_loopback()
+        || v4.is_private()
+        || v4.is_link_local()
+        || v4.is_unspecified()
+        || v4.is_broadcast()
+        || v4.is_multicast()
+        || v4.is_documentation()
+    {
+        return None;
+    }
+    let oct = v4.octets();
+    if oct[0] == 100 && (64..=127).contains(&oct[1]) {
+        return None;
+    }
+    Some(v4.to_string())
 }
 
 /// Fetches the machine's public IP from a user-chosen service.

@@ -829,6 +829,11 @@ export interface PoolProfileStats {
   rejected_shares: number;
   blocks_found: number;
   integrity: string;
+  // Rolling-window hashrate estimate from the stats proxy. Null until the
+  // proxy has accumulated enough samples (>= 120s window and >= 4 shares).
+  hashrate_estimate_hps: number | null;
+  hashrate_window_seconds: number;
+  hashrate_confidence: "low" | "medium" | "high";
 }
 
 export interface PoolStats {
