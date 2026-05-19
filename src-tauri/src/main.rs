@@ -1265,6 +1265,32 @@ async fn start_node(
             "IRIUM_EXTERNAL_ENDPOINT".to_string(),
             format!("{}:38291", ip),
         );
+        // Advertise this node's marketplace feed URL to every peer we
+        // handshake with. iriumd places IRIUM_MARKETPLACE_FEED_URL into
+        // HandshakePayload.marketplace_feed; receiving peers persist it via
+        // record_discovered_feed → ~/.irium/discovered_feeds.json, which
+        // offer-feed-sync then merges into the fetch loop alongside any
+        // manually-added feeds.
+        //
+        // We only advertise when we have a validated public IPv4 (the same
+        // condition that gates IRIUM_EXTERNAL_ENDPOINT above). Users
+        // behind CGNAT or in outbound-only mode cannot serve their feed,
+        // so silence is correct — advertising an unreachable URL would
+        // just poison peers' discovered_feeds.json with dead entries.
+        //
+        // Port 38300 is the standard RPC/explorer port, same one /offers/feed
+        // lives on. If the operator runs iriumd with a custom IRIUM_RPC_PORT
+        // they'd need to forward that port too; the GUI's bundled iriumd
+        // always uses 38300 so this is fine for the desktop case.
+        let feed_url = format!("http://{}:38300/offers/feed", ip);
+        node_env.insert(
+            "IRIUM_MARKETPLACE_FEED_URL".to_string(),
+            feed_url.clone(),
+        );
+        tracing::info!(
+            "[start_node] advertising marketplace feed: {} (peers will auto-discover via P2P handshake)",
+            feed_url
+        );
     }
 
     // Try Tauri sidecar first; fall back to launching iriumd from system PATH.

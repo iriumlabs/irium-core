@@ -29,7 +29,7 @@ const Help         = lazy(() => import('./pages/Help'));
 import Onboarding, { ONBOARDING_KEY, FORCE_ONBOARDING_KEY, Splash } from './pages/Onboarding';
 import { useNodePoller, startAggressivePoll } from './hooks/useNodePoller';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import { node, config, update, wallet } from './lib/tauri';
+import { node, config, update, wallet, feeds } from './lib/tauri';
 import { useStore } from './lib/store';
 import type { UpdateCheckResult } from './lib/types';
 
@@ -156,6 +156,7 @@ function AppLayout() {
   const setQuarantinedBlockCount = useStore((s) => s.setQuarantinedBlockCount);
   const autoStartFired = useRef(false);
   const quarantineScanFired = useRef(false);
+  const marketplaceFeedSyncFired = useRef(false);
 
   // Mirror settings.theme onto <html data-theme="..."> so every CSS variable
   // override in globals.css applies in one flip. Default "midnight" matches
@@ -217,6 +218,21 @@ function AppLayout() {
         setQuarantinedBlockCount(0);
       });
   }, [nodeStatus?.running, setQuarantinedBlockCount]);
+
+  // Marketplace feed sync trigger. Fires exactly once per session when the
+  // node first reaches a running state — pulls offers from every URL the
+  // wallet knows about (manual feeds.json + P2P-discovered_feeds.json) so
+  // the local offer cache reflects the network as soon as the app is up,
+  // not only after the user visits the Marketplace tab. Errors are
+  // swallowed (a transient unreachable feed is normal); the Marketplace
+  // Browse tab also runs sync on a 30-s interval as the steady-state
+  // refresh, this fire-once is for the cold-start window.
+  useEffect(() => {
+    if (marketplaceFeedSyncFired.current) return;
+    if (!nodeStatus?.running) return;
+    marketplaceFeedSyncFired.current = true;
+    feeds.sync().catch(() => { /* silent */ });
+  }, [nodeStatus?.running]);
 
   useEffect(() => {
     // Silent startup check

@@ -797,16 +797,32 @@ export default function MarketplacePage() {
     }
   });
 
-  // 30-second silent auto-refresh on the Browse tab. Picks up offers
-  // created on this node by other wallet sessions and offers synced from
-  // remote feeds without the user needing to click Refresh or switch
-  // tabs. iriumd's WS bridge already emits offer.* events for offers it
-  // observes flowing through the marketplace pipeline; the poll is a
-  // belt-and-suspenders fallback for offers that bypass the WS path
-  // (e.g. locally-created offers saved straight to disk).
+  // 30-second silent auto-refresh on the Browse tab. Each tick (a) runs
+  // offer-feed-sync to pull from every URL in feeds.json and the P2P-
+  // discovered feed list (~/.irium/discovered_feeds.json), then (b) does a
+  // fresh loadOffers() over the now-updated local cache. This is the
+  // missing link in the auto-discovery chain: iriumd already advertises
+  // its feed URL on every handshake and peers record it on receive, but
+  // nothing was scheduling the actual remote-fetch. Now any peer's offer
+  // appears in Browse within at most 30 seconds of P2P discovery.
+  //
+  // syncAndLoad also runs immediately on tab entry so the first paint
+  // reflects the current network state, not the stale local cache.
+  // feed-sync failures are swallowed — a transient unreachable feed
+  // should never block the cached list from rendering.
   useEffect(() => {
     if (activeTab !== 'browse') return;
-    const id = setInterval(loadOffers, 30_000);
+    const syncAndLoad = async () => {
+      try {
+        await feeds.sync();
+      } catch {
+        // silent — partial-failure responses are normal when one of N
+        // discovered feeds is temporarily unreachable
+      }
+      await loadOffers();
+    };
+    syncAndLoad();
+    const id = setInterval(syncAndLoad, 30_000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
