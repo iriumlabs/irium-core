@@ -766,14 +766,15 @@ function RichListSection({ running }: { running: boolean }) {
   // (which obeys the user's currency preference and trims fractional
   // zeroes), the rich list switches unit based on the exact value: whole
   // IRM amounts (every coinbase reward and the founder vest are exact
-  // Rich-list balances always render as IRM with up to 2 fractional
-  // digits — never raw sats. Fractional sats are rounded for display
-  // (which is what users expect from a "rich list"); the precise sat
-  // value is still available via the per-row UTXO inspector and RPC.
+  // Rich-list balances render as IRM. Whole-IRM balances drop the
+  // fractional part entirely ("292,900 IRM"); anything carrying
+  // fractional sats renders with EXACTLY 2 decimals ("37,134.90 IRM")
+  // so trailing zeros aren't trimmed and adjacent rows stay aligned.
   const formatRichListIRM = (balanceSats: number): string => {
     const irm = balanceSats / 100_000_000;
+    const hasDecimals = balanceSats % 100_000_000 !== 0;
     return irm.toLocaleString('en-US', {
-      minimumFractionDigits: 0,
+      minimumFractionDigits: hasDecimals ? 2 : 0,
       maximumFractionDigits: 2,
     }) + ' IRM';
   };
