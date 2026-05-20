@@ -5,7 +5,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 use tauri::{Manager, SystemTray, SystemTrayMenu, SystemTrayMenuItem, CustomMenuItem, State};
 use tauri::api::path::app_data_dir;
@@ -90,6 +90,52 @@ impl AppState {
             stratum_shares_rejected: Arc::new(Mutex::new(0)),
         }
     }
+}
+
+// ============================================================
+// LOCAL RPC TOKEN
+//
+// Generated on first launch and persisted to <app_data_dir>/rpc_token.txt.
+// Once iriumd's RPC port is bound to 0.0.0.0 (so peers can reach
+// /offers/feed) every privileged endpoint must be guarded by a token
+// shared between iriumd and the wallet sidecar — without this, opening
+// the bind would expose wallet RPC to anyone on the LAN.
+//
+// Both iriumd and the wallet binary read IRIUM_RPC_TOKEN from their env
+// and use the standard Bearer-token scheme. The GUI's own reqwest calls
+// only hit endpoints behind check_rate_with_auth (rate-limited but
+// unauthenticated path remains valid), so they continue to work without
+// being updated; the auth gate fires only on require_rpc_auth endpoints,
+// which the wallet sidecar handles.
+// ============================================================
+
+static RPC_TOKEN: OnceLock<String> = OnceLock::new();
+
+fn init_rpc_token(app_data_dir: &Path) -> String {
+    let token_path = app_data_dir.join("rpc_token.txt");
+    if let Ok(t) = std::fs::read_to_string(&token_path) {
+        let trimmed = t.trim().to_string();
+        if !trimmed.is_empty() { return trimmed; }
+    }
+    // 16 random bytes -> 32 hex chars. getrandom uses the OS entropy
+    // source (BCryptGenRandom on Windows, /dev/urandom on Linux/Mac).
+    // If the OS RNG truly fails, fall back to time+pid; this token only
+    // gates LAN-side access, not crypto, so the fallback is acceptable
+    // for the rare failure case.
+    let mut buf = [0u8; 16];
+    if getrandom::getrandom(&mut buf).is_err() {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let pid = std::process::id() as u128;
+        let mixed = now ^ (pid << 64);
+        buf.copy_from_slice(&mixed.to_le_bytes());
+    }
+    let token: String = buf.iter().map(|b| format!("{:02x}", b)).collect();
+    let _ = std::fs::create_dir_all(app_data_dir);
+    let _ = std::fs::write(&token_path, &token);
+    token
 }
 
 // ============================================================
@@ -338,6 +384,18 @@ async fn run_wallet_cmd(
     }
     if let Some(dd) = data_dir {
         env_vars.insert("IRIUM_DATA_DIR".to_string(), dd);
+    }
+    // Forward the local RPC token to the wallet sidecar so it can
+    // authenticate to iriumd. The wallet binary reads IRIUM_RPC_TOKEN from
+    // env and wraps every privileged RPC call with Authorization: Bearer …
+    // (verified in irium-source/src/bin/irium-wallet.rs:2607-2713). If the
+    // token isn't initialised yet (vanishingly rare; setup() runs first),
+    // unwrap_or_default leaves the env var unset which preserves the
+    // pre-change behaviour.
+    if let Some(token) = RPC_TOKEN.get() {
+        if !token.is_empty() {
+            env_vars.insert("IRIUM_RPC_TOKEN".to_string(), token.clone());
+        }
     }
 
     let cmd = Command::new_sidecar("irium-wallet")
@@ -1061,6 +1119,23 @@ async fn start_node(
 
     // REQUIRED: iriumd starts RPC-only with no peer connections unless this is set.
     node_env.insert("IRIUM_P2P_BIND".to_string(), "0.0.0.0:38291".to_string());
+    // Bind the RPC port publicly too so peers that discover our marketplace
+    // feed URL via the P2P handshake can actually fetch /offers/feed.
+    // iriumd defaults to 127.0.0.1:38300 (iriumd.rs:9175); without this
+    // override, every desktop seller's advertised feed URL is unreachable.
+    node_env.insert("IRIUM_NODE_HOST".to_string(), "0.0.0.0".to_string());
+    // Pair the public bind with a token. iriumd's require_rpc_auth() returns
+    // Ok unconditionally when no token is set, so without this every
+    // privileged endpoint (create_agreement, fund_agreement, build_*_template,
+    // claim_htlc, etc.) would be exposed to anyone on the LAN. The wallet
+    // sidecar reads the same env var and sends Authorization: Bearer …, so
+    // local settlement commands keep working transparently. RPC_TOKEN is
+    // initialised in setup(); unwrap_or_default keeps iriumd in the legacy
+    // no-auth mode if init somehow didn't run (e.g., during early-boot races).
+    node_env.insert(
+        "IRIUM_RPC_TOKEN".to_string(),
+        RPC_TOKEN.get().cloned().unwrap_or_default(),
+    );
 
     // Official bootstrap seeds (matches irium-source/bootstrap/seedlist.txt exactly).
     // IRIUM_ADDNODE feeds the seed dial loop directly (highest priority, always retried).
@@ -6857,6 +6932,14 @@ fn main() {
     tauri::Builder::default()
         .manage(AppState::new())
         .setup(|app| {
+            // Initialize the RPC token first thing in setup so it's
+            // available when start_node and any wallet sidecar call fire.
+            // get_or_init makes this idempotent if setup ever runs twice.
+            let token_dir = app.path_resolver()
+                .app_data_dir()
+                .unwrap_or_else(|| std::env::temp_dir().join("irium-core"));
+            RPC_TOKEN.get_or_init(|| init_rpc_token(&token_dir));
+
             let app_handle = app.handle();
             tauri::async_runtime::spawn(async move {
                 // Silent startup update check — emit event so frontend can show banner

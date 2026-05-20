@@ -26,6 +26,11 @@ thiserror = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 dirs = "5"
+# OS-provided randomness used to mint the local IRIUM_RPC_TOKEN on first
+# launch. Pure-Rust, ~30 KB; pulls from /dev/urandom on Linux/Mac and
+# BCryptGenRandom on Windows. The token gates privileged iriumd endpoints
+# now that the desktop launcher binds iriumd's RPC to 0.0.0.0.
+getrandom = "0.2"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.
