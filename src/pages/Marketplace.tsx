@@ -752,12 +752,16 @@ export default function MarketplacePage() {
     if (isFetchingOffersRef.current) return;
     isFetchingOffersRef.current = true;
     // Skeleton renders only when this is the very first load for the
-    // current tab session, OR when the caller explicitly wants a visible
-    // load (silent=false AND we don't yet have data). Once we have data
-    // in offerList, every subsequent call — auto-tick, event-driven, or
-    // even user-driven — refreshes in place so the table doesn't flash.
-    const showSkeleton = !silent && isInitialLoad;
-    if (showSkeleton) setLoading(true);
+    // current tab session AND the fetch takes more than 200ms. The timer
+    // pattern eliminates the perceptible flash that happened on rapid
+    // tab switches (Browse → My Offers → Browse) where the local cache
+    // returned in <50ms but the skeleton still flickered into existence
+    // because setLoading(true) fired synchronously.
+    const showSkeletonEligible = !silent && isInitialLoad;
+    let skeletonTimer: ReturnType<typeof setTimeout> | null = null;
+    if (showSkeletonEligible) {
+      skeletonTimer = setTimeout(() => setLoading(true), 200);
+    }
     try {
       // Parse min/max IRM inputs. parseFloat('') is NaN → undefined.
       const minIrm = filterMinIrm.trim() ? parseFloat(filterMinIrm) : undefined;
@@ -783,13 +787,17 @@ export default function MarketplacePage() {
         toast.error(t('marketplace.toasts.failed_to_load', { reason: String(e) }));
       }
     } finally {
-      if (showSkeleton) setLoading(false);
+      if (skeletonTimer) clearTimeout(skeletonTimer);
+      setLoading(false);
       isFetchingOffersRef.current = false;
     }
   };
 
   const loadMyOffers = async () => {
-    setLoading(true);
+    // Same 200 ms skeleton-eligibility timer as loadOffers — tab switches
+    // to My Offers used to flash a skeleton even when the local file scan
+    // resolved in well under 100ms.
+    const skeletonTimer = setTimeout(() => setLoading(true), 200);
     try {
       const data = await offers.list({ source: 'local' });
       setMyOffers(data);
@@ -798,12 +806,13 @@ export default function MarketplacePage() {
         toast.error(t('marketplace.toasts.failed_load_my', { reason: String(e) }));
       }
     } finally {
+      clearTimeout(skeletonTimer);
       setLoading(false);
     }
   };
 
   const loadFeeds = async () => {
-    setLoading(true);
+    const skeletonTimer = setTimeout(() => setLoading(true), 200);
     try {
       const data = await feeds.list();
       setFeedList(data);
@@ -812,6 +821,7 @@ export default function MarketplacePage() {
         toast.error(t('marketplace.toasts.failed_load_feeds', { reason: String(e) }));
       }
     } finally {
+      clearTimeout(skeletonTimer);
       setLoading(false);
     }
   };

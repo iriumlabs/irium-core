@@ -766,7 +766,7 @@ function RichListSection({ running }: { running: boolean }) {
   // (which obeys the user's currency preference and trims fractional
   // zeroes), the rich list switches unit based on the exact value: whole
   // IRM amounts (every coinbase reward and the founder vest are exact
-  // Rich-list balances always render as IRM with up to 4 fractional
+  // Rich-list balances always render as IRM with up to 2 fractional
   // digits — never raw sats. Fractional sats are rounded for display
   // (which is what users expect from a "rich list"); the precise sat
   // value is still available via the per-row UTXO inspector and RPC.
@@ -774,7 +774,7 @@ function RichListSection({ running }: { running: boolean }) {
     const irm = balanceSats / 100_000_000;
     return irm.toLocaleString('en-US', {
       minimumFractionDigits: 0,
-      maximumFractionDigits: 4,
+      maximumFractionDigits: 2,
     }) + ' IRM';
   };
 
@@ -795,7 +795,14 @@ function RichListSection({ running }: { running: boolean }) {
   // the founder's 3.5M IRM CLTV-locked genesis allocation.
   const circulatingSats: number = entries ? entries.reduce((acc, e) => acc + e.balance_sats, 0) : 0;
   const lockedSats: number = Math.max(0, totalSupply - circulatingSats);
-  const lockedPct: number = totalSupply > 0 ? (lockedSats / totalSupply) * 100 : 0;
+  // Percentages in the Rich List are normalised against the *protocol*
+  // maximum supply (100M IRM), not the currently-minted supply. Anchoring
+  // to the hard cap means each row's "% of supply" stays meaningful as
+  // more IRM is mined — a 1M IRM holder shows 1.0000% today and still
+  // shows 1.0000% at full issuance, instead of shrinking as the minted
+  // base grows.
+  const MAX_SUPPLY_SATS = MAX_SUPPLY_IRM * 100_000_000;
+  const lockedPct: number = (lockedSats / MAX_SUPPLY_SATS) * 100;
   const updatedAgoSec: number | null = lastFetched ? Math.max(0, Math.floor((nowTick - lastFetched) / 1000)) : null;
 
   return (
@@ -946,7 +953,7 @@ function RichListSection({ running }: { running: boolean }) {
                     </td>
                     <td className="px-2 py-2.5 text-right whitespace-nowrap">
                       <span style={{ fontSize: 11, color: 'rgba(253,230,138,0.85)', fontFamily: '"JetBrains Mono", monospace', fontVariantNumeric: 'tabular-nums' }}>
-                        {lockedPct.toFixed(2)}%
+                        {lockedPct.toFixed(4)}%
                       </span>
                     </td>
                     <td className="pl-2 pr-4 py-2.5 text-right whitespace-nowrap">
@@ -1003,10 +1010,13 @@ function RichListSection({ running }: { running: boolean }) {
                           {formatRichListIRM(e.balance_sats)}
                         </span>
                       </td>
-                      {/* % of supply */}
+                      {/* % of supply — computed locally against MAX_SUPPLY_SATS,
+                          NOT the server-provided e.percentage (which is
+                          relative to currently-minted supply and so over-
+                          weights every row early in the chain's lifetime). */}
                       <td className="px-2 py-2.5 text-right whitespace-nowrap">
                         <span style={{ fontSize: 11, color: 'rgba(110,198,255,0.75)', fontFamily: '"JetBrains Mono", monospace', fontVariantNumeric: 'tabular-nums' }}>
-                          {e.percentage.toFixed(2)}%
+                          {((e.balance_sats / MAX_SUPPLY_SATS) * 100).toFixed(4)}%
                         </span>
                       </td>
                       {/* UTXO count */}
@@ -1044,7 +1054,7 @@ function RichListSection({ running }: { running: boolean }) {
                   {t('explorer.richlist.locked_title')}
                 </p>
                 <p className="mt-1" style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 13, color: '#fde68a' }}>
-                  {formatRichListIRM(lockedSats)} <span style={{ color: 'rgba(253,230,138,0.60)', fontSize: 11 }}>({lockedPct.toFixed(2)}% {t('explorer.richlist.of_total_supply')})</span>
+                  {formatRichListIRM(lockedSats)} <span style={{ color: 'rgba(253,230,138,0.60)', fontSize: 11 }}>({lockedPct.toFixed(4)}% {t('explorer.richlist.of_total_supply')})</span>
                 </p>
                 <p className="mt-1.5" style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.55)', lineHeight: 1.5 }}>
                   {t('explorer.richlist.locked_note')}
