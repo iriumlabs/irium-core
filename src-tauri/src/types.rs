@@ -614,6 +614,14 @@ pub struct RichListResponse {
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct PoolProfileStats {
     pub active_miners: u64,
+    // Raw TCP socket count from the stratum metrics endpoint. Exposed
+    // separately from `active_miners` so the GUI can distinguish honest
+    // miners (sessions producing accepted shares) from port scanners and
+    // abandoned connections that the stratum server still has open.
+    // Defaults to 0 when an older proxy that doesn't emit this field is
+    // queried.
+    #[serde(default)]
+    pub tcp_sessions: u64,
     pub accepted_shares: u64,
     pub rejected_shares: u64,
     pub blocks_found: u64,

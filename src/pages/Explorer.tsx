@@ -549,31 +549,48 @@ function PoolStatsSection() {
         </div>
       ) : (
         <>
-          {/* Combined headline tiles */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            <PoolStatsTile
-              label={t('explorer.pool_stats.total_miners')}
-              value={stats.total_miners.toLocaleString('en-US')}
-              accent="#6ec6ff"
-            />
-            <PoolStatsTile
-              label={t('explorer.pool_stats.asic_miners')}
-              value={stats.asic.active_miners.toLocaleString('en-US')}
-              sub={t('explorer.pool_stats.asic_port', { port: stats.asic_port })}
-              accent="#a78bfa"
-            />
-            <PoolStatsTile
-              label={t('explorer.pool_stats.cpu_gpu_miners')}
-              value={stats.cpu_gpu.active_miners.toLocaleString('en-US')}
-              sub={t('explorer.pool_stats.cpu_gpu_port', { port: stats.cpu_gpu_port })}
-              accent="#a78bfa"
-            />
-            <PoolStatsTile
-              label={t('explorer.pool_stats.total_blocks_found')}
-              value={stats.total_blocks_found.toLocaleString('en-US')}
-              accent="#34d399"
-            />
-          </div>
+          {(() => {
+            // Effective miner count per profile: only count a profile as
+            // having "active miners" once at least one share has been
+            // accepted. Otherwise the displayed number is 0, regardless of
+            // how many raw TCP sessions are open — those are dominated by
+            // port scanners and abandoned connections in practice. The raw
+            // socket count is still surfaced below as "TCP connections".
+            const asicEffective = stats.asic.accepted_shares > 0 ? stats.asic.active_miners : 0;
+            const cpuEffective = stats.cpu_gpu.accepted_shares > 0 ? stats.cpu_gpu.active_miners : 0;
+            const totalEffective = asicEffective + cpuEffective;
+            return (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <PoolStatsTile
+                    label={t('explorer.pool_stats.total_miners')}
+                    value={totalEffective.toLocaleString('en-US')}
+                    accent="#6ec6ff"
+                  />
+                  <PoolStatsTile
+                    label={t('explorer.pool_stats.asic_miners')}
+                    value={asicEffective.toLocaleString('en-US')}
+                    sub={t('explorer.pool_stats.asic_port', { port: stats.asic_port })}
+                    accent="#a78bfa"
+                  />
+                  <PoolStatsTile
+                    label={t('explorer.pool_stats.cpu_gpu_miners')}
+                    value={cpuEffective.toLocaleString('en-US')}
+                    sub={t('explorer.pool_stats.cpu_gpu_port', { port: stats.cpu_gpu_port })}
+                    accent="#a78bfa"
+                  />
+                  <PoolStatsTile
+                    label={t('explorer.pool_stats.total_blocks_found')}
+                    value={stats.total_blocks_found.toLocaleString('en-US')}
+                    accent="#34d399"
+                  />
+                </div>
+                <p className="mt-2" style={{ fontSize: 11, color: 'rgba(255,255,255,0.40)', fontStyle: 'italic' }}>
+                  {t('explorer.pool_stats.scanner_note')}
+                </p>
+              </>
+            );
+          })()}
 
           {/* Per-profile detail panel */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -629,6 +646,10 @@ function PoolStatsSection() {
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
+                  <span style={{ color: 'rgba(255,255,255,0.40)' }}>{t('explorer.pool_stats.tcp_connections')}</span>
+                  <span className="font-mono text-right" style={{ color: 'rgba(255,255,255,0.65)' }}>
+                    {(data.tcp_sessions || data.active_miners).toLocaleString('en-US')}
+                  </span>
                   <span style={{ color: 'rgba(255,255,255,0.40)' }}>{t('explorer.pool_stats.accepted_shares')}</span>
                   <span className="font-mono text-right" style={{ color: '#34d399' }}>
                     {data.accepted_shares.toLocaleString('en-US')}

@@ -825,12 +825,18 @@ export interface RichListResponse {
 // when the proxy returns no data for a profile.
 export interface PoolProfileStats {
   active_miners: number;
+  // Raw TCP-socket count from the stratum server. Includes port scanners
+  // and abandoned sessions; shown separately so users can distinguish
+  // these from actual miners (sessions with accepted shares). Older
+  // proxies that don't emit this field default to 0 server-side.
+  tcp_sessions: number;
   accepted_shares: number;
   rejected_shares: number;
   blocks_found: number;
   integrity: string;
   // Rolling-window hashrate estimate from the stats proxy. Null until the
-  // proxy has accumulated enough samples (>= 120s window and >= 4 shares).
+  // proxy has accumulated enough samples (>= 120s window); 0 when the
+  // window is mature but no accepted shares have been seen.
   hashrate_estimate_hps: number | null;
   hashrate_window_seconds: number;
   hashrate_confidence: "low" | "medium" | "high";
