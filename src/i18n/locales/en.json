@@ -1202,7 +1202,7 @@
         "tx_not_found": "Transaction not found.",
         "address_not_found": "Address not found.",
         "tx_not_found_detailed": "Transaction not found — confirm the txid is correct and the node is fully synced.",
-        "address_not_found_detailed": "Address not found — the node may not yet expose address balance lookup.",
+        "address_not_found_detailed": "Address not found. This address has no spendable balance on the chain.",
         "node_unreachable": "Cannot reach node — make sure the node is running on the Dashboard."
       }
     },
@@ -1273,7 +1273,11 @@
       "subtitle": "Ranked by spendable balance on the current chain tip",
       "total_supply": "Total supply",
       "circulating_supply": "Circulating supply",
-      "total_supply_with_vested": "Total supply (incl. vested)",
+      "total_supply_with_vested": "Minted supply (incl. vested)",
+      "maximum_supply": "Maximum supply",
+      "hard_cap_suffix": "(hard cap)",
+      "pct_minted": "{{pct}}% minted",
+      "max_supply_tooltip": "The Irium blockchain has a fixed maximum supply of 100,000,000 IRM. This is a protocol-enforced hard cap that can never be changed.",
       "updated_ago": "Updated {{seconds}}s ago",
       "locked_title": "Locked / Vested Funds",
       "locked_note": "Includes the 3,500,000 IRM founder allocation, locked on-chain by CLTV at genesis, plus any multisig (P-prefix) outputs from settlement agreements. These are accounted in total supply but are not P2PKH spendable, so they do not appear as individual rich-list entries. Auto-refreshes every 60 seconds.",

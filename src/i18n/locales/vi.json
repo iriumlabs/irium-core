@@ -562,7 +562,7 @@
       "agreement_id": "ID thỏa thuận",
       "friendly_name_placeholder": "Tên thân thiện (ví dụ: \"Máy tính xách tay của John\")",
       "save_label": "Lưu nhãn",
-      "audit_modal_open": "Kiểm toán thỏa thuận"
+      "audit_modal_open": "Kiểm tra thỏa thuận"
     },
     "actions": {
       "action_required_sign": "Hành động bắt buộc: Ký Thỏa thuận",
@@ -707,11 +707,11 @@
       "import_pack_title": "Gói thỏa thuận nhập khẩu",
       "import_invoice_title": "Hóa đơn nhập khẩu",
       "open_dispute_title": "Tranh chấp mở?",
-      "audit_title": "Kiểm toán thỏa thuận",
+      "audit_title": "Kiểm tra thỏa thuận",
       "sign_title": "Ký thỏa thuận"
     },
     "audit": {
-      "fetching": "Đang tìm nạp bản ghi kiểm tra..."
+      "fetching": "Đang tìm nạp bản ghi kiểm tra…"
     },
     "empty": {
       "no_signatures": "Chưa có chữ ký nào được xác minh. Sử dụng nút ở trên để xác minh một.",
@@ -769,7 +769,7 @@
       }
     },
     "seller_dashboard": "Trang tổng quan người bán",
-    "buyer_dashboard": "Trang tổng quan về người mua",
+    "buyer_dashboard": "Trang tổng quan người mua",
     "seller_status_unavailable": "Trạng thái người bán không có sẵn.",
     "buyer_status_unavailable": "Trạng thái người mua không có sẵn.",
     "toasts": {
@@ -838,7 +838,7 @@
       "creating": "Đang tạo…",
       "confirm_large_amount": "Bạn sắp khóa {{amount}} IRM trong ký quỹ.\n\nĐây là một số tiền lớn. Xác nhận bạn đã nhập số thập phân chính xác.",
       "remote_label": "xa",
-      "remote_tooltip": "Ưu đãi này đến từ người bán khác và không thể xóa khỏi cửa hàng địa phương của bạn.",
+      "remote_tooltip": "Ưu đãi này là của người bán khác và không thể xóa khỏi cửa hàng địa phương của bạn.",
       "delete_tooltip": "Xóa ưu đãi này khỏi cửa hàng địa phương của bạn"
     },
     "take_offer": {
@@ -1146,7 +1146,7 @@
     },
     "stats": {
       "block_height": "Chiều cao khối",
-      "circulating_supply": "Nguồn cung lưu hành",
+      "circulating_supply": "Nguồn cung lưu thông",
       "peers": "ngang hàng",
       "active_miners": "Công cụ khai thác đang hoạt động",
       "next_halving": "Giảm một nửa tiếp theo: #{{height}}",
@@ -1204,7 +1204,7 @@
         "tx_not_found": "Không tìm thấy giao dịch.",
         "address_not_found": "Không tìm thấy địa chỉ.",
         "tx_not_found_detailed": "Không tìm thấy giao dịch - xác nhận txid là chính xác và nút được đồng bộ hóa hoàn toàn.",
-        "address_not_found_detailed": "Không tìm thấy địa chỉ - nút có thể chưa hiển thị tra cứu số dư địa chỉ.",
+        "address_not_found_detailed": "Không tìm thấy địa chỉ. Địa chỉ này không có số dư có thể chi tiêu trên chuỗi.",
         "node_unreachable": "Không thể truy cập nút - đảm bảo nút đang chạy trên Trang tổng quan."
       }
     },
@@ -1261,6 +1261,8 @@
       "empty": "Không có số liệu thống kê về nhóm",
       "accepted_shares": "Chia sẻ được chấp nhận",
       "rejected_shares": "Cổ phiếu bị từ chối",
+      "tcp_connections": "kết nối TCP",
+      "scanner_note": "Các kết nối được hiển thị bao gồm máy quét cổng. Những người khai thác tích cực là những người có cổ phần được chấp nhận.",
       "hashrate": "Tỷ lệ băm ước tính",
       "hashrate_collecting": "Đang thu thập dữ liệu…",
       "hashrate_avg_window": "Trung bình {{minutes}}phút",
@@ -1273,7 +1275,11 @@
       "subtitle": "Được xếp hạng theo số dư có thể chi tiêu trên đầu chuỗi hiện tại",
       "total_supply": "Tổng nguồn cung",
       "circulating_supply": "Nguồn cung lưu hành",
-      "total_supply_with_vested": "Tổng nguồn cung (bao gồm cả quyền được giao)",
+      "total_supply_with_vested": "Nguồn cung cấp đúc tiền (bao gồm cả quyền được giao)",
+      "maximum_supply": "Nguồn cung tối đa",
+      "hard_cap_suffix": "(nắp cứng)",
+      "pct_minted": "{{pct}}% được đúc",
+      "max_supply_tooltip": "Chuỗi khối Irium có nguồn cung tối đa cố định là 100.000.000 IRM. Đây là giới hạn cứng được thực thi theo giao thức và không bao giờ có thể thay đổi được.",
       "updated_ago": "Đã cập nhật {{seconds}} giây trước",
       "locked_title": "Quỹ bị khóa / được giao",
       "locked_note": "Bao gồm khoản phân bổ 3.500.000 IRM dành cho người sáng lập, được CLTV khóa trên chuỗi ngay từ đầu, cộng với bất kỳ đầu ra multisig (tiền tố P) nào từ các thỏa thuận thanh toán. Chúng được tính vào tổng nguồn cung nhưng không thể chi tiêu P2PKH, vì vậy chúng không xuất hiện dưới dạng các mục trong danh sách phong phú riêng lẻ. Tự động làm mới sau mỗi 60 giây.",

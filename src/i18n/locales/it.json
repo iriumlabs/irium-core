@@ -96,7 +96,7 @@
     "stopped": "Nodo arrestato",
     "starting": "Di partenza…",
     "syncing": "Sincronizzazione della blockchain...",
-    "connecting_peers": "Connessione ai colleghi…",
+    "connecting_peers": "Connessione ai colleghi...",
     "offline_banner_text": "Il nodo è offline. Avvia il nodo per utilizzare questa pagina."
   },
   "errors": {
@@ -167,7 +167,7 @@
       "latest_version": "Sei sull'ultima versione",
       "could_not_restart": "Impossibile riavviare",
       "update_available": "Aggiornamento disponibile: v{{version}}",
-      "update_check_failed": "Il controllo dell'aggiornamento non è riuscito",
+      "update_check_failed": "Controllo dell'aggiornamento non riuscito",
       "node_update_available": "Aggiornamento del nodo disponibile: {{count}} commit dietro",
       "node_up_to_date": "L'origine del nodo è aggiornata",
       "node_update_check_failed": "Il controllo dell'aggiornamento del nodo non è riuscito",
@@ -279,7 +279,7 @@
       "check_updates": "Controlla gli aggiornamenti"
     },
     "node_source_info": {
-      "description_before_link": "I binari dei nodi (iriumd, irium-wallet, irium-miner) sono compilati direttamente dal file",
+      "description_before_link": "I binari del nodo (iriumd, irium-wallet, irium-miner) sono compilati direttamente dal file",
       "description_after_link": "repository, che è incorporato come sottomodulo git. Nessuna funzionalità viene mai persa: ogni funzionalità aggiunta al repository irium è automaticamente disponibile per questa app.",
       "built_from_commit": "Costruito da commit",
       "loading": "caricamento…",
@@ -365,7 +365,7 @@
       "start_to_sync": "Avvia il nodo per sincronizzarlo con la rete Irium.",
       "start_node": "Avvia nodo",
       "searching_for_peers": "Alla ricerca di colleghi…",
-      "peer_search_subtitle": "Blocco #{{height}} · iriumd sta scoprendo la rete. Se bloccato, prova Cancella e riavvia.",
+      "peer_search_subtitle": "Blocco #{{height}} · iriumd sta rilevando la rete. Se bloccato, prova Cancella e riavvia.",
       "clear_restart": "Cancella e riavvia",
       "sync_stalled": "Sincronizzazione bloccata: {{count}} si blocca dietro",
       "sync_stalled_subtitle": "Blocco #{{height}} / #{{tip}} · Lo stato della catena potrebbe essere danneggiato. Cancella e riavvia per risincronizzare da zero.",
@@ -399,7 +399,7 @@
     "ticker": {
       "block": "Bloccare",
       "node_offline": "Nodo offline",
-      "connecting_to_peers": "Connessione ai colleghi…",
+      "connecting_to_peers": "Connessione ai colleghi...",
       "syncing_progress": "Sincronizzazione {{height}} / {{tip}}"
     },
     "peers": {
@@ -420,7 +420,7 @@
       "miner_label": "Minatore: {{addr}}",
       "fee_label": "Costo: {{sats}} sab",
       "txid_label": "TXID: {{txid}}",
-      "conf_label": "{{count}}conf",
+      "conf_label": "{{count}} conf",
       "block_label": "Blocco n.{{n}}",
       "confirmed": "Confermato",
       "pending": "In attesa di"
@@ -472,7 +472,7 @@
       "errors": {
         "insufficient": "Non hai abbastanza IRM per completare questa transazione. Controlla il tuo saldo e prova un importo inferiore.",
         "unconfirmed": "I tuoi fondi non sono ancora confermati. Attendi almeno 1 conferma prima di inviare.",
-        "double_spend": "Questa transazione è in conflitto con un'altra transazione in sospeso. Attendi e riprova.",
+        "double_spend": "Questa transazione è in conflitto con un'altra transazione in sospeso. Per favore attendi e riprova.",
         "generic": "Impossibile trasmettere la transazione. Verifica che il nodo sia online e riprova.",
         "fallback": "Transazione fallita. Per favore riprova."
       }
@@ -500,7 +500,7 @@
       "section_title": "Transazioni",
       "no_transactions": "Nessuna transazione ancora",
       "load_error": "Impossibile caricare le transazioni",
-      "filter_placeholder": "Filtra per txid o indirizzo...",
+      "filter_placeholder": "Filtra per txid o indirizzo…",
       "confirmations": "{{count}} conferme",
       "pending": "In attesa di",
       "received": "Ricevuto",
@@ -528,7 +528,7 @@
       "node_must_be_online": "Il nodo deve essere online per inviare transazioni",
       "set_as_primary": "Imposta come primario",
       "no_address_returned": "Nessun indirizzo restituito",
-      "no_seed_backup": "Questo portafoglio non dispone di seed backup: utilizza invece la chiave WIF o l'esportazione del file di backup",
+      "no_seed_backup": "Questo portafoglio non ha seed backup: utilizza invece la chiave WIF o l'esportazione del file di backup",
       "no_address_loaded": "Nessun indirizzo caricato",
       "restored_backup": "Portafoglio ripristinato dal backup",
       "wif_saved": "Chiave WIF salvata",
@@ -747,7 +747,7 @@
       "step_success": "Accordo creato",
       "review_title": "Dettagli revisione",
       "confirm_create": "Creare un accordo",
-      "creating": "Creazione...",
+      "creating": "Creazione…",
       "fields": {
         "party_a": "Partito A",
         "party_b": "Partito B",
@@ -810,7 +810,7 @@
       "title": "Crea offerta di vendita",
       "how_works_title": "Come funziona la vendita OTC",
       "how_works_step_1": "Crei tu questa offerta (l'IRM è ora bloccato nel deposito a garanzia).",
-      "how_works_step_2": "Un acquirente finanzia il deposito a garanzia con la sua quota IRM.",
+      "how_works_step_2": "Un acquirente finanzia il deposito a garanzia con la propria quota IRM.",
       "how_works_step_3": "L'acquirente ti paga fuori catena utilizzando le istruzioni seguenti.",
       "how_works_step_4": "Confermi il pagamento ricevuto.",
       "how_works_step_5": "L'impegno rilascia l'IRM all'acquirente.",
@@ -835,7 +835,7 @@
         "custom_id_placeholder": "la mia-offerta-001 (generato automaticamente se vuoto)"
       },
       "submit": "Crea offerta",
-      "creating": "Creazione...",
+      "creating": "Creazione…",
       "confirm_large_amount": "Stai per bloccare {{amount}} IRM nel deposito a garanzia.\n\nQuesta è una grande quantità. Conferma di aver digitato correttamente il decimale.",
       "remote_label": "remoto",
       "remote_tooltip": "Questa offerta proviene da un altro venditore e non può essere eliminata dal tuo negozio locale.",
@@ -923,7 +923,7 @@
     "fields": {
       "mining_address_label": "Indirizzo minerario",
       "mining_address_placeholder": "Incolla il tuo indirizzo minerario Irium (Q... o P...)",
-      "address_picker_other": "Other address…",
+      "address_picker_other": "Altro indirizzo...",
       "address_picker_no_wallets": "Nessun indirizzo di portafoglio: scegli Altro",
       "address_picker_custom_placeholder": "Immettere qualsiasi indirizzo P o Q",
       "address_invalid_inline": "Indirizzo non valido. Deve iniziare con P o Q",
@@ -1204,7 +1204,7 @@
         "tx_not_found": "Transazione non trovata.",
         "address_not_found": "Indirizzo non trovato.",
         "tx_not_found_detailed": "Transazione non trovata: verifica che il txid sia corretto e che il nodo sia completamente sincronizzato.",
-        "address_not_found_detailed": "Indirizzo non trovato: il nodo potrebbe non esporre ancora la ricerca del saldo degli indirizzi.",
+        "address_not_found_detailed": "Indirizzo non trovato. Questo indirizzo non ha saldo spendibile sulla catena.",
         "node_unreachable": "Impossibile raggiungere il nodo: assicurati che il nodo sia in esecuzione sulla Dashboard."
       }
     },
@@ -1261,6 +1261,8 @@
       "empty": "Statistiche del pool non disponibili",
       "accepted_shares": "Azioni accettate",
       "rejected_shares": "Azioni rifiutate",
+      "tcp_connections": "Connessioni TCP",
+      "scanner_note": "Le connessioni mostrate includono gli scanner delle porte. I minatori attivi sono quelli con azioni accettate.",
       "hashrate": "Hashrate stimato",
       "hashrate_collecting": "Raccolta dati…",
       "hashrate_avg_window": "{{minutes}}min",
@@ -1273,7 +1275,11 @@
       "subtitle": "Classificato in base al saldo spendibile sulla punta della catena corrente",
       "total_supply": "Fornitura totale",
       "circulating_supply": "Fornitura circolante",
-      "total_supply_with_vested": "Offerta totale (incl. acquisita)",
+      "total_supply_with_vested": "Fornitura coniata (incl. maturata)",
+      "maximum_supply": "Massima fornitura",
+      "hard_cap_suffix": "(tappo rigido)",
+      "pct_minted": "{{pct}}% coniato",
+      "max_supply_tooltip": "La blockchain di Irium ha una fornitura massima fissa di 100.000.000 di IRM. Si tratta di un limite rigido imposto dal protocollo che non può mai essere modificato.",
       "updated_ago": "Aggiornato {{seconds}}s fa",
       "locked_title": "Fondi vincolati/acquisiti",
       "locked_note": "Include l'allocazione di 3.500.000 IRM al fondatore, bloccata on-chain da CLTV alla genesi, più qualsiasi output multisig (prefisso P) dagli accordi transattivi. Questi sono conteggiati nell'offerta totale ma non sono spendibili P2PKH, quindi non compaiono come singole voci della ricca lista. Si aggiorna automaticamente ogni 60 secondi.",

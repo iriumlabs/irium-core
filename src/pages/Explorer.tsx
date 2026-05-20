@@ -18,7 +18,12 @@ type PageTab = 'overview' | 'rich_list' | 'pool_stats';
 
 // ── Helpers ───────────────────────────────────────────────────
 
-const HALVING_INTERVAL = 50_000;
+// Consensus-defined halving interval. Mirrors HALVING_INTERVAL in
+// irium-source/src/constants.rs:18 (`const HALVING_INTERVAL: u64 = 210_000`).
+// The GUI used to carry 50_000 here which was a launch-era estimate that
+// never matched the released chain — every "Next halving" hint was off by
+// 4.2x as a result.
+const HALVING_INTERVAL = 210_000;
 
 // Founder-vesting CLTV unlock height. Decoded from the genesis transaction's
 // output script: `03 f067 02 b1 75 76 a9 14 …` → height 0x0267f0 = 158704,
@@ -33,6 +38,12 @@ const FOUNDER_VESTING_UNLOCK_HEIGHT = 158_704;
 // the UTXO is CLTV-locked and not yet spendable (the gap appears as
 // totalSupply - circulating in the Rich List's Locked/Vested panel).
 const FOUNDER_VESTING_ADDRESS = 'PxG1FmGiSnvfXJUcryLna2L5MB4iGG1KD7';
+
+// Protocol-enforced maximum issuance. Hardcoded because it is consensus-
+// critical and never changes; surfacing it in the Rich List header lets
+// users see how much of the cap has been minted so far and contextualises
+// the "Minted supply" line above it.
+const MAX_SUPPLY_IRM = 100_000_000;
 
 function blockReward(height: number): string {
   const halvings = Math.floor(height / HALVING_INTERVAL);
@@ -173,7 +184,7 @@ function BlockDetailModal({ block, onClose }: { block: ExplorerBlock; onClose: (
     { label: t('explorer.block_modal.label_merkle'),       value: block.merkle_root || '—',                                                     mono: true,  copy: !!block.merkle_root },
     { label: t('explorer.block_modal.label_time'),         value: block.time ? new Date(block.time * 1000).toLocaleString('en-US') : '—',       mono: false, copy: false },
     // H-13/L-12: Reward is computed client-side from a hardcoded halving formula
-    // (HALVING_INTERVAL = 50_000, initial = 50 IRM). iriumd doesn't currently
+    // (HALVING_INTERVAL = 210_000, initial = 50 IRM). iriumd doesn't currently
     // expose a parsed reward per block, so this is an estimate based on the
     // launch consensus parameters. The "(estimated)" label makes that explicit.
     { label: t('explorer.block_modal.label_reward'),       value: t('explorer.block_modal.label_reward_with_estimated', { reward: blockReward(block.height) }), mono: true,  copy: false, color: '#34d399' },
@@ -760,15 +771,16 @@ function RichListSection({ running }: { running: boolean }) {
   // (which obeys the user's currency preference and trims fractional
   // zeroes), the rich list switches unit based on the exact value: whole
   // IRM amounts (every coinbase reward and the founder vest are exact
-  // Rich-list balances always render as IRM with up to 4 fractional
-  // digits — never raw sats. Fractional sats are rounded for display
-  // (which is what users expect from a "rich list"); the precise sat
-  // value is still available via the per-row UTXO inspector and RPC.
+  // Rich-list balances render as IRM. Whole-IRM balances drop the
+  // fractional part entirely ("292,900 IRM"); anything carrying
+  // fractional sats renders with EXACTLY 2 decimals ("37,134.90 IRM")
+  // so trailing zeros aren't trimmed and adjacent rows stay aligned.
   const formatRichListIRM = (balanceSats: number): string => {
     const irm = balanceSats / 100_000_000;
+    const hasDecimals = balanceSats % 100_000_000 !== 0;
     return irm.toLocaleString('en-US', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 4,
+      minimumFractionDigits: hasDecimals ? 2 : 0,
+      maximumFractionDigits: 2,
     }) + ' IRM';
   };
 
@@ -789,7 +801,14 @@ function RichListSection({ running }: { running: boolean }) {
   // the founder's 3.5M IRM CLTV-locked genesis allocation.
   const circulatingSats: number = entries ? entries.reduce((acc, e) => acc + e.balance_sats, 0) : 0;
   const lockedSats: number = Math.max(0, totalSupply - circulatingSats);
-  const lockedPct: number = totalSupply > 0 ? (lockedSats / totalSupply) * 100 : 0;
+  // Percentages in the Rich List are normalised against the *protocol*
+  // maximum supply (100M IRM), not the currently-minted supply. Anchoring
+  // to the hard cap means each row's "% of supply" stays meaningful as
+  // more IRM is mined — a 1M IRM holder shows 1.0000% today and still
+  // shows 1.0000% at full issuance, instead of shrinking as the minted
+  // base grows.
+  const MAX_SUPPLY_SATS = MAX_SUPPLY_IRM * 100_000_000;
+  const lockedPct: number = (lockedSats / MAX_SUPPLY_SATS) * 100;
   const updatedAgoSec: number | null = lastFetched ? Math.max(0, Math.floor((nowTick - lastFetched) / 1000)) : null;
 
   return (
@@ -817,6 +836,30 @@ function RichListSection({ running }: { running: boolean }) {
                 {t('explorer.richlist.total_supply_with_vested')}: <span style={{ color: '#d4eeff' }}>{formatRichListIRM(totalSupply)}</span>{' '}
                 <span style={{ color: 'rgba(255,255,255,0.30)' }}>{t('explorer.richlist.at_height', { height: genHeight.toLocaleString('en-US') })}</span>
               </p>
+              {/* Maximum supply — hardcoded protocol constant. Styled muted
+                  so users can tell at a glance that this is the static
+                  ceiling, not a live measurement. The pct-minted figure is
+                  computed against totalSupply (which already includes the
+                  CLTV-locked founder allocation) so it represents the
+                  fraction of the hard cap that has been minted so far. */}
+              {(() => {
+                const mintedIrm = totalSupply / 100_000_000;
+                const pctMinted = ((mintedIrm / MAX_SUPPLY_IRM) * 100).toFixed(4);
+                return (
+                  <p
+                    style={{ color: 'rgba(255,255,255,0.32)' }}
+                    title={t('explorer.richlist.max_supply_tooltip')}
+                  >
+                    {t('explorer.richlist.maximum_supply')}:{' '}
+                    <span style={{ color: 'rgba(255,255,255,0.55)' }}>
+                      {MAX_SUPPLY_IRM.toLocaleString('en-US')} IRM
+                    </span>{' '}
+                    <span style={{ color: 'rgba(255,255,255,0.30)' }}>
+                      {t('explorer.richlist.hard_cap_suffix')} · {t('explorer.richlist.pct_minted', { pct: pctMinted })}
+                    </span>
+                  </p>
+                );
+              })()}
             </div>
           )}
         </div>
@@ -916,7 +959,7 @@ function RichListSection({ running }: { running: boolean }) {
                     </td>
                     <td className="px-2 py-2.5 text-right whitespace-nowrap">
                       <span style={{ fontSize: 11, color: 'rgba(253,230,138,0.85)', fontFamily: '"JetBrains Mono", monospace', fontVariantNumeric: 'tabular-nums' }}>
-                        {lockedPct.toFixed(2)}%
+                        {lockedPct.toFixed(4)}%
                       </span>
                     </td>
                     <td className="pl-2 pr-4 py-2.5 text-right whitespace-nowrap">
@@ -973,10 +1016,13 @@ function RichListSection({ running }: { running: boolean }) {
                           {formatRichListIRM(e.balance_sats)}
                         </span>
                       </td>
-                      {/* % of supply */}
+                      {/* % of supply — computed locally against MAX_SUPPLY_SATS,
+                          NOT the server-provided e.percentage (which is
+                          relative to currently-minted supply and so over-
+                          weights every row early in the chain's lifetime). */}
                       <td className="px-2 py-2.5 text-right whitespace-nowrap">
                         <span style={{ fontSize: 11, color: 'rgba(110,198,255,0.75)', fontFamily: '"JetBrains Mono", monospace', fontVariantNumeric: 'tabular-nums' }}>
-                          {e.percentage.toFixed(2)}%
+                          {((e.balance_sats / MAX_SUPPLY_SATS) * 100).toFixed(4)}%
                         </span>
                       </td>
                       {/* UTXO count */}
@@ -1014,7 +1060,7 @@ function RichListSection({ running }: { running: boolean }) {
                   {t('explorer.richlist.locked_title')}
                 </p>
                 <p className="mt-1" style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 13, color: '#fde68a' }}>
-                  {formatRichListIRM(lockedSats)} <span style={{ color: 'rgba(253,230,138,0.60)', fontSize: 11 }}>({lockedPct.toFixed(2)}% {t('explorer.richlist.of_total_supply')})</span>
+                  {formatRichListIRM(lockedSats)} <span style={{ color: 'rgba(253,230,138,0.60)', fontSize: 11 }}>({lockedPct.toFixed(4)}% {t('explorer.richlist.of_total_supply')})</span>
                 </p>
                 <p className="mt-1.5" style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.55)', lineHeight: 1.5 }}>
                   {t('explorer.richlist.locked_note')}
@@ -1576,10 +1622,71 @@ export default function Explorer() {
               )}
               {searchResult && (
                 <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                  <SearchResultCard
-                    result={searchResult}
-                    title={searchTab === 'block' ? t('explorer.search_results.block') : searchTab === 'tx' ? t('explorer.search_results.tx') : t('explorer.search_results.address')}
-                  />
+                  {(() => {
+                    // For address search results, render sat-denominated
+                    // fields as IRM and surface a special card for the
+                    // founder-vesting address (whose CLTV-locked UTXO
+                    // never registers as a P2PKH spendable balance, so
+                    // it always reports 0 even though 3.5M IRM live at
+                    // that PKH).
+                    if (searchTab !== 'address') {
+                      return (
+                        <SearchResultCard
+                          result={searchResult}
+                          title={searchTab === 'block' ? t('explorer.search_results.block') : t('explorer.search_results.tx')}
+                        />
+                      );
+                    }
+                    const formatIrm = (sats: number): string => {
+                      const irm = sats / 100_000_000;
+                      return irm.toLocaleString('en-US', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 4,
+                      }) + ' IRM';
+                    };
+                    const displayResult: Record<string, unknown> = { ...searchResult };
+                    if (typeof displayResult.balance === 'number') {
+                      displayResult.balance = formatIrm(displayResult.balance);
+                    }
+                    if (typeof displayResult.mined_balance === 'number') {
+                      displayResult.mined_balance = formatIrm(displayResult.mined_balance);
+                    }
+                    const isFounder = displayResult.address === FOUNDER_VESTING_ADDRESS;
+                    const blocksRemaining = Math.max(0, FOUNDER_VESTING_UNLOCK_HEIGHT - height);
+                    return (
+                      <>
+                        {isFounder && (
+                          <div
+                            className="mt-2.5 px-4 py-3 rounded-lg"
+                            style={{
+                              background: 'rgba(245,158,11,0.08)',
+                              border: '1px solid rgba(245,158,11,0.40)',
+                            }}
+                          >
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <Lock size={13} style={{ color: '#fbbf24' }} />
+                              <span style={{ fontSize: 12.5, fontWeight: 700, color: '#fde68a', fontFamily: '"Space Grotesk", sans-serif' }}>
+                                Founder Vesting Address
+                              </span>
+                            </div>
+                            <p style={{ fontSize: 11.5, color: 'rgba(253,230,138,0.85)', lineHeight: 1.55 }}>
+                              This address holds 3,500,000 IRM locked via CLTV timelock at genesis.
+                              Balance shown as 0 because locked funds use a special script not counted
+                              as spendable balance.
+                            </p>
+                            <p className="mt-1.5" style={{ fontSize: 11, color: 'rgba(253,230,138,0.70)', fontFamily: '"JetBrains Mono", monospace' }}>
+                              Unlocks at block #{FOUNDER_VESTING_UNLOCK_HEIGHT.toLocaleString('en-US')}
+                              {height > 0 && ` (~${blocksRemaining.toLocaleString('en-US')} blocks remaining)`}
+                            </p>
+                          </div>
+                        )}
+                        <SearchResultCard
+                          result={displayResult}
+                          title={t('explorer.search_results.address')}
+                        />
+                      </>
+                    );
+                  })()}
                 </motion.div>
               )}
             </AnimatePresence>

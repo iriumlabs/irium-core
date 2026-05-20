@@ -151,7 +151,7 @@
       "retry_upnp": "UPnP ポート マッピングを再試行します",
       "clear_chain_state": "チェーン状態のクリア",
       "reset_onboarding": "オンボーディングをリセットする",
-      "check_for_updates": "アップデートを確認する",
+      "check_for_updates": "アップデートをチェックする",
       "install_update": "アップデートをインストールする",
       "pull_node_update": "プルノードの更新",
       "copy_diagnostics": "レポートのコピー",
@@ -249,7 +249,7 @@
       "retry": "リトライ",
       "external_ip_label": "外部IP",
       "detecting_paragraph": "受信ピアが到達可能性を確認するまで最大 60 秒待機します。 PEX は、開始後にアドレスを他のノードに伝達するのに少し時間がかかります。",
-      "inactive_paragraph": "UPnP が失敗し、受信ピアが到着しませんでした。ルーター (TCP 38291) で手動ポート転送を構成するか、UPnP を有効にして、「再試行」をクリックします。この状態でも送信接続は引き続き機能します。"
+      "inactive_paragraph": "UPnP が失敗し、受信ピアが到着しませんでした。ルーター (TCP 38291) で手動ポート転送を構成するか、UPnP を有効にして、「再試行」をクリックします。この状態でもアウトバウンド接続は引き続き機能します。"
     },
     "security_info": {
       "wallet_local": "Irium Core はウォレット ファイルをローカルに保存します。秘密鍵がマシンから離れることはありません。ウォレットファイルは暗号化されています。シード フレーズは常にバックアップし、オフラインに保管してください。",
@@ -430,7 +430,7 @@
     "page_title": "財布",
     "tabs": {
       "addresses": "住所",
-      "transactions": "取引",
+      "transactions": "トランザクション",
       "security": "安全"
     },
     "addresses": {
@@ -497,7 +497,7 @@
       "backup_warning": "このファイルにはすべての秘密キーが含まれています。安全に保管してください。"
     },
     "transactions": {
-      "section_title": "取引",
+      "section_title": "トランザクション",
       "no_transactions": "まだ取引はありません",
       "load_error": "トランザクションをロードできませんでした",
       "filter_placeholder": "txid またはアドレスでフィルター…",
@@ -512,7 +512,7 @@
       "txid_copied": "トランザクションIDがコピーされました",
       "address_added": "住所を追加しました",
       "address_hidden": "住所非表示",
-      "address_unhidden": "住所非表示",
+      "address_unhidden": "住所が非表示にならない",
       "wallet_renamed": "ウォレットの名前が変更されました",
       "rename_failed": "名前の変更に失敗しました: {{reason}}",
       "delete_failed": "削除に失敗しました: {{reason}}",
@@ -752,7 +752,7 @@
         "party_a": "当事者A",
         "party_b": "当事者B",
         "amount_irm": "金額 (IRM)",
-        "deadline_hours": "締切（時間）",
+        "deadline_hours": "締め切り（時間）",
         "cooldown_hours": "クールダウンウィンドウ (時間)",
         "milestones": "マイルストーンの数",
         "scope": "作業範囲 (オプション)",
@@ -934,7 +934,7 @@
       "stratum_worker_hint": "形式: your_wallet_address.worker_id (例: Pxxx…xxxx.rig1)",
       "stratum_password_label": "プールのパスワード (通常は「x」)",
       "devices_label": "デバイス (マルチ GPU)",
-      "threads_label_full": "スレッド — {{current}} / {{max}} コア{{suffix}}",
+      "threads_label_full": "スレッド - {{current}} / {{max}} コア{{suffix}}",
       "threads_running_suffix": "（走っている）",
       "opencl_platform": "OpenCLプラットフォーム",
       "device": "デバイス",
@@ -1183,7 +1183,7 @@
       "label_time": "時間",
       "label_reward": "褒美",
       "label_reward_with_estimated": "{{reward}} (推定)",
-      "label_transactions": "取引",
+      "label_transactions": "トランザクション",
       "label_bits": "ビット",
       "label_nonce": "ノンス",
       "label_miner": "鉱夫",
@@ -1204,7 +1204,7 @@
         "tx_not_found": "トランザクションが見つかりません。",
         "address_not_found": "住所が見つかりません。",
         "tx_not_found_detailed": "トランザクションが見つかりません — txid が正しいこと、およびノー​​ドが完全に同期されていることを確認してください。",
-        "address_not_found_detailed": "アドレスが見つかりません - ノードはまだアドレス バランス ルックアップを公開していない可能性があります。",
+        "address_not_found_detailed": "住所が見つかりません。このアドレスにはチェーン上に使用可能な残高がありません。",
         "node_unreachable": "ノードに到達できません — ノードがダッシュボードで実行されていることを確認してください。"
       }
     },
@@ -1261,6 +1261,8 @@
       "empty": "プールの統計情報は利用できません",
       "accepted_shares": "引受株式数",
       "rejected_shares": "拒否された株式",
+      "tcp_connections": "TCP接続",
+      "scanner_note": "示されている接続にはポート スキャナーが含まれています。アクティブなマイナーとは、承認された株式を保有しているマイナーのことです。",
       "hashrate": "推定ハッシュレート",
       "hashrate_collecting": "データを収集中…",
       "hashrate_avg_window": "平均{{minutes}}分",
@@ -1273,7 +1275,11 @@
       "subtitle": "現在のチェーンチップの使用可能な残高によってランク付けされます",
       "total_supply": "総供給量",
       "circulating_supply": "循環供給",
-      "total_supply_with_vested": "総供給量（権利確定分を含む）",
+      "total_supply_with_vested": "鋳造された供給（権利確定を含む）",
+      "maximum_supply": "最大供給量",
+      "hard_cap_suffix": "(ハードキャップ)",
+      "pct_minted": "{{pct}}% が鋳造されました",
+      "max_supply_tooltip": "Irium ブロックチェーンの最大供給量は 100,000,000 IRM に固定されています。これはプロトコルによって強制されるハードキャップであり、決して変更することはできません。",
       "updated_ago": "{{seconds}} 秒前に更新されました",
       "locked_title": "ロックされた/既得の資金",
       "locked_note": "生成時に CLTV によってオンチェーンにロックされた 3,500,000 の IRM 創設者割り当てと、和解契約からのマルチシグ (P プレフィックス) 出力が含まれます。これらは総供給量に含まれますが、P2PKH で消費できるものではないため、個別のリッチ リスト エントリとしては表示されません。 60 秒ごとに自動更新されます。",
@@ -1681,7 +1687,7 @@
         "price_note_placeholder": "例えば「BTCのみ、即時決済」",
         "payment_instructions_label": "支払い手順",
         "payment_instructions_optional": "(オプション)",
-        "payment_instructions_placeholder": "銀行の詳細、暗号通貨アドレス、または購入者向けのその他の指示…"
+        "payment_instructions_placeholder": "銀行の詳細、暗号化アドレス、または購入者向けのその他の指示…"
       },
       "errors": {
         "valid_amount": "有効な金額を入力してください",
@@ -1716,7 +1722,7 @@
     "empty_offline": "ここでログを確認するには、ダッシュボードからノードを起動します",
     "loading": "ログを読み込んでいます...",
     "line_count": "{{count}}行",
-    "filtered_suffix": "(フィルタリング済み)",
+    "filtered_suffix": "(フィルター済み)",
     "autoscroll_on": "自動スクロールをオンにする",
     "autoscroll_paused": "自動スクロールを一時停止しました"
   },
@@ -1775,7 +1781,7 @@
     "txid_label": "TXID",
     "inputs": "入力",
     "outputs": "出力",
-    "total_output": "総生産高",
+    "total_output": "総生産量",
     "fee": "手数料",
     "fee_value": "{{sats}}は座っています",
     "to_your": "(あなた)へ",

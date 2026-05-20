@@ -384,7 +384,7 @@
     "refreshing": "Yenileniyor…",
     "decentral": {
       "title": "Düğümünüze ağ tarafından erişilemiyor",
-      "body": "Giden bağlantıya bağlandınız ancak diğer düğümler sizi geri arayamıyor. Sağlıklı bir merkezi olmayan ağ için her düğümün tam iki yönlü bir eş olması gerekir. Ağın size nasıl ulaşacağını bilmesi için genel IP'nizi ayarlayın.",
+      "body": "Giden bağlantınız var ancak diğer düğümler sizi geri arayamıyor. Sağlıklı bir merkezi olmayan ağ için her düğümün tam iki yönlü bir eş olması gerekir. Ağın size nasıl ulaşacağını bilmesi için genel IP'nizi ayarlayın.",
       "set_external_ip": "Harici IP'yi Ayarla",
       "subtle_hint": "Senkronizasyon ve cüzdan bu olmadan çalışır"
     },
@@ -500,8 +500,8 @@
       "section_title": "İşlemler",
       "no_transactions": "Henüz işlem yok",
       "load_error": "İşlemler yüklenemedi",
-      "filter_placeholder": "Txid veya adrese göre filtrele…",
-      "confirmations": "{{count}} onayları",
+      "filter_placeholder": "Txid veya adrese göre filtreleyin…",
+      "confirmations": "{{count}} onaylar",
       "pending": "Askıda olması",
       "received": "Kabul edilmiş",
       "sent": "Gönderilmiş"
@@ -579,7 +579,7 @@
       "tab_create": "Kanıtlardan Yarat",
       "tab_upload": "Yüklemek",
       "proof_type": "Kanıt türü",
-      "attested_by": "Onaylayan:",
+      "attested_by": "Onaylayan",
       "attested_by_placeholder": "Cüzdan adresiniz",
       "attested_by_hint": "Seçtiğiniz cüzdan adresiyle önceden doldurulmuştur.",
       "evidence_summary": "Kanıt Özeti",
@@ -673,7 +673,7 @@
       "proof_not_final": "Kanıt henüz nihai değil",
       "agreement_hash": "Anlaşma Karması",
       "proof_type": "Kanıt Türü",
-      "attested_by": "Onaylayan:",
+      "attested_by": "Onaylayan",
       "evidence_summary": "Kanıt Özeti",
       "proof_file": "Kanıt Dosyası",
       "create_from_evidence": "Kanıtlardan Yarat",
@@ -765,7 +765,7 @@
         "memo_otc_placeholder": "Ticaret açıklaması...",
         "memo_merchant_placeholder": "Sipariş açıklaması...",
         "total_escrow_hours": "Toplam Emanet Penceresi (saat)",
-        "party_placeholder": "Soru... ya da P..."
+        "party_placeholder": "Q... veya P..."
       }
     },
     "seller_dashboard": "Satıcı Kontrol Paneli",
@@ -802,7 +802,7 @@
     },
     "filters": {
       "search_placeholder": "Teklifleri ara…",
-      "min_amount": "Minimum IRM",
+      "min_amount": "Min. IRM",
       "max_amount": "Maksimum IRM",
       "payment_method": "Ödeme yöntemi"
     },
@@ -875,7 +875,7 @@
       "min_cannot_exceed": "Minimum teklif tutarını aşamaz",
       "amount_exceeds_supply": "Tutar {{max}} IRM'ı (toplam arz) aşamaz",
       "failed_to_load": "Teklifler yüklenemedi: {{reason}}",
-      "enter_positive_amount": "Pozitif bir miktar girin",
+      "enter_positive_amount": "Pozitif bir tutar girin",
       "failed_load_my": "Teklifleriniz yüklenemedi: {{reason}}",
       "failed_load_feeds": "Yayınlar yüklenemedi: {{reason}}",
       "failed_add_feed": "Özet akışı eklenemedi: {{reason}}",
@@ -912,7 +912,7 @@
       "power": "Güç"
     },
     "buttons": {
-      "start_mining": "Madenciliğe başlayın",
+      "start_mining": "Madenciliğe başla",
       "stop_mining": "Madenciliği durdur",
       "confirm_stop": "Durdurmayı onaylıyor musunuz?",
       "connect_pool": "Havuza bağlan",
@@ -977,7 +977,7 @@
       "pool_connection_lost": "Havuz bağlantısı kesildi. Lütfen yeniden bağlanın.",
       "pool_error": "Havuz hatası: {{message}}"
     },
-    "page_subtitle": "SHA-256d · CPU · GPU · ASIC havuz desteği",
+    "page_subtitle": "SHA-256d · CPU · GPU · ASIC havuzu desteği",
     "tooltips": {
       "copy_address": "Adresi kopyala",
       "copy_full_hash": "Karmanın tamamını kopyala"
@@ -989,7 +989,7 @@
     }
   },
   "onboarding": {
-    "splash_title": "İryum Çekirdeği",
+    "splash_title": "iriyum çekirdeği",
     "splash_subtitle": "Yükleniyor…",
     "steps": {
       "welcome": "Hoş geldin",
@@ -1204,7 +1204,7 @@
         "tx_not_found": "İşlem bulunamadı.",
         "address_not_found": "Adres bulunamadı.",
         "tx_not_found_detailed": "İşlem bulunamadı — txid'nin doğru olduğunu ve düğümün tamamen senkronize edildiğini onaylayın.",
-        "address_not_found_detailed": "Adres bulunamadı — düğüm henüz adres bakiyesi aramasını göstermeyebilir.",
+        "address_not_found_detailed": "Adres bulunamadı. Bu adresin zincirde harcanabilir bakiyesi yok.",
         "node_unreachable": "Düğüme ulaşılamıyor — düğümün Kontrol Panelinde çalıştığından emin olun."
       }
     },
@@ -1261,6 +1261,8 @@
       "empty": "Havuz istatistikleri kullanılamıyor",
       "accepted_shares": "Kabul edilen paylaşımlar",
       "rejected_shares": "Reddedilen paylaşımlar",
+      "tcp_connections": "TCP bağlantıları",
+      "scanner_note": "Gösterilen bağlantılar bağlantı noktası tarayıcılarını içerir. Aktif madenciler, kabul edilmiş hisselere sahip olanlardır.",
       "hashrate": "Tahmini Hashrate",
       "hashrate_collecting": "Veri toplanıyor…",
       "hashrate_avg_window": "{{minutes}}dk ortalama",
@@ -1273,7 +1275,11 @@
       "subtitle": "Mevcut zincir ucundaki harcanabilir bakiyeye göre sıralanmıştır",
       "total_supply": "Toplam arz",
       "circulating_supply": "Dolaşımdaki tedarik",
-      "total_supply_with_vested": "Toplam arz (hakedilmiş olanlar dahil)",
+      "total_supply_with_vested": "Darp edilmiş tedarik (haklı dahil)",
+      "maximum_supply": "Maksimum arz",
+      "hard_cap_suffix": "(sert kapak)",
+      "pct_minted": "{{pct}}% basıldı",
+      "max_supply_tooltip": "Irium blockchain'in sabit maksimum 100.000.000 IRM arzı vardır. Bu, hiçbir zaman değiştirilemeyen, protokol tarafından uygulanan bir sabit sınırdır.",
       "updated_ago": "{{seconds}}s önce güncellendi",
       "locked_title": "Kilitli/Kilitli Fonlar",
       "locked_note": "Başlangıçta CLTV tarafından zincir üzerinde kilitlenen 3.500.000 IRM kurucu tahsisini ve ayrıca uzlaşma anlaşmalarından elde edilen tüm çoklu imza (P-önek) çıktılarını içerir. Bunlar toplam arz içinde hesaba katılır ancak P2PKH harcanabilir değildir, dolayısıyla bireysel zengin liste girişleri olarak görünmezler. Her 60 saniyede bir otomatik olarak yenilenir.",
