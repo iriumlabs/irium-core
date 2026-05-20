@@ -108,6 +108,14 @@ interface AppStore {
   appendMinerHistory: (point: { t: number; khs: number }) => void;
   resetMinerHistory: () => void;
 
+  // Set to 'cpu' | 'gpu' when the backend emits "miner-exited-unexpectedly".
+  // The top-level Miner component shows a banner; clicking Restart Miner
+  // switches activeTab to this kind and pendingMinerRestart stays set so
+  // the newly-mounted tab can auto-fire its own start. The tab clears the
+  // flag immediately after it consumes it.
+  pendingMinerRestart: 'cpu' | 'gpu' | null;
+  setPendingMinerRestart: (v: 'cpu' | 'gpu' | null) => void;
+
   gpuMinerStatus: GpuMinerStatus | null;
   setGpuMinerStatus: (s: GpuMinerStatus | null) => void;
   gpuDevices: GpuDevice[];
@@ -424,6 +432,9 @@ export const useStore = create<AppStore>((set) => ({
     minerHistory: [...state.minerHistory, point].slice(-MINER_HISTORY_MAX),
   })),
   resetMinerHistory: () => set({ minerHistory: [] }),
+
+  pendingMinerRestart: null,
+  setPendingMinerRestart: (pendingMinerRestart) => set({ pendingMinerRestart }),
 
   gpuMinerStatus: null,
   setGpuMinerStatus: (gpuMinerStatus) => set({ gpuMinerStatus }),

@@ -56,6 +56,13 @@ struct AppState {
     // every stratum_connect so a new pool session starts at zero.
     stratum_shares_accepted: Arc<Mutex<u64>>,
     stratum_shares_rejected: Arc<Mutex<u64>>,
+    // TASK 3: distinguishes a user-initiated `stop_miner` call from an
+    // unexpected termination (macOS GPU watchdog kill, OOM, segfault, etc).
+    // start_miner / start_gpu_miner reset to false on entry; stop_miner
+    // flips to true immediately before sending SIGTERM. The Terminated
+    // event handler reads this — false → emit a "miner-exited-unexpectedly"
+    // Tauri event so the GUI can offer a Restart Miner banner.
+    miner_user_initiated_stop: Arc<Mutex<bool>>,
 }
 
 impl AppState {
@@ -88,6 +95,7 @@ impl AppState {
             gpu_power_w: Arc::new(Mutex::new(None)),
             stratum_shares_accepted: Arc::new(Mutex::new(0)),
             stratum_shares_rejected: Arc::new(Mutex::new(0)),
+            miner_user_initiated_stop: Arc::new(Mutex::new(false)),
         }
     }
 }
@@ -4388,6 +4396,10 @@ async fn start_miner(
     if miner_lock.is_some() {
         return Err("Miner is already running".to_string());
     }
+    // TASK 3: reset the user-initiated-stop flag so the event loop below
+    // can correctly classify the next Terminated event as unexpected
+    // unless stop_miner sets it to true beforehand.
+    *state.miner_user_initiated_stop.lock().map_err(lock_err)? = false;
 
     // irium-miner reads address from IRIUM_MINER_ADDRESS env var, not a CLI flag
     let mut args: Vec<String> = Vec::new();
@@ -4418,11 +4430,47 @@ async fn start_miner(
     let found_blocks_ref = Arc::clone(&state.found_blocks);
     let miner_addr_ref   = Arc::clone(&state.miner_address);
     let rpc_url_for_reward = rpc_url.clone();
+    // TASK 3 captures for the unexpected-exit notification.
+    let app_for_event = app.clone();
+    let user_initiated_ref = Arc::clone(&state.miner_user_initiated_stop);
+    let miner_process_for_cleanup = Arc::clone(&state.miner_process);
+    let hashrate_for_clear = Arc::clone(&state.miner_hashrate);
+    let sync_for_clear = Arc::clone(&state.miner_sync_status);
     tauri::async_runtime::spawn(async move {
+        // Buffer of recent stderr lines included in the unexpected-exit
+        // payload so the GUI banner can show a snippet of what the miner
+        // last said before dying. Capped at 10 lines (rolling).
+        let mut stderr_tail: Vec<String> = Vec::new();
         while let Some(event) = rx.recv().await {
             let line = match event {
                 CommandEvent::Stdout(l) => { tracing::info!("[irium-miner] {}", l); l }
-                CommandEvent::Stderr(l) => { tracing::warn!("[irium-miner stderr] {}", l); l }
+                CommandEvent::Stderr(l) => {
+                    tracing::warn!("[irium-miner stderr] {}", l);
+                    stderr_tail.push(l.trim().to_string());
+                    if stderr_tail.len() > 10 { stderr_tail.remove(0); }
+                    l
+                }
+                CommandEvent::Terminated(payload) => {
+                    // TASK 3: clean up and decide whether to notify the GUI.
+                    let user_initiated = user_initiated_ref.lock()
+                        .map(|g| *g)
+                        .unwrap_or(false);
+                    if let Ok(mut g) = miner_process_for_cleanup.lock() { *g = None; }
+                    if let Ok(mut h) = hashrate_for_clear.lock() { *h = 0.0; }
+                    if let Ok(mut s) = sync_for_clear.lock() { *s = None; }
+                    if !user_initiated {
+                        let _ = app_for_event.emit_all(
+                            "miner-exited-unexpectedly",
+                            serde_json::json!({
+                                "kind": "cpu",
+                                "os": std::env::consts::OS,
+                                "exit_code": payload.code,
+                                "last_stderr_tail": stderr_tail,
+                            }),
+                        );
+                    }
+                    break;
+                }
                 _ => break,
             };
 
@@ -4486,6 +4534,10 @@ async fn start_miner(
 
 #[tauri::command]
 async fn stop_miner(app: tauri::AppHandle, state: State<'_, AppState>) -> Result<bool, String> {
+    // TASK 3: mark this as a user-initiated stop BEFORE sending the kill
+    // signal so the event-loop's Terminated handler classifies the exit
+    // correctly and does NOT emit the unexpected-exit banner event.
+    *state.miner_user_initiated_stop.lock().map_err(lock_err)? = true;
     let mut miner_lock = state.miner_process.lock().map_err(lock_err)?;
     if let Some(child) = miner_lock.take() {
         child.kill().map_err(|e| e.to_string())?;
@@ -4651,6 +4703,7 @@ async fn list_gpu_platforms() -> Result<Vec<GpuPlatform>, String> {
 
 #[tauri::command]
 async fn start_gpu_miner(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     address: String,
     platform_sel: Option<String>,
@@ -4661,6 +4714,8 @@ async fn start_gpu_miner(
     if miner_lock.is_some() {
         return Err("Miner already running — stop it first".to_string());
     }
+    // TASK 3: reset the user-initiated-stop flag (see start_miner).
+    *state.miner_user_initiated_stop.lock().map_err(lock_err)? = false;
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
     let home_dir = dirs::home_dir().unwrap_or_default();
     let irium_dir = home_dir.join(".irium");
@@ -4704,11 +4759,49 @@ async fn start_gpu_miner(
     let temp_ref = Arc::clone(&state.gpu_temperature_c);
     let power_ref = Arc::clone(&state.gpu_power_w);
     let rpc_url_for_reward = rpc_url.clone();
+    // TASK 3 captures for the unexpected-exit notification path.
+    let app_for_event = app.clone();
+    let user_initiated_ref = Arc::clone(&state.miner_user_initiated_stop);
+    let miner_process_for_cleanup = Arc::clone(&state.miner_process);
+    let hashrate_for_clear = Arc::clone(&state.miner_hashrate);
+    let temp_for_clear = Arc::clone(&state.gpu_temperature_c);
+    let power_for_clear = Arc::clone(&state.gpu_power_w);
     tauri::async_runtime::spawn(async move {
+        // Rolling 10-line stderr buffer included in the unexpected-exit
+        // payload so the GUI can show what the GPU miner last said.
+        let mut stderr_tail: Vec<String> = Vec::new();
         while let Some(event) = rx.recv().await {
             let line = match event {
                 CommandEvent::Stdout(l) => l,
-                CommandEvent::Stderr(l) => l,
+                CommandEvent::Stderr(l) => {
+                    stderr_tail.push(l.trim().to_string());
+                    if stderr_tail.len() > 10 { stderr_tail.remove(0); }
+                    l
+                }
+                CommandEvent::Terminated(payload) => {
+                    // TASK 3: clean up and notify the GUI if this wasn't
+                    // a user-initiated stop. The macOS GPU watchdog is the
+                    // primary case this path catches.
+                    let user_initiated = user_initiated_ref.lock()
+                        .map(|g| *g)
+                        .unwrap_or(false);
+                    if let Ok(mut g) = miner_process_for_cleanup.lock() { *g = None; }
+                    if let Ok(mut h) = hashrate_for_clear.lock() { *h = 0.0; }
+                    if let Ok(mut t) = temp_for_clear.lock() { *t = None; }
+                    if let Ok(mut p) = power_for_clear.lock() { *p = None; }
+                    if !user_initiated {
+                        let _ = app_for_event.emit_all(
+                            "miner-exited-unexpectedly",
+                            serde_json::json!({
+                                "kind": "gpu",
+                                "os": std::env::consts::OS,
+                                "exit_code": payload.code,
+                                "last_stderr_tail": stderr_tail,
+                            }),
+                        );
+                    }
+                    break;
+                }
                 _ => break,
             };
             if let Some((height, hash)) = parse_block_found(&line) {

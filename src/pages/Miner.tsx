@@ -498,6 +498,21 @@ function CpuMinerTab() {
     finally { setStartLoading(false); }
   };
 
+  // TASK 3: when the top-level banner's Restart Miner button is clicked
+  // for kind=cpu, the zustand flag flips to 'cpu' and Miner.tsx switches
+  // activeTab to 'cpu' so this component is mounted. We consume the flag
+  // and auto-fire handleStart on the next render after mount.
+  const pendingMinerRestart = useStore((s) => s.pendingMinerRestart);
+  const setPendingMinerRestart = useStore((s) => s.setPendingMinerRestart);
+  useEffect(() => {
+    if (pendingMinerRestart === 'cpu' && !status?.running && !startLoading) {
+      setPendingMinerRestart(null);
+      handleStart();
+    }
+    // handleStart isn't memoised but the guards above prevent loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingMinerRestart, status?.running, startLoading]);
+
   const handleStop = async () => {
     setShowStopConfirm(false);
     try {
@@ -837,25 +852,20 @@ function GpuMinerTab() {
   const intensity    = useStore((s) => s.gpuIntensity);
   const setIntensity = useStore((s) => s.setGpuIntensity);
 
-  // macOS imposes a tight GPU watchdog that silently kills long-running
-  // OpenCL kernels. The bundled irium-miner-gpu binary also enforces a
-  // 1 M-nonce per-batch cap on macOS (see irium-source v1.9.22+), but
-  // we cap the SLIDER on macOS too so the user can't request an intensity
-  // that the binary would silently downscale. 50 is the slider value that
-  // maps to a batch comfortably inside Apple Silicon's TDR window.
+  // isMac is still tracked because the unexpected-exit banner (see the
+  // page-level useEffect below) shows a Mac-specific watchdog hint when
+  // the miner sidecar terminates abruptly. The legacy maxIntensity=50
+  // clamp that used to live here was removed in v1.0.42 — Mac users now
+  // get the full 0-100 slider and the binary-side 1<<20 batch cap is
+  // gone too (irium-source v1.9.24). The Layer-A SUSPICIOUS_BATCH_LIMIT
+  // hard-stop catches watchdog kills and surfaces them via the banner.
   const [isMac, setIsMac] = useState(false);
   useEffect(() => {
     osPlatform()
       .then((p) => setIsMac(p === 'darwin'))
       .catch(() => { /* non-Tauri preview, ignore */ });
   }, []);
-  const maxIntensity = isMac ? 50 : 100;
-  // Clamp current value if the user previously saved a higher slider position
-  // on a non-Mac and then opened the same wallet on a Mac. Persisted state
-  // in localStorage might say 100; ratchet down to the cap silently.
-  useEffect(() => {
-    if (intensity > maxIntensity) setIntensity(maxIntensity);
-  }, [intensity, maxIntensity, setIntensity]);
+  const maxIntensity = 100;
 
   const loading = status === null;
 
@@ -935,6 +945,18 @@ function GpuMinerTab() {
     }
     finally { setStartLoading(false); }
   };
+
+  // TASK 3: consume the pendingMinerRestart flag when it equals 'gpu'.
+  // Mirror of the CPU tab handler; see comment there.
+  const pendingMinerRestart = useStore((s) => s.pendingMinerRestart);
+  const setPendingMinerRestart = useStore((s) => s.setPendingMinerRestart);
+  useEffect(() => {
+    if (pendingMinerRestart === 'gpu' && !status?.running && !startLoading) {
+      setPendingMinerRestart(null);
+      handleStart();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingMinerRestart, status?.running, startLoading]);
 
   const handleStop = async () => {
     setShowStopConfirm(false);
@@ -1249,19 +1271,6 @@ function GpuMinerTab() {
             style={{ background: `linear-gradient(to right, #3B82F6 0%, #06B6D4 ${(intensity / maxIntensity) * 100}%, rgba(255,255,255,0.08) ${(intensity / maxIntensity) * 100}%, rgba(255,255,255,0.08) 100%)` }}
           />
           <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Higher intensity = more hashrate, more power usage</p>
-          {isMac && (
-            <p
-              className="text-xs mt-1.5 px-2.5 py-1.5 rounded"
-              style={{
-                color: '#fbbf24',
-                background: 'rgba(245,158,11,0.08)',
-                border: '1px solid rgba(245,158,11,0.25)',
-                lineHeight: 1.5,
-              }}
-            >
-              {t('miner.fields.intensity_mac_note')}
-            </p>
-          )}
         </div>
 
         {/* Start / Stop */}
@@ -1708,6 +1717,34 @@ export default function Miner() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabKey>('cpu');
 
+  // TASK 3: backend emits "miner-exited-unexpectedly" whenever the miner
+  // sidecar dies without a preceding user-initiated stop_miner. We surface
+  // a banner above the tabs with a Restart Miner button (uses
+  // pendingMinerRestart to make the corresponding tab auto-fire its
+  // handleStart) and a Dismiss button. Mac users get a watchdog-specific
+  // hint because that's the most common cause on darwin.
+  type UnexpectedExit = {
+    kind: 'cpu' | 'gpu';
+    os: string;
+    exit_code: number | null;
+    last_stderr_tail?: string[];
+  };
+  const [unexpectedExit, setUnexpectedExit] = useState<UnexpectedExit | null>(null);
+  const setPendingMinerRestart = useStore((s) => s.setPendingMinerRestart);
+  useEffect(() => {
+    let unlisten: UnlistenFn | undefined;
+    listen<UnexpectedExit>('miner-exited-unexpectedly', (event) => {
+      setUnexpectedExit(event.payload);
+    }).then((fn) => { unlisten = fn; }).catch(() => { /* non-Tauri preview */ });
+    return () => { if (unlisten) unlisten(); };
+  }, []);
+  const handleRestartFromBanner = () => {
+    if (!unexpectedExit) return;
+    setActiveTab(unexpectedExit.kind);
+    setPendingMinerRestart(unexpectedExit.kind);
+    setUnexpectedExit(null);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -1718,6 +1755,46 @@ export default function Miner() {
       <div className="w-full space-y-5 px-8 py-6">
       <NodeOfflineBanner />
       <QuarantineRecoveryBanner />
+      {unexpectedExit && (
+        <div
+          className="px-4 py-3 rounded-lg"
+          style={{
+            background: 'rgba(245,158,11,0.10)',
+            border: '1px solid rgba(245,158,11,0.35)',
+            color: '#fde68a',
+          }}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm mb-1">
+                {t('miner.unexpected_exit.title')}
+              </p>
+              <p className="text-xs leading-relaxed">
+                {unexpectedExit.os === 'macos' || unexpectedExit.os === 'darwin'
+                  ? t('miner.unexpected_exit.body_mac')
+                  : t('miner.unexpected_exit.body_other')}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleRestartFromBanner}
+                className="btn-primary text-xs py-1.5 px-3"
+                style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}
+              >
+                {unexpectedExit.kind === 'gpu'
+                  ? t('miner.unexpected_exit.restart_gpu')
+                  : t('miner.unexpected_exit.restart_cpu')}
+              </button>
+              <button
+                onClick={() => setUnexpectedExit(null)}
+                className="btn-ghost text-xs py-1.5 px-3"
+              >
+                {t('miner.unexpected_exit.dismiss')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div>
         <h1 className="page-title">{t('miner.page_title')}</h1>

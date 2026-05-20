@@ -897,6 +897,14 @@
       "stratum": "Stratum Pool",
       "asic": "ASIC & External Miner Support"
     },
+    "unexpected_exit": {
+      "title": "Miner stopped unexpectedly",
+      "body_mac": "Your miner stopped unexpectedly. This can happen on Mac due to GPU power limits or the macOS GPU watchdog. Click Restart Miner to resume.",
+      "body_other": "Your miner stopped unexpectedly. Check the miner log for details, then click Restart Miner to resume.",
+      "restart_cpu": "Restart CPU Miner",
+      "restart_gpu": "Restart GPU Miner",
+      "dismiss": "Dismiss"
+    },
     "configuration": "Configuration",
     "configure_hint": "Configure your address below and start mining",
     "block_time": "Block time",
