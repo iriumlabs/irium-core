@@ -11,6 +11,8 @@ export type IriumEventType =
   | 'proof.gossip_received'
   | 'offer.created'
   | 'offer.taken'
+  | 'offer.expired'
+  | 'offer.relisted'
   | 'block.new'
   | 'peer.connected'
   | 'peer.disconnected';

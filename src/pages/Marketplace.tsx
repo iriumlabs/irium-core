@@ -203,6 +203,31 @@ function OfferCard({ offer, onTake, onOpenDetail, onExport, onDelete, isOnline }
           <Trash2 size={13} />
         </button>
       )}
+      {/* LAYER 2: expired offers (chain tip past timeout_height) get an
+          Expired badge AND an active delete button — no agreement to
+          resolve, safe to remove. */}
+      {onDelete && isLocalOffer && offer.status === 'expired' && (
+        <>
+          <span
+            className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-bold rounded"
+            style={{
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: 'rgba(255,255,255,0.55)',
+              letterSpacing: '0.08em',
+            }}
+          >
+            EXPIRED
+          </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            title="Delete this expired offer from your local store"
+            className="btn-ghost text-xs p-1.5 flex-shrink-0 text-red-400 hover:text-red-300"
+          >
+            <Trash2 size={13} />
+          </button>
+        </>
+      )}
       {onDelete && !isLocalOffer && (
         <span
           title="This offer is from another seller and cannot be deleted from your local store."
@@ -847,9 +872,23 @@ export default function MarketplacePage() {
   // reload — these are spontaneous updates, the user didn't ask for the
   // skeleton.
   useIriumEvents((event) => {
-    if (event.type === 'offer.created' || event.type === 'offer.taken') {
+    if (
+      event.type === 'offer.created' ||
+      event.type === 'offer.taken' ||
+      event.type === 'offer.expired'
+    ) {
       if (activeTab === 'browse') loadOffers(true);
       else if (activeTab === 'my-offers') loadMyOffers();
+    }
+    if (event.type === 'offer.relisted') {
+      // LAYER 3 surface: seller's offer was auto-relisted because the
+      // buyer never anchored the agreement on-chain within the grace
+      // window. Single toast per event, no sticky banner.
+      toast(t('marketplace.toasts.relisted_banner_body'), {
+        icon: '↩',
+        duration: 8000,
+      });
+      if (activeTab === 'my-offers') loadMyOffers();
     }
   });
 
@@ -1541,6 +1580,14 @@ export default function MarketplacePage() {
           defaultBuyerAddress={selectedAddress}
           onClose={() => setShowTakeModal(null)}
           onSuccess={() => {
+            // LAYER 4 optimistic update: yank the taken offer from the
+            // Browse list immediately so the user doesn't see the same
+            // offer they just took for the next ~60 s. The buyer's iriumd
+            // emits offer.taken which the useIriumEvents handler above
+            // also catches; that emit then triggers a re-sync which is
+            // idempotent with this optimistic removal.
+            const takenId = showTakeModal.id;
+            setOfferList((prev) => prev.filter((o) => o.id !== takenId));
             setShowTakeModal(null);
             if (activeTab === 'browse') loadOffers();
             else if (activeTab === 'my-offers') loadMyOffers();

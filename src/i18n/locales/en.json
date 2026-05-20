@@ -886,7 +886,9 @@
       "offer_imported": "Offer imported",
       "import_failed": "Import failed: {{reason}}",
       "sync_failed": "Sync failed: {{reason}}",
-      "default_feeds_added": "Default feeds added"
+      "default_feeds_added": "Default feeds added",
+      "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
+      "take_failed_already_taken": "This offer has already been taken by another buyer."
     }
   },
   "miner": {
