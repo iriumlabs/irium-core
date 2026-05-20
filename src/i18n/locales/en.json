@@ -1259,6 +1259,8 @@
       "empty": "Pool stats unavailable",
       "accepted_shares": "Accepted shares",
       "rejected_shares": "Rejected shares",
+      "tcp_connections": "TCP connections",
+      "scanner_note": "Connections shown include port scanners. Active miners are those with accepted shares.",
       "hashrate": "Estimated Hashrate",
       "hashrate_collecting": "Collecting data…",
       "hashrate_avg_window": "{{minutes}}min avg",

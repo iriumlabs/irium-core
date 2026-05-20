@@ -708,6 +708,14 @@ export default function MarketplacePage() {
   const [myOffers, setMyOffers] = useState<Offer[]>([]);
   const [feedList, setFeedList] = useState<FeedEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  // Tracks whether the next load is the *first* one for the current
+  // browse session. The skeleton only renders on this first call (or on
+  // an explicit user refresh / manual reload). All subsequent auto-tick
+  // and event-driven loads run silently, regardless of the silent= flag,
+  // to eliminate the per-minute flicker users complained about. The flag
+  // resets to true when the tab is switched away and back via the effect
+  // that wires syncAndLoad below.
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [filterSource, setFilterSource] = useState<'all' | 'local' | 'remote'>('all');
   const [filterSort, setFilterSort] = useState<'newest' | 'score' | 'amount'>('newest');
   const [searchQuery, setSearchQuery] = useState('');
@@ -743,7 +751,13 @@ export default function MarketplacePage() {
   const loadOffers = async (silent: boolean = false) => {
     if (isFetchingOffersRef.current) return;
     isFetchingOffersRef.current = true;
-    if (!silent) setLoading(true);
+    // Skeleton renders only when this is the very first load for the
+    // current tab session, OR when the caller explicitly wants a visible
+    // load (silent=false AND we don't yet have data). Once we have data
+    // in offerList, every subsequent call — auto-tick, event-driven, or
+    // even user-driven — refreshes in place so the table doesn't flash.
+    const showSkeleton = !silent && isInitialLoad;
+    if (showSkeleton) setLoading(true);
     try {
       // Parse min/max IRM inputs. parseFloat('') is NaN → undefined.
       const minIrm = filterMinIrm.trim() ? parseFloat(filterMinIrm) : undefined;
@@ -757,9 +771,10 @@ export default function MarketplacePage() {
         payment: filterPayment.trim() ? filterPayment.trim() : undefined,
       });
       console.log(
-        `[Marketplace] loadOffers source=${filterSource} silent=${silent} got=${data?.length ?? 0}`,
+        `[Marketplace] loadOffers source=${filterSource} silent=${silent} initial=${isInitialLoad} got=${data?.length ?? 0}`,
       );
       setOfferList(data);
+      setIsInitialLoad(false);
     } catch (e) {
       console.warn('[Marketplace] loadOffers failed:', e);
       // Suppress toast on silent auto-refresh AND when offline — empty
@@ -768,7 +783,7 @@ export default function MarketplacePage() {
         toast.error(t('marketplace.toasts.failed_to_load', { reason: String(e) }));
       }
     } finally {
-      if (!silent) setLoading(false);
+      if (showSkeleton) setLoading(false);
       isFetchingOffersRef.current = false;
     }
   };
@@ -845,6 +860,12 @@ export default function MarketplacePage() {
   // should never block the cached list from rendering.
   useEffect(() => {
     if (activeTab !== 'browse') return;
+    // Each time the Browse tab is (re-)entered, count the next load as
+    // "initial" so the skeleton shows once. Subsequent 60 s auto-ticks
+    // and event-driven refreshes inside the same browse session flip
+    // isInitialLoad to false (inside loadOffers), suppressing the
+    // skeleton flicker for everything except the first paint.
+    setIsInitialLoad(true);
     const syncAndLoad = async (silent: boolean = false) => {
       try {
         await feeds.sync();
@@ -855,12 +876,9 @@ export default function MarketplacePage() {
       await loadOffers(silent);
     };
     // Tab-entry sync runs NON-SILENT so the user gets the loading skeleton
-    // while feeds.sync is in flight. The race guard inside loadOffers
-    // (isFetchingOffersRef) collapses any overlap with the 400 ms-debounced
-    // tab-change effect so there's no double-fetch, even though both
-    // paths fire when activeTab changes. Subsequent 60 s ticks are
-    // silent — the cached list is already rendered, the interval just
-    // refreshes it in-place when fresh data lands.
+    // while feeds.sync is in flight (gated by isInitialLoad inside
+    // loadOffers — only the first call paints the skeleton; everything
+    // else updates in place).
     syncAndLoad(false);
     const id = setInterval(() => syncAndLoad(true), 60_000);
     return () => clearInterval(id);
