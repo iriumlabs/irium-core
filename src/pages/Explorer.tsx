@@ -34,6 +34,12 @@ const FOUNDER_VESTING_UNLOCK_HEIGHT = 158_704;
 // totalSupply - circulating in the Rich List's Locked/Vested panel).
 const FOUNDER_VESTING_ADDRESS = 'PxG1FmGiSnvfXJUcryLna2L5MB4iGG1KD7';
 
+// Protocol-enforced maximum issuance. Hardcoded because it is consensus-
+// critical and never changes; surfacing it in the Rich List header lets
+// users see how much of the cap has been minted so far and contextualises
+// the "Minted supply" line above it.
+const MAX_SUPPLY_IRM = 100_000_000;
+
 function blockReward(height: number): string {
   const halvings = Math.floor(height / HALVING_INTERVAL);
   const reward = 50 * Math.pow(0.5, halvings);
@@ -817,6 +823,30 @@ function RichListSection({ running }: { running: boolean }) {
                 {t('explorer.richlist.total_supply_with_vested')}: <span style={{ color: '#d4eeff' }}>{formatRichListIRM(totalSupply)}</span>{' '}
                 <span style={{ color: 'rgba(255,255,255,0.30)' }}>{t('explorer.richlist.at_height', { height: genHeight.toLocaleString('en-US') })}</span>
               </p>
+              {/* Maximum supply — hardcoded protocol constant. Styled muted
+                  so users can tell at a glance that this is the static
+                  ceiling, not a live measurement. The pct-minted figure is
+                  computed against totalSupply (which already includes the
+                  CLTV-locked founder allocation) so it represents the
+                  fraction of the hard cap that has been minted so far. */}
+              {(() => {
+                const mintedIrm = totalSupply / 100_000_000;
+                const pctMinted = ((mintedIrm / MAX_SUPPLY_IRM) * 100).toFixed(4);
+                return (
+                  <p
+                    style={{ color: 'rgba(255,255,255,0.32)' }}
+                    title={t('explorer.richlist.max_supply_tooltip')}
+                  >
+                    {t('explorer.richlist.maximum_supply')}:{' '}
+                    <span style={{ color: 'rgba(255,255,255,0.55)' }}>
+                      {MAX_SUPPLY_IRM.toLocaleString('en-US')} IRM
+                    </span>{' '}
+                    <span style={{ color: 'rgba(255,255,255,0.30)' }}>
+                      {t('explorer.richlist.hard_cap_suffix')} · {t('explorer.richlist.pct_minted', { pct: pctMinted })}
+                    </span>
+                  </p>
+                );
+              })()}
             </div>
           )}
         </div>
