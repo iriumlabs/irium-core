@@ -18,7 +18,12 @@ type PageTab = 'overview' | 'rich_list' | 'pool_stats';
 
 // ── Helpers ───────────────────────────────────────────────────
 
-const HALVING_INTERVAL = 50_000;
+// Consensus-defined halving interval. Mirrors HALVING_INTERVAL in
+// irium-source/src/constants.rs:18 (`const HALVING_INTERVAL: u64 = 210_000`).
+// The GUI used to carry 50_000 here which was a launch-era estimate that
+// never matched the released chain — every "Next halving" hint was off by
+// 4.2x as a result.
+const HALVING_INTERVAL = 210_000;
 
 // Founder-vesting CLTV unlock height. Decoded from the genesis transaction's
 // output script: `03 f067 02 b1 75 76 a9 14 …` → height 0x0267f0 = 158704,
@@ -179,7 +184,7 @@ function BlockDetailModal({ block, onClose }: { block: ExplorerBlock; onClose: (
     { label: t('explorer.block_modal.label_merkle'),       value: block.merkle_root || '—',                                                     mono: true,  copy: !!block.merkle_root },
     { label: t('explorer.block_modal.label_time'),         value: block.time ? new Date(block.time * 1000).toLocaleString('en-US') : '—',       mono: false, copy: false },
     // H-13/L-12: Reward is computed client-side from a hardcoded halving formula
-    // (HALVING_INTERVAL = 50_000, initial = 50 IRM). iriumd doesn't currently
+    // (HALVING_INTERVAL = 210_000, initial = 50 IRM). iriumd doesn't currently
     // expose a parsed reward per block, so this is an estimate based on the
     // launch consensus parameters. The "(estimated)" label makes that explicit.
     { label: t('explorer.block_modal.label_reward'),       value: t('explorer.block_modal.label_reward_with_estimated', { reward: blockReward(block.height) }), mono: true,  copy: false, color: '#34d399' },
