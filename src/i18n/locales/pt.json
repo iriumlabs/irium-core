@@ -293,7 +293,7 @@
       "view_changes": "Ver alterações"
     },
     "node_data_info": {
-      "external_ip_description": "Seu endereço IP público anunciado à rede para que os pares possam discar de volta para o seu nó. Nada é enviado automaticamente – você controla quando a detecção acontece.",
+      "external_ip_description": "Seu endereço IP público anunciado à rede para que os pares possam discar de volta para o seu nó. Nada é enviado automaticamente – você controla quando a detecção ocorre.",
       "detect": "Detectar",
       "detect_panel_paragraph": "Insira um URL que retorne seu IP público como texto simples. A solicitação só será enviada quando você clicar em Buscar.",
       "fetching": "Buscando…",
@@ -725,10 +725,10 @@
     "hub": {
       "total_agreements": "Total de acordos",
       "pending_proofs": "Provas Pendentes",
-      "total_volume": "Volume Total",
+      "total_volume": "Volume total",
       "recent_agreements": "Acordos recentes",
       "load_error_title": "Não foi possível carregar os contratos",
-      "empty_state": "Você ainda não criou nenhum acordo.",
+      "empty_state": "Você ainda não criou nenhum contrato.",
       "create_first": "Crie seu primeiro contrato →",
       "create_offer": "Criar oferta"
     },
@@ -1204,7 +1204,7 @@
         "tx_not_found": "Transação não encontrada.",
         "address_not_found": "Endereço não encontrado.",
         "tx_not_found_detailed": "Transação não encontrada — confirme se o txid está correto e se o nó está totalmente sincronizado.",
-        "address_not_found_detailed": "Endereço não encontrado — o nó ainda não pode expor a pesquisa de saldo de endereço.",
+        "address_not_found_detailed": "Endereço não encontrado. Este endereço não tem saldo gastável na rede.",
         "node_unreachable": "Não é possível acessar o nó — certifique-se de que o nó esteja em execução no Dashboard."
       }
     },
@@ -1261,6 +1261,8 @@
       "empty": "Estatísticas do pool indisponíveis",
       "accepted_shares": "Ações aceitas",
       "rejected_shares": "Ações rejeitadas",
+      "tcp_connections": "Conexões TCP",
+      "scanner_note": "As conexões mostradas incluem scanners de porta. Mineiros ativos são aqueles com ações aceitas.",
       "hashrate": "Taxa de hash estimada",
       "hashrate_collecting": "Coletando dados…",
       "hashrate_avg_window": "{{minutes}}min média",
@@ -1273,7 +1275,11 @@
       "subtitle": "Classificado por saldo gastável na ponta da corrente atual",
       "total_supply": "Fornecimento total",
       "circulating_supply": "Fornecimento circulante",
-      "total_supply_with_vested": "Fornecimento total (incl. adquirido)",
+      "total_supply_with_vested": "Fornecimento cunhado (incl. adquirido)",
+      "maximum_supply": "Fornecimento máximo",
+      "hard_cap_suffix": "(capa dura)",
+      "pct_minted": "{{pct}}% cunhado",
+      "max_supply_tooltip": "O blockchain Irium tem um fornecimento máximo fixo de 100 milhões de IRM. Este é um limite rígido imposto pelo protocolo que nunca pode ser alterado.",
       "updated_ago": "Atualizado há {{seconds}}s",
       "locked_title": "Fundos bloqueados/adquiridos",
       "locked_note": "Inclui a alocação do fundador IRM de 3.500.000, bloqueada na cadeia pela CLTV na gênese, além de quaisquer resultados multisig (prefixo P) de acordos de liquidação. Eles são contabilizados na oferta total, mas não podem ser gastos em P2PKH, portanto, não aparecem como entradas individuais na lista rica. Atualização automática a cada 60 segundos.",
@@ -1775,7 +1781,7 @@
     "txid_label": "TXID",
     "inputs": "Entradas",
     "outputs": "Resultados",
-    "total_output": "Produção Total",
+    "total_output": "Produção total",
     "fee": "Taxa",
     "fee_value": "{{sats}} sábado",
     "to_your": "Para (seu)",

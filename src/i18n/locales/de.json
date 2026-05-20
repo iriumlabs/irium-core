@@ -69,7 +69,7 @@
     "unconfirmed_tooltip": "Unbestätigter (eingehender) Saldo",
     "balance_all_addresses": "Alle Adressen · {{count}}",
     "stop_button": "Stoppen",
-    "start_node_button": "Startknoten",
+    "start_node_button": "Knoten starten",
     "clear_all": "Alles löschen",
     "no_notifications_short": "Keine Benachrichtigungen",
     "pill_starting": "Beginnt...",
@@ -148,7 +148,7 @@
     "buttons": {
       "test_connection": "Testverbindung",
       "detect_ip": "Erkennen",
-      "retry_upnp": "Versuchen Sie die UPnP-Portzuordnung erneut",
+      "retry_upnp": "Versuchen Sie es erneut mit der UPnP-Portzuordnung",
       "clear_chain_state": "Kettenstatus löschen",
       "reset_onboarding": "Onboarding zurücksetzen",
       "check_for_updates": "Suchen Sie nach Updates",
@@ -318,7 +318,7 @@
     },
     "node_update_modal": {
       "title": "Knotenquelle aktualisieren",
-      "body": "Dadurch wird der neueste iriumd-Quellcode abgerufen und die Knotenbinärdatei neu erstellt. Wenn der neue Code instabil ist, kann es sein, dass Ihr laufender Knoten kaputt geht und ein Neustart erforderlich ist. Fahren Sie nur fort, wenn Sie wissen, was Sie tun.",
+      "body": "Dadurch wird der neueste Iriumd-Quellcode abgerufen und die Knotenbinärdatei neu erstellt. Wenn der neue Code instabil ist, kann es sein, dass Ihr laufender Knoten kaputt geht und ein Neustart erforderlich ist. Fahren Sie nur fort, wenn Sie wissen, was Sie tun.",
       "cancel": "Stornieren",
       "proceed": "Ich verstehe, aktualisiere es trotzdem"
     }
@@ -345,7 +345,7 @@
       "title": "Letzte Aktivität",
       "empty_chart": "Noch keine Transaktionshistorie",
       "empty_tx_list": "Noch keine Transaktionen",
-      "load_error": "Letzte Transaktionen konnten nicht geladen werden",
+      "load_error": "Die letzten Transaktionen konnten nicht geladen werden",
       "last_n_txs": "Letzte 10 Sendungen",
       "amount_label": "Menge"
     },
@@ -363,7 +363,7 @@
     "banners": {
       "iriumd_not_running": "iriumd läuft nicht",
       "start_to_sync": "Starten Sie den Knoten zur Synchronisierung mit dem Irium-Netzwerk.",
-      "start_node": "Startknoten",
+      "start_node": "Knoten starten",
       "searching_for_peers": "Auf der Suche nach Gleichgesinnten…",
       "peer_search_subtitle": "Block #{{height}} · iriumd entdeckt das Netzwerk. Wenn Sie nicht weiterkommen, versuchen Sie es mit „Löschen und neu starten“.",
       "clear_restart": "Löschen und neu starten",
@@ -513,7 +513,7 @@
       "address_added": "Adresse hinzugefügt",
       "address_hidden": "Adresse ausgeblendet",
       "address_unhidden": "Adresse nicht ausgeblendet",
-      "wallet_renamed": "Brieftasche umbenannt",
+      "wallet_renamed": "Wallet umbenannt",
       "rename_failed": "Umbenennen fehlgeschlagen: {{reason}}",
       "delete_failed": "Löschen fehlgeschlagen: {{reason}}",
       "switched_to": "Auf {{name}} umgestellt",
@@ -591,7 +591,7 @@
       "agreement_signed": "Vereinbarung unterzeichnet.",
       "label_saved": "Etikett gespeichert",
       "fund_success": "Treuhand finanziert – txid {{txid}}",
-      "release_success": "Veröffentlicht – txid {{txid}}",
+      "release_success": "Freigegeben – txid {{txid}}",
       "refund_success": "Erstattet – txid {{txid}}",
       "dispute_opened": "Streit eröffnet",
       "proof_submitted": "Nachweis eingereicht: {{id}}",
@@ -634,7 +634,7 @@
       "resolver_required": "Zur Beilegung dieses Streits ist eine Schlichtungsbescheinigung erforderlich. Wenden Sie sich an Ihren zuständigen Resolver.",
       "deadline_passed": "Die Frist dieser Vereinbarung ist ohne Lösung abgelaufen.",
       "share_text": "Kopieren Sie eine Nur-Text-Zusammenfassung dieser Vereinbarung in die Zwischenablage",
-      "delete_local": "Löschen Sie diese Vereinbarung aus Ihrem örtlichen Geschäft. Die Kopie des Kontrahenten ist davon nicht betroffen.",
+      "delete_local": "Löschen Sie diese Vereinbarung aus Ihrem örtlichen Geschäft. Die Kopie der Gegenpartei ist davon nicht betroffen.",
       "save_friendly_name": "Speichern Sie einen benutzerfreundlichen Namen für diese Vereinbarung (lokal gespeichert).",
       "verify_signature_file": "Überprüfen Sie eine Signaturdatei (.sig oder .json) anhand dieser Vereinbarung"
     },
@@ -662,7 +662,7 @@
       "otc_release": "OTC-Veröffentlichung",
       "milestone_complete": "Meilenstein abgeschlossen"
     },
-    "search_placeholder": "Suchen Sie nach ID, Käufer-/Verkäuferadresse oder Etikett ...",
+    "search_placeholder": "Suchen Sie nach ID, Käufer-/Verkäuferadresse oder Etikett …",
     "role_badges": {
       "buyer": "Sie sind: Käufer",
       "seller": "Sie sind: Verkäufer"
@@ -820,7 +820,7 @@
         "amount_hint": "Dieser Betrag wird von Ihrem Geldbeutel abgebucht und auf einem Treuhandkonto gesichert.",
         "seller_address_label": "Verkäuferadresse (optional)",
         "seller_address_placeholder": "Optional · Für den Wallet-Standard leer lassen",
-        "seller_address_hint": "Vorausgefüllt von Ihrer ausgewählten Wallet-Adresse. Es muss sich um eine Adresse handeln, deren Schlüssel sich in Ihrer Brieftasche befindet.",
+        "seller_address_hint": "Vorausgefüllt von Ihrer ausgewählten Wallet-Adresse. Muss eine Adresse sein, deren Schlüssel sich in Ihrer Brieftasche befindet.",
         "min_trade_label": "Mindesthandelsbetrag (optional)",
         "min_trade_placeholder": "z.B. 0,1 (Käufer können nicht weniger als diesen Wert nehmen)",
         "min_trade_hint": "Lassen Sie das Feld leer, wenn Sie eine beliebige Größe akzeptieren möchten. Wird den Käufern über die Angebotsbeschreibung mitgeteilt.",
@@ -830,7 +830,7 @@
         "price_label": "Preis oder Wechselkurs (optional)",
         "price_placeholder": "z.B. Marktpreis + 2 %, 0,05 $ pro IRM",
         "payment_details_label": "Ihre Zahlungsdaten (was ich Ihnen senden soll)",
-        "payment_details_hint": "Der Käufer sieht diese Anweisungen, nachdem das Treuhandkonto finanziert wurde. Seien Sie genau – falsche Angaben bedeuten Zeitverlust.",
+        "payment_details_hint": "Der Käufer sieht diese Anweisungen, nachdem das Treuhandkonto finanziert wurde. Seien Sie genau – falsche Angaben bedeuten verlorene Zeit.",
         "custom_id_label": "Benutzerdefinierte Angebots-ID (optional)",
         "custom_id_placeholder": "my-offer-001 (automatisch generiert, wenn leer)"
       },
@@ -1204,7 +1204,7 @@
         "tx_not_found": "Transaktion nicht gefunden.",
         "address_not_found": "Adresse nicht gefunden.",
         "tx_not_found_detailed": "Transaktion nicht gefunden – bestätigen Sie, dass die txid korrekt ist und der Knoten vollständig synchronisiert ist.",
-        "address_not_found_detailed": "Adresse nicht gefunden – der Knoten stellt möglicherweise noch keine Adresssaldo-Suche zur Verfügung.",
+        "address_not_found_detailed": "Adresse nicht gefunden. Für diese Adresse gibt es kein auszahlbares Guthaben in der Kette.",
         "node_unreachable": "Knoten kann nicht erreicht werden – stellen Sie sicher, dass der Knoten im Dashboard ausgeführt wird."
       }
     },
@@ -1261,6 +1261,8 @@
       "empty": "Poolstatistiken nicht verfügbar",
       "accepted_shares": "Akzeptierte Aktien",
       "rejected_shares": "Abgelehnte Aktien",
+      "tcp_connections": "TCP-Verbindungen",
+      "scanner_note": "Die gezeigten Verbindungen umfassen Portscanner. Aktive Miner sind diejenigen mit akzeptierten Aktien.",
       "hashrate": "Geschätzte Hashrate",
       "hashrate_collecting": "Daten sammeln…",
       "hashrate_avg_window": "{{minutes}}min durchschn",
@@ -1273,7 +1275,11 @@
       "subtitle": "Geordnet nach dem auszugebenden Guthaben am aktuellen Kettentipp",
       "total_supply": "Gesamtangebot",
       "circulating_supply": "Umlaufversorgung",
-      "total_supply_with_vested": "Gesamtangebot (inkl. Vesting)",
+      "total_supply_with_vested": "Geprägter Vorrat (inkl. unverfallbarer)",
+      "maximum_supply": "Maximale Versorgung",
+      "hard_cap_suffix": "(harte Kappe)",
+      "pct_minted": "{{pct}}% geprägt",
+      "max_supply_tooltip": "Die Irium-Blockchain hat einen festen Maximalvorrat von 100.000.000 IRM. Dies ist eine vom Protokoll durchgesetzte feste Obergrenze, die niemals geändert werden kann.",
       "updated_ago": "Vor {{seconds}}s aktualisiert",
       "locked_title": "Gesperrte/freizügigkeitsfähige Mittel",
       "locked_note": "Beinhaltet die 3.500.000 IRM-Gründerzuteilung, die von CLTV bei Genesis in der Kette gesperrt wurde, sowie alle Multisig-Ausgaben (P-Präfix) aus Vergleichsvereinbarungen. Diese werden im Gesamtangebot berücksichtigt, können aber nicht über P2PKH ausgegeben werden, sodass sie nicht als einzelne Rich-List-Einträge angezeigt werden. Automatische Aktualisierung alle 60 Sekunden.",
@@ -1320,7 +1326,7 @@
       "faq": "FAQ",
       "agreements": "Vertragslebenszyklus",
       "reputation": "Bauen Sie Ihren Ruf auf",
-      "feeds": "Futtermittelregister",
+      "feeds": "Feed-Registrierung",
       "disputes": "Streitigkeiten",
       "importing_agreements": "Vereinbarungen importieren",
       "funding": "Finanzierung als Käufer",
@@ -1524,7 +1530,7 @@
       "responding_step_2": "Klicken Sie auf ein Angebot, um die Bedingungen anzuzeigen.",
       "responding_step_3": "Klicken Sie auf „Kaufen“ – dadurch wird eine neue Vergleichsvereinbarung geöffnet, die bereits mit den Angebotsdetails gefüllt ist.",
       "responding_step_4": "Zahlen Sie das Treuhandkonto ein und warten Sie, bis der Verkäufer liefert und den Nachweis vorlegt.",
-      "feeds_title": "Futtermittelregister",
+      "feeds_title": "Feed-Registrierung",
       "feeds_body": "Feeds sind kuratierte Angebotsströme, die von vertrauenswürdigen Verkäufern veröffentlicht werden. Abonnieren Sie einen Feed, um automatisch neue Angebote dieses Verkäufers in Ihrer Durchsuchen-Ansicht zu sehen. Abmelden jederzeit möglich.",
       "callout_label": "Tipp:",
       "callout": "Angebote werden über Klatsch verbreitet – Kollegen, die offline gehen, sehen Ihr Angebot möglicherweise nicht. Wenn Sie nach einigen Stunden noch keine Antwort erhalten haben, posten Sie erneut."
