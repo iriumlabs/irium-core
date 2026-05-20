@@ -1202,7 +1202,7 @@
         "tx_not_found": "Transaction not found.",
         "address_not_found": "Address not found.",
         "tx_not_found_detailed": "Transaction not found — confirm the txid is correct and the node is fully synced.",
-        "address_not_found_detailed": "Address not found — the node may not yet expose address balance lookup.",
+        "address_not_found_detailed": "Address not found. This address has no spendable balance on the chain.",
         "node_unreachable": "Cannot reach node — make sure the node is running on the Dashboard."
       }
     },

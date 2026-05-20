@@ -1576,10 +1576,71 @@ export default function Explorer() {
               )}
               {searchResult && (
                 <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                  <SearchResultCard
-                    result={searchResult}
-                    title={searchTab === 'block' ? t('explorer.search_results.block') : searchTab === 'tx' ? t('explorer.search_results.tx') : t('explorer.search_results.address')}
-                  />
+                  {(() => {
+                    // For address search results, render sat-denominated
+                    // fields as IRM and surface a special card for the
+                    // founder-vesting address (whose CLTV-locked UTXO
+                    // never registers as a P2PKH spendable balance, so
+                    // it always reports 0 even though 3.5M IRM live at
+                    // that PKH).
+                    if (searchTab !== 'address') {
+                      return (
+                        <SearchResultCard
+                          result={searchResult}
+                          title={searchTab === 'block' ? t('explorer.search_results.block') : t('explorer.search_results.tx')}
+                        />
+                      );
+                    }
+                    const formatIrm = (sats: number): string => {
+                      const irm = sats / 100_000_000;
+                      return irm.toLocaleString('en-US', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 4,
+                      }) + ' IRM';
+                    };
+                    const displayResult: Record<string, unknown> = { ...searchResult };
+                    if (typeof displayResult.balance === 'number') {
+                      displayResult.balance = formatIrm(displayResult.balance);
+                    }
+                    if (typeof displayResult.mined_balance === 'number') {
+                      displayResult.mined_balance = formatIrm(displayResult.mined_balance);
+                    }
+                    const isFounder = displayResult.address === FOUNDER_VESTING_ADDRESS;
+                    const blocksRemaining = Math.max(0, FOUNDER_VESTING_UNLOCK_HEIGHT - height);
+                    return (
+                      <>
+                        {isFounder && (
+                          <div
+                            className="mt-2.5 px-4 py-3 rounded-lg"
+                            style={{
+                              background: 'rgba(245,158,11,0.08)',
+                              border: '1px solid rgba(245,158,11,0.40)',
+                            }}
+                          >
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <Lock size={13} style={{ color: '#fbbf24' }} />
+                              <span style={{ fontSize: 12.5, fontWeight: 700, color: '#fde68a', fontFamily: '"Space Grotesk", sans-serif' }}>
+                                Founder Vesting Address
+                              </span>
+                            </div>
+                            <p style={{ fontSize: 11.5, color: 'rgba(253,230,138,0.85)', lineHeight: 1.55 }}>
+                              This address holds 3,500,000 IRM locked via CLTV timelock at genesis.
+                              Balance shown as 0 because locked funds use a special script not counted
+                              as spendable balance.
+                            </p>
+                            <p className="mt-1.5" style={{ fontSize: 11, color: 'rgba(253,230,138,0.70)', fontFamily: '"JetBrains Mono", monospace' }}>
+                              Unlocks at block #{FOUNDER_VESTING_UNLOCK_HEIGHT.toLocaleString('en-US')}
+                              {height > 0 && ` (~${blocksRemaining.toLocaleString('en-US')} blocks remaining)`}
+                            </p>
+                          </div>
+                        )}
+                        <SearchResultCard
+                          result={displayResult}
+                          title={t('explorer.search_results.address')}
+                        />
+                      </>
+                    );
+                  })()}
                 </motion.div>
               )}
             </AnimatePresence>

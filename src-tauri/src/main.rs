@@ -5035,17 +5035,26 @@ async fn rpc_get_address(
 ) -> Result<serde_json::Value, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
     let client = reqwest::Client::new();
-    let url = format!("{}/rpc/address?addr={}", rpc_url, address);
+    // iriumd exposes the address lookup at /rpc/balance?address=… (see
+    // get_balance in src/bin/iriumd.rs). The legacy /rpc/address?addr=…
+    // path that this command used to call has never been registered; the
+    // previous URL returned 404 for every query, which the GUI then
+    // surfaced as "Address not found" regardless of whether the address
+    // had a balance.
+    let url = format!("{}/rpc/balance?address={}", rpc_url, address);
     let resp = client
         .get(&url)
         .timeout(Duration::from_secs(10))
         .send()
         .await
         .map_err(|e| e.to_string())?;
-    if resp.status().is_success() {
+    let status = resp.status();
+    if status.is_success() {
         resp.json::<serde_json::Value>().await.map_err(|e| e.to_string())
+    } else if status == reqwest::StatusCode::NOT_FOUND {
+        Err("Address not found".to_string())
     } else {
-        Err(format!("Address not found"))
+        Err(format!("RPC error {}", status))
     }
 }
 
