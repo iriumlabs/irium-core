@@ -677,7 +677,7 @@
       "evidence_summary": "Kanıt Özeti",
       "proof_file": "Kanıt Dosyası",
       "create_from_evidence": "Kanıtlardan Yarat",
-      "secret_preimage": "Gizli Ön Görüntü (onaltılık)",
+      "secret_preimage": "Gizli Ön Görüntü (hex)",
       "pack_file": "Paket Dosyası",
       "invoice_file": "Fatura Dosyası",
       "invoice_id": "Fatura Kimliği",

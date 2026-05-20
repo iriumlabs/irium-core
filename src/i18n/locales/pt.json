@@ -575,7 +575,7 @@
       "sign": "Sinal"
     },
     "proof_modal": {
-      "title": "Enviar prova",
+      "title": "Enviar comprovante",
       "tab_create": "Crie a partir de evidências",
       "tab_upload": "Carregar",
       "proof_type": "Tipo de prova",
@@ -584,7 +584,7 @@
       "attested_by_hint": "Pré-preenchido com o endereço da carteira selecionado.",
       "evidence_summary": "Resumo de evidências",
       "evidence_placeholder": "por exemplo Pagamento de $50 recebido por transferência bancária, referência #12345.",
-      "submit_button": "Enviar prova",
+      "submit_button": "Enviar comprovante",
       "submitting": "Enviando…"
     },
     "toasts": {
