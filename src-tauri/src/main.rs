@@ -3926,6 +3926,102 @@ fn load_settlement_secret(data_dir: &Option<String>, key: &str) -> Result<String
     Ok(raw.trim().to_string())
 }
 
+/// FIX 4: Build and store the proof policy for a freshly-created Hub
+/// agreement so the proof + attestation flow works without the user
+/// having to find and invoke `policy-build-*` themselves.
+///
+/// Best-effort: a policy-build failure is logged to stderr but the
+/// settlement_create_* handler still returns success — the agreement is
+/// already on-chain at this point and a missing policy can be re-built
+/// later with the standalone `policy_build_*` Tauri commands.
+///
+/// Per-template mapping:
+///   otc / merchant_delayed -> policy-build-otc        (attestor: seller / merchant)
+///   freelance              -> policy-build-contractor (attestor: contractor, milestone slot used for the work-completed proof)
+///   milestone / contractor -> policy-build-contractor x N (one per milestone)
+///   deposit                -> no policy (depositor releases unilaterally)
+#[allow(clippy::too_many_arguments)]
+async fn auto_build_policy(
+    template: &str,
+    agreement_id: &str,
+    agreement_hash: &str,
+    attestor_addr: &str,
+    milestone_count: u32,
+    wallet_path: Option<String>,
+    data_dir: Option<String>,
+    rpc_url: String,
+) {
+    // Skip silently when the wallet binary returned no agreement_hash —
+    // the policy command requires it and would just fail anyway.
+    if agreement_hash.is_empty() {
+        eprintln!(
+            "[FIX 4] auto_build_policy: empty agreement_hash for {agreement_id} (template {template}) — skipping policy build"
+        );
+        return;
+    }
+    match template {
+        "otc" | "merchant_delayed" => {
+            let policy_id = format!("{agreement_id}_policy_otc");
+            let args = vec![
+                "policy-build-otc".to_string(),
+                "--policy-id".to_string(), policy_id.clone(),
+                "--agreement-hash".to_string(), agreement_hash.to_string(),
+                "--attestor".to_string(), attestor_addr.to_string(),
+                "--release-proof-type".to_string(), "payment_received".to_string(),
+                "--json".to_string(),
+            ];
+            if let Err(e) = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await {
+                eprintln!("[FIX 4] policy-build-otc failed for {agreement_id}: {e}");
+            }
+        }
+        "freelance" => {
+            let policy_id = format!("{agreement_id}_policy_freelance");
+            let args = vec![
+                "policy-build-contractor".to_string(),
+                "--policy-id".to_string(), policy_id.clone(),
+                "--agreement-hash".to_string(), agreement_hash.to_string(),
+                "--attestor".to_string(), attestor_addr.to_string(),
+                "--milestone".to_string(), "work_completed".to_string(),
+                "--json".to_string(),
+            ];
+            if let Err(e) = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await {
+                eprintln!("[FIX 4] policy-build-contractor (freelance) failed for {agreement_id}: {e}");
+            }
+        }
+        "milestone" | "contractor" => {
+            for i in 0..milestone_count {
+                let policy_id = format!("{agreement_id}_policy_m{}", i + 1);
+                let milestone_id = format!("m{}", i + 1);
+                let args = vec![
+                    "policy-build-contractor".to_string(),
+                    "--policy-id".to_string(), policy_id,
+                    "--agreement-hash".to_string(), agreement_hash.to_string(),
+                    "--attestor".to_string(), attestor_addr.to_string(),
+                    "--milestone".to_string(), milestone_id.clone(),
+                    "--json".to_string(),
+                ];
+                if let Err(e) = run_wallet_cmd_with_rpc(
+                    args,
+                    wallet_path.clone(),
+                    data_dir.clone(),
+                    rpc_url.clone(),
+                ).await {
+                    eprintln!(
+                        "[FIX 4] policy-build-contractor (milestone {}) failed for {agreement_id}: {e}",
+                        milestone_id
+                    );
+                }
+            }
+        }
+        "deposit" => {
+            // Per spec: depositor releases unilaterally, no policy needed.
+        }
+        other => {
+            eprintln!("[FIX 4] unknown template '{other}' — no policy built for {agreement_id}");
+        }
+    }
+}
+
 /// GUI-facing: returns the stored preimage for a Hub-created agreement so
 /// the user can click Release without manually tracking the secret. Errors
 /// when the file is absent (e.g. agreement created by a peer, or before
@@ -3972,6 +4068,11 @@ async fn settlement_create_otc(
     let amount_irm = format!("{:.8}", sats_to_irm(params.amount_sats));
     let asset = params.asset_reference.unwrap_or_else(|| "IRM".to_string());
     let payment_method = params.payment_method.unwrap_or_else(|| "bank-transfer".to_string());
+    // FIX 4: capture attestor + clones for the post-create auto-policy call.
+    let attestor_addr = params.seller.clone();
+    let policy_wallet_path = wallet_path.clone();
+    let policy_data_dir = data_dir.clone();
+    let policy_rpc_url = rpc_url.clone();
 
     let mut args = vec![
         "otc-create".to_string(),
@@ -3991,6 +4092,17 @@ async fn settlement_create_otc(
     let output = run_wallet_cmd(args, wallet_path, data_dir).await?;
     let result = serde_json::from_str::<OtcCreateResult>(&output)
         .map_err(|e| format!("Parse error: {} | raw: {}", e, &output[..output.len().min(400)]))?;
+
+    auto_build_policy(
+        "otc",
+        &result.agreement_id,
+        &result.agreement_hash,
+        &attestor_addr,
+        0,
+        policy_wallet_path,
+        policy_data_dir,
+        policy_rpc_url,
+    ).await;
 
     Ok(AgreementResult {
         agreement_id: result.agreement_id,
@@ -4023,6 +4135,12 @@ async fn settlement_create_freelance(
     let mut scope_text = params.scope.unwrap_or_else(|| "Freelance work".to_string());
     if scope_text.len() > 100 { scope_text.truncate(100); }
 
+    // FIX 4: capture attestor (contractor) + clones for the post-create policy call.
+    let attestor_addr = params.contractor.clone();
+    let policy_wallet_path = wallet_path.clone();
+    let policy_data_dir = data_dir.clone();
+    let policy_rpc_url = rpc_url.clone();
+
     let args = vec![
         "agreement-create-simple-settlement".to_string(),
         "--agreement-id".to_string(), agreement_id.clone(),
@@ -4040,11 +4158,25 @@ async fn settlement_create_freelance(
     let raw: serde_json::Value = serde_json::from_str(&output)
         .map_err(|e| format!("Parse error: {}", e))?;
 
+    let result_agreement_id = raw["agreement_id"].as_str()
+        .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
+        .to_string();
+    let result_agreement_hash = raw["agreement_hash"].as_str().unwrap_or("").to_string();
+
+    auto_build_policy(
+        "freelance",
+        &result_agreement_id,
+        &result_agreement_hash,
+        &attestor_addr,
+        0,
+        policy_wallet_path,
+        policy_data_dir,
+        policy_rpc_url,
+    ).await;
+
     Ok(AgreementResult {
-        agreement_id: raw["agreement_id"].as_str()
-            .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
-            .to_string(),
-        hash: raw["agreement_hash"].as_str().map(String::from),
+        agreement_id: result_agreement_id,
+        hash: if result_agreement_hash.is_empty() { None } else { Some(result_agreement_hash) },
         success: true,
         message: None,
     })
@@ -4069,6 +4201,13 @@ async fn settlement_create_milestone(
     let doc_hash = format!("{:0>64x}", ts.wrapping_add(3));
     let timeout = height + (params.milestone_count as u64 * 500);
     let per_milestone = sats_to_irm(params.amount_sats / params.milestone_count as u64);
+
+    // FIX 4: capture attestor (payee) + clones for the post-create N-policy call.
+    let attestor_addr = params.payee.clone();
+    let policy_wallet_path = wallet_path.clone();
+    let policy_data_dir = data_dir.clone();
+    let policy_rpc_url = rpc_url.clone();
+    let policy_milestone_count = params.milestone_count;
 
     let mut args = vec![
         "agreement-create-milestone".to_string(),
@@ -4105,11 +4244,25 @@ async fn settlement_create_milestone(
     let raw: serde_json::Value = serde_json::from_str(&output)
         .map_err(|e| format!("Parse error: {}", e))?;
 
+    let result_agreement_id = raw["agreement_id"].as_str()
+        .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
+        .to_string();
+    let result_agreement_hash = raw["agreement_hash"].as_str().unwrap_or("").to_string();
+
+    auto_build_policy(
+        "milestone",
+        &result_agreement_id,
+        &result_agreement_hash,
+        &attestor_addr,
+        policy_milestone_count,
+        policy_wallet_path,
+        policy_data_dir,
+        policy_rpc_url,
+    ).await;
+
     Ok(AgreementResult {
-        agreement_id: raw["agreement_id"].as_str()
-            .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
-            .to_string(),
-        hash: raw["agreement_hash"].as_str().map(String::from),
+        agreement_id: result_agreement_id,
+        hash: if result_agreement_hash.is_empty() { None } else { Some(result_agreement_hash) },
         success: true,
         message: None,
     })
@@ -4186,6 +4339,12 @@ async fn settlement_create_merchant_delayed(
     persist_settlement_secret(&data_dir, &agreement_id, &secret_preimage)?;
     let doc_hash = format!("{:0>64x}", ts.wrapping_add(5));
 
+    // FIX 4: capture merchant (attestor) + clones for the post-create policy call.
+    let attestor_addr = params.merchant.clone();
+    let policy_wallet_path = wallet_path.clone();
+    let policy_data_dir = data_dir.clone();
+    let policy_rpc_url = rpc_url.clone();
+
     let mut args = vec![
         "agreement-create-simple-settlement".to_string(),
         "--agreement-id".to_string(), agreement_id.clone(),
@@ -4210,11 +4369,25 @@ async fn settlement_create_merchant_delayed(
     let raw: serde_json::Value = serde_json::from_str(&output)
         .map_err(|e| format!("Parse error: {}", e))?;
 
+    let result_agreement_id = raw["agreement_id"].as_str()
+        .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
+        .to_string();
+    let result_agreement_hash = raw["agreement_hash"].as_str().unwrap_or("").to_string();
+
+    auto_build_policy(
+        "merchant_delayed",
+        &result_agreement_id,
+        &result_agreement_hash,
+        &attestor_addr,
+        0,
+        policy_wallet_path,
+        policy_data_dir,
+        policy_rpc_url,
+    ).await;
+
     Ok(AgreementResult {
-        agreement_id: raw["agreement_id"].as_str()
-            .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
-            .to_string(),
-        hash: raw["agreement_hash"].as_str().map(String::from),
+        agreement_id: result_agreement_id,
+        hash: if result_agreement_hash.is_empty() { None } else { Some(result_agreement_hash) },
         success: true,
         message: None,
     })
@@ -4239,6 +4412,13 @@ async fn settlement_create_contractor(
     let doc_hash = format!("{:0>64x}", ts.wrapping_add(6));
     let timeout = height + (params.milestone_count as u64 * 500);
     let per_milestone = sats_to_irm(params.amount_sats / params.milestone_count as u64);
+
+    // FIX 4: capture contractor (attestor) + clones for the post-create N-policy call.
+    let attestor_addr = params.contractor.clone();
+    let policy_wallet_path = wallet_path.clone();
+    let policy_data_dir = data_dir.clone();
+    let policy_rpc_url = rpc_url.clone();
+    let policy_milestone_count = params.milestone_count;
 
     let mut args = vec![
         "agreement-create-milestone".to_string(),
@@ -4276,11 +4456,25 @@ async fn settlement_create_contractor(
     let raw: serde_json::Value = serde_json::from_str(&output)
         .map_err(|e| format!("Parse error: {}", e))?;
 
+    let result_agreement_id = raw["agreement_id"].as_str()
+        .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
+        .to_string();
+    let result_agreement_hash = raw["agreement_hash"].as_str().unwrap_or("").to_string();
+
+    auto_build_policy(
+        "contractor",
+        &result_agreement_id,
+        &result_agreement_hash,
+        &attestor_addr,
+        policy_milestone_count,
+        policy_wallet_path,
+        policy_data_dir,
+        policy_rpc_url,
+    ).await;
+
     Ok(AgreementResult {
-        agreement_id: raw["agreement_id"].as_str()
-            .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
-            .to_string(),
-        hash: raw["agreement_hash"].as_str().map(String::from),
+        agreement_id: result_agreement_id,
+        hash: if result_agreement_hash.is_empty() { None } else { Some(result_agreement_hash) },
         success: true,
         message: None,
     })
