@@ -306,6 +306,13 @@ pub struct CreateOfferParams {
     // Optional explicit seller. Falls back to the wallet's first address
     // when None — preserves the prior implicit behaviour.
     pub seller_address: Option<String>,
+    // FIX 3: settlement template the seller wants applied when a buyer
+    // takes this offer. One of "otc" | "freelance" | "milestone" |
+    // "deposit". None means legacy OTC behaviour.
+    pub template_type: Option<String>,
+    // FIX 3: number of milestones when template_type=="milestone".
+    // Ignored for other templates.
+    pub milestone_count: Option<u32>,
 }
 
 // offer-create --json output (same fields as offer show, plus saved_path)

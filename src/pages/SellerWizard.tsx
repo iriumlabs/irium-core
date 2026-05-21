@@ -122,6 +122,15 @@ export default function SellerWizard() {
         payment_instructions: paymentInstructions.trim() || undefined,
         timeout_blocks: parseInt(timeoutBlocks) || 1000,
         description,
+        // FIX 3: pass the template choice as a structural field, not just
+        // a description prefix. The wallet sidecar persists it in the
+        // offer JSON and the buyer's offer-take dispatches to the right
+        // agreement builder.
+        template_type: template ?? undefined,
+        // For non-milestone templates the milestone_count is ignored by
+        // the sidecar; we send 1 only for "milestone" so the offer JSON
+        // round-trips with a meaningful count.
+        milestone_count: template === 'milestone' ? 1 : undefined,
       };
       const res = await offers.create(params);
       if (!res) throw new Error(t('wizards.seller.errors.no_response'));

@@ -228,6 +228,12 @@ export interface CreateOfferParams {
   // Optional explicit seller address. Falls back to the wallet's first
   // derived address on the backend when omitted.
   seller_address?: string;
+  // FIX 3: settlement template — when set, the wallet sidecar at
+  // offer-take time dispatches to the corresponding agreement builder.
+  // Omitted means legacy OTC behaviour.
+  template_type?: 'otc' | 'freelance' | 'milestone' | 'deposit';
+  // FIX 3: number of milestones for template_type==='milestone'.
+  milestone_count?: number;
 }
 
 export interface CreateOfferResult {

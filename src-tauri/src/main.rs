@@ -3105,6 +3105,8 @@ async fn offer_create(
     let timeout = height + params.timeout_blocks.unwrap_or(1000);
 
     // offer-create --seller <addr> --amount <irm> --payment-method <text> --timeout <height>
+    //              [--template-type <otc|freelance|milestone|deposit>]
+    //              [--milestone-count <N>]
     let mut args = vec![
         "offer-create".to_string(),
         "--seller".to_string(), seller,
@@ -3124,6 +3126,19 @@ async fn offer_create(
     if let Some(id) = params.offer_id {
         args.push("--offer-id".to_string());
         args.push(id);
+    }
+    // FIX 3: forward template type + milestone count to the wallet
+    // sidecar so the offer JSON persists them and offer-take dispatches
+    // to the correct builder.
+    if let Some(tmpl) = params.template_type.as_ref().filter(|s| !s.trim().is_empty()) {
+        args.push("--template-type".to_string());
+        args.push(tmpl.trim().to_lowercase());
+    }
+    if let Some(n) = params.milestone_count {
+        if n > 0 {
+            args.push("--milestone-count".to_string());
+            args.push(n.to_string());
+        }
     }
     args.push("--json".to_string());
 
