@@ -3507,7 +3507,7 @@ async fn agreement_create(
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
     let height = get_current_height(&rpc_url).await;
-    let deadline_blocks = params.deadline_hours.unwrap_or(24) * 6;
+    let deadline_blocks = params.deadline_hours.unwrap_or(24) * BLOCKS_PER_HOUR;
     let timeout = height + deadline_blocks;
 
     let ts = std::time::SystemTime::now()
@@ -3855,6 +3855,15 @@ async fn reputation_show(state: State<'_, AppState>, pubkey_or_addr: String) -> 
 // SETTLEMENT TEMPLATES
 // ============================================================
 
+/// Number of blocks per hour used by all settlement deadline / cooldown
+/// conversions. Set to 60 (≈1 min/block) because the live chain runs
+/// faster than the protocol's 10-min target (BLOCK_TARGET_INTERVAL=600s)
+/// and we want timeouts to be meaningful in real time rather than 10×
+/// longer than the user expects. Previously the codebase used `* 6`
+/// (=10 min/block); raise this constant whenever the empirical block
+/// rate changes materially.
+const BLOCKS_PER_HOUR: u64 = 60;
+
 // otc-create --buyer <addr> --seller <addr> --amount <irm> --asset <text>
 //            --payment-method <text> --timeout <height> [--json]
 //
@@ -3869,7 +3878,7 @@ async fn settlement_create_otc(
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
     let height = get_current_height(&rpc_url).await;
-    let deadline_blocks = params.deadline_hours.unwrap_or(24) * 6;
+    let deadline_blocks = params.deadline_hours.unwrap_or(24) * BLOCKS_PER_HOUR;
     let timeout = height + deadline_blocks;
     let amount_irm = format!("{:.8}", sats_to_irm(params.amount_sats));
     let asset = params.asset_reference.unwrap_or_else(|| "IRM".to_string());
@@ -3912,7 +3921,7 @@ async fn settlement_create_freelance(
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
     let height = get_current_height(&rpc_url).await;
-    let deadline_blocks = params.deadline_hours.unwrap_or(48) * 6;
+    let deadline_blocks = params.deadline_hours.unwrap_or(48) * BLOCKS_PER_HOUR;
     let timeout = height + deadline_blocks;
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -4014,7 +4023,7 @@ async fn settlement_create_deposit(
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
     let height = get_current_height(&rpc_url).await;
-    let deadline_blocks = params.deadline_hours.unwrap_or(24) * 6;
+    let deadline_blocks = params.deadline_hours.unwrap_or(24) * BLOCKS_PER_HOUR;
     let timeout = height + deadline_blocks;
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -4061,8 +4070,8 @@ async fn settlement_create_merchant_delayed(
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
     let height = get_current_height(&rpc_url).await;
-    let cooldown_blocks = params.cooldown_hours.unwrap_or(72) * 6;
-    let deadline_blocks = params.deadline_hours.unwrap_or(336) * 6;
+    let cooldown_blocks = params.cooldown_hours.unwrap_or(72) * BLOCKS_PER_HOUR;
+    let deadline_blocks = params.deadline_hours.unwrap_or(336) * BLOCKS_PER_HOUR;
     let settlement_deadline = height + cooldown_blocks;
     let refund_timeout = height + deadline_blocks;
     let ts = std::time::SystemTime::now()
