@@ -10,7 +10,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
-import { settlement, rpc, agreements as agreementsApi, invoices, tradeStatus, reputationActions } from '../lib/tauri';
+import { settlement, rpc, agreements as agreementsApi, invoices, tradeStatus, reputationActions, agreementSpend, proofs } from '../lib/tauri';
+import { safeInvoke } from '../lib/invoke';
 import { useIriumEvents } from '../lib/hooks';
 import NodeOfflineBanner from '../components/NodeOfflineBanner';
 import { SATS_PER_IRM, formatIRM, truncateHash } from '../lib/types';
@@ -1592,6 +1593,20 @@ export default function SettlementPage() {
                 </div>
               </div>
 
+              {/* FIX 5: guided settlement action panel. Walks the user through
+                  Fund -> Wait/Attest -> Release with WebSocket-driven step
+                  advancement, role-conditional buttons, and one-click access
+                  to the stored secret preimage (from FIX 1). */}
+              {selectedTemplate && (
+                <GuidedSettlementActions
+                  agreementId={result.agreement_id}
+                  agreementHash={result.hash || result.agreement_id}
+                  template={selectedTemplate}
+                  payer={form.partyA}
+                  payee={form.partyB}
+                />
+              )}
+
               {/* Wallet-backup warning — the HTLC release preimage that
                   unlocks the escrow is stored locally in the wallet file.
                   If the user loses the wallet, the preimage is gone and
@@ -1816,5 +1831,259 @@ function InvoiceModal({ recipient, amountIrm, reference, onClose }: InvoiceModal
         )}
       </motion.div>
     </motion.div>
+  );
+}
+
+// ── Guided Settlement Actions (FIX 5) ───────────────────────────────
+// Post-creation step ladder that drives the user through Fund -> Wait ->
+// Attest -> Release without leaving the Settlement page. Step transitions
+// are event-driven via the irium-event WebSocket bridge (agreement.funded,
+// agreement.proof_submitted, agreement.satisfied) so the panel advances
+// without a poll. The Release button auto-fetches the stored preimage via
+// the get_agreement_secret Tauri command (FIX 1) — the user never has to
+// know or type the preimage hex.
+
+type GuidedStatus = 'created' | 'funded' | 'proof_submitted' | 'satisfied';
+
+interface GuidedSettlementActionsProps {
+  agreementId: string;
+  agreementHash: string;
+  template: TemplateId;
+  payer: string;   // form.partyA — buyer/client/depositor/etc.
+  payee: string;   // form.partyB — seller/contractor/recipient/etc.
+}
+
+function GuidedSettlementActions({
+  agreementId,
+  agreementHash,
+  template,
+  payer,
+  payee,
+}: GuidedSettlementActionsProps) {
+  // Local addresses tell us whether the local wallet is the funder, the
+  // payee, or a third party watching. Both roles can appear on the same
+  // machine (single-wallet testing); we prefer the funder role when both
+  // match so the Fund button stays the primary action.
+  const localAddresses = useStore((s) => s.addresses).map((a) => a.address);
+  const isFunder = localAddresses.includes(payer);
+  const isPayee  = localAddresses.includes(payee);
+
+  const [status, setStatus] = useState<GuidedStatus>('created');
+  const [busy, setBusy] = useState<null | 'fund' | 'attest' | 'release'>(null);
+  const [secret, setSecret] = useState<string | null>(null);
+
+  // FIX 1 hookup: fetch the stored preimage so Release works without the
+  // user having to find or type it. Errors swallowed: pre-FIX-1 agreements
+  // (or peer-created ones imported here) won't have a stored file, and
+  // the Release button surfaces a usable error in that case via the
+  // agreement-release call itself.
+  useEffect(() => {
+    safeInvoke<string>('get_agreement_secret', { agreementId })
+      .then((s) => { if (s) setSecret(s.trim()); })
+      .catch(() => {});
+  }, [agreementId]);
+
+  // Event-driven status advancement. Each event carries a data object;
+  // we match on agreement_id to ignore events for other agreements.
+  useIriumEvents((event) => {
+    const evtAgreement = (event.data as Record<string, unknown>)?.agreement_id;
+    if (evtAgreement !== agreementId) return;
+    if (event.type === 'agreement.funded') {
+      setStatus((prev) => (prev === 'created' ? 'funded' : prev));
+    } else if (event.type === 'agreement.proof_submitted') {
+      setStatus((prev) => (prev === 'created' || prev === 'funded' ? 'proof_submitted' : prev));
+    } else if (event.type === 'agreement.satisfied') {
+      setStatus('satisfied');
+    }
+  });
+
+  // Proof type chosen per template, mirroring the FIX 4 auto-policy.
+  const proofType = template === 'milestone' || template === 'contractor'
+    ? 'milestone_delivered'
+    : template === 'freelance'
+    ? 'work_completed'
+    : 'payment_received';
+
+  const handleFund = async () => {
+    setBusy('fund');
+    try {
+      const res = await agreementSpend.fund(agreementId, true);
+      if (res.txid) toast.success(`Funded: ${res.txid.slice(0, 12)}…`);
+      // Event will flip status, but optimistically advance for snappier UI.
+      setStatus((prev) => (prev === 'created' ? 'funded' : prev));
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleAttest = async () => {
+    setBusy('attest');
+    try {
+      await proofs.createAndSubmit({
+        agreementHash,
+        proofType,
+        attestedBy: payee,
+        address: payee,
+      });
+      toast.success('Attestation submitted');
+      setStatus((prev) => (prev === 'created' || prev === 'funded' ? 'proof_submitted' : prev));
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleRelease = async () => {
+    setBusy('release');
+    try {
+      const res = await agreementsApi.release(agreementId, secret ?? undefined, true);
+      if (res.txid) toast.success(`Released: ${res.txid.slice(0, 12)}…`);
+      setStatus('satisfied');
+    } catch (e) {
+      toast.error(String(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // Deposit template skips the attest step — depositor releases unilaterally
+  // via the preimage. Render a simplified two-step ladder for it.
+  const isDeposit = template === 'deposit';
+
+  return (
+    <div
+      className="rounded-xl p-5 mb-6 text-left space-y-4"
+      style={{
+        background: 'rgba(110,198,255,0.05)',
+        border: '1px solid rgba(110,198,255,0.20)',
+      }}
+    >
+      <div className="flex items-center gap-2">
+        <Zap size={14} style={{ color: '#6ec6ff' }} />
+        <h3 className="font-display font-semibold text-sm text-white">
+          {isFunder && isPayee ? 'You hold both sides — drive each step manually:'
+            : isFunder ? 'Your turn — fund the escrow:'
+            : isPayee ? 'Waiting for the other side to fund:'
+            : 'You are an observer for this agreement:'}
+        </h3>
+      </div>
+
+      <div className="space-y-2.5">
+        {/* Step 1 — Fund */}
+        <GuidedStep
+          index={1}
+          label="Fund Escrow"
+          active={status === 'created'}
+          done={status !== 'created'}
+          action={
+            isFunder && status === 'created' ? (
+              <button
+                onClick={handleFund}
+                disabled={busy !== null}
+                className="btn-primary px-3 py-1.5 text-xs disabled:opacity-40"
+              >
+                {busy === 'fund' ? <Loader2 size={12} className="animate-spin" /> : 'Fund'}
+              </button>
+            ) : null
+          }
+        />
+
+        {/* Step 2 — Attest (skipped for deposit) */}
+        {!isDeposit && (
+          <GuidedStep
+            index={2}
+            label={
+              proofType === 'work_completed' ? 'Deliver Work + Attest'
+              : proofType === 'milestone_delivered' ? 'Deliver Milestone + Attest'
+              : 'Confirm Payment Received (Attest)'
+            }
+            active={status === 'funded'}
+            done={status === 'proof_submitted' || status === 'satisfied'}
+            action={
+              isPayee && status === 'funded' ? (
+                <button
+                  onClick={handleAttest}
+                  disabled={busy !== null}
+                  className="btn-primary px-3 py-1.5 text-xs disabled:opacity-40"
+                >
+                  {busy === 'attest' ? <Loader2 size={12} className="animate-spin" /> : 'Attest'}
+                </button>
+              ) : null
+            }
+          />
+        )}
+
+        {/* Step 3 — Release */}
+        <GuidedStep
+          index={isDeposit ? 2 : 3}
+          label="Release Funds"
+          active={isDeposit ? status === 'funded' : status === 'proof_submitted'}
+          done={status === 'satisfied'}
+          action={
+            (isDeposit
+              ? isFunder && status === 'funded'
+              : isFunder && status === 'proof_submitted') ? (
+              <button
+                onClick={handleRelease}
+                disabled={busy !== null || (!secret && !isDeposit)}
+                className="btn-primary px-3 py-1.5 text-xs disabled:opacity-40"
+                title={!secret ? 'Preimage not found — was this agreement created by a peer?' : undefined}
+              >
+                {busy === 'release' ? <Loader2 size={12} className="animate-spin" /> : 'Release'}
+              </button>
+            ) : null
+          }
+        />
+      </div>
+
+      {!isFunder && !isPayee && (
+        <p className="text-xs text-white/40 leading-relaxed">
+          Neither party address matches a wallet on this machine — actions
+          are disabled. Open this agreement on the machine that holds the
+          relevant key to drive it forward.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function GuidedStep({
+  index,
+  label,
+  active,
+  done,
+  action,
+}: {
+  index: number;
+  label: string;
+  active: boolean;
+  done: boolean;
+  action: React.ReactNode;
+}) {
+  return (
+    <div
+      className="flex items-center gap-3 p-2.5 rounded-lg"
+      style={{
+        background: done ? 'rgba(74,222,128,0.06)' : active ? 'rgba(110,198,255,0.08)' : 'rgba(255,255,255,0.03)',
+        border: '1px solid ' + (done ? 'rgba(74,222,128,0.22)' : active ? 'rgba(110,198,255,0.28)' : 'rgba(255,255,255,0.05)'),
+      }}
+    >
+      <div
+        className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
+        style={{
+          background: done ? '#34d399' : active ? '#6ec6ff' : 'rgba(255,255,255,0.10)',
+          color: done || active ? '#02050E' : 'rgba(255,255,255,0.4)',
+        }}
+      >
+        {done ? <CheckCircle2 size={13} /> : index}
+      </div>
+      <span className={`flex-1 text-sm ${done ? 'text-white/50 line-through' : active ? 'text-white' : 'text-white/40'}`}>
+        {label}
+      </span>
+      {action}
+    </div>
   );
 }
