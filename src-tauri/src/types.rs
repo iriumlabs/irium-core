@@ -31,6 +31,16 @@ pub struct NodeStatus {
     pub rpc_url: String,
     pub upnp_active: bool,
     pub upnp_external_ip: Option<String>,
+    // FIX 1 interim mitigation: the wallet UI gates the Send button on
+    // `fully_synced` so the user cannot broadcast a transaction while the
+    // local iriumd is still replaying the post-restart gap (between
+    // `persisted_height` and the live tip, with `gap_healer_pending_count`
+    // counting outstanding block holes). The existing `synced` flag only
+    // verifies "within 10 blocks of network tip" and is true throughout
+    // the rewind window, so it can't be reused for this gate.
+    pub persisted_height: u64,
+    pub gap_healer_pending_count: u64,
+    pub fully_synced: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -56,6 +66,10 @@ pub struct RpcInfo {
     pub best_header_tip: Option<BestHeaderTip>,
     pub anchor_loaded: Option<bool>,
     pub network_era: Option<String>,
+    // FIX 1 mitigation: surfaced so the wallet Send-button gate can wait
+    // until the local node has fully replayed the post-restart gap.
+    pub persisted_height: Option<u64>,
+    pub gap_healer_pending_count: Option<u64>,
 }
 
 // Matches real GET /peers response:

@@ -285,8 +285,20 @@ export default function WalletPage() {
 
   useEffect(() => {
     const openSend = () => {
-      if (nodeStatusRef.current?.running) setShowSend(true);
-      else toast.error(t('wallet.toasts.node_must_be_online'));
+      const ns = nodeStatusRef.current;
+      if (!ns?.running) {
+        toast.error(t('wallet.toasts.node_must_be_online'));
+        return;
+      }
+      // FIX 1 interim gate — same condition as the inline Send button.
+      // See the Send button render below for the rationale.
+      if (!ns?.fully_synced) {
+        toast.error(
+          `Node syncing — ${ns.persisted_height?.toLocaleString() ?? 0}/${ns.height?.toLocaleString() ?? 0} blocks. Please wait.`
+        );
+        return;
+      }
+      setShowSend(true);
     };
     const openReceive = () => setShowReceive(true);
     window.addEventListener('irium:open-send', openSend);
@@ -501,14 +513,50 @@ export default function WalletPage() {
             )}
 
             <div className="flex gap-3 mt-6 flex-wrap items-center">
+              {/* Send button is gated on `fully_synced` (FIX 1 interim
+                  mitigation, not just `running`). After a local iriumd
+                  restart the in-memory tip can be ahead of the persisted
+                  state by the gap-healer queue; broadcasting a tx during
+                  that window has produced wallet-side "Transaction
+                  signature verification failed" because /rpc/utxos
+                  returns UTXOs the wallet then signs against, but the
+                  node's chain.utxos is briefly inconsistent. Disable until
+                  persisted_height == height AND gap_healer_pending_count == 0. */}
               <button
                 onClick={() => setShowSend(true)}
-                disabled={!nodeStatus?.running}
-                title={!nodeStatus?.running ? 'Node must be online to send' : undefined}
+                disabled={!nodeStatus?.running || !nodeStatus?.fully_synced}
+                title={
+                  !nodeStatus?.running
+                    ? 'Node must be online to send'
+                    : !nodeStatus?.fully_synced
+                    ? 'Node is syncing — please wait before sending'
+                    : undefined
+                }
                 className="btn-primary gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <ArrowUpRight size={16} /> Send
               </button>
+              {nodeStatus?.running && !nodeStatus?.fully_synced && (
+                <span
+                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-mono"
+                  style={{
+                    background: 'rgba(251,191,36,0.10)',
+                    border: '1px solid rgba(251,191,36,0.32)',
+                    color: '#fbbf24',
+                  }}
+                  title="Wait for the node to finish syncing before sending. Sending now can fail with a signature verification error because the UTXO set is still being rebuilt."
+                >
+                  <Loader2 size={10} className="animate-spin" />
+                  Syncing… {nodeStatus.persisted_height?.toLocaleString() ?? 0}
+                  {' / '}
+                  {nodeStatus.height?.toLocaleString() ?? 0}
+                  {nodeStatus.gap_healer_pending_count > 0 && (
+                    <span style={{ color: 'rgba(251,191,36,0.65)' }}>
+                      {' '}· {nodeStatus.gap_healer_pending_count} gaps
+                    </span>
+                  )}
+                </span>
+              )}
               <button onClick={() => setShowReceive(true)} className="btn-secondary gap-2">
                 <ArrowDownLeft size={16} /> Receive
               </button>
@@ -1932,6 +1980,18 @@ function SendModal({
 
   const handleConfirmSend = async () => {
     if (!sendTo || !sendAmountIrm) return;
+    // FIX 1 defense-in-depth: even if the modal was opened when the node
+    // was fully synced, the user may have lingered through a restart or
+    // a chain reorg. Re-read live store state at submit time and refuse
+    // to broadcast if persistence isn't caught up — the same check as
+    // the main Send button gate.
+    const liveStatus = useStore.getState().nodeStatus;
+    if (!liveStatus?.fully_synced) {
+      setSendError(
+        `Node is still syncing (${liveStatus?.persisted_height?.toLocaleString() ?? 0}/${liveStatus?.height?.toLocaleString() ?? 0} blocks). Please close this dialog, wait until syncing completes, and try again.`
+      );
+      return;
+    }
     setSendLoading(true);
     setSendError(null);
     try {

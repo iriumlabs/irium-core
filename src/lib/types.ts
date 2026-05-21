@@ -17,6 +17,15 @@ export interface NodeStatus {
   rpc_url: string;
   upnp_active: boolean;
   upnp_external_ip?: string;
+  // FIX 1 interim mitigation. `synced` is the existing "within 10 blocks of
+  // network tip" check — it is true throughout the post-restart rewind
+  // window and is not safe to gate Send on. `fully_synced` adds two
+  // stricter conditions: persisted state has caught up to the in-memory
+  // tip, and no gap-healer block holes remain. Send is disabled until
+  // all three are satisfied.
+  persisted_height: number;
+  gap_healer_pending_count: number;
+  fully_synced: boolean;
 }
 
 // Subset of iriumd's /metrics — only the counters the GUI consumes.

@@ -2052,6 +2052,20 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
                 && network_tip > 0
                 && local_height >= network_tip.saturating_sub(10);
 
+            // FIX 1 interim mitigation — see NodeStatus docstring. After a
+            // local iriumd restart the in-memory tip can be ahead of the
+            // persisted state by `gap_healer_pending_count` blocks while
+            // the gap healer replays them. Any /rpc/utxos response during
+            // that window can return stale UTXOs that produce a wallet-side
+            // signing failure surfaced as "Transaction signature verification
+            // failed". Send button is gated on `fully_synced` so the user
+            // can't broadcast until persistence has caught up.
+            let persisted_height = info.persisted_height.unwrap_or(0);
+            let gap_healer_pending_count = info.gap_healer_pending_count.unwrap_or(0);
+            let fully_synced = synced
+                && persisted_height == local_height
+                && gap_healer_pending_count == 0;
+
             let upnp_ip = state.upnp_external_ip.lock().map_err(lock_err)?.clone();
             let status = NodeStatus {
                 running: true,
@@ -2065,6 +2079,9 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
                 rpc_url: rpc_url.clone(),
                 upnp_active: upnp_ip.is_some(),
                 upnp_external_ip: upnp_ip,
+                persisted_height,
+                gap_healer_pending_count,
+                fully_synced,
             };
             *state.last_node_status.lock().map_err(lock_err)? = Some(status.clone());
             Ok(status)
@@ -2085,6 +2102,9 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
                 rpc_url,
                 upnp_active: upnp_ip.is_some(),
                 upnp_external_ip: upnp_ip,
+                persisted_height: 0,
+                gap_healer_pending_count: 0,
+                fully_synced: false,
             })
         }
     }
