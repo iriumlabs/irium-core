@@ -31,6 +31,12 @@ dirs = "5"
 # BCryptGenRandom on Windows. The token gates privileged iriumd endpoints
 # now that the desktop launcher binds iriumd's RPC to 0.0.0.0.
 getrandom = "0.2"
+# SHA-256 + hex encoding used by Settlement Hub secret generation (FIX 1).
+# When a Hub-created agreement needs an HTLC-style release the preimage
+# must be a 32-byte cryptographically-random value whose SHA-256 hash is
+# what gets embedded in the agreement's secret_hash field.
+sha2 = "0.10"
+hex = "0.4"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.

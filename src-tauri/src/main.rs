@@ -3514,12 +3514,17 @@ async fn agreement_create(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
-    let secret_hash = format!("{:0>64x}", ts);
+    let agreement_id = format!("settle-{}", ts);
+    // FIX 1: real cryptographic preimage + SHA-256 commitment. Persist the
+    // preimage BEFORE calling the wallet binary so a wallet-side failure
+    // leaves at most an orphan secret file (no on-chain reference exists).
+    let (secret_preimage, secret_hash) = mint_settlement_secret();
+    persist_settlement_secret(&data_dir, &agreement_id, &secret_preimage)?;
     let doc_hash = format!("{:0>64x}", ts.wrapping_add(1));
 
     let args = vec![
         "agreement-create-simple-settlement".to_string(),
-        "--agreement-id".to_string(), format!("settle-{}", ts),
+        "--agreement-id".to_string(), agreement_id.clone(),
         "--creation-time".to_string(), ts.to_string(),
         "--party-a".to_string(), format!("addr={}", params.counterparty),
         "--party-b".to_string(), format!("addr={}", params.counterparty),
@@ -3864,6 +3869,90 @@ async fn reputation_show(state: State<'_, AppState>, pubkey_or_addr: String) -> 
 /// rate changes materially.
 const BLOCKS_PER_HOUR: u64 = 60;
 
+// ─── FIX 1: Settlement secret generation ───────────────────────────────────
+// The Settlement Hub previously generated `secret_hash` as a zero-padded
+// hex unix timestamp (`format!("{:0>64x}", ts)`) — not a hash at all, and
+// no preimage was ever stored. That made every Hub-created agreement
+// permanently unreleasable because there was no way to satisfy the HTLC.
+//
+// `mint_settlement_secret()` returns a fresh 32-byte OS-random preimage
+// and its SHA-256 commitment. `persist_settlement_secret()` writes the
+// preimage hex to <data_dir>/.irium/agreement_secrets/<key>.hex (mode 0600
+// on Unix); `load_settlement_secret()` reads it back on Release. The key
+// is the agreement_id for top-level secrets and "<agreement_id>_milestone_<n>"
+// for milestone-specific secrets.
+
+fn settlement_secrets_dir(data_dir: &Option<String>) -> Result<PathBuf, String> {
+    let base = data_dir
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| dirs::home_dir().unwrap_or_default().join(".irium"));
+    let dir = base.join("agreement_secrets");
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("create secrets dir {}: {e}", dir.display()))?;
+    Ok(dir)
+}
+
+fn mint_settlement_secret() -> (String /* preimage_hex */, String /* sha256(preimage)_hex */) {
+    use sha2::{Digest, Sha256};
+    let mut secret = [0u8; 32];
+    getrandom::getrandom(&mut secret).expect("OS RNG must work");
+    let hash = Sha256::digest(secret);
+    (hex::encode(secret), hex::encode(hash))
+}
+
+fn persist_settlement_secret(
+    data_dir: &Option<String>,
+    key: &str,
+    preimage_hex: &str,
+) -> Result<(), String> {
+    let dir = settlement_secrets_dir(data_dir)?;
+    let path = dir.join(format!("{key}.hex"));
+    std::fs::write(&path, preimage_hex)
+        .map_err(|e| format!("write secret file {}: {e}", path.display()))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+    }
+    Ok(())
+}
+
+fn load_settlement_secret(data_dir: &Option<String>, key: &str) -> Result<String, String> {
+    let dir = settlement_secrets_dir(data_dir)?;
+    let path = dir.join(format!("{key}.hex"));
+    let raw = std::fs::read_to_string(&path)
+        .map_err(|e| format!("read secret file {}: {e}", path.display()))?;
+    Ok(raw.trim().to_string())
+}
+
+/// GUI-facing: returns the stored preimage for a Hub-created agreement so
+/// the user can click Release without manually tracking the secret. Errors
+/// when the file is absent (e.g. agreement created by a peer, or before
+/// FIX 1 shipped).
+#[tauri::command]
+async fn get_agreement_secret(
+    state: State<'_, AppState>,
+    agreement_id: String,
+) -> Result<String, String> {
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    load_settlement_secret(&data_dir, &agreement_id)
+}
+
+/// GUI-facing: returns the stored per-milestone preimage. Milestones are
+/// indexed from 0 to (milestone_count - 1) by the settlement_create_*
+/// handlers; the GUI must use the same index when calling Release for a
+/// specific milestone.
+#[tauri::command]
+async fn get_milestone_secret(
+    state: State<'_, AppState>,
+    agreement_id: String,
+    index: u32,
+) -> Result<String, String> {
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    load_settlement_secret(&data_dir, &format!("{agreement_id}_milestone_{index}"))
+}
+
 // otc-create --buyer <addr> --seller <addr> --amount <irm> --asset <text>
 //            --payment-method <text> --timeout <height> [--json]
 //
@@ -3926,7 +4015,9 @@ async fn settlement_create_freelance(
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default().as_secs();
-    let secret_hash = format!("{:0>64x}", ts);
+    let agreement_id = format!("freelance-{}", ts);
+    let (secret_preimage, secret_hash) = mint_settlement_secret();
+    persist_settlement_secret(&data_dir, &agreement_id, &secret_preimage)?;
     let doc_hash = format!("{:0>64x}", ts.wrapping_add(2));
 
     let mut scope_text = params.scope.unwrap_or_else(|| "Freelance work".to_string());
@@ -3934,7 +4025,7 @@ async fn settlement_create_freelance(
 
     let args = vec![
         "agreement-create-simple-settlement".to_string(),
-        "--agreement-id".to_string(), format!("freelance-{}", ts),
+        "--agreement-id".to_string(), agreement_id.clone(),
         "--creation-time".to_string(), ts.to_string(),
         "--party-a".to_string(), format!("addr={}", params.client),
         "--party-b".to_string(), format!("addr={}", params.contractor),
@@ -3972,14 +4063,16 @@ async fn settlement_create_milestone(
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default().as_secs();
-    let secret_hash = format!("{:0>64x}", ts);
+    let agreement_id = format!("milestone-{}", ts);
+    let (secret_preimage, secret_hash) = mint_settlement_secret();
+    persist_settlement_secret(&data_dir, &agreement_id, &secret_preimage)?;
     let doc_hash = format!("{:0>64x}", ts.wrapping_add(3));
     let timeout = height + (params.milestone_count as u64 * 500);
     let per_milestone = sats_to_irm(params.amount_sats / params.milestone_count as u64);
 
     let mut args = vec![
         "agreement-create-milestone".to_string(),
-        "--agreement-id".to_string(), format!("milestone-{}", ts),
+        "--agreement-id".to_string(), agreement_id.clone(),
         "--creation-time".to_string(), ts.to_string(),
         "--party-a".to_string(), format!("addr={}", params.payer),
         "--party-b".to_string(), format!("addr={}", params.payee),
@@ -3990,12 +4083,21 @@ async fn settlement_create_milestone(
     ];
     for i in 0..params.milestone_count {
         let m_timeout = height + ((i as u64 + 1) * 500);
-        let m_secret = format!("{:0>64x}", ts.wrapping_add(10 + i as u64));
-        let m_hash = format!("{:0>64x}", ts.wrapping_add(100 + i as u64));
+        // FIX 1: independent preimage per milestone so the Release flow can
+        // unlock milestones individually. Persist before passing the hash
+        // down to the wallet binary, same orphan-tolerant ordering as the
+        // top-level secret above.
+        let (m_secret_preimage, m_secret_hash) = mint_settlement_secret();
+        persist_settlement_secret(
+            &data_dir,
+            &format!("{agreement_id}_milestone_{}", i),
+            &m_secret_preimage,
+        )?;
+        let m_doc_hash = format!("{:0>64x}", ts.wrapping_add(100 + i as u64));
         args.push("--milestone".to_string());
         args.push(format!(
             "m{}|Milestone {}|{:.8}|{}|{}|{}",
-            i + 1, i + 1, per_milestone, m_timeout, m_secret, m_hash
+            i + 1, i + 1, per_milestone, m_timeout, m_secret_hash, m_doc_hash
         ));
     }
 
@@ -4028,12 +4130,14 @@ async fn settlement_create_deposit(
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default().as_secs();
-    let secret_hash = format!("{:0>64x}", ts);
+    let agreement_id = format!("deposit-{}", ts);
+    let (secret_preimage, secret_hash) = mint_settlement_secret();
+    persist_settlement_secret(&data_dir, &agreement_id, &secret_preimage)?;
     let doc_hash = format!("{:0>64x}", ts.wrapping_add(4));
 
     let args = vec![
         "agreement-create-deposit".to_string(),
-        "--agreement-id".to_string(), format!("deposit-{}", ts),
+        "--agreement-id".to_string(), agreement_id.clone(),
         "--creation-time".to_string(), ts.to_string(),
         "--payer".to_string(), format!("addr={}", params.depositor),
         "--payee".to_string(), format!("addr={}", params.recipient),
@@ -4077,12 +4181,14 @@ async fn settlement_create_merchant_delayed(
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default().as_secs();
-    let secret_hash = format!("{:0>64x}", ts);
+    let agreement_id = format!("merchant-{}", ts);
+    let (secret_preimage, secret_hash) = mint_settlement_secret();
+    persist_settlement_secret(&data_dir, &agreement_id, &secret_preimage)?;
     let doc_hash = format!("{:0>64x}", ts.wrapping_add(5));
 
     let mut args = vec![
         "agreement-create-simple-settlement".to_string(),
-        "--agreement-id".to_string(), format!("merchant-{}", ts),
+        "--agreement-id".to_string(), agreement_id.clone(),
         "--creation-time".to_string(), ts.to_string(),
         "--party-a".to_string(), format!("addr={}", params.buyer),
         "--party-b".to_string(), format!("addr={}", params.merchant),
@@ -4127,14 +4233,16 @@ async fn settlement_create_contractor(
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default().as_secs();
-    let secret_hash = format!("{:0>64x}", ts);
+    let agreement_id = format!("contractor-{}", ts);
+    let (secret_preimage, secret_hash) = mint_settlement_secret();
+    persist_settlement_secret(&data_dir, &agreement_id, &secret_preimage)?;
     let doc_hash = format!("{:0>64x}", ts.wrapping_add(6));
     let timeout = height + (params.milestone_count as u64 * 500);
     let per_milestone = sats_to_irm(params.amount_sats / params.milestone_count as u64);
 
     let mut args = vec![
         "agreement-create-milestone".to_string(),
-        "--agreement-id".to_string(), format!("contractor-{}", ts),
+        "--agreement-id".to_string(), agreement_id.clone(),
         "--creation-time".to_string(), ts.to_string(),
         "--party-a".to_string(), format!("addr={}", params.client),
         "--party-b".to_string(), format!("addr={}", params.contractor),
@@ -4149,12 +4257,18 @@ async fn settlement_create_contractor(
     }
     for i in 0..params.milestone_count {
         let m_timeout = height + ((i as u64 + 1) * 500);
-        let m_secret = format!("{:0>64x}", ts.wrapping_add(10 + i as u64));
-        let m_hash = format!("{:0>64x}", ts.wrapping_add(100 + i as u64));
+        // FIX 1: per-milestone independent preimage, persisted before use.
+        let (m_secret_preimage, m_secret_hash) = mint_settlement_secret();
+        persist_settlement_secret(
+            &data_dir,
+            &format!("{agreement_id}_milestone_{}", i),
+            &m_secret_preimage,
+        )?;
+        let m_doc_hash = format!("{:0>64x}", ts.wrapping_add(100 + i as u64));
         args.push("--milestone".to_string());
         args.push(format!(
             "m{}|Milestone {}|{:.8}|{}|{}|{}",
-            i + 1, i + 1, per_milestone, m_timeout, m_secret, m_hash
+            i + 1, i + 1, per_milestone, m_timeout, m_secret_hash, m_doc_hash
         ));
     }
 
@@ -7166,6 +7280,11 @@ fn main() {
             agreement_unpack,
             agreement_release,
             agreement_refund,
+            // FIX 1: Settlement secret retrieval — the GUI calls these on
+            // the Release button to look up the random preimage that the
+            // Hub stored at agreement-create time.
+            get_agreement_secret,
+            get_milestone_secret,
             // Proofs
             proof_list,
             proof_sign,
