@@ -5623,6 +5623,16 @@ async fn start_miner(
     miner_env.insert("IRIUM_MINER_ADDRESS".to_string(), address.clone());
     miner_env.insert("IRIUM_RPC_URL".to_string(), rpc_url.clone());
     miner_env.insert("IRIUM_NODE_RPC".to_string(), rpc_url.clone());
+    // FIX 2 (IRIUM_RPC_TOKEN): the miner sidecar's fetch_template path
+    // hits iriumd's auth-gated /miner/template endpoint. Without this
+    // env var iriumd returns 401 and the miner retries forever at 0
+    // KH/s. snapshot_gui_rpc_bearer respects FIX 3 remote-node mode
+    // (user-supplied remote token) and falls back to the auto-minted
+    // local RPC_TOKEN in default local mode.
+    miner_env.insert(
+        "IRIUM_RPC_TOKEN".to_string(),
+        snapshot_gui_rpc_bearer(&state.rpc_token_override).unwrap_or_default(),
+    );
 
     let cmd = Command::new_sidecar("irium-miner")
         .map_err(|e| format!("irium-miner not found: {}", e))?
@@ -6059,8 +6069,19 @@ async fn start_gpu_miner(
     args.push("--batch".into());
     args.push(batch.to_string());
 
+    // FIX 2 (IRIUM_RPC_TOKEN): same Bearer-auth requirement as the CPU
+    // miner — irium-miner-gpu's fetch_template path 401s without this
+    // env var, which manifests in the GUI as "GPU Active, 0.0 KH/s"
+    // because the sidecar never receives a job from iriumd.
+    let mut gpu_env = HashMap::new();
+    gpu_env.insert(
+        "IRIUM_RPC_TOKEN".to_string(),
+        snapshot_gui_rpc_bearer(&state.rpc_token_override).unwrap_or_default(),
+    );
+
     let (mut rx, child) = Command::new_sidecar("irium-miner-gpu")
         .map_err(|e| format!("irium-miner-gpu not bundled: {}", e))?
+        .envs(gpu_env)
         .args(&args)
         .current_dir(irium_dir)
         .spawn()
@@ -6197,7 +6218,8 @@ async fn get_gpu_miner_status(state: State<'_, AppState>) -> Result<GpuMinerStat
     // stale numbers from a previous GPU session.
     let kind = *state.miner_kind.lock().map_err(lock_err)?;
     let running = kind == Some(MinerKind::Gpu);
-    let hashrate_khs = if running { *state.miner_hashrate.lock().map_err(lock_err)? } else { 0.0 };
+    let raw_hashrate = *state.miner_hashrate.lock().map_err(lock_err)?;
+    let hashrate_khs = if running { raw_hashrate } else { 0.0 };
     let blocks_found = *state.blocks_found.lock().map_err(lock_err)?;
     let temperature_c = if running { *state.gpu_temperature_c.lock().map_err(lock_err)? } else { None };
     let power_w = if running { *state.gpu_power_w.lock().map_err(lock_err)? } else { None };
