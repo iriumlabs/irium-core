@@ -253,6 +253,17 @@ export const agreements = {
   show: (agreementId: string) =>
     safeInvoke<Agreement>('agreement_show', { agreementId }),
 
+  // Full on-chain audit record for an agreement. The Rust command
+  // reconstitutes the canonical AgreementObject via
+  // `irium-wallet agreement-inspect` and POSTs it to iriumd's
+  // /rpc/agreementaudit under the {agreement: ...} envelope the
+  // endpoint expects — previously the GUI tried to POST just
+  // {agreement_hash} which axum rejected with HTTP 422. The wrapper
+  // returns the raw audit JSON so the AuditModal can do its own
+  // defensive field extraction.
+  audit: (agreementId: string) =>
+    safeInvoke<Record<string, unknown>>('agreement_audit', { agreementId }),
+
   create: (params: CreateAgreementParams) =>
     safeInvoke<AgreementResult>('agreement_create', { params }),
 

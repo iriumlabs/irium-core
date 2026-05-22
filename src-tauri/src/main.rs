@@ -4192,6 +4192,66 @@ async fn agreement_show(state: State<'_, AppState>, agreement_id: String) -> Res
     })
 }
 
+// FIX (audit-422): iriumd's /rpc/agreementaudit expects the full
+// AgreementObject (Deserialize-bound to a 30-field settlement::AgreementObject
+// struct), not just the agreement hash. Sending {agreement_hash: "..."}
+// failed body-extraction with HTTP 422. On top of that the endpoint runs
+// require_rpc_auth, so a fixed body would still 401 without the FIX 2
+// bearer token. Both are solved by routing the call through this Tauri
+// command:
+//   1. agreement-inspect <id> --json reconstitutes the canonical
+//      AgreementObject from the wallet's on-disk record;
+//   2. We POST it under the {agreement: ...} envelope iriumd expects,
+//      via rpc_client which carries the GUI bearer (FIX 2 helper);
+//   3. The unmodified audit JSON comes back as serde_json::Value so
+//      the AuditModal's defensive field extraction keeps working.
+#[tauri::command]
+async fn agreement_audit(
+    state: State<'_, AppState>,
+    agreement_id: String,
+) -> Result<serde_json::Value, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+
+    let inspect_out = run_wallet_cmd(
+        vec!["agreement-inspect".to_string(), agreement_id.clone(), "--json".to_string()],
+        wallet_path,
+        data_dir,
+    )
+    .await?;
+    let raw: serde_json::Value = serde_json::from_str(&inspect_out)
+        .map_err(|e| format!("Parse error on agreement-inspect output: {}", e))?;
+    // agreement-inspect emits {agreement_hash, agreement: {...}} — the
+    // inner `agreement` IS the AgreementObject iriumd needs.
+    let inner = raw.get("agreement").cloned().ok_or_else(|| {
+        "agreement-inspect output missing `agreement` object — wallet record may be corrupt"
+            .to_string()
+    })?;
+
+    let body = serde_json::json!({ "agreement": inner });
+    let client = rpc_client(&state);
+    let resp = client
+        .post(format!("{}/rpc/agreementaudit", rpc_url.trim_end_matches('/')))
+        .timeout(Duration::from_secs(10))
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Audit RPC request failed: {}", e))?;
+    let status = resp.status();
+    if !status.is_success() {
+        let text = resp.text().await.unwrap_or_default();
+        return Err(format!(
+            "Audit RPC returned HTTP {} — {}",
+            status.as_u16(),
+            text.chars().take(300).collect::<String>()
+        ));
+    }
+    resp.json::<serde_json::Value>()
+        .await
+        .map_err(|e| format!("Audit RPC returned malformed JSON: {}", e))
+}
+
 #[tauri::command]
 async fn agreement_remove(state: State<'_, AppState>, agreement_id: String) -> Result<bool, String> {
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
@@ -8420,6 +8480,7 @@ fn main() {
             // Agreements
             agreement_list,
             agreement_show,
+            agreement_audit,
             agreement_remove,
             agreement_create,
             agreement_pack,

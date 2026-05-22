@@ -637,11 +637,10 @@ export default function AgreementsPage() {
       <AnimatePresence>
         {auditAgreementId !== null && (() => {
           const a = agreementList.find((x) => x.id === auditAgreementId);
-          if (!a || !a.hash) return null;
+          if (!a) return null;
           return (
             <AuditModal
               agreementId={a.id}
-              agreementHash={a.hash}
               onClose={() => setAuditAgreementId(null)}
             />
           );
@@ -1264,13 +1263,14 @@ function AgreementCard({
                 {/* Common footer — View Audit + Share Text are always
                     available so users can inspect on-chain history and
                     share a quick plain-text summary at any lifecycle stage.
-                    View Audit is disabled when the hash hasn't been
-                    computed yet (rare; only happens for very-early-state
-                    local drafts). */}
+                    View Audit is enabled at every lifecycle stage now —
+                    the Rust agreement_audit command reconstitutes the
+                    canonical AgreementObject from the wallet's local
+                    record, so even an unknown-status / unanchored draft
+                    can render its policy + funding-leg + event view. */}
                 <button
                   onClick={onViewAudit}
-                  disabled={!a.hash}
-                  title={a.hash ? 'View full on-chain audit record' : 'Agreement hash not available yet'}
+                  title="View full on-chain audit record"
                   className="btn-ghost text-xs py-1.5 px-3 text-irium-400 hover:text-irium-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
                 >
                   <FileText size={12} /> {t('agreements.actions.view_audit')}
@@ -2367,13 +2367,11 @@ function DisputeModal({ agreement, onClose, onSuccess, isOnline }: DisputeModalP
 
 interface AuditModalProps {
   agreementId: string;
-  agreementHash: string;
   onClose: () => void;
 }
 
-function AuditModal({ agreementId, agreementHash, onClose }: AuditModalProps) {
+function AuditModal({ agreementId, onClose }: AuditModalProps) {
   const { t } = useTranslation();
-  const rpcUrl = useStore((s) => s.settings.rpc_url) || 'http://127.0.0.1:38300';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<Record<string, unknown> | null>(null);
@@ -2383,20 +2381,21 @@ function AuditModal({ agreementId, agreementHash, onClose }: AuditModalProps) {
     let mounted = true;
     (async () => {
       try {
-        const res = await tauriFetch<Record<string, unknown>>(
-          `${rpcUrl}/rpc/agreementaudit`,
-          {
-            method: 'POST',
-            timeout: 10,
-            responseType: ResponseType.JSON,
-            body: Body.json({ agreement_hash: agreementHash }),
-          },
-        );
+        // FIX (audit-422): route via the Rust agreement_audit command
+        // instead of POSTing directly with tauriFetch. The command
+        // reconstructs the full AgreementObject from the wallet's
+        // on-disk record (the only place it lives for unknown /
+        // unanchored agreements like refundable_deposit drafts) and
+        // attaches the FIX 2 bearer token. Previously we POSTed
+        // {agreement_hash} which axum rejected with HTTP 422, and
+        // even a corrected body shape would have hit 401 because
+        // /rpc/agreementaudit is behind require_rpc_auth.
+        const res = await agreements.audit(agreementId);
         if (!mounted) return;
-        if (res.ok && res.data) {
-          setData(res.data);
+        if (res) {
+          setData(res);
         } else {
-          setError(`Audit RPC returned HTTP ${res.status}`);
+          setError('Audit RPC returned no data');
         }
       } catch (e) {
         if (mounted) setError(String(e));
@@ -2405,7 +2404,7 @@ function AuditModal({ agreementId, agreementHash, onClose }: AuditModalProps) {
       }
     })();
     return () => { mounted = false; };
-  }, [agreementHash, rpcUrl]);
+  }, [agreementId]);
 
   // Defensive field extraction. Any missing key collapses to null and the
   // corresponding section just doesn't render.
