@@ -20,9 +20,25 @@ use std::collections::HashMap;
 // STATE
 // ============================================================
 
+// BUG 1 (tab-correct miner status): start_miner and start_gpu_miner
+// both spawn into the same state.miner_process slot (only one miner
+// runs at a time by design). Without a discriminator, both
+// get_miner_status and get_gpu_miner_status returned running=true
+// whenever EITHER kind was active. The CPU tab in the GUI then
+// rendered "Mining Active — Syncing blocks" + the warmup banner even
+// when only the GPU miner was running. miner_kind tags the active
+// slot so each get_*_status command can return a truthful per-kind
+// running flag.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum MinerKind { Cpu, Gpu }
+
 struct AppState {
     node_process: Arc<Mutex<Option<CommandChild>>>,
     miner_process: Arc<Mutex<Option<CommandChild>>>,
+    // BUG 1: which miner currently owns miner_process. Set together
+    // with miner_process on spawn success, cleared together in
+    // stop_miner and in each spawn loop's Terminated branch.
+    miner_kind: Arc<Mutex<Option<MinerKind>>>,
     explorer_process: Arc<Mutex<Option<CommandChild>>>,
     rpc_url: Arc<Mutex<String>>,
     wallet_path: Arc<Mutex<Option<String>>>,
@@ -118,6 +134,7 @@ impl AppState {
         AppState {
             node_process: Arc::new(Mutex::new(None)),
             miner_process: Arc::new(Mutex::new(None)),
+            miner_kind: Arc::new(Mutex::new(None)),
             explorer_process: Arc::new(Mutex::new(None)),
             rpc_url: Arc::new(Mutex::new("http://127.0.0.1:38300".to_string())),
             wallet_path: Arc::new(Mutex::new(Some(default_wallet))),
@@ -5630,6 +5647,11 @@ async fn start_miner(
     let app_for_event = app.clone();
     let user_initiated_ref = Arc::clone(&state.miner_user_initiated_stop);
     let miner_process_for_cleanup = Arc::clone(&state.miner_process);
+    // BUG 1: clear miner_kind alongside miner_process when the sidecar
+    // terminates (user-initiated OR crash). Without this, get_miner_status
+    // would keep returning running=true after a crash because the kind
+    // discriminator never reset.
+    let miner_kind_for_cleanup = Arc::clone(&state.miner_kind);
     let hashrate_for_clear = Arc::clone(&state.miner_hashrate);
     let sync_for_clear = Arc::clone(&state.miner_sync_status);
     tauri::async_runtime::spawn(async move {
@@ -5652,6 +5674,7 @@ async fn start_miner(
                         .map(|g| *g)
                         .unwrap_or(false);
                     if let Ok(mut g) = miner_process_for_cleanup.lock() { *g = None; }
+                    if let Ok(mut k) = miner_kind_for_cleanup.lock() { *k = None; }
                     if let Ok(mut h) = hashrate_for_clear.lock() { *h = 0.0; }
                     if let Ok(mut s) = sync_for_clear.lock() { *s = None; }
                     if !user_initiated {
@@ -5734,6 +5757,10 @@ async fn start_miner(
         }
     });
     *miner_lock = Some(child);
+    // BUG 1: tag the active miner slot as CPU so get_miner_status reads
+    // running=true and get_gpu_miner_status reads running=false while
+    // this sidecar is alive.
+    *state.miner_kind.lock().map_err(lock_err)? = Some(MinerKind::Cpu);
     *state.miner_start_time.lock().map_err(lock_err)? = Some(std::time::Instant::now());
     *state.miner_address.lock().map_err(lock_err)? = Some(address);
     *state.miner_threads.lock().map_err(lock_err)? = threads.unwrap_or(1);
@@ -5754,6 +5781,14 @@ async fn stop_miner(app: tauri::AppHandle, state: State<'_, AppState>) -> Result
     if let Some(child) = miner_lock.take() {
         child.kill().map_err(|e| e.to_string())?;
         drop(miner_lock);
+        // BUG 1: clear miner_kind in lockstep with miner_process so the
+        // very next get_miner_status / get_gpu_miner_status poll returns
+        // running=false on both tabs. The spawn loop's Terminated branch
+        // also clears these as a belt-and-braces (when an external kill
+        // or crash beats us to it), but we clear them eagerly here so the
+        // GUI doesn't briefly show a stale "Active" state in the gap
+        // between SIGKILL delivery and the spawn loop draining its rx.
+        *state.miner_kind.lock().map_err(lock_err)? = None;
         *state.miner_start_time.lock().map_err(lock_err)? = None;
         *state.miner_address.lock().map_err(lock_err)? = None;
         *state.miner_threads.lock().map_err(lock_err)? = 0;
@@ -5769,16 +5804,25 @@ async fn stop_miner(app: tauri::AppHandle, state: State<'_, AppState>) -> Result
 
 #[tauri::command]
 async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, String> {
-    let running = state.miner_process.lock().map_err(lock_err)?.is_some();
-    let uptime_secs = {
+    // BUG 1: report running=true only when a CPU sidecar owns the
+    // process slot. Previously this read miner_process.is_some() which
+    // was also true while the GPU miner was active, causing the CPU tab
+    // to render "Mining Active" with warmup banner while the user was
+    // actually GPU-mining. The associated counters (hashrate, threads,
+    // uptime, sync_status) all describe the active sidecar — those are
+    // only meaningful on the CPU tab when the active miner IS CPU, so we
+    // zero them on the inactive tab to keep the UI tab-local.
+    let kind = *state.miner_kind.lock().map_err(lock_err)?;
+    let running = kind == Some(MinerKind::Cpu);
+    let uptime_secs = if running {
         let t = state.miner_start_time.lock().map_err(lock_err)?;
         t.as_ref().map(|i| i.elapsed().as_secs()).unwrap_or(0)
-    };
-    let address = state.miner_address.lock().map_err(lock_err)?.clone();
-    let threads = *state.miner_threads.lock().map_err(lock_err)?;
+    } else { 0 };
+    let address = if running { state.miner_address.lock().map_err(lock_err)?.clone() } else { None };
+    let threads = if running { *state.miner_threads.lock().map_err(lock_err)? } else { 0 };
 
-    let hashrate_khs = *state.miner_hashrate.lock().map_err(lock_err)?;
-    let sync_status = state.miner_sync_status.lock().map_err(lock_err)?.clone();
+    let hashrate_khs = if running { *state.miner_hashrate.lock().map_err(lock_err)? } else { 0.0 };
+    let sync_status = if running { state.miner_sync_status.lock().map_err(lock_err)?.clone() } else { None };
     let blocks_found = *state.blocks_found.lock().map_err(lock_err)?;
 
     // Pool stats merge — fetch the proxy's /stats with a tight budget so
@@ -6035,6 +6079,10 @@ async fn start_gpu_miner(
     let app_for_event = app.clone();
     let user_initiated_ref = Arc::clone(&state.miner_user_initiated_stop);
     let miner_process_for_cleanup = Arc::clone(&state.miner_process);
+    // BUG 1: mirror the CPU-side fix — clear miner_kind alongside
+    // miner_process on Terminated so the GPU tab transitions back to
+    // idle and the CPU tab stays idle when the GPU sidecar dies.
+    let miner_kind_for_cleanup = Arc::clone(&state.miner_kind);
     let hashrate_for_clear = Arc::clone(&state.miner_hashrate);
     let temp_for_clear = Arc::clone(&state.gpu_temperature_c);
     let power_for_clear = Arc::clone(&state.gpu_power_w);
@@ -6058,6 +6106,7 @@ async fn start_gpu_miner(
                         .map(|g| *g)
                         .unwrap_or(false);
                     if let Ok(mut g) = miner_process_for_cleanup.lock() { *g = None; }
+                    if let Ok(mut k) = miner_kind_for_cleanup.lock() { *k = None; }
                     if let Ok(mut h) = hashrate_for_clear.lock() { *h = 0.0; }
                     if let Ok(mut t) = temp_for_clear.lock() { *t = None; }
                     if let Ok(mut p) = power_for_clear.lock() { *p = None; }
@@ -6125,6 +6174,10 @@ async fn start_gpu_miner(
         }
     });
     *miner_lock = Some(child);
+    // BUG 1: tag the active miner slot as GPU so get_gpu_miner_status
+    // reads running=true while this sidecar is alive, and the CPU tab's
+    // get_miner_status correctly reads running=false.
+    *state.miner_kind.lock().map_err(lock_err)? = Some(MinerKind::Gpu);
     *state.miner_start_time.lock().map_err(lock_err)? = Some(std::time::Instant::now());
     *state.miner_address.lock().map_err(lock_err)? = Some(address);
     Ok(true)
@@ -6137,11 +6190,17 @@ async fn stop_gpu_miner(app: tauri::AppHandle, state: State<'_, AppState>) -> Re
 
 #[tauri::command]
 async fn get_gpu_miner_status(state: State<'_, AppState>) -> Result<GpuMinerStatus, String> {
-    let running = state.miner_process.lock().map_err(lock_err)?.is_some();
-    let hashrate_khs = *state.miner_hashrate.lock().map_err(lock_err)?;
+    // BUG 1: report running=true only when the GPU sidecar owns the
+    // process slot. hashrate / temp / power describe the active
+    // sidecar's GPU; on the CPU-active or idle case they are
+    // meaningless and must be zeroed so the GPU tab does not show
+    // stale numbers from a previous GPU session.
+    let kind = *state.miner_kind.lock().map_err(lock_err)?;
+    let running = kind == Some(MinerKind::Gpu);
+    let hashrate_khs = if running { *state.miner_hashrate.lock().map_err(lock_err)? } else { 0.0 };
     let blocks_found = *state.blocks_found.lock().map_err(lock_err)?;
-    let temperature_c = *state.gpu_temperature_c.lock().map_err(lock_err)?;
-    let power_w = *state.gpu_power_w.lock().map_err(lock_err)?;
+    let temperature_c = if running { *state.gpu_temperature_c.lock().map_err(lock_err)? } else { None };
+    let power_w = if running { *state.gpu_power_w.lock().map_err(lock_err)? } else { None };
     Ok(GpuMinerStatus { running, hashrate_khs, blocks_found, device_name: None, temperature_c, power_w })
 }
 
