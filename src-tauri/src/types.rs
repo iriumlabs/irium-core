@@ -31,6 +31,15 @@ pub struct NodeStatus {
     pub rpc_url: String,
     pub upnp_active: bool,
     pub upnp_external_ip: Option<String>,
+    // FIX 1 (UPnP): true when the router accepted AddPortMapping but
+    // the WAN IP it reports is itself RFC1918 / CGNAT / link-local /
+    // loopback (i.e. the router is behind another NAT). The UPnP
+    // mapping is alive on this router, but inbound from the public
+    // internet still fails. The Help / Dashboard pages render
+    // "Inactive (double NAT)" with a tooltip explaining the diagnosis
+    // instead of the misleading "Active".
+    #[serde(default)]
+    pub upnp_double_nat: bool,
     // FIX 1 interim mitigation: the wallet UI gates the Send button on
     // `fully_synced` so the user cannot broadcast a transaction while the
     // local iriumd is still replaying the post-restart gap (between
@@ -696,6 +705,12 @@ pub struct PortCheckResult {
     pub reason: String,
     pub upnp_external_ip: Option<String>,
     pub inbound_count: u64,
+    // FIX 1 (UPnP): mapping accepted by router but router's WAN IP is
+    // itself private — see NodeStatus.upnp_double_nat. The UI shows a
+    // tooltip that distinguishes "router accepted UPnP but you're CGNAT'd"
+    // from a vanilla closed port.
+    #[serde(default)]
+    pub double_nat: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -9,7 +9,7 @@ import {
   Server, HelpCircle, Bug, Check, AlertTriangle, RefreshCw, Trash2,
   Network, Activity,
 } from 'lucide-react';
-import type { PortCheckResult } from '../lib/types';
+import type { PortCheckResult, UpnpDiagnostics } from '../lib/types';
 import toast from 'react-hot-toast';
 import { node } from '../lib/tauri';
 import { useStore } from '../lib/store';
@@ -141,6 +141,11 @@ function PortForwarding() {
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<PortCheckResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // FIX 1 (UPnP): full SOAP diagnostic trace fetched alongside the
+  // pass/fail result. Drawer is collapsed by default — only the
+  // power user who wants to know "why" expands it.
+  const [diag, setDiag] = useState<UpnpDiagnostics | null>(null);
+  const [diagOpen, setDiagOpen] = useState(false);
 
   const runTest = async () => {
     setTesting(true);
@@ -148,6 +153,10 @@ function PortForwarding() {
     try {
       const r = await node.checkPortOpen();
       setResult(r ?? null);
+      // Fetch diagnostics every test — backend snapshot is whatever
+      // check_port_open just produced (same try_upnp() call).
+      const d = await node.upnpDiagnostics();
+      setDiag(d ?? null);
     } catch (e) {
       setError(String(e));
       setResult(null);
@@ -263,6 +272,80 @@ function PortForwarding() {
         <p className="text-xs text-red-400 mt-2">
           {t('help.port_forwarding.test_failed', { reason: error })}
         </p>
+      )}
+
+      {/* FIX 1 (UPnP) — diagnostics drawer.
+          Visible only after a test has run. Default collapsed; the
+          summary line carries the most-actionable verdict, and
+          expanding reveals the full SOAP trace (adapter, gateway,
+          control URL, retry chain) for self-diagnosis when the router
+          UI claims the mapping is active but inbound is still
+          blocked — i.e. multi-adapter or double-NAT scenarios. */}
+      {diag && (
+        <div className="mt-4 rounded-xl border border-white/8 bg-white/[0.02]">
+          <button
+            onClick={() => setDiagOpen((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-2.5 text-left"
+          >
+            <span className="text-xs text-white/70 font-medium">
+              {t('help.upnp_diag.title')}
+            </span>
+            <span className="text-[10px] text-white/45 uppercase tracking-wider">
+              {diag.succeeded
+                ? diag.double_nat_detected
+                  ? t('help.upnp_diag.verdict_double_nat')
+                  : t('help.upnp_diag.verdict_ok')
+                : t('help.upnp_diag.verdict_failed')}
+            </span>
+          </button>
+          {diagOpen && (
+            <div className="px-4 pb-3 space-y-1.5 text-[11px] font-mono text-white/55">
+              <div>
+                <span className="text-white/40">{t('help.upnp_diag.local_chosen')}: </span>
+                <span className="text-white/80">{diag.local_ipv4_chosen ?? '—'}</span>
+              </div>
+              <div>
+                <span className="text-white/40">{t('help.upnp_diag.local_candidates')}: </span>
+                <span className="text-white/70">
+                  {diag.local_ipv4_candidates.length
+                    ? diag.local_ipv4_candidates.join(', ')
+                    : '—'}
+                </span>
+              </div>
+              <div>
+                <span className="text-white/40">{t('help.upnp_diag.gateway')}: </span>
+                <span className="text-white/80">{diag.gateway_ipv4 ?? '—'}</span>
+              </div>
+              <div>
+                <span className="text-white/40">{t('help.upnp_diag.ssdp_location')}: </span>
+                <span className="text-white/70 break-all">{diag.ssdp_location ?? '—'}</span>
+              </div>
+              <div>
+                <span className="text-white/40">{t('help.upnp_diag.control_url')}: </span>
+                <span className="text-white/70 break-all">{diag.control_url ?? '—'}</span>
+              </div>
+              <div>
+                <span className="text-white/40">{t('help.upnp_diag.external_ip')}: </span>
+                <span className="text-white/80">{diag.external_ip ?? '—'}</span>
+                {diag.external_ip && diag.external_ip_routable === false && (
+                  <span className="text-amber-300/80 ml-2">
+                    {t('help.upnp_diag.external_ip_private')}
+                  </span>
+                )}
+              </div>
+              <div>
+                <span className="text-white/40">{t('help.upnp_diag.attempts')}: </span>
+                <span className="text-white/70">{diag.add_port_mapping_attempts}</span>
+              </div>
+              {diag.last_fault && (
+                <div>
+                  <span className="text-white/40">{t('help.upnp_diag.last_fault')}: </span>
+                  <span className="text-rose-300/85 break-all">{diag.last_fault}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

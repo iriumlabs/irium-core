@@ -1469,6 +1469,21 @@
       "result_details": "Details: {{reason}}",
       "test_failed": "Could not run port check: {{reason}}"
     },
+    "upnp_diag": {
+      "title": "UPnP diagnostics",
+      "verdict_ok": "Mapping active",
+      "verdict_double_nat": "Router accepted — but double NAT / CGNAT",
+      "verdict_failed": "Mapping failed",
+      "local_chosen": "Chosen LAN IP",
+      "local_candidates": "Detected adapters",
+      "gateway": "Router IP",
+      "ssdp_location": "SSDP location",
+      "control_url": "Control URL",
+      "external_ip": "External IP",
+      "external_ip_private": "(private — double NAT / CGNAT)",
+      "attempts": "AddPortMapping attempts",
+      "last_fault": "Last UPnP fault"
+    },
     "quarantine": {
       "section_title": "Quarantined Blocks Recovery",
       "description": "iriumd quarantines block files it cannot validate. They live in orphaned_<timestamp> folders inside your blocks directory. Clearing them is safe — the node re-fetches the affected heights from peers.",

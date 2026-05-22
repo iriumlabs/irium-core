@@ -39,6 +39,18 @@ struct AppState {
     last_node_status: Arc<Mutex<Option<NodeStatus>>>,
     pool_url: Arc<Mutex<Option<String>>>,
     upnp_external_ip: Arc<Mutex<Option<String>>>,
+    // FIX 1 (UPnP): flips true when the router reports back an
+    // external IP that is itself RFC1918 / RFC6598 (CGNAT) / link-local
+    // / loopback. The mapping technically "succeeded" but the IP is not
+    // reachable from the public internet - the user is double-NAT'd.
+    // We surface this distinctly in the UI: "Inactive (double NAT)"
+    // instead of the misleading "Active" state.
+    upnp_double_nat: Arc<Mutex<bool>>,
+    // FIX 1 (UPnP): last-attempt diagnostic snapshot exposed via the
+    // new upnp_diagnostics Tauri command so the Help page can show the
+    // user exactly which adapter/gateway/external-IP path the SOAP
+    // dance took (and what failed). Self-diagnosable.
+    upnp_diagnostics: Arc<Mutex<UpnpDiagnostics>>,
     node_logs: Arc<Mutex<Vec<String>>>,
     // Bug 1 fix — cumulative blocks-found counter and the most-recent
     // entries list, populated by the miner spawn loops as they parse
@@ -100,6 +112,8 @@ impl AppState {
             last_node_status: Arc::new(Mutex::new(None)),
             pool_url: Arc::new(Mutex::new(None)),
             upnp_external_ip: Arc::new(Mutex::new(None)),
+            upnp_double_nat: Arc::new(Mutex::new(false)),
+            upnp_diagnostics: Arc::new(Mutex::new(UpnpDiagnostics::default())),
             node_logs: Arc::new(Mutex::new(Vec::new())),
             blocks_found: Arc::new(Mutex::new(0)),
             found_blocks: Arc::new(Mutex::new(Vec::new())),
@@ -785,9 +799,102 @@ fn reset_seed_reputation() {
 // Opens TCP port 38291 on the router so other NAT-behind nodes
 // can dial us inbound. No relay, no central server — each node
 // does this independently using its own router's UPnP service.
+//
+// FIX 1 (this release): the legacy upnp_local_ipv4() used the
+// "connect to 8.8.8.8 then read local_addr" trick to find the
+// default-route adapter. On Windows hosts with Hyper-V, WSL2, Docker
+// Desktop, or a VPN client active, that trick frequently picks the
+// virtual switch / tunnel adapter instead of the actual LAN. The
+// router accepts the SOAP AddPortMapping but registers the wrong
+// internal client - the mapping appears live in the router UI yet
+// no packets arrive at the real iriumd. The GUI reads
+// "UPnP succeeded? yes" but the inbound port stays closed.
+//
+// This release replaces single-adapter discovery with a two-step
+// approach:
+//   1. SSDP discovers the gateway (whichever adapter the M-SEARCH
+//      response arrives on).
+//   2. Parse the gateway IP out of the SSDP LOCATION URL, then pick
+//      the LOCAL adapter in the gateway's subnet as NewInternalClient.
+//
+// Diagnostics are captured into AppState.upnp_diagnostics and
+// exposed via the new upnp_diagnostics Tauri command so the user
+// can self-diagnose from the Help page.
 // ============================================================
 
-fn upnp_local_ipv4() -> Option<std::net::Ipv4Addr> {
+/// FIX 1: enumerate every local IPv4 adapter, skipping the ones that
+/// can never be the right NewInternalClient for the router-side
+/// AddPortMapping call: loopback, link-local, anything in the 172.16-31
+/// range (almost always Hyper-V switch / Docker / WSL2 on consumer
+/// machines; if your real LAN actually uses 172.16-31 we still try the
+/// gateway-subnet fallback in upnp_local_ipv4_for_gateway).
+fn enumerate_local_ipv4_candidates() -> Vec<std::net::Ipv4Addr> {
+    use if_addrs::IfAddr;
+    let mut out = Vec::new();
+    if let Ok(ifaces) = if_addrs::get_if_addrs() {
+        for iface in ifaces {
+            if iface.is_loopback() {
+                continue;
+            }
+            if let IfAddr::V4(v4) = iface.addr {
+                let oct = v4.ip.octets();
+                // Link-local 169.254/16
+                if oct[0] == 169 && oct[1] == 254 {
+                    continue;
+                }
+                // 172.16-31/12 - almost always a virtual switch on consumer
+                // Windows machines. Real LANs in this range are rare; we
+                // fall back via gateway-subnet match if the user has one.
+                if oct[0] == 172 && (16..=31).contains(&oct[1]) {
+                    continue;
+                }
+                out.push(v4.ip);
+            }
+        }
+    }
+    out
+}
+
+/// FIX 1: parse an SSDP LOCATION URL like "http://192.168.1.1:5000/desc.xml"
+/// and return the host as an Ipv4Addr. Returns None for hostnames or IPv6
+/// LOCATION values - those go through the legacy heuristic path.
+fn extract_ipv4_from_location(location: &str) -> Option<std::net::Ipv4Addr> {
+    let after_scheme = location.split("://").nth(1)?;
+    let host_only = after_scheme.split(['/', ':']).next()?;
+    host_only.parse().ok()
+}
+
+/// FIX 1: given the router's IPv4 (extracted from the SSDP LOCATION URL),
+/// pick the local adapter in the same subnet. Tries /24 first (most home
+/// LANs); falls back to /16. Returns None if no adapter matches; callers
+/// then fall back to the legacy default-route trick. Choosing the right
+/// adapter here is the single most important UPnP bug fix in this
+/// release - it stops the router from registering AddPortMapping against
+/// the Hyper-V virtual switch.
+fn upnp_local_ipv4_for_gateway(gateway: std::net::Ipv4Addr) -> Option<std::net::Ipv4Addr> {
+    let candidates = enumerate_local_ipv4_candidates();
+    let gw = gateway.octets();
+    // /24 exact match
+    for ip in &candidates {
+        let oct = ip.octets();
+        if oct[0] == gw[0] && oct[1] == gw[1] && oct[2] == gw[2] {
+            return Some(*ip);
+        }
+    }
+    // /16 fallback
+    for ip in &candidates {
+        let oct = ip.octets();
+        if oct[0] == gw[0] && oct[1] == gw[1] {
+            return Some(*ip);
+        }
+    }
+    None
+}
+
+/// FIX 1: legacy default-route heuristic, kept as a last-resort fallback
+/// when neither SSDP gateway extraction nor adapter enumeration yields
+/// a candidate (rare; happens on no-network sandboxes).
+fn upnp_local_ipv4_default_route() -> Option<std::net::Ipv4Addr> {
     use std::net::{IpAddr, UdpSocket};
     let sock = UdpSocket::bind("0.0.0.0:0").ok()?;
     sock.connect("8.8.8.8:80").ok()?;
@@ -795,6 +902,79 @@ fn upnp_local_ipv4() -> Option<std::net::Ipv4Addr> {
         IpAddr::V4(ip) => Some(ip),
         _ => None,
     }
+}
+
+/// FIX 1: classify an IPv4 address as publicly routable. Returns false
+/// for RFC1918 (10/8, 172.16/12, 192.168/16), RFC6598 CGNAT (100.64/10),
+/// loopback (127/8), link-local (169.254/16), and the
+/// 0.0.0.0 / 255.255.255.255 sentinels. Used to detect double-NAT:
+/// UPnP "succeeded" but the external IP is itself behind another NAT,
+/// so the mapping is useless for inbound connections.
+fn is_routable_ipv4(s: &str) -> bool {
+    let Ok(ip) = s.parse::<std::net::Ipv4Addr>() else {
+        return false;
+    };
+    let oct = ip.octets();
+    // Bogus sentinels
+    if oct == [0, 0, 0, 0] || oct == [255, 255, 255, 255] {
+        return false;
+    }
+    // 127/8 loopback
+    if oct[0] == 127 {
+        return false;
+    }
+    // 10/8
+    if oct[0] == 10 {
+        return false;
+    }
+    // 172.16/12
+    if oct[0] == 172 && (16..=31).contains(&oct[1]) {
+        return false;
+    }
+    // 192.168/16
+    if oct[0] == 192 && oct[1] == 168 {
+        return false;
+    }
+    // 100.64/10 - RFC6598 CGNAT
+    if oct[0] == 100 && (64..=127).contains(&oct[1]) {
+        return false;
+    }
+    // 169.254/16 link-local
+    if oct[0] == 169 && oct[1] == 254 {
+        return false;
+    }
+    true
+}
+
+/// FIX 1: full diagnostic snapshot of the last UPnP attempt, exposed via
+/// the upnp_diagnostics Tauri command. Lets the Help page show the user
+/// exactly which step the SOAP dance reached and what failed.
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
+struct UpnpDiagnostics {
+    last_attempt_at_unix: Option<u64>,
+    local_ipv4_candidates: Vec<String>,
+    local_ipv4_chosen: Option<String>,
+    gateway_ipv4: Option<String>,
+    ssdp_location: Option<String>,
+    control_url: Option<String>,
+    external_ip: Option<String>,
+    external_ip_routable: Option<bool>,
+    add_port_mapping_attempts: u8,
+    last_fault: Option<String>,
+    succeeded: bool,
+    double_nat_detected: bool,
+}
+
+/// FIX 1: result of one full try_upnp invocation. The legacy signature
+/// was Option<String>; that lost the diagnostic detail and couldn't
+/// distinguish "real failure" from "mapping succeeded but external IP
+/// is itself private (double NAT)". Callers update three pieces of
+/// AppState from this struct: upnp_external_ip, upnp_double_nat,
+/// upnp_diagnostics.
+struct UpnpAttempt {
+    external_ip: Option<String>,
+    double_nat: bool,
+    diagnostics: UpnpDiagnostics,
 }
 
 async fn upnp_discover_location() -> Option<String> {
@@ -894,55 +1074,249 @@ async fn upnp_soap<B: Into<reqwest::Body>>(
     resp.text().await.ok()
 }
 
-async fn try_upnp(port: u16) -> Option<String> {
-    let local_ip = upnp_local_ipv4()?.to_string();
-    let location = upnp_discover_location().await?;
+/// Helper: build the AddPortMapping SOAP envelope. `empty_remote_host_explicit`
+/// toggles the `<NewRemoteHost></NewRemoteHost>` (full-open) form vs the
+/// `<NewRemoteHost/>` (self-closing) form - some routers reject one but
+/// accept the other. `lease_duration` of 0 means a permanent lease (some
+/// routers only support that).
+fn build_add_port_mapping_soap(
+    svc_type: &str,
+    port: u16,
+    local_ip: &str,
+    lease_duration: u32,
+    empty_remote_host_explicit: bool,
+) -> String {
+    let remote_host_tag = if empty_remote_host_explicit {
+        "<NewRemoteHost></NewRemoteHost>"
+    } else {
+        "<NewRemoteHost/>"
+    };
+    format!(
+        r#"<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:AddPortMapping xmlns:u="{svc}">{rh}<NewExternalPort>{p}</NewExternalPort><NewProtocol>TCP</NewProtocol><NewInternalPort>{p}</NewInternalPort><NewInternalClient>{ip}</NewInternalClient><NewEnabled>1</NewEnabled><NewPortMappingDescription>Irium Core P2P</NewPortMappingDescription><NewLeaseDuration>{lease}</NewLeaseDuration></u:AddPortMapping></s:Body></s:Envelope>"#,
+        svc = svc_type, rh = remote_host_tag, p = port, ip = local_ip, lease = lease_duration,
+    )
+}
 
-    // Fetch device description
-    let client = reqwest::Client::builder()
+/// FIX 1: full try_upnp rewrite. Captures every step into UpnpAttempt so
+/// the caller can show diagnostics in the UI. Order:
+///  1. enumerate local IPv4 candidates (excluding loopback / link-local /
+///     172.16-31 virtual switch range).
+///  2. SSDP discover the router (default-route adapter).
+///  3. extract the router's IPv4 from the LOCATION URL.
+///  4. pick the local adapter in the router's subnet as NewInternalClient.
+///     This is the single change that fixes the Hyper-V / WSL / VPN
+///     adapter mis-selection bug.
+///  5. GetExternalIPAddress, then classify as routable vs RFC1918/CGNAT.
+///  6. DeletePortMapping (clear stale lease).
+///  7. AddPortMapping with retry chain:
+///       - first try: lease=3600s, <NewRemoteHost/> self-closing.
+///       - on fault 725 (OnlyPermanentLeasesSupported): retry lease=0.
+///       - on fault 718 / 726 / Wildcard: retry with explicit empty body.
+///       - on persistent fault: capture in last_fault for diagnostics.
+///  8. Even on success, if the external IP is itself private we flag
+///     double_nat: the mapping is alive on the router but the IP we
+///     would announce is unrouteable; the GUI shows
+///     "Inactive (double NAT)" rather than the misleading "Active".
+async fn try_upnp(port: u16) -> UpnpAttempt {
+    let mut attempt = UpnpAttempt {
+        external_ip: None,
+        double_nat: false,
+        diagnostics: UpnpDiagnostics::default(),
+    };
+    attempt.diagnostics.last_attempt_at_unix = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .map(|d| d.as_secs());
+
+    // Step 1: enumerate local adapter candidates (for diagnostics).
+    let candidates = enumerate_local_ipv4_candidates();
+    attempt.diagnostics.local_ipv4_candidates =
+        candidates.iter().map(|ip| ip.to_string()).collect();
+
+    // Step 2: SSDP discovery.
+    let location = match upnp_discover_location().await {
+        Some(l) => l,
+        None => {
+            attempt.diagnostics.last_fault = Some("SSDP discovery timed out (no router response)".to_string());
+            return attempt;
+        }
+    };
+    attempt.diagnostics.ssdp_location = Some(location.clone());
+
+    // Step 3: extract gateway IP from the LOCATION URL (for adapter match).
+    let gateway = extract_ipv4_from_location(&location);
+    attempt.diagnostics.gateway_ipv4 = gateway.map(|g| g.to_string());
+
+    // Step 4: pick the local adapter in the gateway's subnet. Fall back
+    // to the legacy default-route heuristic if no adapter matches.
+    let local_ip = gateway
+        .and_then(upnp_local_ipv4_for_gateway)
+        .or_else(upnp_local_ipv4_default_route);
+    let local_ip = match local_ip {
+        Some(ip) => ip.to_string(),
+        None => {
+            attempt.diagnostics.last_fault =
+                Some("Could not determine a local IPv4 for NewInternalClient".to_string());
+            return attempt;
+        }
+    };
+    attempt.diagnostics.local_ipv4_chosen = Some(local_ip.clone());
+
+    // Fetch device description (used to resolve the WAN service control URL).
+    let client = match reqwest::Client::builder()
         .timeout(Duration::from_secs(5))
-        .build().ok()?;
-    let xml = client.get(&location).send().await.ok()?.text().await.ok()?;
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => {
+            attempt.diagnostics.last_fault = Some("Could not build HTTP client".to_string());
+            return attempt;
+        }
+    };
+    let xml = match client.get(&location).send().await {
+        Ok(r) => match r.text().await {
+            Ok(t) => t,
+            Err(_) => {
+                attempt.diagnostics.last_fault =
+                    Some("Device description fetch returned no body".to_string());
+                return attempt;
+            }
+        },
+        Err(_) => {
+            attempt.diagnostics.last_fault =
+                Some("Device description fetch failed (router unreachable)".to_string());
+            return attempt;
+        }
+    };
 
-    let (ctrl_url, svc_type) = upnp_resolve_control_url(&xml, &location)?;
+    let (ctrl_url, svc_type) = match upnp_resolve_control_url(&xml, &location) {
+        Some(v) => v,
+        None => {
+            attempt.diagnostics.last_fault =
+                Some("Device description missing WANIPConnection / WANPPPConnection service".to_string());
+            return attempt;
+        }
+    };
+    attempt.diagnostics.control_url = Some(ctrl_url.clone());
 
-    // GetExternalIPAddress
+    // Step 5: GetExternalIPAddress + routability classification.
     let ext_ip_soap = format!(
         r#"<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:GetExternalIPAddress xmlns:u="{svc}"/></s:Body></s:Envelope>"#,
         svc = svc_type
     );
     let action = format!("\"{}#GetExternalIPAddress\"", svc_type);
-    let resp_xml = upnp_soap(&ctrl_url, &action, ext_ip_soap).await?;
+    let resp_xml = match upnp_soap(&ctrl_url, &action, ext_ip_soap).await {
+        Some(t) => t,
+        None => {
+            attempt.diagnostics.last_fault =
+                Some("GetExternalIPAddress SOAP call failed".to_string());
+            return attempt;
+        }
+    };
     let ext_ip = {
         const TAG: &str = "NewExternalIPAddress>";
-        let s = resp_xml.find(TAG)? + TAG.len();
-        let e = resp_xml[s..].find('<')? + s;
-        resp_xml[s..e].trim().to_string()
+        match resp_xml.find(TAG) {
+            Some(i) => {
+                let s = i + TAG.len();
+                match resp_xml[s..].find('<') {
+                    Some(j) => resp_xml[s..s + j].trim().to_string(),
+                    None => String::new(),
+                }
+            }
+            None => String::new(),
+        }
     };
-    if ext_ip.is_empty() { return None; }
+    if ext_ip.is_empty() {
+        attempt.diagnostics.last_fault =
+            Some("GetExternalIPAddress returned empty body".to_string());
+        return attempt;
+    }
+    attempt.diagnostics.external_ip = Some(ext_ip.clone());
+    let routable = is_routable_ipv4(&ext_ip);
+    attempt.diagnostics.external_ip_routable = Some(routable);
 
-    // DeletePortMapping first (clear stale lease)
+    // Step 6: clear stale lease (best-effort; failure is fine).
     let del_soap = format!(
         r#"<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:DeletePortMapping xmlns:u="{svc}"><NewRemoteHost/><NewExternalPort>{p}</NewExternalPort><NewProtocol>TCP</NewProtocol></u:DeletePortMapping></s:Body></s:Envelope>"#,
         svc = svc_type, p = port
     );
     let _ = upnp_soap(&ctrl_url, &format!("\"{}#DeletePortMapping\"", svc_type), del_soap).await;
 
-    // AddPortMapping
-    let add_soap = format!(
-        r#"<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:AddPortMapping xmlns:u="{svc}"><NewRemoteHost/><NewExternalPort>{p}</NewExternalPort><NewProtocol>TCP</NewProtocol><NewInternalPort>{p}</NewInternalPort><NewInternalClient>{ip}</NewInternalClient><NewEnabled>1</NewEnabled><NewPortMappingDescription>Irium Core P2P</NewPortMappingDescription><NewLeaseDuration>3600</NewLeaseDuration></u:AddPortMapping></s:Body></s:Envelope>"#,
-        svc = svc_type, p = port, ip = local_ip
-    );
-    let add_resp = upnp_soap(&ctrl_url, &format!("\"{}#AddPortMapping\"", svc_type), add_soap).await?;
-
-    // Success if response contains the success envelope (no fault element)
-    if add_resp.contains("Fault") || add_resp.contains("fault") {
-        tracing::warn!("[upnp] AddPortMapping rejected: {}", &add_resp[..add_resp.len().min(200)]);
-        return None;
+    // Step 7: AddPortMapping with fault-driven retries.
+    //   Variant A: lease=3600, <NewRemoteHost/> self-closing  (most routers)
+    //   Variant B: lease=0,    <NewRemoteHost/> self-closing  (permanent-only)
+    //   Variant C: lease=3600, <NewRemoteHost></NewRemoteHost> (wildcard quirk)
+    //   Variant D: lease=0,    <NewRemoteHost></NewRemoteHost> (last resort)
+    let variants: [(u32, bool); 4] = [(3600, false), (0, false), (3600, true), (0, true)];
+    let mut last_fault: Option<String> = None;
+    let mut success = false;
+    for (lease, explicit_empty) in variants {
+        attempt.diagnostics.add_port_mapping_attempts =
+            attempt.diagnostics.add_port_mapping_attempts.saturating_add(1);
+        let add_soap = build_add_port_mapping_soap(&svc_type, port, &local_ip, lease, explicit_empty);
+        let add_action = format!("\"{}#AddPortMapping\"", svc_type);
+        let add_resp = match upnp_soap(&ctrl_url, &add_action, add_soap).await {
+            Some(r) => r,
+            None => {
+                last_fault = Some("AddPortMapping SOAP call timed out".to_string());
+                continue;
+            }
+        };
+        if add_resp.contains("Fault") || add_resp.contains("fault") {
+            // Extract the errorCode for diagnostics + retry routing.
+            let code = {
+                const TAG: &str = "errorCode>";
+                add_resp.find(TAG).and_then(|i| {
+                    let s = i + TAG.len();
+                    add_resp[s..].find('<').map(|j| add_resp[s..s + j].trim().to_string())
+                })
+            };
+            last_fault = Some(format!(
+                "AddPortMapping fault (lease={}, empty_remote_host_explicit={}): code={} body={}",
+                lease,
+                explicit_empty,
+                code.as_deref().unwrap_or("?"),
+                &add_resp[..add_resp.len().min(200)]
+            ));
+            tracing::warn!("[upnp] {}", last_fault.as_deref().unwrap_or(""));
+            // Specific routing — break out early for permanent errors.
+            if let Some(c) = code.as_deref() {
+                // 402 InvalidArgs, 401 Invalid Action - retrying won't help.
+                if c == "401" || c == "402" {
+                    break;
+                }
+            }
+            continue;
+        }
+        success = true;
+        break;
     }
 
-    tracing::info!("[upnp] TCP {} mapped → {}:{}", port, ext_ip, port);
-    Some(ext_ip)
+    if !success {
+        attempt.diagnostics.last_fault = last_fault;
+        return attempt;
+    }
+
+    // Step 8: classify success vs double-NAT. Even though the router
+    // accepted AddPortMapping, if the external IP is itself private the
+    // mapping is useless for inbound connections from the public internet.
+    if !routable {
+        attempt.double_nat = true;
+        attempt.diagnostics.double_nat_detected = true;
+        // Intentionally leave attempt.external_ip = None so iriumd does
+        // not announce a private/CGNAT address as its public endpoint.
+        attempt.diagnostics.last_fault = Some(format!(
+            "Router accepted the mapping, but the WAN IP {} is itself private/CGNAT (double NAT). Inbound from the public internet will not work via UPnP.",
+            ext_ip
+        ));
+        tracing::warn!("[upnp] double NAT detected: external IP {} is not publicly routable", ext_ip);
+        return attempt;
+    }
+
+    attempt.external_ip = Some(ext_ip.clone());
+    attempt.diagnostics.succeeded = true;
+    tracing::info!("[upnp] TCP {} mapped via local {} -> {}:{}", port, local_ip, ext_ip, port);
+    attempt
 }
 
 // UPnP mapping refresh cadence. Most consumer routers expire UPnP port
@@ -959,8 +1333,11 @@ static UPNP_REFRESH_RUNNING: std::sync::atomic::AtomicBool =
 
 #[tauri::command]
 async fn try_upnp_port_map(state: State<'_, AppState>) -> Result<Option<String>, String> {
-    let ip = try_upnp(38291).await;
+    let attempt = try_upnp(38291).await;
+    let ip = attempt.external_ip.clone();
     *state.upnp_external_ip.lock().map_err(lock_err)? = ip.clone();
+    *state.upnp_double_nat.lock().map_err(lock_err)? = attempt.double_nat;
+    *state.upnp_diagnostics.lock().map_err(lock_err)? = attempt.diagnostics;
 
     // FIX 6: keep the UPnP mapping alive while the app is running. Routers
     // commonly expire mappings after 1 hour; refreshing every 30 minutes is
@@ -971,6 +1348,8 @@ async fn try_upnp_port_map(state: State<'_, AppState>) -> Result<Option<String>,
         && !UPNP_REFRESH_RUNNING.swap(true, std::sync::atomic::Ordering::SeqCst)
     {
         let upnp_external_ip_ref = Arc::clone(&state.upnp_external_ip);
+        let upnp_double_nat_ref = Arc::clone(&state.upnp_double_nat);
+        let upnp_diag_ref = Arc::clone(&state.upnp_diagnostics);
         tauri::async_runtime::spawn(async move {
             loop {
                 tokio::time::sleep(std::time::Duration::from_secs(
@@ -979,7 +1358,13 @@ async fn try_upnp_port_map(state: State<'_, AppState>) -> Result<Option<String>,
                 .await;
                 let fresh = try_upnp(38291).await;
                 if let Ok(mut g) = upnp_external_ip_ref.lock() {
-                    *g = fresh;
+                    *g = fresh.external_ip.clone();
+                }
+                if let Ok(mut g) = upnp_double_nat_ref.lock() {
+                    *g = fresh.double_nat;
+                }
+                if let Ok(mut g) = upnp_diag_ref.lock() {
+                    *g = fresh.diagnostics;
                 }
                 // No event emission on refresh — silent maintenance. A
                 // failed refresh shows up to the UI on the next get_node_status
@@ -989,6 +1374,18 @@ async fn try_upnp_port_map(state: State<'_, AppState>) -> Result<Option<String>,
     }
 
     Ok(ip)
+}
+
+/// FIX 1: Tauri command returning the last UPnP attempt's full
+/// diagnostic snapshot. The Help page renders this so the user can
+/// self-diagnose: which local adapters were detected, which one was
+/// chosen as NewInternalClient, the gateway IP we matched against, the
+/// SSDP LOCATION URL, the control URL, the external IP returned by
+/// GetExternalIPAddress, whether that IP is publicly routable, the
+/// fault text from the last failed AddPortMapping attempt, etc.
+#[tauri::command]
+async fn upnp_diagnostics(state: State<'_, AppState>) -> Result<UpnpDiagnostics, String> {
+    Ok(state.upnp_diagnostics.lock().map_err(lock_err)?.clone())
 }
 
 // check_port_open: port-forwarding self-test for the Help page's Test
@@ -1008,12 +1405,22 @@ async fn try_upnp_port_map(state: State<'_, AppState>) -> Result<Option<String>,
 // command works regardless of network policy on the user's side.
 #[tauri::command]
 async fn check_port_open(state: State<'_, AppState>) -> Result<PortCheckResult, String> {
-    // Fresh UPnP attempt — try_upnp returns Some(external_ip) on success.
-    // Also cache the result on AppState so a subsequent get_node_status
-    // reflects the fresh value without waiting for the next manual retry.
-    let upnp_external_ip = try_upnp(38291).await;
+    // Fresh UPnP attempt. FIX 1: try_upnp now returns an UpnpAttempt
+    // carrying the external IP plus a double_nat flag (set when the
+    // router's WAN IP is itself RFC1918 / CGNAT) plus a diagnostic
+    // snapshot. Cache all three so a subsequent get_node_status reflects
+    // them without waiting for the next manual retry.
+    let attempt = try_upnp(38291).await;
+    let upnp_external_ip = attempt.external_ip.clone();
+    let double_nat = attempt.double_nat;
     if let Ok(mut guard) = state.upnp_external_ip.lock() {
         *guard = upnp_external_ip.clone();
+    }
+    if let Ok(mut guard) = state.upnp_double_nat.lock() {
+        *guard = double_nat;
+    }
+    if let Ok(mut guard) = state.upnp_diagnostics.lock() {
+        *guard = attempt.diagnostics;
     }
 
     // Scrape iriumd /metrics for irium_inbound_accepted_total. Failures
@@ -1043,13 +1450,14 @@ async fn check_port_open(state: State<'_, AppState>) -> Result<PortCheckResult, 
     }
 
     let open = upnp_external_ip.is_some() || inbound_count > 0;
-    let reason = match (upnp_external_ip.as_deref(), inbound_count) {
-        (Some(ip), 0)  => format!("Port 38291 is open — UPnP mapped successfully (external IP {})", ip),
-        (Some(ip), n)  => format!("Port 38291 is open — UPnP active ({}) and {} inbound peer(s) accepted", ip, n),
-        (None, n) if n > 0 => format!("Port 38291 is open — {} inbound peer(s) accepted (manual forwarding)", n),
-        (None, _)      => "Port 38291 appears closed — try manual port forwarding above".to_string(),
+    let reason = match (upnp_external_ip.as_deref(), inbound_count, double_nat) {
+        (Some(ip), 0, _) => format!("Port 38291 is open — UPnP mapped successfully (external IP {})", ip),
+        (Some(ip), n, _) => format!("Port 38291 is open — UPnP active ({}) and {} inbound peer(s) accepted", ip, n),
+        (None, n, _) if n > 0 => format!("Port 38291 is open — {} inbound peer(s) accepted (manual forwarding)", n),
+        (None, _, true) => "UPnP mapping accepted by the router, but the router's WAN IP is itself private (double NAT / CGNAT). Inbound from the public internet will not work via UPnP — see Help for diagnostics, or ask your ISP for a public IPv4.".to_string(),
+        (None, _, false) => "Port 38291 appears closed — try manual port forwarding above".to_string(),
     };
-    Ok(PortCheckResult { open, reason, upnp_external_ip, inbound_count })
+    Ok(PortCheckResult { open, reason, upnp_external_ip, inbound_count, double_nat })
 }
 
 #[tauri::command]
@@ -1198,14 +1606,17 @@ async fn start_node(
     // UPnP: ask the router to open TCP 38291 so other NAT-behind nodes can
     // dial us inbound. Seeds learn our dialable address and share it via PEX.
     // On success the router's external IP is returned (same as public IP).
-    let upnp_ip = try_upnp(38291).await;
+    let upnp_attempt = try_upnp(38291).await;
+    let upnp_ip = upnp_attempt.external_ip.clone();
     if let Some(ref ip) = upnp_ip {
-        tracing::info!("[start_node] UPnP active — TCP 38291 mapped via router, external IP: {}", ip);
+        tracing::info!("[start_node] UPnP active — TCP 38291 mapped via router, external IP: {} (double_nat={})", ip, upnp_attempt.double_nat);
         *state.upnp_external_ip.lock().map_err(lock_err)? = Some(ip.clone());
     } else {
         tracing::info!("[start_node] UPnP not available — relying on manual port forwarding or inbound-only mode");
         *state.upnp_external_ip.lock().map_err(lock_err)? = None;
     }
+    *state.upnp_double_nat.lock().map_err(lock_err)? = upnp_attempt.double_nat;
+    *state.upnp_diagnostics.lock().map_err(lock_err)? = upnp_attempt.diagnostics;
 
     // Dialable IP: only set when the user has EXPLICITLY confirmed the port
     // is open (via the external-IP override in Settings). UPnP can map the
@@ -2080,6 +2491,7 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
                 && gap_healer_pending_count == 0;
 
             let upnp_ip = state.upnp_external_ip.lock().map_err(lock_err)?.clone();
+            let upnp_double_nat = *state.upnp_double_nat.lock().map_err(lock_err)?;
             let status = NodeStatus {
                 running: true,
                 synced,
@@ -2092,6 +2504,7 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
                 rpc_url: rpc_url.clone(),
                 upnp_active: upnp_ip.is_some(),
                 upnp_external_ip: upnp_ip,
+                upnp_double_nat,
                 persisted_height,
                 gap_healer_pending_count,
                 fully_synced,
@@ -2103,6 +2516,7 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
             // RPC not reachable — node is offline
             *state.last_node_status.lock().map_err(lock_err)? = None;
             let upnp_ip = state.upnp_external_ip.lock().map_err(lock_err)?.clone();
+            let upnp_double_nat = *state.upnp_double_nat.lock().map_err(lock_err)?;
             Ok(NodeStatus {
                 running: false,
                 synced: false,
@@ -2115,6 +2529,7 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
                 rpc_url,
                 upnp_active: upnp_ip.is_some(),
                 upnp_external_ip: upnp_ip,
+                upnp_double_nat,
                 persisted_height: 0,
                 gap_healer_pending_count: 0,
                 fully_synced: false,
@@ -7559,6 +7974,54 @@ fn main() {
             // Phase 5: spawn the WebSocket → Tauri event bridge. Reconnects
             // forever; harmless when iriumd is not running.
             spawn_ws_bridge(app.handle());
+
+            // FIX 1 (UPnP): kick off a UPnP discovery on startup so the
+            // first get_node_status / Help page render already has the
+            // chosen-adapter / external-IP / double-NAT verdict cached.
+            // Without this the very first poll always shows
+            // upnp_active=false even when the router would have happily
+            // accepted the mapping, because try_upnp_port_map only ran on
+            // explicit user click. Spawned async so the splash doesn't
+            // block on the SSDP 2s timeout.
+            let upnp_app_handle = app.handle();
+            tauri::async_runtime::spawn(async move {
+                let state = upnp_app_handle.state::<AppState>();
+                let attempt = try_upnp(38291).await;
+                if let Ok(mut g) = state.upnp_external_ip.lock() {
+                    *g = attempt.external_ip.clone();
+                }
+                if let Ok(mut g) = state.upnp_double_nat.lock() {
+                    *g = attempt.double_nat;
+                }
+                if let Ok(mut g) = state.upnp_diagnostics.lock() {
+                    *g = attempt.diagnostics;
+                }
+                if attempt.external_ip.is_some()
+                    && !UPNP_REFRESH_RUNNING.swap(true, std::sync::atomic::Ordering::SeqCst)
+                {
+                    let upnp_external_ip_ref = Arc::clone(&state.upnp_external_ip);
+                    let upnp_double_nat_ref = Arc::clone(&state.upnp_double_nat);
+                    let upnp_diag_ref = Arc::clone(&state.upnp_diagnostics);
+                    tauri::async_runtime::spawn(async move {
+                        loop {
+                            tokio::time::sleep(std::time::Duration::from_secs(
+                                UPNP_REFRESH_INTERVAL_SECS,
+                            ))
+                            .await;
+                            let fresh = try_upnp(38291).await;
+                            if let Ok(mut g) = upnp_external_ip_ref.lock() {
+                                *g = fresh.external_ip.clone();
+                            }
+                            if let Ok(mut g) = upnp_double_nat_ref.lock() {
+                                *g = fresh.double_nat;
+                            }
+                            if let Ok(mut g) = upnp_diag_ref.lock() {
+                                *g = fresh.diagnostics;
+                            }
+                        }
+                    });
+                }
+            });
             Ok(())
         })
         .system_tray(system_tray)
@@ -7598,6 +8061,12 @@ fn main() {
             check_binaries,
             try_upnp_port_map,
             check_port_open,
+            // FIX 1 (UPnP multi-adapter): exposes the full UPnP discovery
+            // trace (chosen LAN adapter, gateway, control URL, retry chain,
+            // double-NAT verdict) so the Help page can show *why* UPnP
+            // failed even when the router's own UI says the mapping is
+            // active.
+            upnp_diagnostics,
             get_app_version,
             check_network_reachable,
             get_system_info,

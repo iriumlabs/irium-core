@@ -19,7 +19,7 @@ import type {
   DisputeEntry, DisputeOpenResult,
   NetworkMetrics, ExplorerAgreement, ExplorerStats,
   ExplorerNetworkStats, ExplorerPeer, ExplorerBlock, NetworkHashrateInfo,
-  RichListResponse, PortCheckResult, PoolStats,
+  RichListResponse, PortCheckResult, PoolStats, UpnpDiagnostics,
   FeedDiscoverResult,
   AgreementSignResult, AgreementVerifySignatureResult,
   AgreementDecryptResult, AgreementStoreListResult,
@@ -69,6 +69,15 @@ export const node = {
 
   tryUpnpPortMap: () =>
     safeInvoke<string | null>('try_upnp_port_map'),
+
+  // FIX 1 (UPnP): full diagnostic snapshot of the most recent UPnP
+  // attempt — adapter enumeration, chosen LAN IP, gateway IP, SSDP
+  // location, control URL, external IP, routability verdict, retry
+  // chain status, last fault. Help page renders this in a collapsible
+  // panel so the user can self-diagnose UPnP failures even when the
+  // router UI claims the mapping is active (multi-adapter / double NAT).
+  upnpDiagnostics: () =>
+    safeInvoke<UpnpDiagnostics>('upnp_diagnostics'),
 
   // Port-forwarding self-test for the Help page's Test Connection button.
   // Combines a live UPnP probe with iriumd's inbound_accepted_total

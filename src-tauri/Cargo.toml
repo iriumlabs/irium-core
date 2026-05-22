@@ -37,6 +37,11 @@ getrandom = "0.2"
 # what gets embedded in the agreement's secret_hash field.
 sha2 = "0.10"
 hex = "0.4"
+# FIX 1 (UPnP multi-adapter): enumerate local IPv4 adapters so UPnP
+# AddPortMapping picks the LAN-facing IP rather than a Hyper-V / WSL
+# virtual switch or VPN tunnel adapter (the most common cause of
+# UPnP "succeeds in the router but GUI shows Inactive" on Windows).
+if-addrs = "0.13"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.
