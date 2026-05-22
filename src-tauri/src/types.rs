@@ -535,6 +535,16 @@ pub struct MinerStatus {
     // during the 30–60 s startup window where irium-miner is downloading
     // chain state from iriumd before it begins hashing.
     pub sync_status: Option<String>,
+    // Pool-wide difficulty and hashrate, merged from the irium-pool
+    // stats-proxy at pool.iriumlabs.org:3337/stats. Populated only when
+    // the proxy responds within the 2 s budget; None otherwise so the
+    // GUI can render "—" instead of a stale value. The frontend reads
+    // these via the same MinerStatus shape it already uses for the
+    // local-miner fields above.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pool_diff: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pool_hashrate_khs: Option<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -4921,6 +4921,13 @@ async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, Str
     let sync_status = state.miner_sync_status.lock().map_err(lock_err)?.clone();
     let blocks_found = *state.blocks_found.lock().map_err(lock_err)?;
 
+    // Pool stats merge — fetch the proxy's /stats with a tight budget so
+    // the local Miner page stays snappy when the official pool is
+    // unreachable (private/alternative-pool users, or just transient net
+    // hiccups). Silent fallback to None when anything fails; the GUI
+    // already short-circuits to "—" on undefined.
+    let (pool_diff, pool_hashrate_khs) = fetch_pool_stats_for_miner_status().await;
+
     Ok(MinerStatus {
         running,
         hashrate_khs,
@@ -4930,7 +4937,58 @@ async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, Str
         threads,
         address,
         sync_status,
+        pool_diff,
+        pool_hashrate_khs,
     })
+}
+
+/// Pool-side enrichment for get_miner_status. Returns (current_diff,
+/// pool_hashrate_khs) on success; (None, None) on any failure. 2 s
+/// budget keeps the Miner-page refresh tight even when the pool VPS
+/// is degraded - the frontend renders "—" rather than blocking on us.
+async fn fetch_pool_stats_for_miner_status() -> (Option<u64>, Option<f64>) {
+    let client = match reqwest::Client::builder()
+        .timeout(Duration::from_secs(2))
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => return (None, None),
+    };
+    let resp = match client.get(POOL_STATS_URL).send().await {
+        Ok(r) => r,
+        Err(_) => return (None, None),
+    };
+    if !resp.status().is_success() {
+        return (None, None);
+    }
+    let v: serde_json::Value = match resp.json().await {
+        Ok(v) => v,
+        Err(_) => return (None, None),
+    };
+    // Sum ASIC + CPU/GPU hashrate (H/s) and convert to kH/s for the
+    // frontend's existing unit. Difficulty: pick ASIC's current_diff
+    // as the headline number; ASIC is the workhorse profile and the
+    // baseline is what most miners see.
+    let asic = v.get("asic");
+    let cpu_gpu = v.get("cpu_gpu");
+    let pool_diff = asic
+        .and_then(|x| x.get("current_diff"))
+        .and_then(|x| x.as_u64());
+    let asic_hps = asic
+        .and_then(|x| x.get("hashrate_estimate_hps"))
+        .and_then(|x| x.as_f64())
+        .unwrap_or(0.0);
+    let cpu_hps = cpu_gpu
+        .and_then(|x| x.get("hashrate_estimate_hps"))
+        .and_then(|x| x.as_f64())
+        .unwrap_or(0.0);
+    let total_hps = asic_hps + cpu_hps;
+    let pool_hashrate_khs = if total_hps > 0.0 {
+        Some(total_hps / 1000.0)
+    } else {
+        None
+    };
+    (pool_diff, pool_hashrate_khs)
 }
 
 // ============================================================
