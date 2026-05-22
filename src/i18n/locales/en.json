@@ -539,6 +539,8 @@
       "no_seed_backup": "This wallet has no seed backup — use WIF Key or Export Backup File instead",
       "no_address_loaded": "No address loaded",
       "restored_backup": "Wallet restored from backup",
+      "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up.",
       "wif_saved": "WIF key saved",
       "need_12_words": "Enter at least 12 mnemonic words",
       "enter_wif": "Enter a WIF key",
