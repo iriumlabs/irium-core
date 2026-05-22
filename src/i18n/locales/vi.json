@@ -143,7 +143,17 @@
       "wallet_path_description": "Đường dẫn tùy chỉnh đến tệp ví của bạn (để trống theo mặc định)",
       "wallet_path_placeholder": "~/.irium/wallet.json (mặc định)",
       "data_dir_description": "Thư mục dữ liệu iriumd tùy chỉnh (để trống theo mặc định)",
-      "data_dir_placeholder": "~/.irium (mặc định)"
+      "data_dir_placeholder": "~/.irium (mặc định)",
+      "node_mode": "Node mode",
+      "node_mode_description": "Local runs the bundled iriumd. Remote points the GUI at a node you manage elsewhere (VPS, dedicated rig) — bundled miners stay enabled and connect via the URL above.",
+      "node_mode_local": "Local (bundled iriumd)",
+      "node_mode_remote": "Remote node",
+      "rpc_token": "RPC token",
+      "rpc_token_description_local": "Optional. Used as the Bearer token for the GUI's outbound RPC calls. Leave blank to use the auto-minted local token.",
+      "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
+      "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
+      "rpc_token_test_remote": "Test remote",
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
     },
     "buttons": {
       "test_connection": "Kiểm tra kết nối",
@@ -538,7 +548,9 @@
       "copied": "Đã sao chép",
       "recovery_copied": "Đã sao chép cụm từ khôi phục",
       "wif_copied": "Đã sao chép WIF",
-      "name_invalid_chars": "Tên ví không được chứa: / \\ : * ? \" < > |"
+      "name_invalid_chars": "Tên ví không được chứa: / \\ : * ? \" < > |",
+      "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
     }
   },
   "agreements": {
@@ -888,7 +900,9 @@
       "offer_imported": "Ưu đãi đã được nhập",
       "import_failed": "Nhập không thành công: {{reason}}",
       "sync_failed": "Đồng bộ hóa không thành công: {{reason}}",
-      "default_feeds_added": "Đã thêm nguồn cấp dữ liệu mặc định"
+      "default_feeds_added": "Đã thêm nguồn cấp dữ liệu mặc định",
+      "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
+      "take_failed_already_taken": "This offer has already been taken by another buyer."
     }
   },
   "miner": {
@@ -941,7 +955,8 @@
       "gpu_address_placeholder": "P…",
       "intensity_label": "Cường độ — {{value}}%",
       "intensity_mac_note": "Cường độ được giới hạn ở mức 50% trên macOS để ngăn cơ quan giám sát GPU tiêu diệt hạt nhân giữa đợt. Công cụ khai thác GPU tự động phát hiện các điểm giám sát và dừng lại ngay lập tức nếu nó vẫn nhìn thấy chúng.",
-      "pool_preset": "Đặt trước hồ bơi"
+      "pool_preset": "Đặt trước hồ bơi",
+      "stratum_worker_use_wallet": "Use my wallet"
     },
     "found_blocks": {
       "section_title": "Khối tìm thấy",
@@ -986,6 +1001,14 @@
     "opencl": {
       "detected_title": "Đã phát hiện phần cứng OpenCL",
       "none_detected": "Không phát hiện thấy GPU hỗ trợ OpenCL"
+    },
+    "unexpected_exit": {
+      "title": "Miner stopped unexpectedly",
+      "body_mac": "Your miner stopped unexpectedly. This can happen on Mac due to GPU power limits or the macOS GPU watchdog. Click Restart Miner to resume.",
+      "body_other": "Your miner stopped unexpectedly. Check the miner log for details, then click Restart Miner to resume.",
+      "restart_cpu": "Restart CPU Miner",
+      "restart_gpu": "Restart GPU Miner",
+      "dismiss": "Dismiss"
     }
   },
   "onboarding": {
@@ -1573,6 +1596,21 @@
       "building_body": "Hoàn thành các thỏa thuận đúng thời hạn, gửi bằng chứng kịp thời và tránh nảy sinh những tranh chấp phù phiếm. Mỗi thỏa thuận được phát hành thành công sẽ cộng thêm điểm của bạn. Tranh chấp làm giảm nó, ngay cả khi được giải quyết có lợi cho bạn.",
       "callout_label": "Mẹo:",
       "callout": "Kiểm tra danh tiếng của đối tác trước khi tài trợ cho một khoản ký quỹ lớn. Điểm dưới 60 là dấu hiệu cảnh báo cho giao dịch lần đầu."
+    },
+    "upnp_diag": {
+      "title": "UPnP diagnostics",
+      "verdict_ok": "Mapping active",
+      "verdict_double_nat": "Router accepted — but double NAT / CGNAT",
+      "verdict_failed": "Mapping failed",
+      "local_chosen": "Chosen LAN IP",
+      "local_candidates": "Detected adapters",
+      "gateway": "Router IP",
+      "ssdp_location": "SSDP location",
+      "control_url": "Control URL",
+      "external_ip": "External IP",
+      "external_ip_private": "(private — double NAT / CGNAT)",
+      "attempts": "AddPortMapping attempts",
+      "last_fault": "Last UPnP fault"
     }
   },
   "wizards": {
@@ -1754,7 +1792,17 @@
     "title": "Đã tìm thấy {{count}} tệp khối cách ly từ phiên trước đó.",
     "subtitle": "Các khối này không thể hiển thị trong lịch sử khai thác cho đến khi được phục hồi.",
     "recover_now": "Khôi phục ngay bây giờ",
-    "dismiss": "Miễn nhiệm"
+    "dismiss": "Miễn nhiệm",
+    "node_running_caption": "Stop the node first, then click Recover Now to delete the quarantined block files.",
+    "clearing": "Clearing...",
+    "stop_node_button": "Stop Node",
+    "stopping_node": "Stopping...",
+    "toast_node_stopped": "Node stopped. You can now recover the quarantined blocks.",
+    "toast_node_stop_failed": "Could not stop the node.",
+    "toast_node_stop_failed_reason": "Could not stop the node: {{reason}}",
+    "toast_recovered": "Recovered {{files}} quarantined block file(s).",
+    "toast_recover_partial": "Recovered {{files}} file(s); some directories could not be removed: {{reason}}",
+    "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
     "miner_active_confirm": "Khai thác đang hoạt động. Công cụ khai thác sẽ tiếp tục chạy ở chế độ nền.\n\nNhấp vào OK để thu nhỏ vào khay hoặc Hủy để giữ cửa sổ mở và dừng khai thác trước nếu bạn muốn thoát hoàn toàn."

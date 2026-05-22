@@ -143,7 +143,17 @@
       "wallet_path_description": "Percorso personalizzato al file del tuo portafoglio (lascia vuoto per impostazione predefinita)",
       "wallet_path_placeholder": "~/.irium/wallet.json (predefinito)",
       "data_dir_description": "Directory dei dati iriumd personalizzata (lasciare vuoto per impostazione predefinita)",
-      "data_dir_placeholder": "~/.irium (predefinito)"
+      "data_dir_placeholder": "~/.irium (predefinito)",
+      "node_mode": "Node mode",
+      "node_mode_description": "Local runs the bundled iriumd. Remote points the GUI at a node you manage elsewhere (VPS, dedicated rig) — bundled miners stay enabled and connect via the URL above.",
+      "node_mode_local": "Local (bundled iriumd)",
+      "node_mode_remote": "Remote node",
+      "rpc_token": "RPC token",
+      "rpc_token_description_local": "Optional. Used as the Bearer token for the GUI's outbound RPC calls. Leave blank to use the auto-minted local token.",
+      "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
+      "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
+      "rpc_token_test_remote": "Test remote",
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
     },
     "buttons": {
       "test_connection": "Testare la connessione",
@@ -538,7 +548,9 @@
       "copied": "Copiato",
       "recovery_copied": "Frase di recupero copiata",
       "wif_copied": "WIF copiato",
-      "name_invalid_chars": "Il nome del portafoglio non può contenere: / \\ : * ? \" < > |"
+      "name_invalid_chars": "Il nome del portafoglio non può contenere: / \\ : * ? \" < > |",
+      "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
     }
   },
   "agreements": {
@@ -888,7 +900,9 @@
       "offer_imported": "Offerta importata",
       "import_failed": "Importazione non riuscita: {{reason}}",
       "sync_failed": "Sincronizzazione non riuscita: {{reason}}",
-      "default_feeds_added": "Feed predefiniti aggiunti"
+      "default_feeds_added": "Feed predefiniti aggiunti",
+      "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
+      "take_failed_already_taken": "This offer has already been taken by another buyer."
     }
   },
   "miner": {
@@ -941,7 +955,8 @@
       "gpu_address_placeholder": "P…",
       "intensity_label": "Intensità — {{value}}%",
       "intensity_mac_note": "Intensità limitata al 50% su macOS per impedire al watchdog della GPU di uccidere i kernel a metà batch. Il GPU Miner rileva automaticamente gli stalli del watchdog e si ferma in modo pulito se li vede comunque.",
-      "pool_preset": "Preimpostazione della piscina"
+      "pool_preset": "Preimpostazione della piscina",
+      "stratum_worker_use_wallet": "Use my wallet"
     },
     "found_blocks": {
       "section_title": "Blocchi trovati",
@@ -986,6 +1001,14 @@
     "opencl": {
       "detected_title": "Rilevato hardware OpenCL",
       "none_detected": "Nessuna GPU compatibile con OpenCL rilevata"
+    },
+    "unexpected_exit": {
+      "title": "Miner stopped unexpectedly",
+      "body_mac": "Your miner stopped unexpectedly. This can happen on Mac due to GPU power limits or the macOS GPU watchdog. Click Restart Miner to resume.",
+      "body_other": "Your miner stopped unexpectedly. Check the miner log for details, then click Restart Miner to resume.",
+      "restart_cpu": "Restart CPU Miner",
+      "restart_gpu": "Restart GPU Miner",
+      "dismiss": "Dismiss"
     }
   },
   "onboarding": {
@@ -1573,6 +1596,21 @@
       "building_body": "Completare gli accordi in tempo, presentare tempestivamente le prove ed evitare di sollevare controversie futili. Ogni accordo rilasciato con successo si aggiunge al tuo punteggio. Le controversie lo abbassano, anche se risolte a tuo favore.",
       "callout_label": "Mancia:",
       "callout": "Controlla la reputazione di una controparte prima di finanziare un grosso deposito a garanzia. Un punteggio inferiore a 60 è una bandiera rossa per le operazioni per la prima volta."
+    },
+    "upnp_diag": {
+      "title": "UPnP diagnostics",
+      "verdict_ok": "Mapping active",
+      "verdict_double_nat": "Router accepted — but double NAT / CGNAT",
+      "verdict_failed": "Mapping failed",
+      "local_chosen": "Chosen LAN IP",
+      "local_candidates": "Detected adapters",
+      "gateway": "Router IP",
+      "ssdp_location": "SSDP location",
+      "control_url": "Control URL",
+      "external_ip": "External IP",
+      "external_ip_private": "(private — double NAT / CGNAT)",
+      "attempts": "AddPortMapping attempts",
+      "last_fault": "Last UPnP fault"
     }
   },
   "wizards": {
@@ -1754,7 +1792,17 @@
     "title": "Trovati {{count}} file di blocco in quarantena da una sessione precedente.",
     "subtitle": "Questi blocchi non possono essere visualizzati nella cronologia di mining finché non vengono ripristinati.",
     "recover_now": "Recupera ora",
-    "dismiss": "Congedare"
+    "dismiss": "Congedare",
+    "node_running_caption": "Stop the node first, then click Recover Now to delete the quarantined block files.",
+    "clearing": "Clearing...",
+    "stop_node_button": "Stop Node",
+    "stopping_node": "Stopping...",
+    "toast_node_stopped": "Node stopped. You can now recover the quarantined blocks.",
+    "toast_node_stop_failed": "Could not stop the node.",
+    "toast_node_stop_failed_reason": "Could not stop the node: {{reason}}",
+    "toast_recovered": "Recovered {{files}} quarantined block file(s).",
+    "toast_recover_partial": "Recovered {{files}} file(s); some directories could not be removed: {{reason}}",
+    "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
     "miner_active_confirm": "L'estrazione mineraria è attiva. Il minatore continuerà a funzionare in background.\n\nFare clic su OK per ridurre a icona nel vassoio o su Annulla per mantenere la finestra aperta e interrompere prima l'estrazione se si desidera uscire completamente."

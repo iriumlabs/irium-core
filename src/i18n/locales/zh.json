@@ -143,7 +143,17 @@
       "wallet_path_description": "钱包文件的自定义路径（默认留空）",
       "wallet_path_placeholder": "~/.irium/wallet.json（默认）",
       "data_dir_description": "自定义 iriumd 数据目录（默认留空）",
-      "data_dir_placeholder": "~/.irium（默认）"
+      "data_dir_placeholder": "~/.irium（默认）",
+      "node_mode": "Node mode",
+      "node_mode_description": "Local runs the bundled iriumd. Remote points the GUI at a node you manage elsewhere (VPS, dedicated rig) — bundled miners stay enabled and connect via the URL above.",
+      "node_mode_local": "Local (bundled iriumd)",
+      "node_mode_remote": "Remote node",
+      "rpc_token": "RPC token",
+      "rpc_token_description_local": "Optional. Used as the Bearer token for the GUI's outbound RPC calls. Leave blank to use the auto-minted local token.",
+      "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
+      "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
+      "rpc_token_test_remote": "Test remote",
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
     },
     "buttons": {
       "test_connection": "测试连接",
@@ -538,7 +548,9 @@
       "copied": "已复制",
       "recovery_copied": "已复制恢复短语",
       "wif_copied": "WIF 已复制",
-      "name_invalid_chars": "钱包名称不能包含：/ \\ : * ? ” < > |"
+      "name_invalid_chars": "钱包名称不能包含：/ \\ : * ? ” < > |",
+      "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
     }
   },
   "agreements": {
@@ -888,7 +900,9 @@
       "offer_imported": "报价进口",
       "import_failed": "导入失败：{{reason}}",
       "sync_failed": "同步失败：{{reason}}",
-      "default_feeds_added": "添加了默认提要"
+      "default_feeds_added": "添加了默认提要",
+      "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
+      "take_failed_already_taken": "This offer has already been taken by another buyer."
     }
   },
   "miner": {
@@ -941,7 +955,8 @@
       "gpu_address_placeholder": "普…",
       "intensity_label": "强度 — {{value}}%",
       "intensity_mac_note": "macOS 上的强度上限为 50%，以防止 GPU 看门狗在批次中杀死内核。 GPU 矿工会自动检测看门狗停顿，并在发现它们时干净地停止。",
-      "pool_preset": "池预设"
+      "pool_preset": "池预设",
+      "stratum_worker_use_wallet": "Use my wallet"
     },
     "found_blocks": {
       "section_title": "找到的方块",
@@ -986,6 +1001,14 @@
     "opencl": {
       "detected_title": "检测到 OpenCL 硬件",
       "none_detected": "未检测到支持 OpenCL 的 GPU"
+    },
+    "unexpected_exit": {
+      "title": "Miner stopped unexpectedly",
+      "body_mac": "Your miner stopped unexpectedly. This can happen on Mac due to GPU power limits or the macOS GPU watchdog. Click Restart Miner to resume.",
+      "body_other": "Your miner stopped unexpectedly. Check the miner log for details, then click Restart Miner to resume.",
+      "restart_cpu": "Restart CPU Miner",
+      "restart_gpu": "Restart GPU Miner",
+      "dismiss": "Dismiss"
     }
   },
   "onboarding": {
@@ -1573,6 +1596,21 @@
       "building_body": "按时完成协议，及时提交证据，避免引发无谓的纠纷。每个成功发布的协议都会增加您的分数。争议会降低它，即使结果对你有利。",
       "callout_label": "提示：",
       "callout": "在为大型托管提供资金之前检查交易对手的声誉。分数低于 60 分对于首次交易来说是一个危险信号。"
+    },
+    "upnp_diag": {
+      "title": "UPnP diagnostics",
+      "verdict_ok": "Mapping active",
+      "verdict_double_nat": "Router accepted — but double NAT / CGNAT",
+      "verdict_failed": "Mapping failed",
+      "local_chosen": "Chosen LAN IP",
+      "local_candidates": "Detected adapters",
+      "gateway": "Router IP",
+      "ssdp_location": "SSDP location",
+      "control_url": "Control URL",
+      "external_ip": "External IP",
+      "external_ip_private": "(private — double NAT / CGNAT)",
+      "attempts": "AddPortMapping attempts",
+      "last_fault": "Last UPnP fault"
     }
   },
   "wizards": {
@@ -1754,7 +1792,17 @@
     "title": "发现上一个会话中的 {{count}} 隔离块文件。",
     "subtitle": "这些区块在恢复之前无法显示在采矿历史中。",
     "recover_now": "立即恢复",
-    "dismiss": "解雇"
+    "dismiss": "解雇",
+    "node_running_caption": "Stop the node first, then click Recover Now to delete the quarantined block files.",
+    "clearing": "Clearing...",
+    "stop_node_button": "Stop Node",
+    "stopping_node": "Stopping...",
+    "toast_node_stopped": "Node stopped. You can now recover the quarantined blocks.",
+    "toast_node_stop_failed": "Could not stop the node.",
+    "toast_node_stop_failed_reason": "Could not stop the node: {{reason}}",
+    "toast_recovered": "Recovered {{files}} quarantined block file(s).",
+    "toast_recover_partial": "Recovered {{files}} file(s); some directories could not be removed: {{reason}}",
+    "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
     "miner_active_confirm": "采矿活动活跃。矿工将继续在后台运行。\n\n单击“确定”最小化到托盘，或者单击“取消”以保持窗口打开，如果您想完全退出，请先停止挖掘。"

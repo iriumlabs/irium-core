@@ -143,7 +143,17 @@
       "wallet_path_description": "ウォレット ファイルへのカスタム パス (デフォルトでは空白のまま)",
       "wallet_path_placeholder": "~/.irium/wallet.json (デフォルト)",
       "data_dir_description": "カスタム iriumd データ ディレクトリ (デフォルトでは空白のまま)",
-      "data_dir_placeholder": "~/.irium (デフォルト)"
+      "data_dir_placeholder": "~/.irium (デフォルト)",
+      "node_mode": "Node mode",
+      "node_mode_description": "Local runs the bundled iriumd. Remote points the GUI at a node you manage elsewhere (VPS, dedicated rig) — bundled miners stay enabled and connect via the URL above.",
+      "node_mode_local": "Local (bundled iriumd)",
+      "node_mode_remote": "Remote node",
+      "rpc_token": "RPC token",
+      "rpc_token_description_local": "Optional. Used as the Bearer token for the GUI's outbound RPC calls. Leave blank to use the auto-minted local token.",
+      "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
+      "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
+      "rpc_token_test_remote": "Test remote",
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
     },
     "buttons": {
       "test_connection": "テスト接続",
@@ -538,7 +548,9 @@
       "copied": "コピーされました",
       "recovery_copied": "リカバリフレーズをコピーしました",
       "wif_copied": "WIFがコピーされました",
-      "name_invalid_chars": "ウォレット名に次の文字を含めることはできません: / \\ : * ? \" < > |"
+      "name_invalid_chars": "ウォレット名に次の文字を含めることはできません: / \\ : * ? \" < > |",
+      "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
     }
   },
   "agreements": {
@@ -888,7 +900,9 @@
       "offer_imported": "インポートされたオファー",
       "import_failed": "インポートに失敗しました: {{reason}}",
       "sync_failed": "同期に失敗しました: {{reason}}",
-      "default_feeds_added": "デフォルトのフィードが追加されました"
+      "default_feeds_added": "デフォルトのフィードが追加されました",
+      "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
+      "take_failed_already_taken": "This offer has already been taken by another buyer."
     }
   },
   "miner": {
@@ -941,7 +955,8 @@
       "gpu_address_placeholder": "パ…",
       "intensity_label": "強度 — {{value}}%",
       "intensity_mac_note": "GPU ウォッチドッグがバッチ中にカーネルを強制終了しないように、macOS では強度が 50% に制限されています。 GPU マイナーはウォッチドッグ ストールを自動的に検出し、いずれにせよそれを見つけた場合はきれいに停止します。",
-      "pool_preset": "プールプリセット"
+      "pool_preset": "プールプリセット",
+      "stratum_worker_use_wallet": "Use my wallet"
     },
     "found_blocks": {
       "section_title": "見つかったブロック",
@@ -986,6 +1001,14 @@
     "opencl": {
       "detected_title": "OpenCL ハードウェアが検出されました",
       "none_detected": "OpenCL 対応 GPU が検出されませんでした"
+    },
+    "unexpected_exit": {
+      "title": "Miner stopped unexpectedly",
+      "body_mac": "Your miner stopped unexpectedly. This can happen on Mac due to GPU power limits or the macOS GPU watchdog. Click Restart Miner to resume.",
+      "body_other": "Your miner stopped unexpectedly. Check the miner log for details, then click Restart Miner to resume.",
+      "restart_cpu": "Restart CPU Miner",
+      "restart_gpu": "Restart GPU Miner",
+      "dismiss": "Dismiss"
     }
   },
   "onboarding": {
@@ -1573,6 +1596,21 @@
       "building_body": "期限までに契約を完了し、証拠を速やかに提出し、軽薄な紛争を引き起こすことを避けてください。正常にリリースされた契約書ごとにスコアが加算されます。たとえあなたに有利に解決されたとしても、紛争がある場合は評価額が下がります。",
       "callout_label": "ヒント：",
       "callout": "大規模なエスクローに資金を提供する前に、取引相手の評判を確認してください。スコアが 60 未満の場合は、初めての取引では危険信号です。"
+    },
+    "upnp_diag": {
+      "title": "UPnP diagnostics",
+      "verdict_ok": "Mapping active",
+      "verdict_double_nat": "Router accepted — but double NAT / CGNAT",
+      "verdict_failed": "Mapping failed",
+      "local_chosen": "Chosen LAN IP",
+      "local_candidates": "Detected adapters",
+      "gateway": "Router IP",
+      "ssdp_location": "SSDP location",
+      "control_url": "Control URL",
+      "external_ip": "External IP",
+      "external_ip_private": "(private — double NAT / CGNAT)",
+      "attempts": "AddPortMapping attempts",
+      "last_fault": "Last UPnP fault"
     }
   },
   "wizards": {
@@ -1754,7 +1792,17 @@
     "title": "以前のセッションで隔離されたブロック ファイル {{count}} が見つかりました。",
     "subtitle": "これらのブロックは、回復されるまでマイニング履歴に表示されません。",
     "recover_now": "今すぐ回復する",
-    "dismiss": "却下する"
+    "dismiss": "却下する",
+    "node_running_caption": "Stop the node first, then click Recover Now to delete the quarantined block files.",
+    "clearing": "Clearing...",
+    "stop_node_button": "Stop Node",
+    "stopping_node": "Stopping...",
+    "toast_node_stopped": "Node stopped. You can now recover the quarantined blocks.",
+    "toast_node_stop_failed": "Could not stop the node.",
+    "toast_node_stop_failed_reason": "Could not stop the node: {{reason}}",
+    "toast_recovered": "Recovered {{files}} quarantined block file(s).",
+    "toast_recover_partial": "Recovered {{files}} file(s); some directories could not be removed: {{reason}}",
+    "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
     "miner_active_confirm": "マイニングが活発に行われています。マイナーはバックグラウンドで実行を続けます。\n\n[OK] をクリックしてトレイに最小化するか、完全に終了したい場合は [キャンセル] をクリックしてウィンドウを開いたままにし、マイニングを停止します。"
