@@ -255,6 +255,91 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
   );
 }
 
+// ── GPU mining active animation ─────────────────────────────────
+// Subtle hex-hash "candidate stream" shown in the GPU hero card
+// while mining. Each tick (80 ms) pushes a fresh random 32-char hex
+// onto the top of a 4-row stack and drops the oldest. The newest row
+// slides in from the left, glows soft cyan, and fades out as it ages
+// down the stack. The hex values are not real nonces — the
+// irium-miner-gpu sidecar does not emit current candidate hashes —
+// but the constant 12.5 Hz cadence gives the user visible motion
+// proof that the miner is doing work, especially during the 1-3 s
+// warmup window before the hashrate area chart populates. Unmounts
+// (and the interval is cleared) as soon as status.running flips to
+// false or the user navigates away from the GPU tab.
+function HashCandidateStream({ active }: { active: boolean }) {
+  const ROW_COUNT = 4;
+  const TICK_MS = 80;
+  const [rows, setRows] = useState<string[]>(() =>
+    Array.from({ length: ROW_COUNT }, () => randomHex(32))
+  );
+
+  useEffect(() => {
+    if (!active) return;
+    const id = window.setInterval(() => {
+      setRows((prev) => [randomHex(32), ...prev.slice(0, ROW_COUNT - 1)]);
+    }, TICK_MS);
+    return () => window.clearInterval(id);
+  }, [active]);
+
+  if (!active) return null;
+
+  return (
+    <div
+      className="mb-4 rounded-xl px-4 py-3"
+      style={{
+        background: 'rgba(110,198,255,0.04)',
+        border: '1px solid rgba(110,198,255,0.12)',
+      }}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <motion.span
+          className="block w-1.5 h-1.5 rounded-full"
+          style={{ background: '#6ec6ff', boxShadow: '0 0 6px rgba(110,198,255,0.55)' }}
+          animate={{ opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <span
+          className="text-[10px] uppercase tracking-wider font-display font-bold"
+          style={{ color: 'rgba(238,240,255,0.55)' }}
+        >
+          Hashing candidates
+        </span>
+      </div>
+      <div
+        className="space-y-1 font-mono text-xs leading-tight overflow-hidden"
+        style={{ fontFamily: '"JetBrains Mono", monospace' }}
+      >
+        {rows.map((hex, i) => (
+          <motion.div
+            key={hex}
+            initial={{ opacity: 0, x: -8 }}
+            animate={{
+              opacity: i === 0 ? 1 : Math.max(0.25, 0.75 - i * 0.18),
+              x: 0,
+              color: i === 0 ? '#6ec6ff' : 'rgba(110,198,255,0.55)',
+            }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            style={{
+              textShadow: i === 0 ? '0 0 8px rgba(110,198,255,0.35)' : 'none',
+              letterSpacing: '0.04em',
+            }}
+          >
+            {hex}
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function randomHex(n: number): string {
+  const chars = '0123456789abcdef';
+  let s = '';
+  for (let i = 0; i < n; i++) s += chars[Math.floor(Math.random() * 16)];
+  return s;
+}
+
 // ── Found Blocks list (Bug 1) ─────────────────────────────────
 // Polls the Rust shell every 10s for the list of blocks this app
 // session's CPU/GPU miner has had accepted. Newest first. Empty until
@@ -1154,6 +1239,8 @@ function GpuMinerTab() {
               </div>
             </motion.div>
           )}
+
+          <HashCandidateStream active={!!status?.running} />
 
           <AnimatePresence>
             {status?.running && history.length > 1 ? (
