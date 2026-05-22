@@ -68,6 +68,11 @@ struct AppState {
     // every stratum_connect so a new pool session starts at zero.
     stratum_shares_accepted: Arc<Mutex<u64>>,
     stratum_shares_rejected: Arc<Mutex<u64>>,
+    // FIX 4 (Mining UI): unix seconds of last accepted share, set by
+    // the stratum spawn loop when a `[stratum] share accepted` line
+    // is parsed. Surfaced through StratumStatus.last_share_time so
+    // the Miner page can render "12s ago" with a freshness pulse.
+    stratum_last_share_time: Arc<Mutex<Option<u64>>>,
     // TASK 3: distinguishes a user-initiated `stop_miner` call from an
     // unexpected termination (macOS GPU watchdog kill, OOM, segfault, etc).
     // start_miner / start_gpu_miner reset to false on entry; stop_miner
@@ -134,6 +139,7 @@ impl AppState {
             gpu_power_w: Arc::new(Mutex::new(None)),
             stratum_shares_accepted: Arc::new(Mutex::new(0)),
             stratum_shares_rejected: Arc::new(Mutex::new(0)),
+            stratum_last_share_time: Arc::new(Mutex::new(None)),
             miner_user_initiated_stop: Arc::new(Mutex::new(false)),
             pending_txs: Arc::new(Mutex::new(HashMap::new())),
             rpc_token_override: Arc::new(Mutex::new(None)),
@@ -5542,7 +5548,19 @@ async fn start_miner(
             // block iriumd has ingested. We still verify ownership below
             // by comparing the canonical miner_address against our wallet.
             if let Some((height, hash)) = parse_block_found(&line) {
-                record_found_block(&blocks_found_ref, &found_blocks_ref, height, hash);
+                record_found_block(&blocks_found_ref, &found_blocks_ref, height, hash.clone());
+                // FIX 4 (Mining UI): emit a Tauri event so the Miner page
+                // can render a celebratory banner immediately, before the
+                // 10s found-blocks poll catches up. Auto-dismisses on the
+                // frontend after 10s.
+                let _ = app_for_event.emit_all(
+                    "miner-found-block",
+                    serde_json::json!({
+                        "kind": "cpu",
+                        "height": height,
+                        "hash": hash,
+                    }),
+                );
                 // Fire-and-forget detail fetch with three attempts. The
                 // accepted-marker fires AFTER submit_block returns, so the
                 // first fetch usually succeeds; retries at +3s and +13s
@@ -5931,7 +5949,16 @@ async fn start_gpu_miner(
                 _ => break,
             };
             if let Some((height, hash)) = parse_block_found(&line) {
-                record_found_block(&blocks_found_ref, &found_blocks_ref, height, hash);
+                record_found_block(&blocks_found_ref, &found_blocks_ref, height, hash.clone());
+                // FIX 4 (Mining UI): celebratory banner trigger.
+                let _ = app_for_event.emit_all(
+                    "miner-found-block",
+                    serde_json::json!({
+                        "kind": "gpu",
+                        "height": height,
+                        "hash": hash,
+                    }),
+                );
                 // parse_block_found now only matches POST-SUBMIT accepted
                 // signals, so the first fetch normally succeeds; retries at
                 // +3s and +13s defend against transient RPC errors.
@@ -6068,6 +6095,9 @@ async fn stratum_connect(
     // connect doesn't accumulate against a previous pool's stats.
     if let Ok(mut a) = state.stratum_shares_accepted.lock() { *a = 0; }
     if let Ok(mut r) = state.stratum_shares_rejected.lock() { *r = 0; }
+    // FIX 4: clear last-share timestamp so the Miner page shows "—"
+    // until the new session lands its first accepted share.
+    if let Ok(mut t) = state.stratum_last_share_time.lock() { *t = None; }
 
     // Clone every Arc the monitor task needs. We can't move the State<'_>
     // wrapper into the task — its lifetime is bound to this command call.
@@ -6078,6 +6108,7 @@ async fn stratum_connect(
     let pool_url_state_ref = Arc::clone(&state.pool_url);
     let shares_accepted_ref = Arc::clone(&state.stratum_shares_accepted);
     let shares_rejected_ref = Arc::clone(&state.stratum_shares_rejected);
+    let last_share_time_ref = Arc::clone(&state.stratum_last_share_time);
     let hashrate_ref = Arc::clone(&state.miner_hashrate);
     let pool_url_owned = pool_url.clone();
     let worker_owned = worker.clone();
@@ -6107,6 +6138,12 @@ async fn stratum_connect(
                 // optional log prefixes a future build might prepend.
                 if line.contains("[stratum] share accepted") {
                     if let Ok(mut a) = shares_accepted_ref.lock() { *a = a.saturating_add(1); }
+                    // FIX 4: capture wall-clock for the freshness pulse.
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_secs())
+                        .unwrap_or(0);
+                    if let Ok(mut t) = last_share_time_ref.lock() { *t = Some(now); }
                 } else if line.contains("[stratum] share rejected") {
                     if let Ok(mut r) = shares_rejected_ref.lock() { *r = r.saturating_add(1); }
                 }
@@ -6215,7 +6252,16 @@ async fn get_stratum_status(state: State<'_, AppState>) -> Result<StratumStatus,
     // spawn loop above. Was previously hardcoded to 0 on both sides.
     let shares_accepted = *state.stratum_shares_accepted.lock().map_err(lock_err)?;
     let shares_rejected = *state.stratum_shares_rejected.lock().map_err(lock_err)?;
-    Ok(StratumStatus { connected: running && pool_url.is_some(), pool_url, worker, shares_accepted, shares_rejected, uptime_secs })
+    let last_share_time = *state.stratum_last_share_time.lock().map_err(lock_err)?;
+    Ok(StratumStatus {
+        connected: running && pool_url.is_some(),
+        pool_url,
+        worker,
+        shares_accepted,
+        shares_rejected,
+        uptime_secs,
+        last_share_time,
+    })
 }
 
 // ============================================================

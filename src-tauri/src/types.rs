@@ -757,6 +757,14 @@ pub struct StratumStatus {
     pub shares_accepted: u64,
     pub shares_rejected: u64,
     pub uptime_secs: u64,
+    // FIX 4 (Mining UI): unix seconds of the most recent accepted
+    // share. Drives the "Last share: 12s ago" pulse on the Stratum
+    // tab so the user can tell at a glance whether the miner is
+    // still producing accepted work. None until the first accepted
+    // share lands; reset to None on reconnect alongside the share
+    // counters.
+    #[serde(default)]
+    pub last_share_time: Option<u64>,
 }
 
 // ============================================================

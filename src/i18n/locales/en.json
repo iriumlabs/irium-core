@@ -950,6 +950,7 @@
       "stratum_url_placeholder": "stratum+tcp://pool.example.com:3333",
       "stratum_worker_label": "Worker Name",
       "stratum_worker_hint": "Format: your_wallet_address.worker_id (e.g. Pxxx…xxxx.rig1)",
+      "stratum_worker_use_wallet": "Use my wallet",
       "stratum_password_label": "Pool password (usually \"x\")",
       "devices_label": "Devices (multi-GPU)",
       "threads_label_full": "Threads — {{current}} of {{max}} cores{{suffix}}",
