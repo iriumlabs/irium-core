@@ -1836,5 +1836,12 @@
     "receiving": "Réception",
     "full_details_unavailable": "Tous les détails ne sont pas encore disponibles.",
     "view_on_explorer": "Afficher sur l'Explorateur"
+  },
+  "notifications": {
+    "agreement_funded": "Agreement {{hash}} funded",
+    "agreement_proof_submitted": "Proof submitted for agreement {{hash}}",
+    "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
+    "agreement_timeout": "Agreement {{hash}} timed out — refund available",
+    "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
   }
 }

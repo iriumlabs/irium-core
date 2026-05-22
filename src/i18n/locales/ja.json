@@ -1836,5 +1836,12 @@
     "receiving": "受信中",
     "full_details_unavailable": "詳細はまだ明らかになっていません。",
     "view_on_explorer": "エクスプローラーで見る"
+  },
+  "notifications": {
+    "agreement_funded": "Agreement {{hash}} funded",
+    "agreement_proof_submitted": "Proof submitted for agreement {{hash}}",
+    "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
+    "agreement_timeout": "Agreement {{hash}} timed out — refund available",
+    "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
   }
 }

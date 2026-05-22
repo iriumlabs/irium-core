@@ -15,6 +15,7 @@ import TopBar     from './components/layout/TopBar';
 import StatusBar  from './components/layout/StatusBar';
 import TitleBar   from './components/layout/TitleBar';
 import NetworkBackground from './components/layout/NetworkBackground';
+import GlobalAgreementNotifier from './components/GlobalAgreementNotifier';
 const Dashboard    = lazy(() => import('./pages/Dashboard'));
 const Wallet       = lazy(() => import('./pages/Wallet'));
 const Settlement   = lazy(() => import('./pages/Settlement'));
@@ -305,6 +306,13 @@ function AppLayout() {
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
         <NetworkBackground key={settings.theme} />
       </div>
+
+      {/* FIX 8: route-agnostic listener that surfaces agreement state
+          transitions (funded / proof_submitted / satisfied / timeout /
+          proof_reorged) as toasts regardless of which page the user is
+          on. Page-level useIriumEvents handlers stay in place — they
+          handle data refresh, not notification. */}
+      <GlobalAgreementNotifier />
 
       <TitleBar />
       <Sidebar />

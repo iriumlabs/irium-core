@@ -1836,5 +1836,12 @@
     "receiving": "전수",
     "full_details_unavailable": "전체 세부정보는 아직 제공되지 않습니다.",
     "view_on_explorer": "탐색기에서 보기"
+  },
+  "notifications": {
+    "agreement_funded": "Agreement {{hash}} funded",
+    "agreement_proof_submitted": "Proof submitted for agreement {{hash}}",
+    "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
+    "agreement_timeout": "Agreement {{hash}} timed out — refund available",
+    "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
   }
 }
