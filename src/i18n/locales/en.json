@@ -220,7 +220,10 @@
       "midnight": "Midnight",
       "obsidian": "Obsidian",
       "aurora": "Aurora",
-      "nebula": "Nebula"
+      "nebula": "Nebula",
+      "solar": "Solar",
+      "ocean": "Ocean",
+      "rose": "Rose"
     },
     "network_info": {
       "network": "Network",

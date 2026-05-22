@@ -255,6 +255,103 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
   );
 }
 
+// ── GPU mining active indicator ─────────────────────────────────
+// An honest "mining active" strip — no fake hash candidate values.
+// The previous version scrolled a hardcoded set of hex strings which
+// looked like real candidate hashes but were just static data on a
+// loop. This replacement shows only real signal:
+//   - pulsing green dot + "Mining Active" label
+//   - block height currently being mined
+//   - small CSS-animated waveform that represents activity (its bars
+//     pulse at fixed timings — they do NOT encode any data)
+//   - current hashrate prominently on the right
+//
+// All animations are pure CSS (`hashingWaveform` keyframes in
+// globals.css + Tailwind's animate-pulse). No setInterval, no setState,
+// no framer-motion. The container has fixed height + contain: strict
+// + overflow: hidden so it can never bleed outside its own bounds,
+// regardless of viewport size or scroll position.
+function HashCandidateStream({
+  active,
+  hashrateKhs,
+  blockHeight,
+}: {
+  active: boolean;
+  hashrateKhs: number;
+  blockHeight: number | null;
+}) {
+  if (!active) return null;
+  return (
+    <div
+      className="mb-4 rounded-xl px-4 py-3"
+      style={{
+        background: 'rgba(110,198,255,0.04)',
+        border: '1px solid rgba(110,198,255,0.12)',
+        // Strict containment — the browser is told nothing inside this
+        // element can affect layout/paint/size/style outside the box.
+        // Combined with the fixed height + overflow: hidden, the strip
+        // cannot visually escape no matter what the children try.
+        contain: 'strict',
+        height: 56,
+        overflow: 'hidden',
+      }}
+    >
+      <div className="flex items-center justify-between gap-4 h-full">
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            className="block w-2 h-2 rounded-full animate-pulse flex-shrink-0"
+            style={{
+              background: '#34d399',
+              boxShadow: '0 0 8px rgba(52,211,153,0.6)',
+            }}
+          />
+          <span
+            className="text-[10px] uppercase tracking-wider font-display font-bold flex-shrink-0"
+            style={{ color: '#34d399' }}
+          >
+            Mining Active
+          </span>
+          {blockHeight !== null && (
+            <span
+              className="text-[10px] text-white/40 truncate"
+              style={{ fontFamily: '"JetBrains Mono", monospace' }}
+            >
+              · block #{blockHeight.toLocaleString('en-US')}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-end gap-1 flex-shrink-0" style={{ height: 16 }}>
+          {Array.from({ length: 14 }).map((_, i) => (
+            <span
+              key={i}
+              style={{
+                display: 'inline-block',
+                width: 3,
+                background: 'linear-gradient(180deg, #6ec6ff, #a78bfa)',
+                borderRadius: 1.5,
+                animation: 'hashingWaveform 0.9s ease-in-out infinite',
+                animationDelay: `${i * 0.07}s`,
+                willChange: 'height, opacity',
+              }}
+            />
+          ))}
+        </div>
+
+        <span
+          className="font-mono font-semibold text-sm flex-shrink-0"
+          style={{
+            color: '#6ec6ff',
+            fontFamily: '"JetBrains Mono", monospace',
+          }}
+        >
+          {hashrateKhs.toFixed(1)} KH/s
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ── Found Blocks list (Bug 1) ─────────────────────────────────
 // Polls the Rust shell every 10s for the list of blocks this app
 // session's CPU/GPU miner has had accepted. Newest first. Empty until
@@ -1154,6 +1251,12 @@ function GpuMinerTab() {
               </div>
             </motion.div>
           )}
+
+          <HashCandidateStream
+            active={!!status?.running}
+            hashrateKhs={status?.hashrate_khs ?? 0}
+            blockHeight={netInfo?.height != null ? netInfo.height + 1 : null}
+          />
 
           <AnimatePresence>
             {status?.running && history.length > 1 ? (

@@ -5623,6 +5623,16 @@ async fn start_miner(
     miner_env.insert("IRIUM_MINER_ADDRESS".to_string(), address.clone());
     miner_env.insert("IRIUM_RPC_URL".to_string(), rpc_url.clone());
     miner_env.insert("IRIUM_NODE_RPC".to_string(), rpc_url.clone());
+    // FIX 2 (IRIUM_RPC_TOKEN): the miner sidecar's fetch_template path
+    // hits iriumd's auth-gated /miner/template endpoint. Without this
+    // env var iriumd returns 401 and the miner retries forever at 0
+    // KH/s. snapshot_gui_rpc_bearer respects FIX 3 remote-node mode
+    // (user-supplied remote token) and falls back to the auto-minted
+    // local RPC_TOKEN in default local mode.
+    miner_env.insert(
+        "IRIUM_RPC_TOKEN".to_string(),
+        snapshot_gui_rpc_bearer(&state.rpc_token_override).unwrap_or_default(),
+    );
 
     let cmd = Command::new_sidecar("irium-miner")
         .map_err(|e| format!("irium-miner not found: {}", e))?
@@ -6059,8 +6069,19 @@ async fn start_gpu_miner(
     args.push("--batch".into());
     args.push(batch.to_string());
 
+    // FIX 2 (IRIUM_RPC_TOKEN): same Bearer-auth requirement as the CPU
+    // miner — irium-miner-gpu's fetch_template path 401s without this
+    // env var, which manifests in the GUI as "GPU Active, 0.0 KH/s"
+    // because the sidecar never receives a job from iriumd.
+    let mut gpu_env = HashMap::new();
+    gpu_env.insert(
+        "IRIUM_RPC_TOKEN".to_string(),
+        snapshot_gui_rpc_bearer(&state.rpc_token_override).unwrap_or_default(),
+    );
+
     let (mut rx, child) = Command::new_sidecar("irium-miner-gpu")
         .map_err(|e| format!("irium-miner-gpu not bundled: {}", e))?
+        .envs(gpu_env)
         .args(&args)
         .current_dir(irium_dir)
         .spawn()
@@ -6197,7 +6218,8 @@ async fn get_gpu_miner_status(state: State<'_, AppState>) -> Result<GpuMinerStat
     // stale numbers from a previous GPU session.
     let kind = *state.miner_kind.lock().map_err(lock_err)?;
     let running = kind == Some(MinerKind::Gpu);
-    let hashrate_khs = if running { *state.miner_hashrate.lock().map_err(lock_err)? } else { 0.0 };
+    let raw_hashrate = *state.miner_hashrate.lock().map_err(lock_err)?;
+    let hashrate_khs = if running { raw_hashrate } else { 0.0 };
     let blocks_found = *state.blocks_found.lock().map_err(lock_err)?;
     let temperature_c = if running { *state.gpu_temperature_c.lock().map_err(lock_err)? } else { None };
     let power_w = if running { *state.gpu_power_w.lock().map_err(lock_err)? } else { None };
@@ -6259,7 +6281,15 @@ async fn stratum_connect(
     let home_dir = dirs::home_dir().unwrap_or_default();
     let irium_dir = home_dir.join(".irium");
 
-    let build_env = |pool: &str, user: &str, pass: &str, addr: &str, rpc: &str| {
+    // FIX 2 (IRIUM_RPC_TOKEN): the irium-miner sidecar talks to iriumd
+    // for the solo-fallback template fetch and reward lookups even in
+    // pool mode. Capture an Arc clone of the override Mutex so the
+    // closure (called both for the initial spawn AND the reconnect
+    // path inside the spawn-monitor task) can re-resolve the live
+    // bearer token on every call — honoring a settings edit between
+    // initial connect and reconnect.
+    let rpc_token_arc = Arc::clone(&state.rpc_token_override);
+    let build_env = move |pool: &str, user: &str, pass: &str, addr: &str, rpc: &str| {
         let mut env = HashMap::new();
         env.insert("IRIUM_MINER_ADDRESS".to_string(), addr.to_string());
         env.insert("IRIUM_RPC_URL".to_string(), rpc.to_string());
@@ -6267,6 +6297,10 @@ async fn stratum_connect(
         env.insert("IRIUM_STRATUM_URL".to_string(), pool.to_string());
         env.insert("IRIUM_STRATUM_USER".to_string(), user.to_string());
         env.insert("IRIUM_STRATUM_PASS".to_string(), pass.to_string());
+        env.insert(
+            "IRIUM_RPC_TOKEN".to_string(),
+            snapshot_gui_rpc_bearer(&rpc_token_arc).unwrap_or_default(),
+        );
         env
     };
 
@@ -8385,10 +8419,28 @@ async fn get_node_logs(state: State<'_, AppState>, lines: Option<usize>) -> Resu
 
 async fn ws_bridge_connect_and_run(app_handle: &tauri::AppHandle) -> Result<(), String> {
     use tokio_tungstenite::{connect_async, tungstenite::Message};
+    use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+    use tokio_tungstenite::tungstenite::http::HeaderValue;
     use futures_util::{StreamExt, SinkExt};
 
     let url = "ws://127.0.0.1:38300/ws";
-    let (ws_stream, _resp) = connect_async(url).await.map_err(|e| e.to_string())?;
+    // FIX 2 (IRIUM_RPC_TOKEN): iriumd's /ws endpoint is gated by
+    // require_rpc_auth — without an Authorization header the upgrade
+    // returns 401 and the loop in spawn_ws_bridge logs a 401 every 5s.
+    // The URL is hardcoded localhost, so we always use the local
+    // auto-minted token (RPC_TOKEN), not the override — the override
+    // is the *remote* node's token in FIX 3 remote mode and would not
+    // authenticate against the local iriumd. If RPC_TOKEN isn't set
+    // yet (very early startup) or HeaderValue rejects the formatted
+    // value, the request goes out unauthenticated and reverts to the
+    // current 401-loop behavior — no regression.
+    let mut request = url.into_client_request().map_err(|e| e.to_string())?;
+    if let Some(token) = RPC_TOKEN.get() {
+        if let Ok(val) = HeaderValue::from_str(&format!("Bearer {}", token)) {
+            request.headers_mut().insert("Authorization", val);
+        }
+    }
+    let (ws_stream, _resp) = connect_async(request).await.map_err(|e| e.to_string())?;
     let (mut write, mut read) = ws_stream.split();
 
     let sub = serde_json::json!({

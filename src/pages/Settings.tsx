@@ -48,6 +48,9 @@ const THEMES: { id: Theme; label: string; preview: string }[] = [
   { id: "obsidian", label: "Obsidian", preview: "linear-gradient(135deg, #6B7280 0%, #C8D0DB 50%, #FFFFFF 100%)" },
   { id: "aurora",   label: "Aurora",   preview: "linear-gradient(135deg, #047857 0%, #10B981 50%, #5EEAD4 100%)" },
   { id: "nebula",   label: "Nebula",   preview: "linear-gradient(135deg, #7E22CE 0%, #C084FC 50%, #F0ABFC 100%)" },
+  { id: "solar",    label: "Solar",    preview: "linear-gradient(135deg, #B45309 0%, #FB923C 50%, #FBBF24 100%)" },
+  { id: "ocean",    label: "Ocean",    preview: "linear-gradient(135deg, #0E7490 0%, #22D3EE 50%, #67E8F9 100%)" },
+  { id: "rose",     label: "Rose",     preview: "linear-gradient(135deg, #BE185D 0%, #F472B6 50%, #C084FC 100%)" },
 ];
 
 // ─── Stagger variants ────────────────────────────────────────────────────────

@@ -976,7 +976,7 @@ export interface AgreementStoreListResult {
 // APP STATE
 // ============================================================
 
-export type Theme = "midnight" | "obsidian" | "aurora" | "nebula";
+export type Theme = "midnight" | "obsidian" | "aurora" | "nebula" | "solar" | "ocean" | "rose";
 
 export interface AppSettings {
   rpc_url: string;
