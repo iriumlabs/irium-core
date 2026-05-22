@@ -108,6 +108,38 @@ jobs:
             ocl-icd-opencl-dev \
             opencl-headers
 
+      # Windows runners do not ship OpenCL.lib by default — without it the
+      # `gpu` cargo feature fails at the link step with LNK1181, the GPU
+      # miner build is skipped by scripts/build-irium-node.js, and the
+      # bundled irium-miner-gpu-x86_64-pc-windows-msvc.exe stays stale
+      # from an earlier CI run. AMD publishes a 5 MB standalone import-
+      # library bundle (OCL_SDK_Light) that contains the headers + a
+      # static-import OpenCL.lib pointing at the system's OpenCL ICD
+      # loader (OpenCL.dll already present in System32 on every Windows).
+      # Extract it to the default search path that ocl-sys/cl-sys's
+      # build.rs probes — no env vars needed downstream.
+      - name: Install OpenCL SDK (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $url = 'https://github.com/GPUOpen-LibrariesAndSDKs/OCL-SDK/releases/download/1.0/lightOCLSDK.zip'
+          $zip = Join-Path $env:RUNNER_TEMP 'ocl-sdk.zip'
+          $sdkRoot = 'C:\Program Files (x86)\OCL_SDK_Light'
+          Write-Host "Downloading OCL_SDK_Light from $url"
+          Invoke-WebRequest -Uri $url -OutFile $zip
+          New-Item -ItemType Directory -Path $sdkRoot -Force | Out-Null
+          Write-Host "Extracting to $sdkRoot"
+          Expand-Archive -Path $zip -DestinationPath $sdkRoot -Force
+          $opencl = Join-Path $sdkRoot 'lib\x86_64\OpenCL.lib'
+          if (Test-Path $opencl) {
+            $size = (Get-Item $opencl).Length
+            Write-Host "OpenCL.lib verified at $opencl ($size bytes)"
+          } else {
+            Write-Host "OpenCL.lib NOT found after extraction. Contents:"
+            Get-ChildItem -Path $sdkRoot -Recurse -File | Select-Object FullName
+            throw "OCL_SDK_Light extraction did not produce OpenCL.lib at the expected path"
+          }
+
       # Cache both the GUI crate and the irium node crate independently so
       # incremental compilation works across runs.
       # cache-bin: false — dtolnay/rust-toolchain installs cargo into
