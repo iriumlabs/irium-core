@@ -189,7 +189,7 @@ pub struct SendResult {
     pub fee: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Transaction {
     pub txid: String,
     pub amount: i64,
@@ -208,6 +208,14 @@ pub struct Transaction {
     /// with a Pickaxe icon + "Mining Reward" label instead of a regular
     /// Receive.
     pub is_coinbase: Option<bool>,
+    /// FIX #126: True for entries originating from the wallet's local
+    /// pending-tx cache (populated by `wallet_send` immediately on
+    /// broadcast, before confirmation). The frontend renders a
+    /// "Pending — awaiting confirmation" badge in amber when this is
+    /// true; cleared automatically by `wallet_transactions` once the
+    /// txid appears in confirmed `/rpc/history` results.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pending: Option<bool>,
 }
 
 // ============================================================

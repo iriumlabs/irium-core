@@ -145,6 +145,12 @@ export interface Transaction {
   // Whether this is a coinbase (mining reward) tx. Surfaced from the RPC
   // so the row can render with a Pickaxe icon + "Mining Reward" label.
   is_coinbase?: boolean;
+  // FIX #126: true for entries surfaced from the wallet's local
+  // pending-tx cache (broadcast but not yet mined). The list view
+  // renders them with an amber "Pending — awaiting confirmation"
+  // badge. Cleared automatically by the Tauri side once the txid
+  // appears in confirmed /rpc/history.
+  pending?: boolean;
 }
 
 /**

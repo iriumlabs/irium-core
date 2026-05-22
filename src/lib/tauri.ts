@@ -113,6 +113,14 @@ export const wallet = {
   transactions: (limit?: number, address?: string) =>
     safeInvoke<Transaction[]>('wallet_transactions', { limit, address }),
 
+  // FIX #126: pending-only view of locally-broadcast outgoing txs.
+  // `transactions()` above already inline-merges these as the first
+  // entries with pending=true, so most callers do not need this
+  // direct accessor; it is exposed for a "X pending" badge or a
+  // dedicated pending-only modal.
+  pendingTransactions: (address?: string) =>
+    safeInvoke<Transaction[]>('wallet_pending_transactions', { address }),
+
   setPath: (path: string) =>
     safeInvoke<boolean>('wallet_set_path', { path }),
 

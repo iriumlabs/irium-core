@@ -63,6 +63,18 @@ struct AppState {
     // event handler reads this — false → emit a "miner-exited-unexpectedly"
     // Tauri event so the GUI can offer a Restart Miner banner.
     miner_user_initiated_stop: Arc<Mutex<bool>>,
+    // FIX #126: in-memory pending-tx cache keyed by txid. Populated by
+    // wallet_send immediately after broadcast, before iriumd has
+    // mined the tx into a block. Surfaced through
+    // wallet_pending_transactions and inline-merged into
+    // wallet_transactions so the UI shows the outgoing tx as
+    // "Pending - awaiting confirmation" the instant the user clicks
+    // Send. Culled lazily inside wallet_transactions when the txid
+    // shows up in confirmed /rpc/history results. Lost on app
+    // restart - acceptable since the user's broadcasting wallet
+    // re-populates by simply repeating the send (or just waits for
+    // confirmation if iriumd already accepted it).
+    pending_txs: Arc<Mutex<HashMap<String, Transaction>>>,
 }
 
 impl AppState {
@@ -96,6 +108,7 @@ impl AppState {
             stratum_shares_accepted: Arc::new(Mutex::new(0)),
             stratum_shares_rejected: Arc::new(Mutex::new(0)),
             miner_user_initiated_stop: Arc::new(Mutex::new(false)),
+            pending_txs: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 }
@@ -2248,7 +2261,57 @@ async fn wallet_send(
     if txid.len() != 64 || !txid.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(format!("wallet returned invalid txid: {}", txid));
     }
+    // FIX #126: capture this outgoing tx in the pending-tx cache so the
+    // GUI can render it as Pending immediately, before iriumd mines it.
+    // wallet_transactions will cull this entry on the next poll once
+    // the txid appears in confirmed /rpc/history. amount is negated
+    // (outgoing convention used by /rpc/history) and fee carried through.
+    {
+        let mut cache = state.pending_txs.lock().map_err(lock_err)?;
+        cache.insert(
+            txid.clone(),
+            Transaction {
+                txid: txid.clone(),
+                amount: -(amount_sats as i64),
+                fee: fee_sats,
+                confirmations: 0,
+                height: None,
+                timestamp: Some(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_secs() as i64)
+                        .unwrap_or(0),
+                ),
+                direction: "sent".to_string(),
+                address: Some(to.clone()),
+                is_coinbase: Some(false),
+                pending: Some(true),
+            },
+        );
+    }
     Ok(SendResult { txid, amount: amount_sats, fee: fee_sats.unwrap_or(0) })
+}
+
+/// FIX #126: return all pending entries this wallet has broadcast in
+/// the current session. The cache is in-memory only - app restart
+/// clears it (in which case the GUI just won't show the Pending badge
+/// until the tx confirms via /rpc/history). Sorted newest-first.
+#[tauri::command]
+async fn wallet_pending_transactions(
+    state: State<'_, AppState>,
+    address: Option<String>,
+) -> Result<Vec<Transaction>, String> {
+    let cache = state.pending_txs.lock().map_err(lock_err)?;
+    let mut out: Vec<Transaction> = cache
+        .values()
+        .filter(|tx| match address.as_deref() {
+            Some(addr) => tx.address.as_deref() == Some(addr),
+            None => true,
+        })
+        .cloned()
+        .collect();
+    out.sort_by(|a, b| b.timestamp.unwrap_or(0).cmp(&a.timestamp.unwrap_or(0)));
+    Ok(out)
 }
 
 // wallet_transactions: queries /rpc/history for each wallet address
@@ -2320,11 +2383,34 @@ async fn wallet_transactions(
                         direction: direction.to_string(),
                         address: Some(addr.clone()),
                         is_coinbase: Some(tx.is_coinbase),
+                        pending: None,
                     });
                 }
             }
         }
     }
+
+    // FIX #126: cull pending-tx cache entries that now appear as confirmed
+    // history entries, then merge any remaining pending entries onto the
+    // front of the list. The cull happens here (not in wallet_send) so
+    // the cache stays clean even if the GUI never explicitly polls
+    // wallet_pending_transactions.
+    let pending_to_prepend: Vec<Transaction> = {
+        let mut cache = state.pending_txs.lock().map_err(lock_err)?;
+        let confirmed_txids: std::collections::HashSet<&str> =
+            all_txs.iter().map(|t| t.txid.as_str()).collect();
+        // Cull confirmed entries from the cache.
+        cache.retain(|txid, _| !confirmed_txids.contains(txid.as_str()));
+        // Snapshot remaining pending entries (filtered by --address when set).
+        cache
+            .values()
+            .filter(|tx| match address_filter_for_pending(&addresses) {
+                Some(addr) => tx.address.as_deref() == Some(addr),
+                None => true,
+            })
+            .cloned()
+            .collect()
+    };
 
     // L-6 fix: sort by descending block height (then unconfirmed last) BEFORE
     // truncating to `limit`. Previously `truncate(n)` returned the first N
@@ -2336,11 +2422,29 @@ async fn wallet_transactions(
         let ah = a.height.unwrap_or(u64::MAX);
         bh.cmp(&ah)
     });
+
+    // FIX #126: prepend pending entries so they show at the top of the
+    // list. They have height=None so the height sort above would push
+    // them last; prepending here gives them the correct visual priority.
+    let mut merged: Vec<Transaction> = pending_to_prepend;
+    merged.extend(all_txs);
     if let Some(n) = limit {
-        all_txs.truncate(n as usize);
+        merged.truncate(n as usize);
     }
 
-    Ok(all_txs)
+    Ok(merged)
+}
+
+/// FIX #126 helper: when wallet_transactions was called with an explicit
+/// address argument, restrict the prepended pending entries to ones
+/// matching that address. When called without (the all-addresses
+/// branch), return None so every pending entry passes the filter.
+fn address_filter_for_pending(addresses: &[String]) -> Option<&str> {
+    if addresses.len() == 1 {
+        Some(addresses[0].as_str())
+    } else {
+        None
+    }
 }
 
 #[tauri::command]
@@ -7503,6 +7607,7 @@ fn main() {
             wallet_list_addresses,
             wallet_send,
             wallet_transactions,
+            wallet_pending_transactions,
             wallet_set_path,
             list_wallet_files,
             get_wallet_info,
