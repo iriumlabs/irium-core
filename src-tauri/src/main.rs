@@ -414,6 +414,37 @@ fn lock_err(e: impl std::fmt::Display) -> String {
     format!("Lock error: {}", e)
 }
 
+// Build a std::process::Command that never allocates a console on
+// Windows. The GUI is linked as /SUBSYSTEM:WINDOWS so it has no
+// attached console; spawning a console-subsystem child (taskkill,
+// git, where, …) via the bare std::process::Command makes Windows
+// allocate a new console for the child, which flashes a black CMD
+// window for ~100ms even when the child exits immediately. Stop
+// Node used to flash four such windows in a row.
+//
+// Setting CREATE_NO_WINDOW (0x08000000) on creation_flags tells the
+// kernel "do not allocate a console for this child" — output still
+// streams through inherited handles if any, but no visible window
+// is ever created. Tauri's Command::new_sidecar() applies the same
+// flag internally, which is why iriumd / irium-wallet / irium-miner
+// start silently while the manual taskkill / git / where spawns
+// below previously did not.
+//
+// On non-Windows targets this is identical to std::process::Command::new.
+fn silent_command(program: &str) -> std::process::Command {
+    let cmd = std::process::Command::new(program);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        let mut cmd = cmd;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        return cmd;
+    }
+    #[cfg(not(target_os = "windows"))]
+    cmd
+}
+
 #[tauri::command]
 fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
@@ -2045,7 +2076,9 @@ async fn start_node(
         }
         Err(_) => {
             // Sidecar binary not in src-tauri/binaries/ — try iriumd from system PATH.
-            let mut sys_cmd = std::process::Command::new("iriumd");
+            // silent_command applies CREATE_NO_WINDOW on Windows so no console
+            // flashes for the iriumd child even on the fallback path.
+            let mut sys_cmd = silent_command("iriumd");
             for (k, v) in &node_env {
                 sys_cmd.env(k, v);
             }
@@ -2053,14 +2086,6 @@ async fn start_node(
                 sys_cmd.arg(arg);
             }
             sys_cmd.current_dir(&irium_dir);
-
-            // Suppress the console window on Windows so it doesn't flash open.
-            #[cfg(target_os = "windows")]
-            {
-                use std::os::windows::process::CommandExt;
-                const CREATE_NO_WINDOW: u32 = 0x08000000;
-                sys_cmd.creation_flags(CREATE_NO_WINDOW);
-            }
 
             match sys_cmd.spawn() {
                 Ok(child) => {
@@ -2105,28 +2130,31 @@ async fn stop_node(state: State<'_, AppState>) -> Result<bool, String> {
             let _ = child.kill();
         }
     }
-    // Also kill any externally-started iriumd process (handles nodes started outside the GUI)
+    // Also kill any externally-started iriumd process (handles nodes started outside the GUI).
+    // silent_command applies CREATE_NO_WINDOW on Windows so taskkill does not
+    // flash a CMD window per invocation — previously this loop produced four
+    // visible flashes in a row whenever the user clicked Stop Node.
     #[cfg(target_os = "windows")]
     {
-        let _ = std::process::Command::new("taskkill")
+        let _ = silent_command("taskkill")
             .args(["/F", "/T", "/IM", "iriumd-x86_64-pc-windows-msvc.exe"])
             .output();
-        let _ = std::process::Command::new("taskkill")
+        let _ = silent_command("taskkill")
             .args(["/F", "/T", "/IM", "iriumd.exe"])
             .output();
-        let _ = std::process::Command::new("taskkill")
+        let _ = silent_command("taskkill")
             .args(["/F", "/T", "/IM", "irium-explorer-x86_64-pc-windows-msvc.exe"])
             .output();
-        let _ = std::process::Command::new("taskkill")
+        let _ = silent_command("taskkill")
             .args(["/F", "/T", "/IM", "irium-explorer.exe"])
             .output();
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let _ = std::process::Command::new("pkill")
+        let _ = silent_command("pkill")
             .args(["-9", "-f", "iriumd"])
             .output();
-        let _ = std::process::Command::new("pkill")
+        let _ = silent_command("pkill")
             .args(["-9", "-f", "irium-explorer"])
             .output();
     }
@@ -2146,16 +2174,16 @@ async fn clear_node_state(state: State<'_, AppState>) -> Result<bool, String> {
     }
     #[cfg(target_os = "windows")]
     {
-        let _ = std::process::Command::new("taskkill")
+        let _ = silent_command("taskkill")
             .args(["/F", "/T", "/IM", "iriumd-x86_64-pc-windows-msvc.exe"])
             .output();
-        let _ = std::process::Command::new("taskkill")
+        let _ = silent_command("taskkill")
             .args(["/F", "/T", "/IM", "iriumd.exe"])
             .output();
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let _ = std::process::Command::new("pkill").args(["-9", "-f", "iriumd"]).output();
+        let _ = silent_command("pkill").args(["-9", "-f", "iriumd"]).output();
     }
 
     // Give the process a moment to fully exit before we delete files it may have open.
@@ -7133,8 +7161,10 @@ async fn update_node_source() -> Result<NodeUpdatePullResult, String> {
         );
     }
 
-    // Pull the submodule to the latest remote commit.
-    let out = std::process::Command::new("git")
+    // Pull the submodule to the latest remote commit. silent_command keeps
+    // git's stdout/stderr piped through inherited handles but suppresses the
+    // Windows console allocation that would otherwise flash a CMD window.
+    let out = silent_command("git")
         .args(["submodule", "update", "--remote", "--merge", "irium-source"])
         .current_dir(project_root)
         .output()
@@ -7146,7 +7176,7 @@ async fn update_node_source() -> Result<NodeUpdatePullResult, String> {
     }
 
     // Read the new HEAD commit.
-    let head_out = std::process::Command::new("git")
+    let head_out = silent_command("git")
         .args(["rev-parse", "HEAD"])
         .current_dir(&submodule_dir)
         .output()
@@ -8197,7 +8227,7 @@ async fn run_diagnostics(state: State<'_, AppState>) -> Result<DiagnosticsResult
         // Fallback: check system PATH
         let in_path = if !has_sidecar {
             let check_cmd = if cfg!(target_os = "windows") { "where" } else { "which" };
-            std::process::Command::new(check_cmd)
+            silent_command(check_cmd)
                 .arg(name)
                 .output()
                 .map(|o| o.status.success())
@@ -8620,7 +8650,7 @@ fn main() {
                     "irium-miner-gpu-x86_64-pc-windows-msvc.exe",
                     "irium-explorer-x86_64-pc-windows-msvc.exe",
                 ] {
-                    let _ = std::process::Command::new("taskkill")
+                    let _ = silent_command("taskkill")
                         .args(["/F", "/T", "/IM", name])
                         .output();
                 }
