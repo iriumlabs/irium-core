@@ -163,6 +163,11 @@ export default function Settings() {
   const [testingRpc, setTestingRpc] = useState(false);
   const [rpcOk, setRpcOk] = useState<boolean | null>(null);
   const [rpcError, setRpcError] = useState<string | null>(null);
+  // FIX 2 / FIX 3: masked RPC token + remote-connection test state.
+  const [showRpcToken, setShowRpcToken] = useState(false);
+  const [testingRemote, setTestingRemote] = useState(false);
+  const [remoteOk, setRemoteOk] = useState<boolean | null>(null);
+  const [remoteError, setRemoteError] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetInput, setResetInput] = useState('');
   const confirmResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -265,7 +270,7 @@ export default function Settings() {
     });
   }, [setUpdateInfo, t]);
 
-  const TEXT_SETTING_KEYS: ReadonlyArray<string> = ['rpc_url', 'wallet_path', 'data_dir', 'external_ip'];
+  const TEXT_SETTING_KEYS: ReadonlyArray<string> = ['rpc_url', 'wallet_path', 'data_dir', 'external_ip', 'rpc_token'];
 
   const patch = <K extends keyof typeof local>(key: K, value: (typeof local)[K]) => {
     setLocal((prev) => ({ ...prev, [key]: value }));
@@ -828,6 +833,120 @@ export default function Settings() {
                 checked={local.auto_start_node}
                 onChange={(v) => patch("auto_start_node", v)}
               />
+            </FieldRow>
+
+            {/* FIX 3 (Remote node): Local vs Remote mode toggle. In
+                Remote mode the bundled iriumd sidecar is not spawned;
+                the GUI talks directly to whatever rpc_url points at.
+                The bundled CPU/GPU miners stay enabled in Remote
+                mode — they connect to the configured rpc_url too. */}
+            <FieldRow
+              label={t('settings.fields.node_mode')}
+              description={t('settings.fields.node_mode_description')}
+            >
+              <select
+                value={local.node_mode ?? "local"}
+                onChange={(e) => patch("node_mode", e.target.value as "local" | "remote")}
+                className="input w-full text-sm"
+              >
+                <option value="local">{t('settings.fields.node_mode_local')}</option>
+                <option value="remote">{t('settings.fields.node_mode_remote')}</option>
+              </select>
+            </FieldRow>
+
+            {/* FIX 2 (IRIUM_RPC_TOKEN): masked Bearer token for the
+                GUI's outbound RPC calls. Optional in Local mode (auto-
+                minted token works), required in Remote mode pointing
+                at an authenticated node. */}
+            <FieldRow
+              label={t('settings.fields.rpc_token')}
+              description={
+                local.node_mode === "remote"
+                  ? t('settings.fields.rpc_token_description_remote')
+                  : t('settings.fields.rpc_token_description_local')
+              }
+            >
+              <div className="flex gap-2">
+                <input
+                  type={showRpcToken ? "text" : "password"}
+                  value={local.rpc_token ?? ""}
+                  onChange={(e) => patch("rpc_token", e.target.value || undefined)}
+                  placeholder={t('settings.fields.rpc_token_placeholder')}
+                  className="input flex-1 font-mono text-sm"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowRpcToken((v) => !v)}
+                  className="btn-secondary px-3 py-2 text-xs flex items-center gap-1.5 shrink-0"
+                  aria-label={showRpcToken ? "Hide token" : "Show token"}
+                >
+                  {showRpcToken ? <EyeOff size={13} /> : <Eye size={13} />}
+                </button>
+                {/* FIX 3: explicit remote-connection probe so the user
+                    can confirm rpc_url + rpc_token are correct before
+                    flipping node_mode to "remote" and losing the
+                    bundled iriumd. 5-second timeout server-side. */}
+                {local.node_mode === "remote" && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setTestingRemote(true);
+                      setRemoteOk(null);
+                      setRemoteError(null);
+                      try {
+                        await rpc.testRemoteConnection(local.rpc_url, local.rpc_token);
+                        setRemoteOk(true);
+                      } catch (e) {
+                        setRemoteOk(false);
+                        setRemoteError(String(e));
+                      } finally {
+                        setTestingRemote(false);
+                      }
+                    }}
+                    disabled={testingRemote || !local.rpc_url}
+                    className="btn-secondary px-3 py-2 text-xs flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+                  >
+                    {testingRemote ? (
+                      <RefreshCw size={13} className="animate-spin" />
+                    ) : remoteOk === true ? (
+                      <CheckCircle size={13} className="text-emerald-400" />
+                    ) : remoteError ? (
+                      <AlertTriangle size={13} className="text-rose-400" />
+                    ) : (
+                      <Zap size={13} />
+                    )}
+                    {testingRemote
+                      ? t('settings.test_states.testing')
+                      : t('settings.fields.rpc_token_test_remote')}
+                  </button>
+                )}
+              </div>
+              <AnimatePresence>
+                {remoteOk === true && (
+                  <motion.p
+                    key="remote-ok"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    className="mt-1.5 text-xs text-emerald-400 flex items-center gap-1"
+                  >
+                    <CheckCircle size={12} /> {t('settings.fields.rpc_token_test_remote_ok')}
+                  </motion.p>
+                )}
+                {remoteError && (
+                  <motion.p
+                    key="remote-error"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    className="mt-1.5 text-xs text-rose-400 flex items-center gap-1"
+                  >
+                    <AlertTriangle size={12} /> {remoteError}
+                  </motion.p>
+                )}
+              </AnimatePresence>
             </FieldRow>
           </Section>
         </motion.div>

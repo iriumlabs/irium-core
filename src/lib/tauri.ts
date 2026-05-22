@@ -592,4 +592,13 @@ export const rpc = {
 
   setUrl: (url: string) =>
     safeInvoke<boolean>('rpc_set_url', { url }),
+
+  // FIX 3 (Remote node): probe a remote iriumd's /status with a 5s
+  // timeout and the supplied bearer token. Backend command resolves
+  // a successful 2xx response into Ok(true); anything else (timeout,
+  // 401, 5xx) bubbles up as Err so the Settings page can surface the
+  // exact reason. Used by the Test Remote button to confirm rpc_url
+  // + rpc_token are correct before flipping node_mode.
+  testRemoteConnection: (rpcUrl: string, rpcToken?: string) =>
+    safeInvoke<boolean>('test_remote_connection', { rpcUrl, rpcToken }),
 };

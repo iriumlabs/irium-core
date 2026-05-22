@@ -988,6 +988,17 @@ export interface AppSettings {
   network: "mainnet";
   external_ip?: string;
   theme: Theme;
+  // FIX 2 (IRIUM_RPC_TOKEN): user-supplied Bearer token for outbound
+  // GUI RPC calls. When unset, the GUI falls back to the auto-minted
+  // local token (which is fine for talking to the bundled iriumd).
+  // Required when pointing the GUI at a remote iriumd whose token is
+  // not on local disk — see node_mode.
+  rpc_token?: string;
+  // FIX 3 (Remote node): "local" spawns the bundled iriumd sidecar
+  // as before. "remote" skips the sidecar entirely and points GUI
+  // RPC traffic at rpc_url (which the user sets to the remote node's
+  // RPC endpoint). Default "local".
+  node_mode?: "local" | "remote";
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {

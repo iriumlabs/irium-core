@@ -87,6 +87,19 @@ struct AppState {
     // re-populates by simply repeating the send (or just waits for
     // confirmation if iriumd already accepted it).
     pending_txs: Arc<Mutex<HashMap<String, Transaction>>>,
+    // FIX 2 (IRIUM_RPC_TOKEN): user-supplied Bearer token. Hydrated
+    // from settings JSON on save/load. When Some, the GUI's reqwest
+    // calls use this in `Authorization: Bearer <token>`; when None,
+    // they fall back to the auto-minted local token (RPC_TOKEN). The
+    // local iriumd / wallet sidecars are spawned with the auto-minted
+    // token regardless — this Mutex only affects outbound GUI HTTP
+    // (so a user pointing at a remote iriumd in FIX 3 can present the
+    // remote node's token without breaking local handshake).
+    rpc_token_override: Arc<Mutex<Option<String>>>,
+    // FIX 3 (Remote node): "local" → spawn bundled iriumd as before;
+    // "remote" → skip sidecar spawn, talk to whatever rpc_url points
+    // at. Hydrated from settings JSON on save/load; default "local".
+    node_mode: Arc<Mutex<String>>,
 }
 
 impl AppState {
@@ -123,6 +136,8 @@ impl AppState {
             stratum_shares_rejected: Arc::new(Mutex::new(0)),
             miner_user_initiated_stop: Arc::new(Mutex::new(false)),
             pending_txs: Arc::new(Mutex::new(HashMap::new())),
+            rpc_token_override: Arc::new(Mutex::new(None)),
+            node_mode: Arc::new(Mutex::new("local".to_string())),
         }
     }
 }
@@ -145,6 +160,144 @@ impl AppState {
 // ============================================================
 
 static RPC_TOKEN: OnceLock<String> = OnceLock::new();
+
+// FIX 2 (IRIUM_RPC_TOKEN): builds the Bearer token the GUI presents
+// on outbound RPC calls. Precedence:
+//   1. user-supplied token from settings (rpc_token_override) — used
+//      when GUI talks to a remote iriumd whose token is not on local
+//      disk;
+//   2. auto-minted local token (RPC_TOKEN) — used by default in local
+//      mode so requests against the bundled iriumd work zero-config.
+// Returns None only when neither is available (very early startup
+// before init_rpc_token has run); call sites tolerate this — the
+// request goes out without an Authorization header and iriumd's
+// unauthenticated paths still respond.
+fn gui_rpc_bearer(state: &AppState) -> Option<String> {
+    if let Ok(g) = state.rpc_token_override.lock() {
+        if let Some(t) = g.clone() {
+            let trimmed = t.trim().to_string();
+            if !trimmed.is_empty() {
+                return Some(trimmed);
+            }
+        }
+    }
+    RPC_TOKEN.get().cloned()
+}
+
+// FIX 2 (IRIUM_RPC_TOKEN): drop-in replacement for
+// `reqwest::Client::new()` that attaches an `Authorization: Bearer`
+// default header so every privileged RPC endpoint (wallet balance,
+// send, fee_estimate, etc.) authenticates correctly — both against
+// the local sidecar and against a remote iriumd (FIX 3). Built per
+// call rather than cached because the token can change at runtime
+// when the user edits settings. Falls back to a plain Client if
+// header construction fails (the token must be ASCII; auto-minted
+// tokens are 32 hex chars, so the fallback is only for malformed
+// user-supplied tokens — we still want a working client in that
+// case so the GUI surfaces an HTTP error, not a Tauri error).
+fn rpc_client_with_token(token: Option<String>) -> reqwest::Client {
+    if let Some(t) = token {
+        let mut headers = reqwest::header::HeaderMap::new();
+        if let Ok(val) = reqwest::header::HeaderValue::from_str(&format!("Bearer {}", t)) {
+            headers.insert(reqwest::header::AUTHORIZATION, val);
+            if let Ok(client) = reqwest::Client::builder()
+                .default_headers(headers)
+                .build()
+            {
+                return client;
+            }
+        }
+    }
+    reqwest::Client::new()
+}
+
+fn rpc_client(state: &AppState) -> reqwest::Client {
+    rpc_client_with_token(gui_rpc_bearer(state))
+}
+
+// Same as rpc_client but with a caller-supplied builder so callers
+// that need timeouts (start_node's connectivity check, update probes,
+// etc.) can keep their tuning while still getting authentication.
+fn rpc_client_builder(state: &AppState) -> reqwest::ClientBuilder {
+    let mut builder = reqwest::Client::builder();
+    if let Some(token) = gui_rpc_bearer(state) {
+        let mut headers = reqwest::header::HeaderMap::new();
+        if let Ok(val) = reqwest::header::HeaderValue::from_str(&format!("Bearer {}", token)) {
+            headers.insert(reqwest::header::AUTHORIZATION, val);
+            builder = builder.default_headers(headers);
+        }
+    }
+    builder
+}
+
+// Snapshot the current bearer token from a long-lived Arc reference —
+// for spawned closures that can't carry `State<AppState>` across
+// .await points. The miner spawn loop in start_miner captures this
+// Arc so reward-fetching calls can re-resolve the live token on each
+// retry (the user could have edited the rpc_token in settings between
+// the block-found event and the +13s retry).
+fn snapshot_gui_rpc_bearer(
+    rpc_token_override: &Arc<Mutex<Option<String>>>,
+) -> Option<String> {
+    if let Ok(g) = rpc_token_override.lock() {
+        if let Some(t) = g.clone() {
+            let trimmed = t.trim().to_string();
+            if !trimmed.is_empty() {
+                return Some(trimmed);
+            }
+        }
+    }
+    RPC_TOKEN.get().cloned()
+}
+
+// FIX 2 + 3: extract rpc_token / node_mode / rpc_url out of the
+// opaque settings JSON the frontend writes, and mirror them into
+// AppState. Called from load_settings on launch + save_settings on
+// every user save so AppState always reflects the current settings.
+fn hydrate_settings_into_state(state: &AppState, settings_json: &str) {
+    let parsed: serde_json::Value = match serde_json::from_str(settings_json) {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+    if let Some(t) = parsed.get("rpc_token").and_then(|v| v.as_str()) {
+        let trimmed = t.trim();
+        if let Ok(mut g) = state.rpc_token_override.lock() {
+            *g = if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            };
+        }
+    } else if let Ok(mut g) = state.rpc_token_override.lock() {
+        *g = None;
+    }
+    if let Some(m) = parsed.get("node_mode").and_then(|v| v.as_str()) {
+        if m == "remote" || m == "local" {
+            if let Ok(mut g) = state.node_mode.lock() {
+                *g = m.to_string();
+            }
+        }
+    }
+    // FIX 3: in remote mode the rpc_url from settings overrides the
+    // default 127.0.0.1:38300. In local mode start_node writes its
+    // own rpc_url so we leave whatever's there.
+    let mode = state
+        .node_mode
+        .lock()
+        .ok()
+        .map(|g| g.clone())
+        .unwrap_or_else(|| "local".to_string());
+    if mode == "remote" {
+        if let Some(u) = parsed.get("rpc_url").and_then(|v| v.as_str()) {
+            let trimmed = u.trim();
+            if !trimmed.is_empty() {
+                if let Ok(mut g) = state.rpc_url.lock() {
+                    *g = trimmed.to_string();
+                }
+            }
+        }
+    }
+}
 
 fn init_rpc_token(app_data_dir: &Path) -> String {
     let token_path = app_data_dir.join("rpc_token.txt");
@@ -333,8 +486,8 @@ fn find_unique_wallet_path() -> String {
     irium_dir.join(format!("wallet-{}.json", ts)).to_string_lossy().to_string()
 }
 
-async fn get_rpc_info(rpc_url: &str) -> Result<RpcInfo, String> {
-    let client = reqwest::Client::new();
+async fn get_rpc_info(state: &AppState, rpc_url: &str) -> Result<RpcInfo, String> {
+    let client = rpc_client(state);
     let resp = client
         .get(format!("{}/status", rpc_url))
         .timeout(Duration::from_secs(3))
@@ -344,8 +497,8 @@ async fn get_rpc_info(rpc_url: &str) -> Result<RpcInfo, String> {
     resp.json::<RpcInfo>().await.map_err(|e| e.to_string())
 }
 
-async fn get_current_height(rpc_url: &str) -> u64 {
-    get_rpc_info(rpc_url).await
+async fn get_current_height(state: &AppState, rpc_url: &str) -> u64 {
+    get_rpc_info(state, rpc_url).await
         .ok()
         .and_then(|i| i.height)
         .unwrap_or(0)
@@ -1427,7 +1580,7 @@ async fn check_port_open(state: State<'_, AppState>) -> Result<PortCheckResult, 
     // here are non-fatal — we fall back to 0 and let the UPnP signal
     // decide, which mirrors how get_node_metrics handles offline nodes.
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let mut inbound_count: u64 = 0;
     if let Ok(resp) = client
         .get(format!("{}/metrics", rpc_url))
@@ -1468,8 +1621,40 @@ async fn start_node(
 ) -> Result<NodeStartResult, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
+    // FIX 3 (Remote node): when settings.node_mode == "remote" the
+    // user is pointing the GUI at an iriumd they manage themselves
+    // (VPS, dedicated rig, neighbour's node). Spawning the bundled
+    // sidecar would compete for the data directory and create a
+    // duplicate node; instead we just confirm the remote is reachable
+    // and report success. UPnP is also skipped because port mapping
+    // for the *remote* node is the remote operator's problem. The
+    // bundled CPU/GPU miners stay available — they connect via
+    // rpc_url like any other client.
+    let node_mode = state
+        .node_mode
+        .lock()
+        .map(|g| g.clone())
+        .unwrap_or_else(|_| "local".to_string());
+    if node_mode == "remote" {
+        if get_rpc_info(&state, &rpc_url).await.is_ok() {
+            return Ok(NodeStartResult {
+                success: true,
+                message: format!("Connected to remote node at {}", rpc_url),
+                pid: None,
+            });
+        }
+        return Ok(NodeStartResult {
+            success: false,
+            message: format!(
+                "Remote node at {} is unreachable. Confirm the URL and RPC token in Settings.",
+                rpc_url
+            ),
+            pid: None,
+        });
+    }
+
     // If RPC is already reachable the node is running — don't spawn a second instance.
-    if get_rpc_info(&rpc_url).await.is_ok() {
+    if get_rpc_info(&state, &rpc_url).await.is_ok() {
         return Ok(NodeStartResult {
             success: true,
             message: "Node is already running".to_string(),
@@ -2390,7 +2575,7 @@ async fn check_binaries() -> Result<BinaryCheckResult, String> {
 #[tauri::command]
 async fn get_node_metrics(state: State<'_, AppState>) -> Result<NodeMetrics, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let resp = match client
         .get(format!("{}/metrics", rpc_url))
         .timeout(Duration::from_secs(3))
@@ -2439,7 +2624,7 @@ async fn get_node_metrics(state: State<'_, AppState>) -> Result<NodeMetrics, Str
 async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    match get_rpc_info(&rpc_url).await {
+    match get_rpc_info(&state, &rpc_url).await {
         Ok(info) => {
             let tip = info.best_header_tip.as_ref()
                 .map(|t| t.hash.clone())
@@ -2450,7 +2635,7 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
             // Query /peers to get heights reported by each connected peer.
             // This gives the true network tip, not just what iriumd has locally committed.
             let peer_max_height: u64 = {
-                let client = reqwest::Client::new();
+                let client = rpc_client(&state);
                 match client
                     .get(format!("{}/peers", rpc_url))
                     .timeout(Duration::from_secs(3))
@@ -2573,7 +2758,7 @@ async fn wallet_get_balance(state: State<'_, AppState>) -> Result<WalletBalance,
         return Ok(WalletBalance { confirmed: 0, unconfirmed: 0, total: 0 });
     }
 
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let mut total: u64 = 0;
     for addr in &addresses {
         let url = format!("{}/rpc/balance?address={}", rpc_url, addr);
@@ -2622,7 +2807,7 @@ async fn wallet_list_addresses(state: State<'_, AppState>) -> Result<Vec<Address
         .filter(|l| !l.is_empty())
         .collect();
 
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let mut results = Vec::with_capacity(raw_addrs.len());
     for (idx, address) in raw_addrs.into_iter().enumerate() {
         let balance = fetch_address_balance_sats(&client, &rpc_url, &address).await;
@@ -2769,7 +2954,7 @@ async fn wallet_transactions(
             .collect()
     };
 
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let mut all_txs: Vec<Transaction> = Vec::new();
 
     for addr in &addresses {
@@ -3066,7 +3251,7 @@ async fn get_wallet_info(
         .filter(|l| !l.is_empty())
         .collect();
 
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let mut addresses: Vec<WalletInfoAddress> = Vec::with_capacity(raw_addrs.len());
     let mut sum: u64 = 0;
     let mut any_success = false;
@@ -3620,7 +3805,7 @@ async fn offer_create(
         Some(s) if !s.trim().is_empty() => s.trim().to_string(),
         _ => get_first_wallet_address(wallet_path.clone(), data_dir.clone()).await?,
     };
-    let height = get_current_height(&rpc_url).await;
+    let height = get_current_height(&state, &rpc_url).await;
     let timeout = height + params.timeout_blocks.unwrap_or(1000);
 
     // offer-create --seller <addr> --amount <irm> --payment-method <text> --timeout <height>
@@ -4040,7 +4225,7 @@ async fn agreement_create(
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let height = get_current_height(&rpc_url).await;
+    let height = get_current_height(&state, &rpc_url).await;
     let deadline_blocks = params.deadline_hours.unwrap_or(24) * BLOCKS_PER_HOUR;
     let timeout = height + deadline_blocks;
 
@@ -4596,7 +4781,7 @@ async fn settlement_create_otc(
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let height = get_current_height(&rpc_url).await;
+    let height = get_current_height(&state, &rpc_url).await;
     let deadline_blocks = params.deadline_hours.unwrap_or(24) * BLOCKS_PER_HOUR;
     let timeout = height + deadline_blocks;
     let amount_irm = format!("{:.8}", sats_to_irm(params.amount_sats));
@@ -4655,7 +4840,7 @@ async fn settlement_create_freelance(
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let height = get_current_height(&rpc_url).await;
+    let height = get_current_height(&state, &rpc_url).await;
     let deadline_blocks = params.deadline_hours.unwrap_or(48) * BLOCKS_PER_HOUR;
     let timeout = height + deadline_blocks;
     let ts = std::time::SystemTime::now()
@@ -4725,7 +4910,7 @@ async fn settlement_create_milestone(
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let height = get_current_height(&rpc_url).await;
+    let height = get_current_height(&state, &rpc_url).await;
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default().as_secs();
@@ -4811,7 +4996,7 @@ async fn settlement_create_deposit(
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let height = get_current_height(&rpc_url).await;
+    let height = get_current_height(&state, &rpc_url).await;
     let deadline_blocks = params.deadline_hours.unwrap_or(24) * BLOCKS_PER_HOUR;
     let timeout = height + deadline_blocks;
     let ts = std::time::SystemTime::now()
@@ -4860,7 +5045,7 @@ async fn settlement_create_merchant_delayed(
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let height = get_current_height(&rpc_url).await;
+    let height = get_current_height(&state, &rpc_url).await;
     let cooldown_blocks = params.cooldown_hours.unwrap_or(72) * BLOCKS_PER_HOUR;
     let deadline_blocks = params.deadline_hours.unwrap_or(336) * BLOCKS_PER_HOUR;
     let settlement_deadline = height + cooldown_blocks;
@@ -4936,7 +5121,7 @@ async fn settlement_create_contractor(
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let height = get_current_height(&rpc_url).await;
+    let height = get_current_height(&state, &rpc_url).await;
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default().as_secs();
@@ -5143,8 +5328,8 @@ struct BlockDetails {
 // Returns None only if the HTTP request itself fails — partial data is always
 // returned in Some(BlockDetails) so the caller can update whatever fields
 // iriumd did supply.
-async fn fetch_block_details(rpc_url: &str, height: u64) -> Option<BlockDetails> {
-    let client = reqwest::Client::new();
+async fn fetch_block_details(rpc_url: &str, token: Option<String>, height: u64) -> Option<BlockDetails> {
+    let client = rpc_client_with_token(token);
     let url = format!("{}/rpc/block?height={}", rpc_url.trim_end_matches('/'), height);
     let resp = client
         .get(&url)
@@ -5301,6 +5486,12 @@ async fn start_miner(
     let found_blocks_ref = Arc::clone(&state.found_blocks);
     let miner_addr_ref   = Arc::clone(&state.miner_address);
     let rpc_url_for_reward = rpc_url.clone();
+    // FIX 2 (IRIUM_RPC_TOKEN): capture the override Arc so the
+    // block-reward fetch can resolve the live bearer token on each
+    // retry — important if the user edits the rpc_token between the
+    // block-found event and the +13s retry, or in FIX 3 remote mode
+    // where the local auto-token would 401 against the remote node.
+    let rpc_token_ref_for_reward = Arc::clone(&state.rpc_token_override);
     // TASK 3 captures for the unexpected-exit notification.
     let app_for_event = app.clone();
     let user_initiated_ref = Arc::clone(&state.miner_user_initiated_stop);
@@ -5359,19 +5550,23 @@ async fn start_miner(
                 let fb_for_reward     = Arc::clone(&found_blocks_ref);
                 let addr_for_reward   = Arc::clone(&miner_addr_ref);
                 let rpc_for_reward    = rpc_url_for_reward.clone();
+                let tok_for_reward    = Arc::clone(&rpc_token_ref_for_reward);
                 tauri::async_runtime::spawn(async move {
                     let our = addr_for_reward.lock().ok().and_then(|g| g.clone());
-                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                    let tok = snapshot_gui_rpc_bearer(&tok_for_reward);
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, tok.clone(), height).await {
                         update_block_details(&fb_for_reward, height, details, our.as_deref());
                         return;
                     }
                     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                    let tok = snapshot_gui_rpc_bearer(&tok_for_reward);
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, tok.clone(), height).await {
                         update_block_details(&fb_for_reward, height, details, our.as_deref());
                         return;
                     }
                     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                    let tok = snapshot_gui_rpc_bearer(&tok_for_reward);
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, tok, height).await {
                         update_block_details(&fb_for_reward, height, details, our.as_deref());
                     }
                 });
@@ -5688,6 +5883,8 @@ async fn start_gpu_miner(
     let temp_ref = Arc::clone(&state.gpu_temperature_c);
     let power_ref = Arc::clone(&state.gpu_power_w);
     let rpc_url_for_reward = rpc_url.clone();
+    // FIX 2: snapshot Arc for bearer-token resolution inside the spawn loop.
+    let rpc_token_ref_for_reward = Arc::clone(&state.rpc_token_override);
     // TASK 3 captures for the unexpected-exit notification path.
     let app_for_event = app.clone();
     let user_initiated_ref = Arc::clone(&state.miner_user_initiated_stop);
@@ -5741,19 +5938,23 @@ async fn start_gpu_miner(
                 let fb_for_reward   = Arc::clone(&found_blocks_ref);
                 let addr_for_reward = Arc::clone(&miner_addr_ref);
                 let rpc_for_reward  = rpc_url_for_reward.clone();
+                let tok_for_reward  = Arc::clone(&rpc_token_ref_for_reward);
                 tauri::async_runtime::spawn(async move {
                     let our = addr_for_reward.lock().ok().and_then(|g| g.clone());
-                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                    let tok = snapshot_gui_rpc_bearer(&tok_for_reward);
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, tok.clone(), height).await {
                         update_block_details(&fb_for_reward, height, details, our.as_deref());
                         return;
                     }
                     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                    let tok = snapshot_gui_rpc_bearer(&tok_for_reward);
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, tok.clone(), height).await {
                         update_block_details(&fb_for_reward, height, details, our.as_deref());
                         return;
                     }
                     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                    let tok = snapshot_gui_rpc_bearer(&tok_for_reward);
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, tok, height).await {
                         update_block_details(&fb_for_reward, height, details, our.as_deref());
                     }
                 });
@@ -6024,7 +6225,7 @@ async fn get_stratum_status(state: State<'_, AppState>) -> Result<StratumStatus,
 #[tauri::command]
 async fn rpc_get_peers(state: State<'_, AppState>) -> Result<Vec<PeerInfo>, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let resp = client
         .get(format!("{}/peers", rpc_url))
         .timeout(Duration::from_secs(5))
@@ -6039,7 +6240,7 @@ async fn rpc_get_peers(state: State<'_, AppState>) -> Result<Vec<PeerInfo>, Stri
 #[tauri::command]
 async fn rpc_get_mempool(state: State<'_, AppState>) -> Result<MempoolInfo, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     // Use /rpc/fee_estimate which includes mempool_size
     let resp = client
         .get(format!("{}/rpc/fee_estimate", rpc_url))
@@ -6059,7 +6260,7 @@ async fn rpc_get_block(
     height_or_hash: String,
 ) -> Result<serde_json::Value, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     // Detect hash vs height: hashes are 64 hex chars
     let url = if height_or_hash.len() == 64 && height_or_hash.chars().all(|c| c.is_ascii_hexdigit()) {
         format!("{}/rpc/block_by_hash?hash={}", rpc_url, height_or_hash)
@@ -6099,7 +6300,7 @@ async fn rpc_get_tx(
     txid: String,
 ) -> Result<serde_json::Value, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let url = format!("{}/rpc/tx?txid={}", rpc_url, txid);
     let resp = client
         .get(&url)
@@ -6131,7 +6332,7 @@ async fn rpc_get_address(
     address: String,
 ) -> Result<serde_json::Value, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     // iriumd exposes the address lookup at /rpc/balance?address=… (see
     // get_balance in src/bin/iriumd.rs). The legacy /rpc/address?addr=…
     // path that this command used to call has never been registered; the
@@ -6166,14 +6367,15 @@ async fn get_recent_blocks(
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
     let n = limit.unwrap_or(20).min(100) as u64;
 
-    let info = get_rpc_info(&rpc_url).await
+    let info = get_rpc_info(&state, &rpc_url).await
         .map_err(|_| "node offline".to_string())?;
     let tip = info.height.unwrap_or(0);
     if tip == 0 { return Ok(vec![]); }
     let height = end_height.map(|h| h.min(tip)).unwrap_or(tip);
 
-    // Build a single shared client with a tight per-request timeout.
-    let client = reqwest::Client::builder()
+    // Build a single shared client with a tight per-request timeout
+    // and the GUI bearer token attached (FIX 2).
+    let client = rpc_client_builder(&state)
         .timeout(Duration::from_secs(3))
         .build()
         .map_err(|e| format!("client: {}", e))?;
@@ -6236,7 +6438,7 @@ async fn get_recent_blocks(
 #[tauri::command]
 async fn get_network_hashrate(state: State<'_, AppState>) -> Result<NetworkHashrateInfo, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let resp = client
         .get(format!("{}/rpc/network_hashrate", rpc_url))
         .timeout(Duration::from_secs(5))
@@ -6263,7 +6465,8 @@ const POOL_STATS_URL: &str = "http://pool.iriumlabs.org:3337/stats";
 
 #[tauri::command]
 async fn get_pool_stats() -> Result<PoolStats, String> {
-    let client = reqwest::Client::new();
+    // External pool host, not iriumd — no bearer token needed.
+    let client = reqwest::Client::builder().build().unwrap_or_default();
     let resp = client
         .get(POOL_STATS_URL)
         .timeout(Duration::from_secs(5))
@@ -6286,7 +6489,7 @@ async fn get_pool_stats() -> Result<PoolStats, String> {
 async fn get_richlist(state: State<'_, AppState>, limit: Option<u32>) -> Result<RichListResponse, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
     let n = limit.unwrap_or(100).clamp(1, 500);
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let resp = client
         .get(format!("{}/rpc/richlist?limit={}", rpc_url, n))
         .timeout(Duration::from_secs(10))
@@ -6302,7 +6505,7 @@ async fn get_richlist(state: State<'_, AppState>, limit: Option<u32>) -> Result<
 #[tauri::command]
 async fn rpc_get_offers_feed(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let resp = client
         .get(format!("{}/offers/feed", rpc_url))
         .timeout(Duration::from_secs(10))
@@ -6561,8 +6764,52 @@ async fn detect_public_ip(service_url: String) -> Result<String, String> {
     Ok(ip)
 }
 
+// FIX 3 (Remote node): probe a candidate remote iriumd to confirm
+// rpc_url + rpc_token are correct before the user commits to remote
+// mode. Tight 5-second timeout so a hung remote can't freeze the
+// Settings page. Returns Ok(true) on 2xx; on 401 returns an
+// auth-specific error so the UI can guide the user to check the
+// token. Other failures (timeout, connect refused) bubble up
+// verbatim so the user sees the reqwest reason.
 #[tauri::command]
-async fn save_settings(app_handle: tauri::AppHandle, settings_json: String) -> Result<bool, String> {
+async fn test_remote_connection(
+    rpc_url: String,
+    rpc_token: Option<String>,
+) -> Result<bool, String> {
+    let url = rpc_url.trim().trim_end_matches('/').to_string();
+    if url.is_empty() {
+        return Err("RPC URL is empty".to_string());
+    }
+    let mut builder = reqwest::Client::builder().timeout(Duration::from_secs(5));
+    if let Some(tok) = rpc_token.as_ref().map(|s| s.trim()).filter(|s| !s.is_empty()) {
+        let mut headers = reqwest::header::HeaderMap::new();
+        if let Ok(val) = reqwest::header::HeaderValue::from_str(&format!("Bearer {}", tok)) {
+            headers.insert(reqwest::header::AUTHORIZATION, val);
+            builder = builder.default_headers(headers);
+        }
+    }
+    let client = builder.build().map_err(|e| format!("client: {}", e))?;
+    let resp = client
+        .get(format!("{}/status", url))
+        .send()
+        .await
+        .map_err(|e| format!("connect failed: {}", e))?;
+    let status = resp.status();
+    if status.is_success() {
+        Ok(true)
+    } else if status == reqwest::StatusCode::UNAUTHORIZED {
+        Err("Authentication failed — check the RPC token".to_string())
+    } else {
+        Err(format!("Remote node responded {}", status))
+    }
+}
+
+#[tauri::command]
+async fn save_settings(
+    app_handle: tauri::AppHandle,
+    state: State<'_, AppState>,
+    settings_json: String,
+) -> Result<bool, String> {
     let config = app_handle.config();
     let data_dir = app_data_dir(&config)
         .ok_or("Could not determine app data directory")?;
@@ -6570,11 +6817,18 @@ async fn save_settings(app_handle: tauri::AppHandle, settings_json: String) -> R
     let settings_path = data_dir.join("irium-core-settings.json");
     std::fs::write(&settings_path, &settings_json)
         .map_err(|e| format!("Failed to write settings: {}", e))?;
+    // FIX 2 + 3: mirror rpc_token / node_mode / rpc_url into AppState
+    // so the very next GUI RPC call already uses the new bearer token
+    // and (in remote mode) the new rpc_url. No app restart required.
+    hydrate_settings_into_state(&state, &settings_json);
     Ok(true)
 }
 
 #[tauri::command]
-async fn load_settings(app_handle: tauri::AppHandle) -> Result<Option<String>, String> {
+async fn load_settings(
+    app_handle: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<Option<String>, String> {
     let config = app_handle.config();
     let data_dir = app_data_dir(&config)
         .ok_or("Could not determine app data directory")?;
@@ -6582,6 +6836,9 @@ async fn load_settings(app_handle: tauri::AppHandle) -> Result<Option<String>, S
     if settings_path.exists() {
         let contents = std::fs::read_to_string(&settings_path)
             .map_err(|e| format!("Failed to read settings: {}", e))?;
+        // FIX 2 + 3: hydrate on launch so the first auto-poll from the
+        // dashboard already uses the persisted bearer token / rpc_url.
+        hydrate_settings_into_state(&state, &contents);
         Ok(Some(contents))
     } else {
         Ok(None)
@@ -7445,8 +7702,8 @@ async fn agreement_dispute_list(state: State<'_, AppState>) -> Result<Vec<Disput
 async fn get_network_metrics(state: State<'_, AppState>) -> Result<NetworkMetrics, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
     let last_status = state.last_node_status.lock().map_err(lock_err)?.clone();
-    let info = get_rpc_info(&rpc_url).await.unwrap_or_default();
-    let client = reqwest::Client::new();
+    let info = get_rpc_info(&state, &rpc_url).await.unwrap_or_default();
+    let client = rpc_client(&state);
     let fee_est = client
         .get(format!("{}/rpc/fee_estimate", rpc_url))
         .timeout(Duration::from_secs(3))
@@ -7680,7 +7937,7 @@ async fn run_diagnostics(state: State<'_, AppState>) -> Result<DiagnosticsResult
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::builder()
+    let client = rpc_client_builder(&state)
         .timeout(Duration::from_secs(5))
         .build()
         .unwrap_or_default();
@@ -7697,7 +7954,7 @@ async fn run_diagnostics(state: State<'_, AppState>) -> Result<DiagnosticsResult
 
     // 2. /status returns valid JSON
     let status_ok = if rpc_ok {
-        match get_rpc_info(&rpc_url).await {
+        match get_rpc_info(&state, &rpc_url).await {
             Ok(info) => {
                 let h = info.height.unwrap_or(0);
                 checks.push(DiagnosticCheck {
@@ -8097,6 +8354,8 @@ fn main() {
             save_settings,
             load_settings,
             detect_public_ip,
+            // FIX 3 (Remote node): pre-flight probe used by Settings.
+            test_remote_connection,
             // Offers
             offer_list,
             offer_show,
