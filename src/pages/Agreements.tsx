@@ -93,9 +93,22 @@ export default function AgreementsPage() {
   // Phase 8 — client-side search input. Matches against id, buyer,
   // seller, and the user-defined label. Empty string = no filter.
   const [searchQuery, setSearchQuery] = useState('');
-  const [agreementList, setAgreementList] = useState<Agreement[]>([]);
+  // FIX B (page-state preservation): read the canonical list from the
+  // zustand store, so a re-mount caused by route navigation paints the
+  // last-known agreements instantly instead of flashing the empty /
+  // loading state while the refetch runs. The local setAgreementList
+  // shim writes through to the store via setAgreementListCache, so
+  // every existing call site (loadData + Tauri-event handlers) is
+  // unchanged at the call site.
+  const agreementListCache = useStore((s) => s.agreementListCache);
+  const setAgreementListCache = useStore((s) => s.setAgreementListCache);
+  const agreementList: Agreement[] = agreementListCache ?? [];
+  const setAgreementList = setAgreementListCache;
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Loading flag is now only true until the FIRST successful fetch this
+  // app session — once the cache is populated, subsequent re-mounts
+  // skip the skeleton because we already have data to render.
+  const [loading, setLoading] = useState(agreementListCache === null);
   const [proofsByAgreement, setProofsByAgreement] = useState<Record<string, Proof[]>>({});
   const [showProofModal, setShowProofModal] = useState<string | null>(null);
   const [showReleaseModal, setShowReleaseModal] = useState<string | null>(null);
@@ -223,7 +236,11 @@ export default function AgreementsPage() {
   }, [expandedId, refundEligByAgreement, releaseEligByAgreement, statusByAgreement]);
 
   const loadData = async () => {
-    setLoading(true);
+    // FIX B: only show the loading skeleton when we have NO cached data
+    // to render. Background refreshes (return-navigation, post-mutation
+    // refresh) keep the previously-rendered list on screen until the
+    // new payload arrives, then swap atomically — no flicker.
+    if (agreementListCache === null) setLoading(true);
     try {
       const data = await agreements.list();
       setAgreementList(data);

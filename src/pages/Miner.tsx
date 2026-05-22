@@ -464,6 +464,11 @@ function CpuMinerTab() {
   const cpuCores = useStore((s) => s.cpuCores);
   const resetMinerHistory = useStore((s) => s.resetMinerHistory);
   const rpcUrl = useStore((s) => s.settings.rpc_url);
+  // FIX D: bring nodeStatus into scope so we can distinguish "the node
+  // is genuinely still syncing the chain" (worth a long-form sync
+  // explainer) from "the miner sidecar just started and the first rate
+  // line has not landed yet" (warm-up — finishes in ~2s).
+  const nodeStatusForSync = useStore((s) => s.nodeStatus);
 
   // Network snapshot used by the block-info strip and the Difficulty stat.
   // Cleared when mining stops so a stopped-then-restarted session never
@@ -572,7 +577,28 @@ function CpuMinerTab() {
               irium-miner's stdout (e.g. "[sync] Miner downloading blocks
               1..21269 from node"); we surface that verbatim below. */}
           {(() => {
-            const isSyncing = !!status?.running && status.hashrate_khs === 0;
+            // FIX D: split the old single "isSyncing" flag into two real
+            // states. nodeSyncing is true only when the chain genuinely
+            // lags the network tip (persisted_height behind, gap_healer
+            // backlog, or fully_synced=false). minerWarmup covers the
+            // brief window where the sidecar is up but the first
+            // hashrate line has not arrived yet — typically 1–3 seconds.
+            // Previously every miner restart showed "Downloading
+            // blockchain data for the first time" regardless of whether
+            // the chain was already in sync.
+            const networkTip = nodeStatusForSync?.network_tip ?? 0;
+            const localHeight = nodeStatusForSync?.persisted_height
+              ?? nodeStatusForSync?.height ?? 0;
+            const heightBehind = networkTip > 0 && localHeight > 0 && (networkTip - localHeight) > 10;
+            const gapPending = (nodeStatusForSync?.gap_healer_pending_count ?? 0) > 0;
+            const notFullySynced = nodeStatusForSync?.running === true
+              && nodeStatusForSync?.fully_synced === false;
+            const nodeSyncing = heightBehind || gapPending || notFullySynced;
+            const minerWarmup = !!status?.running && status.hashrate_khs === 0 && !nodeSyncing;
+            // Legacy alias kept for the header badge below — preserves
+            // the existing "Mining Active — Syncing blocks…" copy when
+            // EITHER the node is syncing OR the miner is warming up.
+            const isSyncing = nodeSyncing || minerWarmup;
             return (
               <>
                 <div className="flex items-center justify-between mb-4">
@@ -628,11 +654,26 @@ function CpuMinerTab() {
                   >
                     <RefreshCw size={12} className="animate-spin flex-shrink-0 mt-0.5" style={{ color: '#fbbf24' }} />
                     <div className="text-xs leading-relaxed">
+                      {/* FIX D: header line. When the node is genuinely
+                          syncing we surface the sidecar's [sync] line if
+                          present. When it's just a miner warm-up we say
+                          so explicitly instead of using "Initializing
+                          miner…" which read as alarming on every restart. */}
                       <p className="font-mono" style={{ color: 'rgba(238,240,255,0.65)' }}>
-                        {status?.sync_status ?? 'Initializing miner…'}
+                        {nodeSyncing
+                          ? (status?.sync_status ?? `Node syncing — height ${localHeight} / network ${networkTip}`)
+                          : 'Warming up miner — waiting for first share rate…'}
                       </p>
+                      {/* FIX D: body line. The old text claimed
+                          "Downloading blockchain data for the first
+                          time" on EVERY restart, which was a lie after
+                          the first install. Now it only appears when
+                          the chain is actually behind the network tip;
+                          warm-up gets a short reassuring caption. */}
                       <p className="mt-0.5" style={{ color: 'rgba(238,240,255,0.35)' }}>
-                        Downloading blockchain data for the first time. This takes a few minutes on first run only — subsequent starts will be instant as blocks are cached locally.
+                        {nodeSyncing
+                          ? 'The node is still catching up to the network tip. Mining is enabled but no shares will be accepted until the local chain matches. This usually finishes within a few minutes.'
+                          : 'The miner sidecar has started. The first hashrate reading lands within 1-3 seconds — no action needed.'}
                       </p>
                     </div>
                   </motion.div>

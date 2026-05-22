@@ -1322,20 +1322,31 @@ async fn try_upnp(port: u16) -> UpnpAttempt {
     let candidates = enumerate_local_ipv4_candidates();
     attempt.diagnostics.local_ipv4_candidates =
         candidates.iter().map(|ip| ip.to_string()).collect();
+    tracing::info!(
+        "[upnp] step 1/6: enumerated {} local IPv4 candidate(s): {:?}",
+        candidates.len(),
+        attempt.diagnostics.local_ipv4_candidates
+    );
 
     // Step 2: SSDP discovery.
     let location = match upnp_discover_location().await {
         Some(l) => l,
         None => {
             attempt.diagnostics.last_fault = Some("SSDP discovery timed out (no router response)".to_string());
+            tracing::warn!("[upnp] step 2/6 FAILED: SSDP M-SEARCH timed out — router does not advertise WANIPConnection on 239.255.255.250:1900");
             return attempt;
         }
     };
     attempt.diagnostics.ssdp_location = Some(location.clone());
+    tracing::info!("[upnp] step 2/6: SSDP LOCATION = {}", location);
 
     // Step 3: extract gateway IP from the LOCATION URL (for adapter match).
     let gateway = extract_ipv4_from_location(&location);
     attempt.diagnostics.gateway_ipv4 = gateway.map(|g| g.to_string());
+    tracing::info!(
+        "[upnp] step 3/6: gateway IPv4 from LOCATION = {:?}",
+        attempt.diagnostics.gateway_ipv4
+    );
 
     // Step 4: pick the local adapter in the gateway's subnet. Fall back
     // to the legacy default-route heuristic if no adapter matches.
@@ -1347,10 +1358,15 @@ async fn try_upnp(port: u16) -> UpnpAttempt {
         None => {
             attempt.diagnostics.last_fault =
                 Some("Could not determine a local IPv4 for NewInternalClient".to_string());
+            tracing::warn!(
+                "[upnp] step 4/6 FAILED: no local IPv4 adapter matched gateway {:?} and default-route fallback returned nothing — multi-adapter selection has no candidate to use as NewInternalClient",
+                attempt.diagnostics.gateway_ipv4
+            );
             return attempt;
         }
     };
     attempt.diagnostics.local_ipv4_chosen = Some(local_ip.clone());
+    tracing::info!("[upnp] step 4/6: chose local IPv4 {} as NewInternalClient", local_ip);
 
     // Fetch device description (used to resolve the WAN service control URL).
     let client = match reqwest::Client::builder()
@@ -1360,6 +1376,7 @@ async fn try_upnp(port: u16) -> UpnpAttempt {
         Ok(c) => c,
         Err(_) => {
             attempt.diagnostics.last_fault = Some("Could not build HTTP client".to_string());
+            tracing::warn!("[upnp] step 5/6 FAILED: could not build reqwest client for device description");
             return attempt;
         }
     };
@@ -1369,12 +1386,14 @@ async fn try_upnp(port: u16) -> UpnpAttempt {
             Err(_) => {
                 attempt.diagnostics.last_fault =
                     Some("Device description fetch returned no body".to_string());
+                tracing::warn!("[upnp] step 5/6 FAILED: device description body empty at {}", location);
                 return attempt;
             }
         },
-        Err(_) => {
+        Err(e) => {
             attempt.diagnostics.last_fault =
                 Some("Device description fetch failed (router unreachable)".to_string());
+            tracing::warn!("[upnp] step 5/6 FAILED: GET {} -> {}", location, e);
             return attempt;
         }
     };
@@ -1384,10 +1403,12 @@ async fn try_upnp(port: u16) -> UpnpAttempt {
         None => {
             attempt.diagnostics.last_fault =
                 Some("Device description missing WANIPConnection / WANPPPConnection service".to_string());
+            tracing::warn!("[upnp] step 5/6 FAILED: device description had no WANIPConnection / WANPPPConnection service block");
             return attempt;
         }
     };
     attempt.diagnostics.control_url = Some(ctrl_url.clone());
+    tracing::info!("[upnp] step 5/6: control URL = {} (svc: {})", ctrl_url, svc_type);
 
     // Step 5: GetExternalIPAddress + routability classification.
     let ext_ip_soap = format!(
@@ -1400,6 +1421,7 @@ async fn try_upnp(port: u16) -> UpnpAttempt {
         None => {
             attempt.diagnostics.last_fault =
                 Some("GetExternalIPAddress SOAP call failed".to_string());
+            tracing::warn!("[upnp] step 6/6 FAILED: GetExternalIPAddress SOAP call timed out or returned no body");
             return attempt;
         }
     };
@@ -1419,11 +1441,17 @@ async fn try_upnp(port: u16) -> UpnpAttempt {
     if ext_ip.is_empty() {
         attempt.diagnostics.last_fault =
             Some("GetExternalIPAddress returned empty body".to_string());
+        tracing::warn!("[upnp] step 6/6 FAILED: GetExternalIPAddress response had no NewExternalIPAddress tag");
         return attempt;
     }
     attempt.diagnostics.external_ip = Some(ext_ip.clone());
     let routable = is_routable_ipv4(&ext_ip);
     attempt.diagnostics.external_ip_routable = Some(routable);
+    tracing::info!(
+        "[upnp] step 6/6: GetExternalIPAddress returned {} (routable={})",
+        ext_ip,
+        routable
+    );
 
     // Step 6: clear stale lease (best-effort; failure is fine).
     let del_soap = format!(
@@ -1483,9 +1511,21 @@ async fn try_upnp(port: u16) -> UpnpAttempt {
     }
 
     if !success {
-        attempt.diagnostics.last_fault = last_fault;
+        attempt.diagnostics.last_fault = last_fault.clone();
+        tracing::warn!(
+            "[upnp] AddPortMapping FAILED after {} variant(s); last fault: {}",
+            attempt.diagnostics.add_port_mapping_attempts,
+            last_fault.as_deref().unwrap_or("(none)")
+        );
         return attempt;
     }
+    tracing::info!(
+        "[upnp] AddPortMapping SUCCESS on attempt {} — external IP {} -> internal {}:{}",
+        attempt.diagnostics.add_port_mapping_attempts,
+        ext_ip,
+        local_ip,
+        port
+    );
 
     // Step 8: classify success vs double-NAT. Even though the router
     // accepted AddPortMapping, if the external IP is itself private the

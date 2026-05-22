@@ -34,7 +34,7 @@ import { relaunch } from "@tauri-apps/api/process";
 import { listen } from "@tauri-apps/api/event";
 import { useStore } from "../lib/store";
 import { rpc, diagnostics, update, nodeUpdate, node, config } from "../lib/tauri";
-import { DEFAULT_SETTINGS, type DiagnosticsResult, type NodeUpdateCheckResult, type Theme, timeAgo, type PeerInfo } from "../lib/types";
+import { DEFAULT_SETTINGS, type DiagnosticsResult, type NodeUpdateCheckResult, type Theme, type UpnpDiagnostics, timeAgo, type PeerInfo } from "../lib/types";
 import { ONBOARDING_KEY, FORCE_ONBOARDING_KEY } from "./Onboarding";
 import { startAggressivePoll } from '../hooks/useNodePoller';
 
@@ -232,6 +232,35 @@ export default function Settings() {
   // via useRef going out of scope), so an app restart still re-arms it.
   const nodeRunningSinceRef = useRef<number | null>(null);
   const [nowTick, setNowTick] = useState(0); // re-render every second to update elapsed time
+
+  // FIX C: pull the live UPnP diagnostic trace so the Settings card can
+  // show the user *which step failed* without them having to navigate
+  // to Help → Test Connection. Polls every 5s while the node is
+  // running; cleared when node stops. Backend updates the trace
+  // every time try_upnp runs (startup + 30-minute refresh loop +
+  // explicit Retry button).
+  const [upnpDiag, setUpnpDiag] = useState<UpnpDiagnostics | null>(null);
+  useEffect(() => {
+    if (!nodeStatus?.running) {
+      setUpnpDiag(null);
+      return;
+    }
+    let cancelled = false;
+    const fetchDiag = async () => {
+      try {
+        const d = await node.upnpDiagnostics();
+        if (!cancelled) setUpnpDiag(d ?? null);
+      } catch {
+        if (!cancelled) setUpnpDiag(null);
+      }
+    };
+    fetchDiag();
+    const id = setInterval(fetchDiag, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [nodeStatus?.running]);
   useEffect(() => {
     if (nodeStatus?.running && nodeRunningSinceRef.current === null) {
       nodeRunningSinceRef.current = Date.now();
@@ -240,13 +269,31 @@ export default function Settings() {
   // Tick once per second while node is running and we're still inside the
   // 60s detecting window. Stops once we transition out so it doesn't burn
   // cycles forever.
+  //
+  // FIX C: when the interval cleanup runs at the 60s boundary, fire one
+  // FINAL setNowTick from a setTimeout scheduled just past the boundary.
+  // Without this, the IIFE that picks statusKind keeps reading
+  // `inDetectingWindow = true` from its last render and the UI sticks on
+  // "Detecting…" forever instead of transitioning to "Inactive". The
+  // followup tick forces one more re-render after the window has
+  // expired so the statusKind branch flips to 'inactive'.
   useEffect(() => {
     if (!nodeStatus?.running) return;
     const started = nodeRunningSinceRef.current;
     if (started === null) return;
-    if (Date.now() - started > 60_000) return; // already past the window
+    const elapsed = Date.now() - started;
+    if (elapsed > 60_000) return; // already past the window
     const id = setInterval(() => setNowTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
+    // Schedule one boundary-crossing tick so the statusKind IIFE re-runs
+    // and renders 'inactive' the moment we leave the detecting window.
+    const finalTick = setTimeout(
+      () => setNowTick((t) => t + 1),
+      Math.max(0, 60_500 - elapsed),
+    );
+    return () => {
+      clearInterval(id);
+      clearTimeout(finalTick);
+    };
   }, [nodeStatus?.running, nowTick]);
 
   useEffect(() => {
@@ -844,13 +891,26 @@ export default function Settings() {
               label={t('settings.fields.node_mode')}
               description={t('settings.fields.node_mode_description')}
             >
+              {/* FIX A: native <select> popup uses OS-default styling
+                  for <option> rows — on Windows/WebView2 the popup paints a
+                  white background and the .input class's light `color`
+                  bled through making the text invisible. Explicit inline
+                  styles on both the <select> closed-state and each <option>
+                  give the popup a theme-matching dark bg + light text;
+                  Chromium respects inline option styling so the popup is
+                  now legible without changing the .input class globally. */}
               <select
                 value={local.node_mode ?? "local"}
                 onChange={(e) => patch("node_mode", e.target.value as "local" | "remote")}
                 className="input w-full text-sm"
+                style={{ color: '#e8ecff', background: 'rgba(0,0,0,0.40)' }}
               >
-                <option value="local">{t('settings.fields.node_mode_local')}</option>
-                <option value="remote">{t('settings.fields.node_mode_remote')}</option>
+                <option value="local" style={{ color: '#e8ecff', background: '#10131f' }}>
+                  {t('settings.fields.node_mode_local')}
+                </option>
+                <option value="remote" style={{ color: '#e8ecff', background: '#10131f' }}>
+                  {t('settings.fields.node_mode_remote')}
+                </option>
               </select>
             </FieldRow>
 
@@ -1201,6 +1261,49 @@ export default function Settings() {
                     <p className="text-xs text-white/30 leading-relaxed">
                       {t('settings.port_reachability.inactive_paragraph')}
                     </p>
+                  )}
+                  {/* FIX C: inline UPnP diagnostic trace. Renders when
+                      the status is non-green so the user can see which
+                      step of the SOAP dance failed (SSDP, adapter
+                      selection, control URL resolve, GetExternalIPAddress,
+                      AddPortMapping) without leaving Settings. Mirrors
+                      a subset of the Help page drawer. */}
+                  {upnpDiag && (statusKind === 'detecting' || statusKind === 'inactive') && (
+                    <div className="mt-2 rounded-md border border-white/8 bg-white/[0.02] px-3 py-2 space-y-1 text-[11px] font-mono">
+                      <div className="flex justify-between gap-3">
+                        <span className="text-white/40">Chosen LAN IP</span>
+                        <span className="text-white/75">{upnpDiag.local_ipv4_chosen ?? '—'}</span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-white/40">Router IP</span>
+                        <span className="text-white/75">{upnpDiag.gateway_ipv4 ?? '—'}</span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-white/40">Control URL</span>
+                        <span className="text-white/70 truncate max-w-[60%]" title={upnpDiag.control_url ?? ''}>
+                          {upnpDiag.control_url ? upnpDiag.control_url.replace(/^https?:\/\//, '') : '—'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-white/40">External IP</span>
+                        <span className="text-white/75">
+                          {upnpDiag.external_ip ?? '—'}
+                          {upnpDiag.external_ip && upnpDiag.external_ip_routable === false && (
+                            <span className="text-amber-300/80 ml-1.5">(private — double NAT)</span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-white/40">AddPortMapping tries</span>
+                        <span className="text-white/70">{upnpDiag.add_port_mapping_attempts}</span>
+                      </div>
+                      {upnpDiag.last_fault && (
+                        <div className="pt-1 mt-1 border-t border-white/8">
+                          <div className="text-white/40 mb-0.5">Last fault</div>
+                          <div className="text-rose-300/85 break-all leading-snug">{upnpDiag.last_fault}</div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               );
