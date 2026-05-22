@@ -325,49 +325,40 @@ function AppLayout() {
         <SyncProgressBanner />
 
         <main className="flex-1 overflow-y-auto">
-          {/* No mode="wait" — exit and enter overlap so navigation feels
-              instant. The outgoing page fades/slides up while the incoming
-              page fades/slides in simultaneously (50%+ perceived speedup
-              vs. serial exit-then-enter). Duration tightened to 0.15 s. */}
-          <AnimatePresence initial={false}>
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0  }}
-              exit={{    opacity: 0, y: -8 }}
-              transition={{ duration: 0.15, ease: 'easeOut' }}
-              style={{ height: '100%' }}
-            >
-              <ErrorBoundary>
-                <Suspense fallback={<div className="flex-1" />}>
-                  <Routes location={location}>
-                    <Route path="/"            element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/dashboard"   element={<Dashboard />}   />
-                    <Route path="/explorer"    element={<Explorer />}    />
-                    <Route path="/wallet"      element={<Wallet />}      />
-                    {/* Settlement / Marketplace / Agreements / Reputation
-                        are temporarily hidden — the route placeholders stay
-                        wired but any direct URL is bounced to Dashboard.
-                        The page lazy imports above are intentionally kept
-                        so re-enabling is a one-line swap of <Navigate>
-                        back to the original element. */}
-                    <Route path="/settlement"     element={<Settlement />} />
-                    <Route path="/marketplace"    element={<Marketplace />} />
-                    <Route path="/agreements"     element={<Agreements />} />
-                    <Route path="/agreements/:id" element={<Agreements />} />
-                    <Route path="/reputation"     element={<Reputation />} />
-                    <Route path="/miner"       element={<Miner />}       />
-                    <Route path="/settings"    element={<Settings />}    />
-                    <Route path="/logs"        element={<Logs />}        />
-                    <Route path="/settlement/seller-wizard" element={<SellerWizard />} />
-                    <Route path="/settlement/buyer-wizard"  element={<BuyerWizard />}  />
-                    <Route path="/about"       element={<Navigate to="/help#about" replace />} />
-                    <Route path="/help"        element={<Help />}         />
-                  </Routes>
-                </Suspense>
-              </ErrorBoundary>
-            </motion.div>
-          </AnimatePresence>
+          {/* Pages render instantly on navigation. The previous
+              AnimatePresence + motion.div wrapper around <Routes> caused
+              a perceptible ~0.4 s lag even with mode="wait" removed —
+              framer-motion mount/unmount on every route change costs an
+              extra render + layout pass. Native React route swap is
+              instant. */}
+          <ErrorBoundary>
+            <Suspense fallback={<div className="flex-1" />}>
+              <Routes location={location}>
+                <Route path="/"            element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard"   element={<Dashboard />}   />
+                <Route path="/explorer"    element={<Explorer />}    />
+                <Route path="/wallet"      element={<Wallet />}      />
+                {/* Settlement / Marketplace / Agreements / Reputation
+                    are temporarily hidden — the route placeholders stay
+                    wired but any direct URL is bounced to Dashboard.
+                    The page lazy imports above are intentionally kept
+                    so re-enabling is a one-line swap of <Navigate>
+                    back to the original element. */}
+                <Route path="/settlement"     element={<Settlement />} />
+                <Route path="/marketplace"    element={<Marketplace />} />
+                <Route path="/agreements"     element={<Agreements />} />
+                <Route path="/agreements/:id" element={<Agreements />} />
+                <Route path="/reputation"     element={<Reputation />} />
+                <Route path="/miner"       element={<Miner />}       />
+                <Route path="/settings"    element={<Settings />}    />
+                <Route path="/logs"        element={<Logs />}        />
+                <Route path="/settlement/seller-wizard" element={<SellerWizard />} />
+                <Route path="/settlement/buyer-wizard"  element={<BuyerWizard />}  />
+                <Route path="/about"       element={<Navigate to="/help#about" replace />} />
+                <Route path="/help"        element={<Help />}         />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
         </main>
 
         <StatusBar />

@@ -255,45 +255,18 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
   );
 }
 
-// ── GPU mining active animation ─────────────────────────────────
-// Subtle hex-hash "candidate stream" shown in the GPU hero card
-// while mining. Each tick (200 ms) pushes a fresh random 32-char hex
-// onto the top of a 4-row stack and drops the oldest. The newest row
-// slides in from the left, glows soft cyan, and fades out as it ages
-// down the stack. The hex values are not real nonces — the
-// irium-miner-gpu sidecar does not emit current candidate hashes —
-// but the constant 5 Hz cadence gives the user visible motion
-// proof that the miner is doing work, especially during the 1-3 s
-// warmup window before the hashrate area chart populates.
-//
-// Perf notes:
-//   - 200 ms tick (was 80 ms / 12.5 Hz) so the React re-render rate
-//     stays light and doesn't fight scroll on slower hardware.
-//   - Rows container has a fixed pixel height so the row pushes/drops
-//     never reflow the surrounding hero card — only the rows region
-//     repaints, and the outer layout is stable.
-//   - will-change: transform, opacity hints the browser to GPU-promote
-//     each row so the slide-in compositor work stays off the main
-//     thread (no paint thrash on the rest of the page).
-// Unmounts (and the interval is cleared) as soon as status.running
-// flips to false or the user navigates away from the GPU tab.
+// ── GPU mining active indicator ─────────────────────────────────
+// Pure-CSS hex candidate stream. The rows are static (pre-generated
+// at module load) and the visual motion comes from a single CSS
+// @keyframes animation (`hashStreamScroll` in globals.css) that
+// translates the doubled row stack vertically. No setInterval, no
+// setState, no framer-motion — the browser composites the translateY
+// transform on the GPU so scroll/paint elsewhere on the page is never
+// blocked by this animation. The header dot pulses via Tailwind's
+// animate-pulse (also pure CSS keyframes). Total JS animation overhead
+// while running: zero re-renders, zero allocations per frame.
 function HashCandidateStream({ active }: { active: boolean }) {
-  const ROW_COUNT = 4;
-  const TICK_MS = 200;
-  const [rows, setRows] = useState<string[]>(() =>
-    Array.from({ length: ROW_COUNT }, () => randomHex(32))
-  );
-
-  useEffect(() => {
-    if (!active) return;
-    const id = window.setInterval(() => {
-      setRows((prev) => [randomHex(32), ...prev.slice(0, ROW_COUNT - 1)]);
-    }, TICK_MS);
-    return () => window.clearInterval(id);
-  }, [active]);
-
   if (!active) return null;
-
   return (
     <div
       className="mb-4 rounded-xl px-4 py-3"
@@ -303,11 +276,9 @@ function HashCandidateStream({ active }: { active: boolean }) {
       }}
     >
       <div className="flex items-center gap-2 mb-2">
-        <motion.span
-          className="block w-1.5 h-1.5 rounded-full"
-          style={{ background: '#6ec6ff', boxShadow: '0 0 6px rgba(110,198,255,0.55)', willChange: 'opacity' }}
-          animate={{ opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+        <span
+          className="block w-1.5 h-1.5 rounded-full animate-pulse"
+          style={{ background: '#6ec6ff', boxShadow: '0 0 6px rgba(110,198,255,0.55)' }}
         />
         <span
           className="text-[10px] uppercase tracking-wider font-display font-bold"
@@ -317,46 +288,49 @@ function HashCandidateStream({ active }: { active: boolean }) {
         </span>
       </div>
       <div
-        className="space-y-1 font-mono text-xs leading-tight overflow-hidden"
         style={{
-          fontFamily: '"JetBrains Mono", monospace',
-          // Fixed height so the rows region never grows/shrinks. 4 rows ×
-          // ~14 px line-height + 3 × 4 px space-y gap ≈ 72 px. This pins
-          // the layout box so each push/drop only repaints inside this
-          // window — no reflow of the hero card or anything below it.
           height: 72,
+          overflow: 'hidden',
         }}
       >
-        {rows.map((hex, i) => (
-          <motion.div
-            key={hex}
-            initial={{ opacity: 0, x: -8 }}
-            animate={{
-              opacity: i === 0 ? 1 : Math.max(0.25, 0.75 - i * 0.18),
-              x: 0,
-              color: i === 0 ? '#6ec6ff' : 'rgba(110,198,255,0.55)',
-            }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            style={{
-              textShadow: i === 0 ? '0 0 8px rgba(110,198,255,0.35)' : 'none',
-              letterSpacing: '0.04em',
-              willChange: 'transform, opacity',
-            }}
-          >
-            {hex}
-          </motion.div>
-        ))}
+        <div
+          className="space-y-1 font-mono text-xs leading-tight"
+          style={{
+            fontFamily: '"JetBrains Mono", monospace',
+            color: 'rgba(110,198,255,0.55)',
+            letterSpacing: '0.04em',
+            animation: 'hashStreamScroll 6s linear infinite',
+            willChange: 'transform',
+          }}
+        >
+          {HASH_STREAM_ROWS.map((hex, i) => (
+            <div key={i}>{hex}</div>
+          ))}
+          {/* Duplicate the set so the scroll loops seamlessly: when
+              the animation reaches -50% the second copy occupies the
+              window and the next iteration snaps back to 0 unnoticed. */}
+          {HASH_STREAM_ROWS.map((hex, i) => (
+            <div key={`dup-${i}`}>{hex}</div>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-function randomHex(n: number): string {
-  const chars = '0123456789abcdef';
-  let s = '';
-  for (let i = 0; i < n; i++) s += chars[Math.floor(Math.random() * 16)];
-  return s;
-}
+// Static deterministic hex rows for the candidate-stream animation.
+// Fixed at module load so the same set shows every mount — no random
+// churn, no per-tick allocation, no re-render trigger.
+const HASH_STREAM_ROWS: string[] = [
+  'a3f9c2b16e8d472f01e88b4d72c109af3f5839ea7c1d2f88c0bd1e4a',
+  '7e02b34d1f968b715c094290d6e38b71a04c5d2e8b7710fa2f96b3c0',
+  '9b1d4f72a0873e6cbf095d188a45c2f1e0a72b3c9f81d04ebdc8c711',
+  '0a3fe8d27b1c9f44c2e06b8a91fde5c7d8e2b1a0f9c4e7a36e1c8b0d',
+  '2c5b8d4e1f6a90c378b24e6d50fcab1907e3d8b2c1f4a9e0d5b06c92',
+  '6d7c8e9b0a1f2c3d4e5f6789abcdef01234567890abcdef0fedcba98',
+  'f1e2d3c4b5a6978685746362514049382716050d1c2b3a49a8b7c6d5',
+  '5e9c8b7a6d4f3e2c1b0a9f8e7d6c5b4a39281706f4e3d2c1d3e8a5f7',
+];
 
 // ── Found Blocks list (Bug 1) ─────────────────────────────────
 // Polls the Rust shell every 10s for the list of blocks this app

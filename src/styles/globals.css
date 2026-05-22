@@ -153,6 +153,97 @@
     radial-gradient(ellipse 40% 40% at 60% 40%, rgba(192,132,252,0.12) 0%, transparent 55%);
 }
 
+/* ── Theme: Solar — warm orange and gold on dark amber ───────────────────────── */
+[data-theme="solar"] {
+  --bg:           #1A0F05;
+  --bg-hover:     rgba(251,146,60,0.06);
+  --border:        rgba(251,146,60,0.10);
+  --border-mid:    rgba(251,146,60,0.18);
+  --border-accent: rgba(251,146,60,0.40);
+  --brand:         #FB923C;
+  --brand-soft:    rgba(251,146,60,0.55);
+  --brand-line:    rgba(251,146,60,0.14);
+  --brand-line-hi: rgba(251,146,60,0.30);
+  --brand-glow:    rgba(251,146,60,0.10);
+  --grad-brand:      linear-gradient(135deg, #B45309 0%, #FB923C 50%, #FBBF24 100%);
+  --grad-brand-soft: linear-gradient(135deg, rgba(180,83,9,0.20) 0%, rgba(251,146,60,0.14) 50%, rgba(251,191,36,0.20) 100%);
+  --grad-text:       linear-gradient(90deg, #FFEDD5 0%, #FB923C 55%, #FBBF24 100%);
+  --accent:      #FB923C;
+  --accent-2:    #FBBF24;
+  --accent-hi:   #FFEDD5;
+  --accent-glow: rgba(251,146,60,0.28);
+}
+[data-theme="solar"] .app-bg {
+  background-image:
+    radial-gradient(ellipse 65% 55% at 12% 18%, rgba(180,83,9,0.22)  0%, transparent 65%),
+    radial-gradient(ellipse 50% 65% at 88% 78%, rgba(251,191,36,0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 40% at 60% 40%, rgba(251,146,60,0.12) 0%, transparent 55%);
+}
+
+/* ── Theme: Ocean — deep teal and cyan ──────────────────────────────────────── */
+[data-theme="ocean"] {
+  --bg:           #061620;
+  --bg-hover:     rgba(34,211,238,0.06);
+  --border:        rgba(34,211,238,0.10);
+  --border-mid:    rgba(34,211,238,0.18);
+  --border-accent: rgba(34,211,238,0.40);
+  --brand:         #22D3EE;
+  --brand-soft:    rgba(34,211,238,0.55);
+  --brand-line:    rgba(34,211,238,0.14);
+  --brand-line-hi: rgba(34,211,238,0.30);
+  --brand-glow:    rgba(34,211,238,0.10);
+  --grad-brand:      linear-gradient(135deg, #0E7490 0%, #22D3EE 50%, #67E8F9 100%);
+  --grad-brand-soft: linear-gradient(135deg, rgba(14,116,144,0.20) 0%, rgba(34,211,238,0.14) 50%, rgba(103,232,249,0.20) 100%);
+  --grad-text:       linear-gradient(90deg, #CFFAFE 0%, #22D3EE 55%, #67E8F9 100%);
+  --accent:      #22D3EE;
+  --accent-2:    #67E8F9;
+  --accent-hi:   #CFFAFE;
+  --accent-glow: rgba(34,211,238,0.28);
+}
+[data-theme="ocean"] .app-bg {
+  background-image:
+    radial-gradient(ellipse 65% 55% at 12% 18%, rgba(14,116,144,0.22) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 65% at 88% 78%, rgba(103,232,249,0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 40% at 60% 40%, rgba(34,211,238,0.12) 0%, transparent 55%);
+}
+
+/* ── Theme: Rose — pink and purple ──────────────────────────────────────────── */
+[data-theme="rose"] {
+  --bg:           #1F0A1A;
+  --bg-hover:     rgba(244,114,182,0.06);
+  --border:        rgba(244,114,182,0.10);
+  --border-mid:    rgba(244,114,182,0.18);
+  --border-accent: rgba(244,114,182,0.40);
+  --brand:         #F472B6;
+  --brand-soft:    rgba(244,114,182,0.55);
+  --brand-line:    rgba(244,114,182,0.14);
+  --brand-line-hi: rgba(244,114,182,0.30);
+  --brand-glow:    rgba(244,114,182,0.10);
+  --grad-brand:      linear-gradient(135deg, #BE185D 0%, #F472B6 50%, #C084FC 100%);
+  --grad-brand-soft: linear-gradient(135deg, rgba(190,24,93,0.20) 0%, rgba(244,114,182,0.14) 50%, rgba(192,132,252,0.20) 100%);
+  --grad-text:       linear-gradient(90deg, #FCE7F3 0%, #F472B6 55%, #C084FC 100%);
+  --accent:      #F472B6;
+  --accent-2:    #C084FC;
+  --accent-hi:   #FCE7F3;
+  --accent-glow: rgba(244,114,182,0.28);
+}
+[data-theme="rose"] .app-bg {
+  background-image:
+    radial-gradient(ellipse 65% 55% at 12% 18%, rgba(190,24,93,0.22) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 65% at 88% 78%, rgba(192,132,252,0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 40% at 60% 40%, rgba(244,114,182,0.12) 0%, transparent 55%);
+}
+
+/* ── Keyframes: hash candidate stream (Miner.tsx HashCandidateStream) ──────── */
+/* Pure-CSS infinite vertical scroll. The component renders the row set
+   twice; translating from 0 to -50% pages through the first copy and
+   when the loop restarts the second copy is already in position, so the
+   transition is seamless without any JS. */
+@keyframes hashStreamScroll {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+
 /* ── Reset ──────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
