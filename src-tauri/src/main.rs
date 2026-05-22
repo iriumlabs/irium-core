@@ -6281,7 +6281,15 @@ async fn stratum_connect(
     let home_dir = dirs::home_dir().unwrap_or_default();
     let irium_dir = home_dir.join(".irium");
 
-    let build_env = |pool: &str, user: &str, pass: &str, addr: &str, rpc: &str| {
+    // FIX 2 (IRIUM_RPC_TOKEN): the irium-miner sidecar talks to iriumd
+    // for the solo-fallback template fetch and reward lookups even in
+    // pool mode. Capture an Arc clone of the override Mutex so the
+    // closure (called both for the initial spawn AND the reconnect
+    // path inside the spawn-monitor task) can re-resolve the live
+    // bearer token on every call — honoring a settings edit between
+    // initial connect and reconnect.
+    let rpc_token_arc = Arc::clone(&state.rpc_token_override);
+    let build_env = move |pool: &str, user: &str, pass: &str, addr: &str, rpc: &str| {
         let mut env = HashMap::new();
         env.insert("IRIUM_MINER_ADDRESS".to_string(), addr.to_string());
         env.insert("IRIUM_RPC_URL".to_string(), rpc.to_string());
@@ -6289,6 +6297,10 @@ async fn stratum_connect(
         env.insert("IRIUM_STRATUM_URL".to_string(), pool.to_string());
         env.insert("IRIUM_STRATUM_USER".to_string(), user.to_string());
         env.insert("IRIUM_STRATUM_PASS".to_string(), pass.to_string());
+        env.insert(
+            "IRIUM_RPC_TOKEN".to_string(),
+            snapshot_gui_rpc_bearer(&rpc_token_arc).unwrap_or_default(),
+        );
         env
     };
 
@@ -8407,10 +8419,28 @@ async fn get_node_logs(state: State<'_, AppState>, lines: Option<usize>) -> Resu
 
 async fn ws_bridge_connect_and_run(app_handle: &tauri::AppHandle) -> Result<(), String> {
     use tokio_tungstenite::{connect_async, tungstenite::Message};
+    use tokio_tungstenite::tungstenite::client::IntoClientRequest;
+    use tokio_tungstenite::tungstenite::http::HeaderValue;
     use futures_util::{StreamExt, SinkExt};
 
     let url = "ws://127.0.0.1:38300/ws";
-    let (ws_stream, _resp) = connect_async(url).await.map_err(|e| e.to_string())?;
+    // FIX 2 (IRIUM_RPC_TOKEN): iriumd's /ws endpoint is gated by
+    // require_rpc_auth — without an Authorization header the upgrade
+    // returns 401 and the loop in spawn_ws_bridge logs a 401 every 5s.
+    // The URL is hardcoded localhost, so we always use the local
+    // auto-minted token (RPC_TOKEN), not the override — the override
+    // is the *remote* node's token in FIX 3 remote mode and would not
+    // authenticate against the local iriumd. If RPC_TOKEN isn't set
+    // yet (very early startup) or HeaderValue rejects the formatted
+    // value, the request goes out unauthenticated and reverts to the
+    // current 401-loop behavior — no regression.
+    let mut request = url.into_client_request().map_err(|e| e.to_string())?;
+    if let Some(token) = RPC_TOKEN.get() {
+        if let Ok(val) = HeaderValue::from_str(&format!("Bearer {}", token)) {
+            request.headers_mut().insert("Authorization", val);
+        }
+    }
+    let (ws_stream, _resp) = connect_async(request).await.map_err(|e| e.to_string())?;
     let (mut write, mut read) = ws_stream.split();
 
     let sub = serde_json::json!({
