@@ -1762,7 +1762,9 @@
     "line_count": "{{count}} خطوط",
     "filtered_suffix": "(تمت تصفيته)",
     "autoscroll_on": "تشغيل التمرير التلقائي",
-    "autoscroll_paused": "تم إيقاف التمرير التلقائي مؤقتًا"
+    "autoscroll_paused": "تم إيقاف التمرير التلقائي مؤقتًا",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {

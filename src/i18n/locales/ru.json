@@ -1762,7 +1762,9 @@
     "line_count": "{{count}} строк",
     "filtered_suffix": "(отфильтровано)",
     "autoscroll_on": "Автоматическая прокрутка включена",
-    "autoscroll_paused": "Автопрокрутка приостановлена"
+    "autoscroll_paused": "Автопрокрутка приостановлена",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {

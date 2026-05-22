@@ -1762,7 +1762,9 @@
     "line_count": "{{count}} 行",
     "filtered_suffix": "（已过滤）",
     "autoscroll_on": "自动滚动",
-    "autoscroll_paused": "自动滚动已暂停"
+    "autoscroll_paused": "自动滚动已暂停",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {

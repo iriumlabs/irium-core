@@ -1762,7 +1762,9 @@
     "line_count": "{{count}} líneas",
     "filtered_suffix": "(filtrado)",
     "autoscroll_on": "Desplazamiento automático activado",
-    "autoscroll_paused": "Desplazamiento automático en pausa"
+    "autoscroll_paused": "Desplazamiento automático en pausa",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {

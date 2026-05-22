@@ -1762,7 +1762,9 @@
     "line_count": "{{count}} लाइनें",
     "filtered_suffix": "(छाना हुआ)",
     "autoscroll_on": "ऑटो-स्क्रॉल चालू करें",
-    "autoscroll_paused": "ऑटो-स्क्रॉल रोका गया"
+    "autoscroll_paused": "ऑटो-स्क्रॉल रोका गया",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {

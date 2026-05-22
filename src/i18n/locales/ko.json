@@ -1762,7 +1762,9 @@
     "line_count": "{{count}} 라인",
     "filtered_suffix": "(거르는)",
     "autoscroll_on": "자동 스크롤 켜기",
-    "autoscroll_paused": "자동 스크롤이 일시중지되었습니다."
+    "autoscroll_paused": "자동 스크롤이 일시중지되었습니다.",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {

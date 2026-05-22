@@ -1762,7 +1762,9 @@
     "line_count": "{{count}} linhas",
     "filtered_suffix": "(filtrado)",
     "autoscroll_on": "Rolagem automática ativada",
-    "autoscroll_paused": "Rolagem automática pausada"
+    "autoscroll_paused": "Rolagem automática pausada",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {

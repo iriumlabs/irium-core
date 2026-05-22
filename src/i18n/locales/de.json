@@ -1762,7 +1762,9 @@
     "line_count": "{{count}} Zeilen",
     "filtered_suffix": "(gefiltert)",
     "autoscroll_on": "Automatisches Scrollen aktiviert",
-    "autoscroll_paused": "Automatischer Bildlauf angehalten"
+    "autoscroll_paused": "Automatischer Bildlauf angehalten",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {

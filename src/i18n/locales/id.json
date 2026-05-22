@@ -1762,7 +1762,9 @@
     "line_count": "{{count}} baris",
     "filtered_suffix": "(tersaring)",
     "autoscroll_on": "Gulir otomatis aktif",
-    "autoscroll_paused": "Gulir otomatis dijeda"
+    "autoscroll_paused": "Gulir otomatis dijeda",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {

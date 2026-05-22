@@ -1762,7 +1762,9 @@
     "line_count": "{{count}} dòng",
     "filtered_suffix": "(đã lọc)",
     "autoscroll_on": "Bật tự động cuộn",
-    "autoscroll_paused": "Tự động cuộn đã tạm dừng"
+    "autoscroll_paused": "Tự động cuộn đã tạm dừng",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {

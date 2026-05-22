@@ -1762,7 +1762,9 @@
     "line_count": "{{count}} satırları",
     "filtered_suffix": "(filtrelendi)",
     "autoscroll_on": "Otomatik kaydırma açık",
-    "autoscroll_paused": "Otomatik kaydırma duraklatıldı"
+    "autoscroll_paused": "Otomatik kaydırma duraklatıldı",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {

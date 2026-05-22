@@ -1760,7 +1760,9 @@
     "line_count": "{{count}} lines",
     "filtered_suffix": " (filtered)",
     "autoscroll_on": "Auto-scroll on",
-    "autoscroll_paused": "Auto-scroll paused"
+    "autoscroll_paused": "Auto-scroll paused",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {

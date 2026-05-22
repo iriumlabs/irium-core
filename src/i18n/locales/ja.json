@@ -1762,7 +1762,9 @@
     "line_count": "{{count}}行",
     "filtered_suffix": "(フィルター済み)",
     "autoscroll_on": "自動スクロールをオンにする",
-    "autoscroll_paused": "自動スクロールを一時停止しました"
+    "autoscroll_paused": "自動スクロールを一時停止しました",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {
