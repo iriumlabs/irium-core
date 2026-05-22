@@ -11,6 +11,22 @@
 [![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE)
 [![Latest Release](https://img.shields.io/github/v/release/iriumlabs/irium-core)](https://github.com/iriumlabs/irium-core/releases/latest)
 
+**Official full-node desktop wallet and miner for the [Irium blockchain](https://github.com/iriumlabs/irium).** Bundles the node, BIP39 HD wallet, CPU/GPU/ASIC mining, in-app explorer, and settlement UI in a single native window. No terminal required.
+
+## Download
+
+Download the latest installer for your platform from the [Releases page](https://github.com/iriumlabs/irium-core/releases/latest):
+
+| Platform | Installer |
+|----------|-----------|
+| Windows  | `.exe` (NSIS) |
+| macOS    | `.dmg` (Apple Silicon) |
+| Linux    | `.deb`, `.rpm`, or `.AppImage` |
+
+Each installer bundles `iriumd`, `irium-wallet`, `irium-miner`, and `irium-explorer` — no external dependencies.
+
+---
+
 ## Irium Core
 
 Irium Core is the **official full-node desktop wallet and miner** for the [Irium blockchain](https://github.com/iriumlabs/irium).
@@ -43,20 +59,6 @@ Your keys never leave your machine. All node operations go through a locally-spa
 - Peer-to-peer marketplace for trustless offers
 - Four selectable themes (Midnight, Obsidian, Aurora, Nebula)
 - Runs on Windows, Linux, and macOS — built with Rust and Tauri
-
----
-
-### Download
-
-Get the installer for your platform from the [Releases](https://github.com/iriumlabs/irium-core/releases/latest) page.
-
-| Platform | Installer |
-|----------|-----------|
-| Windows  | `.exe` (NSIS) or `.msi` |
-| macOS    | `.dmg` (Intel and Apple Silicon) |
-| Linux    | `.deb` or `.AppImage` |
-
-Each installer bundles `iriumd`, `irium-wallet`, `irium-miner`, and `irium-explorer`. No external dependencies required.
 
 ---
 
