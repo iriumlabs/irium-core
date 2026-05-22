@@ -886,7 +886,9 @@
       "offer_imported": "Offer imported",
       "import_failed": "Import failed: {{reason}}",
       "sync_failed": "Sync failed: {{reason}}",
-      "default_feeds_added": "Default feeds added"
+      "default_feeds_added": "Default feeds added",
+      "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
+      "take_failed_already_taken": "This offer has already been taken by another buyer."
     }
   },
   "miner": {
@@ -896,6 +898,14 @@
       "gpu": "GPU",
       "stratum": "Stratum Pool",
       "asic": "ASIC & External Miner Support"
+    },
+    "unexpected_exit": {
+      "title": "Miner stopped unexpectedly",
+      "body_mac": "Your miner stopped unexpectedly. This can happen on Mac due to GPU power limits or the macOS GPU watchdog. Click Restart Miner to resume.",
+      "body_other": "Your miner stopped unexpectedly. Check the miner log for details, then click Restart Miner to resume.",
+      "restart_cpu": "Restart CPU Miner",
+      "restart_gpu": "Restart GPU Miner",
+      "dismiss": "Dismiss"
     },
     "configuration": "Configuration",
     "configure_hint": "Configure your address below and start mining",
@@ -1751,7 +1761,17 @@
   "quarantine_banner": {
     "title": "Found {{count}} quarantined block file(s) from a previous session.",
     "subtitle": "These blocks cannot be shown in mining history until recovered.",
+    "node_running_caption": "Stop the node first, then click Recover Now to delete the quarantined block files.",
     "recover_now": "Recover Now",
+    "clearing": "Clearing...",
+    "stop_node_button": "Stop Node",
+    "stopping_node": "Stopping...",
+    "toast_node_stopped": "Node stopped. You can now recover the quarantined blocks.",
+    "toast_node_stop_failed": "Could not stop the node.",
+    "toast_node_stop_failed_reason": "Could not stop the node: {{reason}}",
+    "toast_recovered": "Recovered {{files}} quarantined block file(s).",
+    "toast_recover_partial": "Recovered {{files}} file(s); some directories could not be removed: {{reason}}",
+    "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}",
     "dismiss": "Dismiss"
   },
   "titlebar": {

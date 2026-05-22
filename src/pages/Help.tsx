@@ -277,6 +277,10 @@ function QuarantineRecovery() {
   const { t } = useTranslation();
   const nodeStatus = useStore((s) => s.nodeStatus);
   const nodeRunning = nodeStatus?.running ?? false;
+  // FIX #129: mirror the scan result into the global store so the
+  // Dashboard banner refreshes (and self-dismisses on count==0) when
+  // the user runs scan/clear from this page.
+  const setQuarantinedBlockCount = useStore((s) => s.setQuarantinedBlockCount);
   const [counts, setCounts] = useState<{ files: number; dirs: number } | null>(null);
   const [scanning, setScanning] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -288,14 +292,16 @@ function QuarantineRecovery() {
     setScanError(null);
     try {
       const result = await node.scanQuarantinedBlocks();
-      setCounts(result ?? { files: 0, dirs: 0 });
+      const next = result ?? { files: 0, dirs: 0 };
+      setCounts(next);
+      setQuarantinedBlockCount(next.files);
     } catch (e) {
       setScanError(String(e));
       setCounts(null);
     } finally {
       setScanning(false);
     }
-  }, []);
+  }, [setQuarantinedBlockCount]);
 
   useEffect(() => {
     scan();

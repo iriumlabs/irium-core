@@ -28,6 +28,8 @@ type StatusJson = {
   anchor_loaded?: boolean;
   network_era?: string;
   version?: string;
+  persisted_height?: number;
+  gap_healer_pending_count?: number;
 };
 type PeersJson = { peers?: unknown[]; peer_count?: number };
 
@@ -58,6 +60,15 @@ async function fetchRpcStatus(rpcUrl: string): Promise<NodeStatus | null> {
     // Mirror Rust logic: synced only when anchor loaded, have peers, know the tip,
     // and local height is within 10 blocks of the network tip.
     const synced = Boolean(d.anchor_loaded) && peers > 0 && tipH > 0 && height >= tipH - 10;
+    // Mirror Rust's stricter fully_synced gate (FIX 1 mitigation): the
+    // persisted state has caught up to the in-memory tip AND no gap-healer
+    // entries remain. Falls back to 0 / matches the offline-branch
+    // construction in main.rs when the RPC doesn't surface those fields.
+    const persisted_height = Number(d.persisted_height ?? 0);
+    const gap_healer_pending_count = Number(d.gap_healer_pending_count ?? 0);
+    const fully_synced = synced
+      && persisted_height === height
+      && gap_healer_pending_count === 0;
 
     return {
       running:      true,
@@ -70,6 +81,9 @@ async function fetchRpcStatus(rpcUrl: string): Promise<NodeStatus | null> {
       version:      String(d.version     ?? '1.0.0'),
       rpc_url:      rpcUrl,
       upnp_active:  false,
+      persisted_height,
+      gap_healer_pending_count,
+      fully_synced,
     };
   } catch {
     return null;

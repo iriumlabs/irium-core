@@ -17,6 +17,15 @@ export interface NodeStatus {
   rpc_url: string;
   upnp_active: boolean;
   upnp_external_ip?: string;
+  // FIX 1 interim mitigation. `synced` is the existing "within 10 blocks of
+  // network tip" check — it is true throughout the post-restart rewind
+  // window and is not safe to gate Send on. `fully_synced` adds two
+  // stricter conditions: persisted state has caught up to the in-memory
+  // tip, and no gap-healer block holes remain. Send is disabled until
+  // all three are satisfied.
+  persisted_height: number;
+  gap_healer_pending_count: number;
+  fully_synced: boolean;
 }
 
 // Subset of iriumd's /metrics — only the counters the GUI consumes.
@@ -136,6 +145,12 @@ export interface Transaction {
   // Whether this is a coinbase (mining reward) tx. Surfaced from the RPC
   // so the row can render with a Pickaxe icon + "Mining Reward" label.
   is_coinbase?: boolean;
+  // FIX #126: true for entries surfaced from the wallet's local
+  // pending-tx cache (broadcast but not yet mined). The list view
+  // renders them with an amber "Pending — awaiting confirmation"
+  // badge. Cleared automatically by the Tauri side once the txid
+  // appears in confirmed /rpc/history.
+  pending?: boolean;
 }
 
 /**
@@ -219,6 +234,12 @@ export interface CreateOfferParams {
   // Optional explicit seller address. Falls back to the wallet's first
   // derived address on the backend when omitted.
   seller_address?: string;
+  // FIX 3: settlement template — when set, the wallet sidecar at
+  // offer-take time dispatches to the corresponding agreement builder.
+  // Omitted means legacy OTC behaviour.
+  template_type?: 'otc' | 'freelance' | 'milestone' | 'deposit';
+  // FIX 3: number of milestones for template_type==='milestone'.
+  milestone_count?: number;
 }
 
 export interface CreateOfferResult {

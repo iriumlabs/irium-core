@@ -1,28 +1,91 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, X } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { AlertTriangle, RefreshCw, Square, Trash2, X } from 'lucide-react';
 import { useStore } from '../lib/store';
+import { node } from '../lib/tauri';
 
 // Banner shown at the top of the Dashboard and Miner pages when
 // scan_quarantined_blocks (run once per session in App.tsx) reports a
 // non-zero file count. Quarantined blocks live on disk under
-// $IRIUM_DATA_DIR/blocks-quarantine/ — they are blocks iriumd persisted
+// $IRIUM_DATA_DIR/blocks/orphaned_*/ — they are blocks iriumd persisted
 // during a partial write that the next start couldn't validate. They
 // don't break anything on their own, but they don't count toward
 // mining history or chain stats, so we surface them so the user can
-// recover via the Help page's QuarantineRecovery flow.
+// recover.
 //
-// The banner is dismissable for the current session via the X button.
-// We don't persist dismissal across launches — a future bug that
-// quarantines more blocks should resurface the warning.
+// FIX #129 (2026-05-22): "Recover Now" used to navigate to /help and
+// leave the user to find the clear flow themselves. The clear command
+// also refuses when the node is running, but the banner didn't expose
+// that constraint — clicking the button looked like a no-op. Worse,
+// even after a successful clear from /help, this banner stayed up
+// because QuarantineRecovery wrote to local state, not the global
+// store. This rewrite (a) does the clear in-place when the node is
+// stopped, (b) shows a Stop Node action when it isn't, and (c) zeros
+// quarantinedBlockCount on success so the banner self-dismisses.
+//
+// The dismiss X still hides the banner for the current session
+// without clearing anything — kept for users who want to defer.
 export default function QuarantineRecoveryBanner() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const count = useStore((s) => s.quarantinedBlockCount);
   const dismissed = useStore((s) => s.quarantineBannerDismissed);
   const dismiss = useStore((s) => s.dismissQuarantineBanner);
+  const setQuarantinedBlockCount = useStore((s) => s.setQuarantinedBlockCount);
+  const nodeStatus = useStore((s) => s.nodeStatus);
+  const nodeRunning = nodeStatus?.running ?? false;
+  const [busy, setBusy] = useState<'stopping' | 'clearing' | null>(null);
 
   if (count <= 0 || dismissed) return null;
+
+  const handleStopNode = async () => {
+    if (busy) return;
+    setBusy('stopping');
+    try {
+      const ok = await node.stop();
+      if (ok) {
+        toast.success(t('quarantine_banner.toast_node_stopped'));
+        // The Dashboard's poll loop will flip nodeStatus.running to false
+        // within ~1s; we leave nodeRunning derivation to that signal.
+      } else {
+        toast.error(t('quarantine_banner.toast_node_stop_failed'));
+      }
+    } catch (e) {
+      toast.error(t('quarantine_banner.toast_node_stop_failed_reason', { reason: String(e) }));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleRecover = async () => {
+    if (busy) return;
+    setBusy('clearing');
+    try {
+      const result = await node.clearQuarantinedBlocks();
+      if (!result) {
+        toast.error(t('quarantine_banner.toast_recover_failed', { reason: 'no response' }));
+        return;
+      }
+      if (result.errors.length > 0) {
+        toast.error(
+          t('quarantine_banner.toast_recover_partial', {
+            files: result.deleted_files,
+            reason: result.errors[0],
+          }),
+        );
+      } else {
+        toast.success(t('quarantine_banner.toast_recovered', { files: result.deleted_files }));
+      }
+      // Zero the store so the banner self-dismisses via the count <= 0 guard.
+      // The next session-start scan in App.tsx will surface any new
+      // quarantine that appears later.
+      setQuarantinedBlockCount(0);
+    } catch (e) {
+      toast.error(t('quarantine_banner.toast_recover_failed', { reason: String(e) }));
+    } finally {
+      setBusy(null);
+    }
+  };
 
   return (
     <div
@@ -44,30 +107,75 @@ export default function QuarantineRecoveryBanner() {
           {t('quarantine_banner.title', { count })}
         </p>
         <p className="text-xs mt-0.5" style={{ color: 'rgba(238,240,255,0.65)' }}>
-          {t('quarantine_banner.subtitle')}
+          {nodeRunning
+            ? t('quarantine_banner.node_running_caption')
+            : t('quarantine_banner.subtitle')}
         </p>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
-        <button
-          onClick={() => navigate('/help')}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-display font-semibold transition-all active:scale-[0.97]"
-          style={{
-            background: 'rgba(245,158,11,0.16)',
-            border: '1px solid rgba(245,158,11,0.55)',
-            color: '#fff',
-            boxShadow: '0 0 16px rgba(245,158,11,0.18)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(245,158,11,0.24)';
-            e.currentTarget.style.borderColor = 'rgba(245,158,11,0.75)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(245,158,11,0.16)';
-            e.currentTarget.style.borderColor = 'rgba(245,158,11,0.55)';
-          }}
-        >
-          {t('quarantine_banner.recover_now')}
-        </button>
+        {nodeRunning ? (
+          <button
+            onClick={handleStopNode}
+            disabled={busy !== null}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-display font-semibold transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              background: 'rgba(245,158,11,0.16)',
+              border: '1px solid rgba(245,158,11,0.55)',
+              color: '#fff',
+              boxShadow: '0 0 16px rgba(245,158,11,0.18)',
+            }}
+            onMouseEnter={(e) => {
+              if (busy === null) {
+                e.currentTarget.style.background = 'rgba(245,158,11,0.24)';
+                e.currentTarget.style.borderColor = 'rgba(245,158,11,0.75)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(245,158,11,0.16)';
+              e.currentTarget.style.borderColor = 'rgba(245,158,11,0.55)';
+            }}
+          >
+            {busy === 'stopping' ? (
+              <RefreshCw size={14} className="animate-spin" />
+            ) : (
+              <Square size={14} />
+            )}
+            {busy === 'stopping'
+              ? t('quarantine_banner.stopping_node')
+              : t('quarantine_banner.stop_node_button')}
+          </button>
+        ) : (
+          <button
+            onClick={handleRecover}
+            disabled={busy !== null}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-display font-semibold transition-all active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              background: 'rgba(245,158,11,0.16)',
+              border: '1px solid rgba(245,158,11,0.55)',
+              color: '#fff',
+              boxShadow: '0 0 16px rgba(245,158,11,0.18)',
+            }}
+            onMouseEnter={(e) => {
+              if (busy === null) {
+                e.currentTarget.style.background = 'rgba(245,158,11,0.24)';
+                e.currentTarget.style.borderColor = 'rgba(245,158,11,0.75)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(245,158,11,0.16)';
+              e.currentTarget.style.borderColor = 'rgba(245,158,11,0.55)';
+            }}
+          >
+            {busy === 'clearing' ? (
+              <RefreshCw size={14} className="animate-spin" />
+            ) : (
+              <Trash2 size={14} />
+            )}
+            {busy === 'clearing'
+              ? t('quarantine_banner.clearing')
+              : t('quarantine_banner.recover_now')}
+          </button>
+        )}
         <button
           onClick={dismiss}
           aria-label={t('quarantine_banner.dismiss')}

@@ -5,7 +5,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 use tauri::{Manager, SystemTray, SystemTrayMenu, SystemTrayMenuItem, CustomMenuItem, State};
 use tauri::api::path::app_data_dir;
@@ -56,6 +56,25 @@ struct AppState {
     // every stratum_connect so a new pool session starts at zero.
     stratum_shares_accepted: Arc<Mutex<u64>>,
     stratum_shares_rejected: Arc<Mutex<u64>>,
+    // TASK 3: distinguishes a user-initiated `stop_miner` call from an
+    // unexpected termination (macOS GPU watchdog kill, OOM, segfault, etc).
+    // start_miner / start_gpu_miner reset to false on entry; stop_miner
+    // flips to true immediately before sending SIGTERM. The Terminated
+    // event handler reads this — false → emit a "miner-exited-unexpectedly"
+    // Tauri event so the GUI can offer a Restart Miner banner.
+    miner_user_initiated_stop: Arc<Mutex<bool>>,
+    // FIX #126: in-memory pending-tx cache keyed by txid. Populated by
+    // wallet_send immediately after broadcast, before iriumd has
+    // mined the tx into a block. Surfaced through
+    // wallet_pending_transactions and inline-merged into
+    // wallet_transactions so the UI shows the outgoing tx as
+    // "Pending - awaiting confirmation" the instant the user clicks
+    // Send. Culled lazily inside wallet_transactions when the txid
+    // shows up in confirmed /rpc/history results. Lost on app
+    // restart - acceptable since the user's broadcasting wallet
+    // re-populates by simply repeating the send (or just waits for
+    // confirmation if iriumd already accepted it).
+    pending_txs: Arc<Mutex<HashMap<String, Transaction>>>,
 }
 
 impl AppState {
@@ -88,8 +107,56 @@ impl AppState {
             gpu_power_w: Arc::new(Mutex::new(None)),
             stratum_shares_accepted: Arc::new(Mutex::new(0)),
             stratum_shares_rejected: Arc::new(Mutex::new(0)),
+            miner_user_initiated_stop: Arc::new(Mutex::new(false)),
+            pending_txs: Arc::new(Mutex::new(HashMap::new())),
         }
     }
+}
+
+// ============================================================
+// LOCAL RPC TOKEN
+//
+// Generated on first launch and persisted to <app_data_dir>/rpc_token.txt.
+// Once iriumd's RPC port is bound to 0.0.0.0 (so peers can reach
+// /offers/feed) every privileged endpoint must be guarded by a token
+// shared between iriumd and the wallet sidecar — without this, opening
+// the bind would expose wallet RPC to anyone on the LAN.
+//
+// Both iriumd and the wallet binary read IRIUM_RPC_TOKEN from their env
+// and use the standard Bearer-token scheme. The GUI's own reqwest calls
+// only hit endpoints behind check_rate_with_auth (rate-limited but
+// unauthenticated path remains valid), so they continue to work without
+// being updated; the auth gate fires only on require_rpc_auth endpoints,
+// which the wallet sidecar handles.
+// ============================================================
+
+static RPC_TOKEN: OnceLock<String> = OnceLock::new();
+
+fn init_rpc_token(app_data_dir: &Path) -> String {
+    let token_path = app_data_dir.join("rpc_token.txt");
+    if let Ok(t) = std::fs::read_to_string(&token_path) {
+        let trimmed = t.trim().to_string();
+        if !trimmed.is_empty() { return trimmed; }
+    }
+    // 16 random bytes -> 32 hex chars. getrandom uses the OS entropy
+    // source (BCryptGenRandom on Windows, /dev/urandom on Linux/Mac).
+    // If the OS RNG truly fails, fall back to time+pid; this token only
+    // gates LAN-side access, not crypto, so the fallback is acceptable
+    // for the rare failure case.
+    let mut buf = [0u8; 16];
+    if getrandom::getrandom(&mut buf).is_err() {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let pid = std::process::id() as u128;
+        let mixed = now ^ (pid << 64);
+        buf.copy_from_slice(&mixed.to_le_bytes());
+    }
+    let token: String = buf.iter().map(|b| format!("{:02x}", b)).collect();
+    let _ = std::fs::create_dir_all(app_data_dir);
+    let _ = std::fs::write(&token_path, &token);
+    token
 }
 
 // ============================================================
@@ -338,6 +405,18 @@ async fn run_wallet_cmd(
     }
     if let Some(dd) = data_dir {
         env_vars.insert("IRIUM_DATA_DIR".to_string(), dd);
+    }
+    // Forward the local RPC token to the wallet sidecar so it can
+    // authenticate to iriumd. The wallet binary reads IRIUM_RPC_TOKEN from
+    // env and wraps every privileged RPC call with Authorization: Bearer …
+    // (verified in irium-source/src/bin/irium-wallet.rs:2607-2713). If the
+    // token isn't initialised yet (vanishingly rare; setup() runs first),
+    // unwrap_or_default leaves the env var unset which preserves the
+    // pre-change behaviour.
+    if let Some(token) = RPC_TOKEN.get() {
+        if !token.is_empty() {
+            env_vars.insert("IRIUM_RPC_TOKEN".to_string(), token.clone());
+        }
     }
 
     let cmd = Command::new_sidecar("irium-wallet")
@@ -1061,6 +1140,23 @@ async fn start_node(
 
     // REQUIRED: iriumd starts RPC-only with no peer connections unless this is set.
     node_env.insert("IRIUM_P2P_BIND".to_string(), "0.0.0.0:38291".to_string());
+    // Bind the RPC port publicly too so peers that discover our marketplace
+    // feed URL via the P2P handshake can actually fetch /offers/feed.
+    // iriumd defaults to 127.0.0.1:38300 (iriumd.rs:9175); without this
+    // override, every desktop seller's advertised feed URL is unreachable.
+    node_env.insert("IRIUM_NODE_HOST".to_string(), "0.0.0.0".to_string());
+    // Pair the public bind with a token. iriumd's require_rpc_auth() returns
+    // Ok unconditionally when no token is set, so without this every
+    // privileged endpoint (create_agreement, fund_agreement, build_*_template,
+    // claim_htlc, etc.) would be exposed to anyone on the LAN. The wallet
+    // sidecar reads the same env var and sends Authorization: Bearer …, so
+    // local settlement commands keep working transparently. RPC_TOKEN is
+    // initialised in setup(); unwrap_or_default keeps iriumd in the legacy
+    // no-auth mode if init somehow didn't run (e.g., during early-boot races).
+    node_env.insert(
+        "IRIUM_RPC_TOKEN".to_string(),
+        RPC_TOKEN.get().cloned().unwrap_or_default(),
+    );
 
     // Official bootstrap seeds (matches irium-source/bootstrap/seedlist.txt exactly).
     // IRIUM_ADDNODE feeds the seed dial loop directly (highest priority, always retried).
@@ -1969,6 +2065,20 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
                 && network_tip > 0
                 && local_height >= network_tip.saturating_sub(10);
 
+            // FIX 1 interim mitigation — see NodeStatus docstring. After a
+            // local iriumd restart the in-memory tip can be ahead of the
+            // persisted state by `gap_healer_pending_count` blocks while
+            // the gap healer replays them. Any /rpc/utxos response during
+            // that window can return stale UTXOs that produce a wallet-side
+            // signing failure surfaced as "Transaction signature verification
+            // failed". Send button is gated on `fully_synced` so the user
+            // can't broadcast until persistence has caught up.
+            let persisted_height = info.persisted_height.unwrap_or(0);
+            let gap_healer_pending_count = info.gap_healer_pending_count.unwrap_or(0);
+            let fully_synced = synced
+                && persisted_height == local_height
+                && gap_healer_pending_count == 0;
+
             let upnp_ip = state.upnp_external_ip.lock().map_err(lock_err)?.clone();
             let status = NodeStatus {
                 running: true,
@@ -1982,6 +2092,9 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
                 rpc_url: rpc_url.clone(),
                 upnp_active: upnp_ip.is_some(),
                 upnp_external_ip: upnp_ip,
+                persisted_height,
+                gap_healer_pending_count,
+                fully_synced,
             };
             *state.last_node_status.lock().map_err(lock_err)? = Some(status.clone());
             Ok(status)
@@ -2002,6 +2115,9 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
                 rpc_url,
                 upnp_active: upnp_ip.is_some(),
                 upnp_external_ip: upnp_ip,
+                persisted_height: 0,
+                gap_healer_pending_count: 0,
+                fully_synced: false,
             })
         }
     }
@@ -2145,7 +2261,57 @@ async fn wallet_send(
     if txid.len() != 64 || !txid.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(format!("wallet returned invalid txid: {}", txid));
     }
+    // FIX #126: capture this outgoing tx in the pending-tx cache so the
+    // GUI can render it as Pending immediately, before iriumd mines it.
+    // wallet_transactions will cull this entry on the next poll once
+    // the txid appears in confirmed /rpc/history. amount is negated
+    // (outgoing convention used by /rpc/history) and fee carried through.
+    {
+        let mut cache = state.pending_txs.lock().map_err(lock_err)?;
+        cache.insert(
+            txid.clone(),
+            Transaction {
+                txid: txid.clone(),
+                amount: -(amount_sats as i64),
+                fee: fee_sats,
+                confirmations: 0,
+                height: None,
+                timestamp: Some(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_secs() as i64)
+                        .unwrap_or(0),
+                ),
+                direction: "sent".to_string(),
+                address: Some(to.clone()),
+                is_coinbase: Some(false),
+                pending: Some(true),
+            },
+        );
+    }
     Ok(SendResult { txid, amount: amount_sats, fee: fee_sats.unwrap_or(0) })
+}
+
+/// FIX #126: return all pending entries this wallet has broadcast in
+/// the current session. The cache is in-memory only - app restart
+/// clears it (in which case the GUI just won't show the Pending badge
+/// until the tx confirms via /rpc/history). Sorted newest-first.
+#[tauri::command]
+async fn wallet_pending_transactions(
+    state: State<'_, AppState>,
+    address: Option<String>,
+) -> Result<Vec<Transaction>, String> {
+    let cache = state.pending_txs.lock().map_err(lock_err)?;
+    let mut out: Vec<Transaction> = cache
+        .values()
+        .filter(|tx| match address.as_deref() {
+            Some(addr) => tx.address.as_deref() == Some(addr),
+            None => true,
+        })
+        .cloned()
+        .collect();
+    out.sort_by(|a, b| b.timestamp.unwrap_or(0).cmp(&a.timestamp.unwrap_or(0)));
+    Ok(out)
 }
 
 // wallet_transactions: queries /rpc/history for each wallet address
@@ -2217,11 +2383,34 @@ async fn wallet_transactions(
                         direction: direction.to_string(),
                         address: Some(addr.clone()),
                         is_coinbase: Some(tx.is_coinbase),
+                        pending: None,
                     });
                 }
             }
         }
     }
+
+    // FIX #126: cull pending-tx cache entries that now appear as confirmed
+    // history entries, then merge any remaining pending entries onto the
+    // front of the list. The cull happens here (not in wallet_send) so
+    // the cache stays clean even if the GUI never explicitly polls
+    // wallet_pending_transactions.
+    let pending_to_prepend: Vec<Transaction> = {
+        let mut cache = state.pending_txs.lock().map_err(lock_err)?;
+        let confirmed_txids: std::collections::HashSet<&str> =
+            all_txs.iter().map(|t| t.txid.as_str()).collect();
+        // Cull confirmed entries from the cache.
+        cache.retain(|txid, _| !confirmed_txids.contains(txid.as_str()));
+        // Snapshot remaining pending entries (filtered by --address when set).
+        cache
+            .values()
+            .filter(|tx| match address_filter_for_pending(&addresses) {
+                Some(addr) => tx.address.as_deref() == Some(addr),
+                None => true,
+            })
+            .cloned()
+            .collect()
+    };
 
     // L-6 fix: sort by descending block height (then unconfirmed last) BEFORE
     // truncating to `limit`. Previously `truncate(n)` returned the first N
@@ -2233,11 +2422,29 @@ async fn wallet_transactions(
         let ah = a.height.unwrap_or(u64::MAX);
         bh.cmp(&ah)
     });
+
+    // FIX #126: prepend pending entries so they show at the top of the
+    // list. They have height=None so the height sort above would push
+    // them last; prepending here gives them the correct visual priority.
+    let mut merged: Vec<Transaction> = pending_to_prepend;
+    merged.extend(all_txs);
     if let Some(n) = limit {
-        all_txs.truncate(n as usize);
+        merged.truncate(n as usize);
     }
 
-    Ok(all_txs)
+    Ok(merged)
+}
+
+/// FIX #126 helper: when wallet_transactions was called with an explicit
+/// address argument, restrict the prepended pending entries to ones
+/// matching that address. When called without (the all-addresses
+/// branch), return None so every pending entry passes the filter.
+fn address_filter_for_pending(addresses: &[String]) -> Option<&str> {
+    if addresses.len() == 1 {
+        Some(addresses[0].as_str())
+    } else {
+        None
+    }
 }
 
 #[tauri::command]
@@ -3002,6 +3209,8 @@ async fn offer_create(
     let timeout = height + params.timeout_blocks.unwrap_or(1000);
 
     // offer-create --seller <addr> --amount <irm> --payment-method <text> --timeout <height>
+    //              [--template-type <otc|freelance|milestone|deposit>]
+    //              [--milestone-count <N>]
     let mut args = vec![
         "offer-create".to_string(),
         "--seller".to_string(), seller,
@@ -3021,6 +3230,19 @@ async fn offer_create(
     if let Some(id) = params.offer_id {
         args.push("--offer-id".to_string());
         args.push(id);
+    }
+    // FIX 3: forward template type + milestone count to the wallet
+    // sidecar so the offer JSON persists them and offer-take dispatches
+    // to the correct builder.
+    if let Some(tmpl) = params.template_type.as_ref().filter(|s| !s.trim().is_empty()) {
+        args.push("--template-type".to_string());
+        args.push(tmpl.trim().to_lowercase());
+    }
+    if let Some(n) = params.milestone_count {
+        if n > 0 {
+            args.push("--milestone-count".to_string());
+            args.push(n.to_string());
+        }
     }
     args.push("--json".to_string());
 
@@ -3404,19 +3626,24 @@ async fn agreement_create(
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
     let height = get_current_height(&rpc_url).await;
-    let deadline_blocks = params.deadline_hours.unwrap_or(24) * 6;
+    let deadline_blocks = params.deadline_hours.unwrap_or(24) * BLOCKS_PER_HOUR;
     let timeout = height + deadline_blocks;
 
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
-    let secret_hash = format!("{:0>64x}", ts);
+    let agreement_id = format!("settle-{}", ts);
+    // FIX 1: real cryptographic preimage + SHA-256 commitment. Persist the
+    // preimage BEFORE calling the wallet binary so a wallet-side failure
+    // leaves at most an orphan secret file (no on-chain reference exists).
+    let (secret_preimage, secret_hash) = mint_settlement_secret();
+    persist_settlement_secret(&data_dir, &agreement_id, &secret_preimage)?;
     let doc_hash = format!("{:0>64x}", ts.wrapping_add(1));
 
     let args = vec![
         "agreement-create-simple-settlement".to_string(),
-        "--agreement-id".to_string(), format!("settle-{}", ts),
+        "--agreement-id".to_string(), agreement_id.clone(),
         "--creation-time".to_string(), ts.to_string(),
         "--party-a".to_string(), format!("addr={}", params.counterparty),
         "--party-b".to_string(), format!("addr={}", params.counterparty),
@@ -3752,6 +3979,195 @@ async fn reputation_show(state: State<'_, AppState>, pubkey_or_addr: String) -> 
 // SETTLEMENT TEMPLATES
 // ============================================================
 
+/// Number of blocks per hour used by all settlement deadline / cooldown
+/// conversions. Set to 60 (≈1 min/block) because the live chain runs
+/// faster than the protocol's 10-min target (BLOCK_TARGET_INTERVAL=600s)
+/// and we want timeouts to be meaningful in real time rather than 10×
+/// longer than the user expects. Previously the codebase used `* 6`
+/// (=10 min/block); raise this constant whenever the empirical block
+/// rate changes materially.
+const BLOCKS_PER_HOUR: u64 = 60;
+
+// ─── FIX 1: Settlement secret generation ───────────────────────────────────
+// The Settlement Hub previously generated `secret_hash` as a zero-padded
+// hex unix timestamp (`format!("{:0>64x}", ts)`) — not a hash at all, and
+// no preimage was ever stored. That made every Hub-created agreement
+// permanently unreleasable because there was no way to satisfy the HTLC.
+//
+// `mint_settlement_secret()` returns a fresh 32-byte OS-random preimage
+// and its SHA-256 commitment. `persist_settlement_secret()` writes the
+// preimage hex to <data_dir>/.irium/agreement_secrets/<key>.hex (mode 0600
+// on Unix); `load_settlement_secret()` reads it back on Release. The key
+// is the agreement_id for top-level secrets and "<agreement_id>_milestone_<n>"
+// for milestone-specific secrets.
+
+fn settlement_secrets_dir(data_dir: &Option<String>) -> Result<PathBuf, String> {
+    let base = data_dir
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| dirs::home_dir().unwrap_or_default().join(".irium"));
+    let dir = base.join("agreement_secrets");
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("create secrets dir {}: {e}", dir.display()))?;
+    Ok(dir)
+}
+
+fn mint_settlement_secret() -> (String /* preimage_hex */, String /* sha256(preimage)_hex */) {
+    use sha2::{Digest, Sha256};
+    let mut secret = [0u8; 32];
+    getrandom::getrandom(&mut secret).expect("OS RNG must work");
+    let hash = Sha256::digest(secret);
+    (hex::encode(secret), hex::encode(hash))
+}
+
+fn persist_settlement_secret(
+    data_dir: &Option<String>,
+    key: &str,
+    preimage_hex: &str,
+) -> Result<(), String> {
+    let dir = settlement_secrets_dir(data_dir)?;
+    let path = dir.join(format!("{key}.hex"));
+    std::fs::write(&path, preimage_hex)
+        .map_err(|e| format!("write secret file {}: {e}", path.display()))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+    }
+    Ok(())
+}
+
+fn load_settlement_secret(data_dir: &Option<String>, key: &str) -> Result<String, String> {
+    let dir = settlement_secrets_dir(data_dir)?;
+    let path = dir.join(format!("{key}.hex"));
+    let raw = std::fs::read_to_string(&path)
+        .map_err(|e| format!("read secret file {}: {e}", path.display()))?;
+    Ok(raw.trim().to_string())
+}
+
+/// FIX 4: Build and store the proof policy for a freshly-created Hub
+/// agreement so the proof + attestation flow works without the user
+/// having to find and invoke `policy-build-*` themselves.
+///
+/// Best-effort: a policy-build failure is logged to stderr but the
+/// settlement_create_* handler still returns success — the agreement is
+/// already on-chain at this point and a missing policy can be re-built
+/// later with the standalone `policy_build_*` Tauri commands.
+///
+/// Per-template mapping:
+///   otc / merchant_delayed -> policy-build-otc        (attestor: seller / merchant)
+///   freelance              -> policy-build-contractor (attestor: contractor, milestone slot used for the work-completed proof)
+///   milestone / contractor -> policy-build-contractor x N (one per milestone)
+///   deposit                -> no policy (depositor releases unilaterally)
+#[allow(clippy::too_many_arguments)]
+async fn auto_build_policy(
+    template: &str,
+    agreement_id: &str,
+    agreement_hash: &str,
+    attestor_addr: &str,
+    milestone_count: u32,
+    wallet_path: Option<String>,
+    data_dir: Option<String>,
+    rpc_url: String,
+) {
+    // Skip silently when the wallet binary returned no agreement_hash —
+    // the policy command requires it and would just fail anyway.
+    if agreement_hash.is_empty() {
+        eprintln!(
+            "[FIX 4] auto_build_policy: empty agreement_hash for {agreement_id} (template {template}) — skipping policy build"
+        );
+        return;
+    }
+    match template {
+        "otc" | "merchant_delayed" => {
+            let policy_id = format!("{agreement_id}_policy_otc");
+            let args = vec![
+                "policy-build-otc".to_string(),
+                "--policy-id".to_string(), policy_id.clone(),
+                "--agreement-hash".to_string(), agreement_hash.to_string(),
+                "--attestor".to_string(), attestor_addr.to_string(),
+                "--release-proof-type".to_string(), "payment_received".to_string(),
+                "--json".to_string(),
+            ];
+            if let Err(e) = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await {
+                eprintln!("[FIX 4] policy-build-otc failed for {agreement_id}: {e}");
+            }
+        }
+        "freelance" => {
+            let policy_id = format!("{agreement_id}_policy_freelance");
+            let args = vec![
+                "policy-build-contractor".to_string(),
+                "--policy-id".to_string(), policy_id.clone(),
+                "--agreement-hash".to_string(), agreement_hash.to_string(),
+                "--attestor".to_string(), attestor_addr.to_string(),
+                "--milestone".to_string(), "work_completed".to_string(),
+                "--json".to_string(),
+            ];
+            if let Err(e) = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await {
+                eprintln!("[FIX 4] policy-build-contractor (freelance) failed for {agreement_id}: {e}");
+            }
+        }
+        "milestone" | "contractor" => {
+            for i in 0..milestone_count {
+                let policy_id = format!("{agreement_id}_policy_m{}", i + 1);
+                let milestone_id = format!("m{}", i + 1);
+                let args = vec![
+                    "policy-build-contractor".to_string(),
+                    "--policy-id".to_string(), policy_id,
+                    "--agreement-hash".to_string(), agreement_hash.to_string(),
+                    "--attestor".to_string(), attestor_addr.to_string(),
+                    "--milestone".to_string(), milestone_id.clone(),
+                    "--json".to_string(),
+                ];
+                if let Err(e) = run_wallet_cmd_with_rpc(
+                    args,
+                    wallet_path.clone(),
+                    data_dir.clone(),
+                    rpc_url.clone(),
+                ).await {
+                    eprintln!(
+                        "[FIX 4] policy-build-contractor (milestone {}) failed for {agreement_id}: {e}",
+                        milestone_id
+                    );
+                }
+            }
+        }
+        "deposit" => {
+            // Per spec: depositor releases unilaterally, no policy needed.
+        }
+        other => {
+            eprintln!("[FIX 4] unknown template '{other}' — no policy built for {agreement_id}");
+        }
+    }
+}
+
+/// GUI-facing: returns the stored preimage for a Hub-created agreement so
+/// the user can click Release without manually tracking the secret. Errors
+/// when the file is absent (e.g. agreement created by a peer, or before
+/// FIX 1 shipped).
+#[tauri::command]
+async fn get_agreement_secret(
+    state: State<'_, AppState>,
+    agreement_id: String,
+) -> Result<String, String> {
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    load_settlement_secret(&data_dir, &agreement_id)
+}
+
+/// GUI-facing: returns the stored per-milestone preimage. Milestones are
+/// indexed from 0 to (milestone_count - 1) by the settlement_create_*
+/// handlers; the GUI must use the same index when calling Release for a
+/// specific milestone.
+#[tauri::command]
+async fn get_milestone_secret(
+    state: State<'_, AppState>,
+    agreement_id: String,
+    index: u32,
+) -> Result<String, String> {
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    load_settlement_secret(&data_dir, &format!("{agreement_id}_milestone_{index}"))
+}
+
 // otc-create --buyer <addr> --seller <addr> --amount <irm> --asset <text>
 //            --payment-method <text> --timeout <height> [--json]
 //
@@ -3766,11 +4182,16 @@ async fn settlement_create_otc(
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
     let height = get_current_height(&rpc_url).await;
-    let deadline_blocks = params.deadline_hours.unwrap_or(24) * 6;
+    let deadline_blocks = params.deadline_hours.unwrap_or(24) * BLOCKS_PER_HOUR;
     let timeout = height + deadline_blocks;
     let amount_irm = format!("{:.8}", sats_to_irm(params.amount_sats));
     let asset = params.asset_reference.unwrap_or_else(|| "IRM".to_string());
     let payment_method = params.payment_method.unwrap_or_else(|| "bank-transfer".to_string());
+    // FIX 4: capture attestor + clones for the post-create auto-policy call.
+    let attestor_addr = params.seller.clone();
+    let policy_wallet_path = wallet_path.clone();
+    let policy_data_dir = data_dir.clone();
+    let policy_rpc_url = rpc_url.clone();
 
     let mut args = vec![
         "otc-create".to_string(),
@@ -3791,6 +4212,17 @@ async fn settlement_create_otc(
     let result = serde_json::from_str::<OtcCreateResult>(&output)
         .map_err(|e| format!("Parse error: {} | raw: {}", e, &output[..output.len().min(400)]))?;
 
+    auto_build_policy(
+        "otc",
+        &result.agreement_id,
+        &result.agreement_hash,
+        &attestor_addr,
+        0,
+        policy_wallet_path,
+        policy_data_dir,
+        policy_rpc_url,
+    ).await;
+
     Ok(AgreementResult {
         agreement_id: result.agreement_id,
         hash: Some(result.agreement_hash),
@@ -3809,20 +4241,28 @@ async fn settlement_create_freelance(
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
     let height = get_current_height(&rpc_url).await;
-    let deadline_blocks = params.deadline_hours.unwrap_or(48) * 6;
+    let deadline_blocks = params.deadline_hours.unwrap_or(48) * BLOCKS_PER_HOUR;
     let timeout = height + deadline_blocks;
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default().as_secs();
-    let secret_hash = format!("{:0>64x}", ts);
+    let agreement_id = format!("freelance-{}", ts);
+    let (secret_preimage, secret_hash) = mint_settlement_secret();
+    persist_settlement_secret(&data_dir, &agreement_id, &secret_preimage)?;
     let doc_hash = format!("{:0>64x}", ts.wrapping_add(2));
 
     let mut scope_text = params.scope.unwrap_or_else(|| "Freelance work".to_string());
     if scope_text.len() > 100 { scope_text.truncate(100); }
 
+    // FIX 4: capture attestor (contractor) + clones for the post-create policy call.
+    let attestor_addr = params.contractor.clone();
+    let policy_wallet_path = wallet_path.clone();
+    let policy_data_dir = data_dir.clone();
+    let policy_rpc_url = rpc_url.clone();
+
     let args = vec![
         "agreement-create-simple-settlement".to_string(),
-        "--agreement-id".to_string(), format!("freelance-{}", ts),
+        "--agreement-id".to_string(), agreement_id.clone(),
         "--creation-time".to_string(), ts.to_string(),
         "--party-a".to_string(), format!("addr={}", params.client),
         "--party-b".to_string(), format!("addr={}", params.contractor),
@@ -3837,11 +4277,25 @@ async fn settlement_create_freelance(
     let raw: serde_json::Value = serde_json::from_str(&output)
         .map_err(|e| format!("Parse error: {}", e))?;
 
+    let result_agreement_id = raw["agreement_id"].as_str()
+        .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
+        .to_string();
+    let result_agreement_hash = raw["agreement_hash"].as_str().unwrap_or("").to_string();
+
+    auto_build_policy(
+        "freelance",
+        &result_agreement_id,
+        &result_agreement_hash,
+        &attestor_addr,
+        0,
+        policy_wallet_path,
+        policy_data_dir,
+        policy_rpc_url,
+    ).await;
+
     Ok(AgreementResult {
-        agreement_id: raw["agreement_id"].as_str()
-            .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
-            .to_string(),
-        hash: raw["agreement_hash"].as_str().map(String::from),
+        agreement_id: result_agreement_id,
+        hash: if result_agreement_hash.is_empty() { None } else { Some(result_agreement_hash) },
         success: true,
         message: None,
     })
@@ -3860,14 +4314,23 @@ async fn settlement_create_milestone(
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default().as_secs();
-    let secret_hash = format!("{:0>64x}", ts);
+    let agreement_id = format!("milestone-{}", ts);
+    let (secret_preimage, secret_hash) = mint_settlement_secret();
+    persist_settlement_secret(&data_dir, &agreement_id, &secret_preimage)?;
     let doc_hash = format!("{:0>64x}", ts.wrapping_add(3));
     let timeout = height + (params.milestone_count as u64 * 500);
     let per_milestone = sats_to_irm(params.amount_sats / params.milestone_count as u64);
 
+    // FIX 4: capture attestor (payee) + clones for the post-create N-policy call.
+    let attestor_addr = params.payee.clone();
+    let policy_wallet_path = wallet_path.clone();
+    let policy_data_dir = data_dir.clone();
+    let policy_rpc_url = rpc_url.clone();
+    let policy_milestone_count = params.milestone_count;
+
     let mut args = vec![
         "agreement-create-milestone".to_string(),
-        "--agreement-id".to_string(), format!("milestone-{}", ts),
+        "--agreement-id".to_string(), agreement_id.clone(),
         "--creation-time".to_string(), ts.to_string(),
         "--party-a".to_string(), format!("addr={}", params.payer),
         "--party-b".to_string(), format!("addr={}", params.payee),
@@ -3878,12 +4341,21 @@ async fn settlement_create_milestone(
     ];
     for i in 0..params.milestone_count {
         let m_timeout = height + ((i as u64 + 1) * 500);
-        let m_secret = format!("{:0>64x}", ts.wrapping_add(10 + i as u64));
-        let m_hash = format!("{:0>64x}", ts.wrapping_add(100 + i as u64));
+        // FIX 1: independent preimage per milestone so the Release flow can
+        // unlock milestones individually. Persist before passing the hash
+        // down to the wallet binary, same orphan-tolerant ordering as the
+        // top-level secret above.
+        let (m_secret_preimage, m_secret_hash) = mint_settlement_secret();
+        persist_settlement_secret(
+            &data_dir,
+            &format!("{agreement_id}_milestone_{}", i),
+            &m_secret_preimage,
+        )?;
+        let m_doc_hash = format!("{:0>64x}", ts.wrapping_add(100 + i as u64));
         args.push("--milestone".to_string());
         args.push(format!(
             "m{}|Milestone {}|{:.8}|{}|{}|{}",
-            i + 1, i + 1, per_milestone, m_timeout, m_secret, m_hash
+            i + 1, i + 1, per_milestone, m_timeout, m_secret_hash, m_doc_hash
         ));
     }
 
@@ -3891,11 +4363,25 @@ async fn settlement_create_milestone(
     let raw: serde_json::Value = serde_json::from_str(&output)
         .map_err(|e| format!("Parse error: {}", e))?;
 
+    let result_agreement_id = raw["agreement_id"].as_str()
+        .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
+        .to_string();
+    let result_agreement_hash = raw["agreement_hash"].as_str().unwrap_or("").to_string();
+
+    auto_build_policy(
+        "milestone",
+        &result_agreement_id,
+        &result_agreement_hash,
+        &attestor_addr,
+        policy_milestone_count,
+        policy_wallet_path,
+        policy_data_dir,
+        policy_rpc_url,
+    ).await;
+
     Ok(AgreementResult {
-        agreement_id: raw["agreement_id"].as_str()
-            .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
-            .to_string(),
-        hash: raw["agreement_hash"].as_str().map(String::from),
+        agreement_id: result_agreement_id,
+        hash: if result_agreement_hash.is_empty() { None } else { Some(result_agreement_hash) },
         success: true,
         message: None,
     })
@@ -3911,17 +4397,19 @@ async fn settlement_create_deposit(
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
     let height = get_current_height(&rpc_url).await;
-    let deadline_blocks = params.deadline_hours.unwrap_or(24) * 6;
+    let deadline_blocks = params.deadline_hours.unwrap_or(24) * BLOCKS_PER_HOUR;
     let timeout = height + deadline_blocks;
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default().as_secs();
-    let secret_hash = format!("{:0>64x}", ts);
+    let agreement_id = format!("deposit-{}", ts);
+    let (secret_preimage, secret_hash) = mint_settlement_secret();
+    persist_settlement_secret(&data_dir, &agreement_id, &secret_preimage)?;
     let doc_hash = format!("{:0>64x}", ts.wrapping_add(4));
 
     let args = vec![
         "agreement-create-deposit".to_string(),
-        "--agreement-id".to_string(), format!("deposit-{}", ts),
+        "--agreement-id".to_string(), agreement_id.clone(),
         "--creation-time".to_string(), ts.to_string(),
         "--payer".to_string(), format!("addr={}", params.depositor),
         "--payee".to_string(), format!("addr={}", params.recipient),
@@ -3958,19 +4446,27 @@ async fn settlement_create_merchant_delayed(
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
     let height = get_current_height(&rpc_url).await;
-    let cooldown_blocks = params.cooldown_hours.unwrap_or(72) * 6;
-    let deadline_blocks = params.deadline_hours.unwrap_or(336) * 6;
+    let cooldown_blocks = params.cooldown_hours.unwrap_or(72) * BLOCKS_PER_HOUR;
+    let deadline_blocks = params.deadline_hours.unwrap_or(336) * BLOCKS_PER_HOUR;
     let settlement_deadline = height + cooldown_blocks;
     let refund_timeout = height + deadline_blocks;
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default().as_secs();
-    let secret_hash = format!("{:0>64x}", ts);
+    let agreement_id = format!("merchant-{}", ts);
+    let (secret_preimage, secret_hash) = mint_settlement_secret();
+    persist_settlement_secret(&data_dir, &agreement_id, &secret_preimage)?;
     let doc_hash = format!("{:0>64x}", ts.wrapping_add(5));
+
+    // FIX 4: capture merchant (attestor) + clones for the post-create policy call.
+    let attestor_addr = params.merchant.clone();
+    let policy_wallet_path = wallet_path.clone();
+    let policy_data_dir = data_dir.clone();
+    let policy_rpc_url = rpc_url.clone();
 
     let mut args = vec![
         "agreement-create-simple-settlement".to_string(),
-        "--agreement-id".to_string(), format!("merchant-{}", ts),
+        "--agreement-id".to_string(), agreement_id.clone(),
         "--creation-time".to_string(), ts.to_string(),
         "--party-a".to_string(), format!("addr={}", params.buyer),
         "--party-b".to_string(), format!("addr={}", params.merchant),
@@ -3992,11 +4488,25 @@ async fn settlement_create_merchant_delayed(
     let raw: serde_json::Value = serde_json::from_str(&output)
         .map_err(|e| format!("Parse error: {}", e))?;
 
+    let result_agreement_id = raw["agreement_id"].as_str()
+        .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
+        .to_string();
+    let result_agreement_hash = raw["agreement_hash"].as_str().unwrap_or("").to_string();
+
+    auto_build_policy(
+        "merchant_delayed",
+        &result_agreement_id,
+        &result_agreement_hash,
+        &attestor_addr,
+        0,
+        policy_wallet_path,
+        policy_data_dir,
+        policy_rpc_url,
+    ).await;
+
     Ok(AgreementResult {
-        agreement_id: raw["agreement_id"].as_str()
-            .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
-            .to_string(),
-        hash: raw["agreement_hash"].as_str().map(String::from),
+        agreement_id: result_agreement_id,
+        hash: if result_agreement_hash.is_empty() { None } else { Some(result_agreement_hash) },
         success: true,
         message: None,
     })
@@ -4015,14 +4525,23 @@ async fn settlement_create_contractor(
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default().as_secs();
-    let secret_hash = format!("{:0>64x}", ts);
+    let agreement_id = format!("contractor-{}", ts);
+    let (secret_preimage, secret_hash) = mint_settlement_secret();
+    persist_settlement_secret(&data_dir, &agreement_id, &secret_preimage)?;
     let doc_hash = format!("{:0>64x}", ts.wrapping_add(6));
     let timeout = height + (params.milestone_count as u64 * 500);
     let per_milestone = sats_to_irm(params.amount_sats / params.milestone_count as u64);
 
+    // FIX 4: capture contractor (attestor) + clones for the post-create N-policy call.
+    let attestor_addr = params.contractor.clone();
+    let policy_wallet_path = wallet_path.clone();
+    let policy_data_dir = data_dir.clone();
+    let policy_rpc_url = rpc_url.clone();
+    let policy_milestone_count = params.milestone_count;
+
     let mut args = vec![
         "agreement-create-milestone".to_string(),
-        "--agreement-id".to_string(), format!("contractor-{}", ts),
+        "--agreement-id".to_string(), agreement_id.clone(),
         "--creation-time".to_string(), ts.to_string(),
         "--party-a".to_string(), format!("addr={}", params.client),
         "--party-b".to_string(), format!("addr={}", params.contractor),
@@ -4037,12 +4556,18 @@ async fn settlement_create_contractor(
     }
     for i in 0..params.milestone_count {
         let m_timeout = height + ((i as u64 + 1) * 500);
-        let m_secret = format!("{:0>64x}", ts.wrapping_add(10 + i as u64));
-        let m_hash = format!("{:0>64x}", ts.wrapping_add(100 + i as u64));
+        // FIX 1: per-milestone independent preimage, persisted before use.
+        let (m_secret_preimage, m_secret_hash) = mint_settlement_secret();
+        persist_settlement_secret(
+            &data_dir,
+            &format!("{agreement_id}_milestone_{}", i),
+            &m_secret_preimage,
+        )?;
+        let m_doc_hash = format!("{:0>64x}", ts.wrapping_add(100 + i as u64));
         args.push("--milestone".to_string());
         args.push(format!(
             "m{}|Milestone {}|{:.8}|{}|{}|{}",
-            i + 1, i + 1, per_milestone, m_timeout, m_secret, m_hash
+            i + 1, i + 1, per_milestone, m_timeout, m_secret_hash, m_doc_hash
         ));
     }
 
@@ -4050,11 +4575,25 @@ async fn settlement_create_contractor(
     let raw: serde_json::Value = serde_json::from_str(&output)
         .map_err(|e| format!("Parse error: {}", e))?;
 
+    let result_agreement_id = raw["agreement_id"].as_str()
+        .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
+        .to_string();
+    let result_agreement_hash = raw["agreement_hash"].as_str().unwrap_or("").to_string();
+
+    auto_build_policy(
+        "contractor",
+        &result_agreement_id,
+        &result_agreement_hash,
+        &attestor_addr,
+        policy_milestone_count,
+        policy_wallet_path,
+        policy_data_dir,
+        policy_rpc_url,
+    ).await;
+
     Ok(AgreementResult {
-        agreement_id: raw["agreement_id"].as_str()
-            .ok_or("Wallet binary returned no agreement_id field — operation may have failed silently")?
-            .to_string(),
-        hash: raw["agreement_hash"].as_str().map(String::from),
+        agreement_id: result_agreement_id,
+        hash: if result_agreement_hash.is_empty() { None } else { Some(result_agreement_hash) },
         success: true,
         message: None,
     })
@@ -4313,6 +4852,10 @@ async fn start_miner(
     if miner_lock.is_some() {
         return Err("Miner is already running".to_string());
     }
+    // TASK 3: reset the user-initiated-stop flag so the event loop below
+    // can correctly classify the next Terminated event as unexpected
+    // unless stop_miner sets it to true beforehand.
+    *state.miner_user_initiated_stop.lock().map_err(lock_err)? = false;
 
     // irium-miner reads address from IRIUM_MINER_ADDRESS env var, not a CLI flag
     let mut args: Vec<String> = Vec::new();
@@ -4343,11 +4886,47 @@ async fn start_miner(
     let found_blocks_ref = Arc::clone(&state.found_blocks);
     let miner_addr_ref   = Arc::clone(&state.miner_address);
     let rpc_url_for_reward = rpc_url.clone();
+    // TASK 3 captures for the unexpected-exit notification.
+    let app_for_event = app.clone();
+    let user_initiated_ref = Arc::clone(&state.miner_user_initiated_stop);
+    let miner_process_for_cleanup = Arc::clone(&state.miner_process);
+    let hashrate_for_clear = Arc::clone(&state.miner_hashrate);
+    let sync_for_clear = Arc::clone(&state.miner_sync_status);
     tauri::async_runtime::spawn(async move {
+        // Buffer of recent stderr lines included in the unexpected-exit
+        // payload so the GUI banner can show a snippet of what the miner
+        // last said before dying. Capped at 10 lines (rolling).
+        let mut stderr_tail: Vec<String> = Vec::new();
         while let Some(event) = rx.recv().await {
             let line = match event {
                 CommandEvent::Stdout(l) => { tracing::info!("[irium-miner] {}", l); l }
-                CommandEvent::Stderr(l) => { tracing::warn!("[irium-miner stderr] {}", l); l }
+                CommandEvent::Stderr(l) => {
+                    tracing::warn!("[irium-miner stderr] {}", l);
+                    stderr_tail.push(l.trim().to_string());
+                    if stderr_tail.len() > 10 { stderr_tail.remove(0); }
+                    l
+                }
+                CommandEvent::Terminated(payload) => {
+                    // TASK 3: clean up and decide whether to notify the GUI.
+                    let user_initiated = user_initiated_ref.lock()
+                        .map(|g| *g)
+                        .unwrap_or(false);
+                    if let Ok(mut g) = miner_process_for_cleanup.lock() { *g = None; }
+                    if let Ok(mut h) = hashrate_for_clear.lock() { *h = 0.0; }
+                    if let Ok(mut s) = sync_for_clear.lock() { *s = None; }
+                    if !user_initiated {
+                        let _ = app_for_event.emit_all(
+                            "miner-exited-unexpectedly",
+                            serde_json::json!({
+                                "kind": "cpu",
+                                "os": std::env::consts::OS,
+                                "exit_code": payload.code,
+                                "last_stderr_tail": stderr_tail,
+                            }),
+                        );
+                    }
+                    break;
+                }
                 _ => break,
             };
 
@@ -4411,6 +4990,10 @@ async fn start_miner(
 
 #[tauri::command]
 async fn stop_miner(app: tauri::AppHandle, state: State<'_, AppState>) -> Result<bool, String> {
+    // TASK 3: mark this as a user-initiated stop BEFORE sending the kill
+    // signal so the event-loop's Terminated handler classifies the exit
+    // correctly and does NOT emit the unexpected-exit banner event.
+    *state.miner_user_initiated_stop.lock().map_err(lock_err)? = true;
     let mut miner_lock = state.miner_process.lock().map_err(lock_err)?;
     if let Some(child) = miner_lock.take() {
         child.kill().map_err(|e| e.to_string())?;
@@ -4442,6 +5025,13 @@ async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, Str
     let sync_status = state.miner_sync_status.lock().map_err(lock_err)?.clone();
     let blocks_found = *state.blocks_found.lock().map_err(lock_err)?;
 
+    // Pool stats merge — fetch the proxy's /stats with a tight budget so
+    // the local Miner page stays snappy when the official pool is
+    // unreachable (private/alternative-pool users, or just transient net
+    // hiccups). Silent fallback to None when anything fails; the GUI
+    // already short-circuits to "—" on undefined.
+    let (pool_diff, pool_hashrate_khs) = fetch_pool_stats_for_miner_status().await;
+
     Ok(MinerStatus {
         running,
         hashrate_khs,
@@ -4451,7 +5041,58 @@ async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, Str
         threads,
         address,
         sync_status,
+        pool_diff,
+        pool_hashrate_khs,
     })
+}
+
+/// Pool-side enrichment for get_miner_status. Returns (current_diff,
+/// pool_hashrate_khs) on success; (None, None) on any failure. 2 s
+/// budget keeps the Miner-page refresh tight even when the pool VPS
+/// is degraded - the frontend renders "—" rather than blocking on us.
+async fn fetch_pool_stats_for_miner_status() -> (Option<u64>, Option<f64>) {
+    let client = match reqwest::Client::builder()
+        .timeout(Duration::from_secs(2))
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => return (None, None),
+    };
+    let resp = match client.get(POOL_STATS_URL).send().await {
+        Ok(r) => r,
+        Err(_) => return (None, None),
+    };
+    if !resp.status().is_success() {
+        return (None, None);
+    }
+    let v: serde_json::Value = match resp.json().await {
+        Ok(v) => v,
+        Err(_) => return (None, None),
+    };
+    // Sum ASIC + CPU/GPU hashrate (H/s) and convert to kH/s for the
+    // frontend's existing unit. Difficulty: pick ASIC's current_diff
+    // as the headline number; ASIC is the workhorse profile and the
+    // baseline is what most miners see.
+    let asic = v.get("asic");
+    let cpu_gpu = v.get("cpu_gpu");
+    let pool_diff = asic
+        .and_then(|x| x.get("current_diff"))
+        .and_then(|x| x.as_u64());
+    let asic_hps = asic
+        .and_then(|x| x.get("hashrate_estimate_hps"))
+        .and_then(|x| x.as_f64())
+        .unwrap_or(0.0);
+    let cpu_hps = cpu_gpu
+        .and_then(|x| x.get("hashrate_estimate_hps"))
+        .and_then(|x| x.as_f64())
+        .unwrap_or(0.0);
+    let total_hps = asic_hps + cpu_hps;
+    let pool_hashrate_khs = if total_hps > 0.0 {
+        Some(total_hps / 1000.0)
+    } else {
+        None
+    };
+    (pool_diff, pool_hashrate_khs)
 }
 
 // ============================================================
@@ -4576,6 +5217,7 @@ async fn list_gpu_platforms() -> Result<Vec<GpuPlatform>, String> {
 
 #[tauri::command]
 async fn start_gpu_miner(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     address: String,
     platform_sel: Option<String>,
@@ -4586,6 +5228,8 @@ async fn start_gpu_miner(
     if miner_lock.is_some() {
         return Err("Miner already running — stop it first".to_string());
     }
+    // TASK 3: reset the user-initiated-stop flag (see start_miner).
+    *state.miner_user_initiated_stop.lock().map_err(lock_err)? = false;
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
     let home_dir = dirs::home_dir().unwrap_or_default();
     let irium_dir = home_dir.join(".irium");
@@ -4629,11 +5273,49 @@ async fn start_gpu_miner(
     let temp_ref = Arc::clone(&state.gpu_temperature_c);
     let power_ref = Arc::clone(&state.gpu_power_w);
     let rpc_url_for_reward = rpc_url.clone();
+    // TASK 3 captures for the unexpected-exit notification path.
+    let app_for_event = app.clone();
+    let user_initiated_ref = Arc::clone(&state.miner_user_initiated_stop);
+    let miner_process_for_cleanup = Arc::clone(&state.miner_process);
+    let hashrate_for_clear = Arc::clone(&state.miner_hashrate);
+    let temp_for_clear = Arc::clone(&state.gpu_temperature_c);
+    let power_for_clear = Arc::clone(&state.gpu_power_w);
     tauri::async_runtime::spawn(async move {
+        // Rolling 10-line stderr buffer included in the unexpected-exit
+        // payload so the GUI can show what the GPU miner last said.
+        let mut stderr_tail: Vec<String> = Vec::new();
         while let Some(event) = rx.recv().await {
             let line = match event {
                 CommandEvent::Stdout(l) => l,
-                CommandEvent::Stderr(l) => l,
+                CommandEvent::Stderr(l) => {
+                    stderr_tail.push(l.trim().to_string());
+                    if stderr_tail.len() > 10 { stderr_tail.remove(0); }
+                    l
+                }
+                CommandEvent::Terminated(payload) => {
+                    // TASK 3: clean up and notify the GUI if this wasn't
+                    // a user-initiated stop. The macOS GPU watchdog is the
+                    // primary case this path catches.
+                    let user_initiated = user_initiated_ref.lock()
+                        .map(|g| *g)
+                        .unwrap_or(false);
+                    if let Ok(mut g) = miner_process_for_cleanup.lock() { *g = None; }
+                    if let Ok(mut h) = hashrate_for_clear.lock() { *h = 0.0; }
+                    if let Ok(mut t) = temp_for_clear.lock() { *t = None; }
+                    if let Ok(mut p) = power_for_clear.lock() { *p = None; }
+                    if !user_initiated {
+                        let _ = app_for_event.emit_all(
+                            "miner-exited-unexpectedly",
+                            serde_json::json!({
+                                "kind": "gpu",
+                                "os": std::env::consts::OS,
+                                "exit_code": payload.code,
+                                "last_stderr_tail": stderr_tail,
+                            }),
+                        );
+                    }
+                    break;
+                }
                 _ => break,
             };
             if let Some((height, hash)) = parse_block_found(&line) {
@@ -6857,6 +7539,14 @@ fn main() {
     tauri::Builder::default()
         .manage(AppState::new())
         .setup(|app| {
+            // Initialize the RPC token first thing in setup so it's
+            // available when start_node and any wallet sidecar call fire.
+            // get_or_init makes this idempotent if setup ever runs twice.
+            let token_dir = app.path_resolver()
+                .app_data_dir()
+                .unwrap_or_else(|| std::env::temp_dir().join("irium-core"));
+            RPC_TOKEN.get_or_init(|| init_rpc_token(&token_dir));
+
             let app_handle = app.handle();
             tauri::async_runtime::spawn(async move {
                 // Silent startup update check — emit event so frontend can show banner
@@ -6917,6 +7607,7 @@ fn main() {
             wallet_list_addresses,
             wallet_send,
             wallet_transactions,
+            wallet_pending_transactions,
             wallet_set_path,
             list_wallet_files,
             get_wallet_info,
@@ -6961,6 +7652,11 @@ fn main() {
             agreement_unpack,
             agreement_release,
             agreement_refund,
+            // FIX 1: Settlement secret retrieval — the GUI calls these on
+            // the Release button to look up the random preimage that the
+            // Hub stored at agreement-create time.
+            get_agreement_secret,
+            get_milestone_secret,
             // Proofs
             proof_list,
             proof_sign,

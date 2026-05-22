@@ -31,6 +31,16 @@ pub struct NodeStatus {
     pub rpc_url: String,
     pub upnp_active: bool,
     pub upnp_external_ip: Option<String>,
+    // FIX 1 interim mitigation: the wallet UI gates the Send button on
+    // `fully_synced` so the user cannot broadcast a transaction while the
+    // local iriumd is still replaying the post-restart gap (between
+    // `persisted_height` and the live tip, with `gap_healer_pending_count`
+    // counting outstanding block holes). The existing `synced` flag only
+    // verifies "within 10 blocks of network tip" and is true throughout
+    // the rewind window, so it can't be reused for this gate.
+    pub persisted_height: u64,
+    pub gap_healer_pending_count: u64,
+    pub fully_synced: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -56,6 +66,10 @@ pub struct RpcInfo {
     pub best_header_tip: Option<BestHeaderTip>,
     pub anchor_loaded: Option<bool>,
     pub network_era: Option<String>,
+    // FIX 1 mitigation: surfaced so the wallet Send-button gate can wait
+    // until the local node has fully replayed the post-restart gap.
+    pub persisted_height: Option<u64>,
+    pub gap_healer_pending_count: Option<u64>,
 }
 
 // Matches real GET /peers response:
@@ -175,7 +189,7 @@ pub struct SendResult {
     pub fee: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Transaction {
     pub txid: String,
     pub amount: i64,
@@ -194,6 +208,14 @@ pub struct Transaction {
     /// with a Pickaxe icon + "Mining Reward" label instead of a regular
     /// Receive.
     pub is_coinbase: Option<bool>,
+    /// FIX #126: True for entries originating from the wallet's local
+    /// pending-tx cache (populated by `wallet_send` immediately on
+    /// broadcast, before confirmation). The frontend renders a
+    /// "Pending — awaiting confirmation" badge in amber when this is
+    /// true; cleared automatically by `wallet_transactions` once the
+    /// txid appears in confirmed `/rpc/history` results.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pending: Option<bool>,
 }
 
 // ============================================================
@@ -292,6 +314,13 @@ pub struct CreateOfferParams {
     // Optional explicit seller. Falls back to the wallet's first address
     // when None — preserves the prior implicit behaviour.
     pub seller_address: Option<String>,
+    // FIX 3: settlement template the seller wants applied when a buyer
+    // takes this offer. One of "otc" | "freelance" | "milestone" |
+    // "deposit". None means legacy OTC behaviour.
+    pub template_type: Option<String>,
+    // FIX 3: number of milestones when template_type=="milestone".
+    // Ignored for other templates.
+    pub milestone_count: Option<u32>,
 }
 
 // offer-create --json output (same fields as offer show, plus saved_path)
@@ -514,6 +543,16 @@ pub struct MinerStatus {
     // during the 30–60 s startup window where irium-miner is downloading
     // chain state from iriumd before it begins hashing.
     pub sync_status: Option<String>,
+    // Pool-wide difficulty and hashrate, merged from the irium-pool
+    // stats-proxy at pool.iriumlabs.org:3337/stats. Populated only when
+    // the proxy responds within the 2 s budget; None otherwise so the
+    // GUI can render "—" instead of a stale value. The frontend reads
+    // these via the same MinerStatus shape it already uses for the
+    // local-miner fields above.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pool_diff: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pool_hashrate_khs: Option<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
