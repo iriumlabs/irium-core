@@ -143,7 +143,17 @@
       "wallet_path_description": "مسار مخصص لملف محفظتك (اتركه فارغًا افتراضيًا)",
       "wallet_path_placeholder": "~/.irium/wallet.json (افتراضي)",
       "data_dir_description": "دليل بيانات iriumd المخصص (اتركه فارغًا افتراضيًا)",
-      "data_dir_placeholder": "~/.ايريوم (افتراضي)"
+      "data_dir_placeholder": "~/.ايريوم (افتراضي)",
+      "node_mode": "Node mode",
+      "node_mode_description": "Local runs the bundled iriumd. Remote points the GUI at a node you manage elsewhere (VPS, dedicated rig) — bundled miners stay enabled and connect via the URL above.",
+      "node_mode_local": "Local (bundled iriumd)",
+      "node_mode_remote": "Remote node",
+      "rpc_token": "RPC token",
+      "rpc_token_description_local": "Optional. Used as the Bearer token for the GUI's outbound RPC calls. Leave blank to use the auto-minted local token.",
+      "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
+      "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
+      "rpc_token_test_remote": "Test remote",
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
     },
     "buttons": {
       "test_connection": "اتصال الاختبار",
@@ -538,7 +548,9 @@
       "copied": "منقول",
       "recovery_copied": "تم نسخ عبارة الاسترداد",
       "wif_copied": "تم نسخ WIF",
-      "name_invalid_chars": "لا يمكن أن يحتوي اسم المحفظة على: / \\ : * ? \" < > |"
+      "name_invalid_chars": "لا يمكن أن يحتوي اسم المحفظة على: / \\ : * ? \" < > |",
+      "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
     }
   },
   "agreements": {
@@ -888,7 +900,9 @@
       "offer_imported": "العرض مستورد",
       "import_failed": "فشل الاستيراد: {{reason}}",
       "sync_failed": "فشلت المزامنة: {{reason}}",
-      "default_feeds_added": "تمت إضافة الخلاصات الافتراضية"
+      "default_feeds_added": "تمت إضافة الخلاصات الافتراضية",
+      "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
+      "take_failed_already_taken": "This offer has already been taken by another buyer."
     }
   },
   "miner": {
@@ -941,7 +955,8 @@
       "gpu_address_placeholder": "ص…",
       "intensity_label": "الشدة — {{value}}%",
       "intensity_mac_note": "الحد الأقصى للكثافة هو 50% على نظام التشغيل macOS لمنع مراقب GPU من قتل النواة في منتصف الدفعة. يكتشف عامل منجم GPU تلقائيًا أكشاك المراقبة ويتوقف بشكل نظيف إذا رآها على أي حال.",
-      "pool_preset": "إعداد مسبق للمسبح"
+      "pool_preset": "إعداد مسبق للمسبح",
+      "stratum_worker_use_wallet": "Use my wallet"
     },
     "found_blocks": {
       "section_title": "تم العثور على كتل",
@@ -986,6 +1001,14 @@
     "opencl": {
       "detected_title": "تم اكتشاف أجهزة OpenCL",
       "none_detected": "لم يتم اكتشاف وحدة معالجة رسومات قادرة على استخدام OpenCL"
+    },
+    "unexpected_exit": {
+      "title": "Miner stopped unexpectedly",
+      "body_mac": "Your miner stopped unexpectedly. This can happen on Mac due to GPU power limits or the macOS GPU watchdog. Click Restart Miner to resume.",
+      "body_other": "Your miner stopped unexpectedly. Check the miner log for details, then click Restart Miner to resume.",
+      "restart_cpu": "Restart CPU Miner",
+      "restart_gpu": "Restart GPU Miner",
+      "dismiss": "Dismiss"
     }
   },
   "onboarding": {
@@ -1573,6 +1596,21 @@
       "building_body": "إتمام الاتفاقيات في الوقت المحدد، وتقديم الأدلة على وجه السرعة، وتجنب إثارة النزاعات العبثية. تضيف كل اتفاقية تم إصدارها بنجاح إلى درجاتك. النزاعات تخفضها، حتى لو تم حلها لصالحك.",
       "callout_label": "نصيحة:",
       "callout": "تحقق من سمعة الطرف المقابل قبل تمويل ضمان كبير. النتيجة التي تقل عن 60 هي علامة حمراء للتداولات لأول مرة."
+    },
+    "upnp_diag": {
+      "title": "UPnP diagnostics",
+      "verdict_ok": "Mapping active",
+      "verdict_double_nat": "Router accepted — but double NAT / CGNAT",
+      "verdict_failed": "Mapping failed",
+      "local_chosen": "Chosen LAN IP",
+      "local_candidates": "Detected adapters",
+      "gateway": "Router IP",
+      "ssdp_location": "SSDP location",
+      "control_url": "Control URL",
+      "external_ip": "External IP",
+      "external_ip_private": "(private — double NAT / CGNAT)",
+      "attempts": "AddPortMapping attempts",
+      "last_fault": "Last UPnP fault"
     }
   },
   "wizards": {
@@ -1724,7 +1762,9 @@
     "line_count": "{{count}} خطوط",
     "filtered_suffix": "(تمت تصفيته)",
     "autoscroll_on": "تشغيل التمرير التلقائي",
-    "autoscroll_paused": "تم إيقاف التمرير التلقائي مؤقتًا"
+    "autoscroll_paused": "تم إيقاف التمرير التلقائي مؤقتًا",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {
@@ -1754,7 +1794,17 @@
     "title": "تم العثور على {{count}} ملف (ملفات) الحظر المعزولة من جلسة سابقة.",
     "subtitle": "لا يمكن إظهار هذه الكتل في تاريخ التعدين حتى يتم استعادتها.",
     "recover_now": "استعد الآن",
-    "dismiss": "رفض"
+    "dismiss": "رفض",
+    "node_running_caption": "Stop the node first, then click Recover Now to delete the quarantined block files.",
+    "clearing": "Clearing...",
+    "stop_node_button": "Stop Node",
+    "stopping_node": "Stopping...",
+    "toast_node_stopped": "Node stopped. You can now recover the quarantined blocks.",
+    "toast_node_stop_failed": "Could not stop the node.",
+    "toast_node_stop_failed_reason": "Could not stop the node: {{reason}}",
+    "toast_recovered": "Recovered {{files}} quarantined block file(s).",
+    "toast_recover_partial": "Recovered {{files}} file(s); some directories could not be removed: {{reason}}",
+    "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
     "miner_active_confirm": "التعدين نشط. سيستمر عامل المنجم في العمل في الخلفية.\n\nانقر فوق \"موافق\" للتصغير إلى الدرج، أو \"إلغاء الأمر\" لإبقاء النافذة مفتوحة وإيقاف التعدين أولاً إذا كنت تريد الإنهاء تمامًا."
@@ -1788,5 +1838,12 @@
     "receiving": "الاستلام",
     "full_details_unavailable": "التفاصيل الكاملة غير متاحة بعد.",
     "view_on_explorer": "عرض على اكسبلورر"
+  },
+  "notifications": {
+    "agreement_funded": "Agreement {{hash}} funded",
+    "agreement_proof_submitted": "Proof submitted for agreement {{hash}}",
+    "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
+    "agreement_timeout": "Agreement {{hash}} timed out — refund available",
+    "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
   }
 }

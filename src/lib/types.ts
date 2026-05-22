@@ -17,6 +17,12 @@ export interface NodeStatus {
   rpc_url: string;
   upnp_active: boolean;
   upnp_external_ip?: string;
+  // FIX 1 (UPnP): router accepted AddPortMapping but the WAN IP it
+  // reports is itself RFC1918 / CGNAT / link-local. Mapping is alive
+  // on this router but inbound from the public internet still fails.
+  // Help / Dashboard surface this as "Inactive (double NAT)" with a
+  // tooltip explaining the diagnosis.
+  upnp_double_nat?: boolean;
   // FIX 1 interim mitigation. `synced` is the existing "within 10 blocks of
   // network tip" check — it is true throughout the post-restart rewind
   // window and is not safe to gate Send on. `fully_synced` adds two
@@ -883,6 +889,36 @@ export interface PortCheckResult {
   reason: string;
   upnp_external_ip: string | null;
   inbound_count: number;
+  // FIX 1 (UPnP): see NodeStatus.upnp_double_nat. Set when UPnP
+  // mapping was accepted but the router's WAN IP is private (CGNAT
+  // / double NAT), so inbound from the public internet won't work.
+  double_nat?: boolean;
+}
+
+// FIX 1 (UPnP): full diagnostic trace from the most recent UPnP
+// AddPortMapping attempt. Returned by the `upnp_diagnostics` Tauri
+// command and rendered on the Help page so the user can see exactly
+// what happened: which local IPv4 candidates were enumerated, which
+// one was selected as NewInternalClient, the gateway IP that was
+// matched against, the SSDP LOCATION URL and control URL, the
+// external IP returned by GetExternalIPAddress and whether it is
+// publicly routable, every AddPortMapping variant that was attempted
+// with its UPnP fault text, and the final verdict.
+export interface UpnpDiagnostics {
+  last_attempt_at_unix: number | null;
+  local_ipv4_candidates: string[];
+  local_ipv4_chosen: string | null;
+  gateway_ipv4: string | null;
+  ssdp_location: string | null;
+  control_url: string | null;
+  external_ip: string | null;
+  external_ip_routable: boolean | null;
+  // Count of AddPortMapping variants attempted in the retry chain
+  // (lease 3600/0 × empty_remote_host self-closing/explicit = up to 4).
+  add_port_mapping_attempts: number;
+  last_fault: string | null;
+  succeeded: boolean;
+  double_nat_detected: boolean;
 }
 
 // ============================================================
@@ -952,6 +988,17 @@ export interface AppSettings {
   network: "mainnet";
   external_ip?: string;
   theme: Theme;
+  // FIX 2 (IRIUM_RPC_TOKEN): user-supplied Bearer token for outbound
+  // GUI RPC calls. When unset, the GUI falls back to the auto-minted
+  // local token (which is fine for talking to the bundled iriumd).
+  // Required when pointing the GUI at a remote iriumd whose token is
+  // not on local disk — see node_mode.
+  rpc_token?: string;
+  // FIX 3 (Remote node): "local" spawns the bundled iriumd sidecar
+  // as before. "remote" skips the sidecar entirely and points GUI
+  // RPC traffic at rpc_url (which the user sets to the remote node's
+  // RPC endpoint). Default "local".
+  node_mode?: "local" | "remote";
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {

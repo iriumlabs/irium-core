@@ -19,7 +19,7 @@ import type {
   DisputeEntry, DisputeOpenResult,
   NetworkMetrics, ExplorerAgreement, ExplorerStats,
   ExplorerNetworkStats, ExplorerPeer, ExplorerBlock, NetworkHashrateInfo,
-  RichListResponse, PortCheckResult, PoolStats,
+  RichListResponse, PortCheckResult, PoolStats, UpnpDiagnostics,
   FeedDiscoverResult,
   AgreementSignResult, AgreementVerifySignatureResult,
   AgreementDecryptResult, AgreementStoreListResult,
@@ -69,6 +69,15 @@ export const node = {
 
   tryUpnpPortMap: () =>
     safeInvoke<string | null>('try_upnp_port_map'),
+
+  // FIX 1 (UPnP): full diagnostic snapshot of the most recent UPnP
+  // attempt — adapter enumeration, chosen LAN IP, gateway IP, SSDP
+  // location, control URL, external IP, routability verdict, retry
+  // chain status, last fault. Help page renders this in a collapsible
+  // panel so the user can self-diagnose UPnP failures even when the
+  // router UI claims the mapping is active (multi-adapter / double NAT).
+  upnpDiagnostics: () =>
+    safeInvoke<UpnpDiagnostics>('upnp_diagnostics'),
 
   // Port-forwarding self-test for the Help page's Test Connection button.
   // Combines a live UPnP probe with iriumd's inbound_accepted_total
@@ -243,6 +252,17 @@ export const agreements = {
 
   show: (agreementId: string) =>
     safeInvoke<Agreement>('agreement_show', { agreementId }),
+
+  // Full on-chain audit record for an agreement. The Rust command
+  // reconstitutes the canonical AgreementObject via
+  // `irium-wallet agreement-inspect` and POSTs it to iriumd's
+  // /rpc/agreementaudit under the {agreement: ...} envelope the
+  // endpoint expects — previously the GUI tried to POST just
+  // {agreement_hash} which axum rejected with HTTP 422. The wrapper
+  // returns the raw audit JSON so the AuditModal can do its own
+  // defensive field extraction.
+  audit: (agreementId: string) =>
+    safeInvoke<Record<string, unknown>>('agreement_audit', { agreementId }),
 
   create: (params: CreateAgreementParams) =>
     safeInvoke<AgreementResult>('agreement_create', { params }),
@@ -583,4 +603,13 @@ export const rpc = {
 
   setUrl: (url: string) =>
     safeInvoke<boolean>('rpc_set_url', { url }),
+
+  // FIX 3 (Remote node): probe a remote iriumd's /status with a 5s
+  // timeout and the supplied bearer token. Backend command resolves
+  // a successful 2xx response into Ok(true); anything else (timeout,
+  // 401, 5xx) bubbles up as Err so the Settings page can surface the
+  // exact reason. Used by the Test Remote button to confirm rpc_url
+  // + rpc_token are correct before flipping node_mode.
+  testRemoteConnection: (rpcUrl: string, rpcToken?: string) =>
+    safeInvoke<boolean>('test_remote_connection', { rpcUrl, rpcToken }),
 };

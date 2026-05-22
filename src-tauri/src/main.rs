@@ -20,9 +20,25 @@ use std::collections::HashMap;
 // STATE
 // ============================================================
 
+// BUG 1 (tab-correct miner status): start_miner and start_gpu_miner
+// both spawn into the same state.miner_process slot (only one miner
+// runs at a time by design). Without a discriminator, both
+// get_miner_status and get_gpu_miner_status returned running=true
+// whenever EITHER kind was active. The CPU tab in the GUI then
+// rendered "Mining Active — Syncing blocks" + the warmup banner even
+// when only the GPU miner was running. miner_kind tags the active
+// slot so each get_*_status command can return a truthful per-kind
+// running flag.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum MinerKind { Cpu, Gpu }
+
 struct AppState {
     node_process: Arc<Mutex<Option<CommandChild>>>,
     miner_process: Arc<Mutex<Option<CommandChild>>>,
+    // BUG 1: which miner currently owns miner_process. Set together
+    // with miner_process on spawn success, cleared together in
+    // stop_miner and in each spawn loop's Terminated branch.
+    miner_kind: Arc<Mutex<Option<MinerKind>>>,
     explorer_process: Arc<Mutex<Option<CommandChild>>>,
     rpc_url: Arc<Mutex<String>>,
     wallet_path: Arc<Mutex<Option<String>>>,
@@ -39,6 +55,18 @@ struct AppState {
     last_node_status: Arc<Mutex<Option<NodeStatus>>>,
     pool_url: Arc<Mutex<Option<String>>>,
     upnp_external_ip: Arc<Mutex<Option<String>>>,
+    // FIX 1 (UPnP): flips true when the router reports back an
+    // external IP that is itself RFC1918 / RFC6598 (CGNAT) / link-local
+    // / loopback. The mapping technically "succeeded" but the IP is not
+    // reachable from the public internet - the user is double-NAT'd.
+    // We surface this distinctly in the UI: "Inactive (double NAT)"
+    // instead of the misleading "Active" state.
+    upnp_double_nat: Arc<Mutex<bool>>,
+    // FIX 1 (UPnP): last-attempt diagnostic snapshot exposed via the
+    // new upnp_diagnostics Tauri command so the Help page can show the
+    // user exactly which adapter/gateway/external-IP path the SOAP
+    // dance took (and what failed). Self-diagnosable.
+    upnp_diagnostics: Arc<Mutex<UpnpDiagnostics>>,
     node_logs: Arc<Mutex<Vec<String>>>,
     // Bug 1 fix — cumulative blocks-found counter and the most-recent
     // entries list, populated by the miner spawn loops as they parse
@@ -56,6 +84,11 @@ struct AppState {
     // every stratum_connect so a new pool session starts at zero.
     stratum_shares_accepted: Arc<Mutex<u64>>,
     stratum_shares_rejected: Arc<Mutex<u64>>,
+    // FIX 4 (Mining UI): unix seconds of last accepted share, set by
+    // the stratum spawn loop when a `[stratum] share accepted` line
+    // is parsed. Surfaced through StratumStatus.last_share_time so
+    // the Miner page can render "12s ago" with a freshness pulse.
+    stratum_last_share_time: Arc<Mutex<Option<u64>>>,
     // TASK 3: distinguishes a user-initiated `stop_miner` call from an
     // unexpected termination (macOS GPU watchdog kill, OOM, segfault, etc).
     // start_miner / start_gpu_miner reset to false on entry; stop_miner
@@ -75,6 +108,19 @@ struct AppState {
     // re-populates by simply repeating the send (or just waits for
     // confirmation if iriumd already accepted it).
     pending_txs: Arc<Mutex<HashMap<String, Transaction>>>,
+    // FIX 2 (IRIUM_RPC_TOKEN): user-supplied Bearer token. Hydrated
+    // from settings JSON on save/load. When Some, the GUI's reqwest
+    // calls use this in `Authorization: Bearer <token>`; when None,
+    // they fall back to the auto-minted local token (RPC_TOKEN). The
+    // local iriumd / wallet sidecars are spawned with the auto-minted
+    // token regardless — this Mutex only affects outbound GUI HTTP
+    // (so a user pointing at a remote iriumd in FIX 3 can present the
+    // remote node's token without breaking local handshake).
+    rpc_token_override: Arc<Mutex<Option<String>>>,
+    // FIX 3 (Remote node): "local" → spawn bundled iriumd as before;
+    // "remote" → skip sidecar spawn, talk to whatever rpc_url points
+    // at. Hydrated from settings JSON on save/load; default "local".
+    node_mode: Arc<Mutex<String>>,
 }
 
 impl AppState {
@@ -88,6 +134,7 @@ impl AppState {
         AppState {
             node_process: Arc::new(Mutex::new(None)),
             miner_process: Arc::new(Mutex::new(None)),
+            miner_kind: Arc::new(Mutex::new(None)),
             explorer_process: Arc::new(Mutex::new(None)),
             rpc_url: Arc::new(Mutex::new("http://127.0.0.1:38300".to_string())),
             wallet_path: Arc::new(Mutex::new(Some(default_wallet))),
@@ -100,6 +147,8 @@ impl AppState {
             last_node_status: Arc::new(Mutex::new(None)),
             pool_url: Arc::new(Mutex::new(None)),
             upnp_external_ip: Arc::new(Mutex::new(None)),
+            upnp_double_nat: Arc::new(Mutex::new(false)),
+            upnp_diagnostics: Arc::new(Mutex::new(UpnpDiagnostics::default())),
             node_logs: Arc::new(Mutex::new(Vec::new())),
             blocks_found: Arc::new(Mutex::new(0)),
             found_blocks: Arc::new(Mutex::new(Vec::new())),
@@ -107,8 +156,11 @@ impl AppState {
             gpu_power_w: Arc::new(Mutex::new(None)),
             stratum_shares_accepted: Arc::new(Mutex::new(0)),
             stratum_shares_rejected: Arc::new(Mutex::new(0)),
+            stratum_last_share_time: Arc::new(Mutex::new(None)),
             miner_user_initiated_stop: Arc::new(Mutex::new(false)),
             pending_txs: Arc::new(Mutex::new(HashMap::new())),
+            rpc_token_override: Arc::new(Mutex::new(None)),
+            node_mode: Arc::new(Mutex::new("local".to_string())),
         }
     }
 }
@@ -131,6 +183,144 @@ impl AppState {
 // ============================================================
 
 static RPC_TOKEN: OnceLock<String> = OnceLock::new();
+
+// FIX 2 (IRIUM_RPC_TOKEN): builds the Bearer token the GUI presents
+// on outbound RPC calls. Precedence:
+//   1. user-supplied token from settings (rpc_token_override) — used
+//      when GUI talks to a remote iriumd whose token is not on local
+//      disk;
+//   2. auto-minted local token (RPC_TOKEN) — used by default in local
+//      mode so requests against the bundled iriumd work zero-config.
+// Returns None only when neither is available (very early startup
+// before init_rpc_token has run); call sites tolerate this — the
+// request goes out without an Authorization header and iriumd's
+// unauthenticated paths still respond.
+fn gui_rpc_bearer(state: &AppState) -> Option<String> {
+    if let Ok(g) = state.rpc_token_override.lock() {
+        if let Some(t) = g.clone() {
+            let trimmed = t.trim().to_string();
+            if !trimmed.is_empty() {
+                return Some(trimmed);
+            }
+        }
+    }
+    RPC_TOKEN.get().cloned()
+}
+
+// FIX 2 (IRIUM_RPC_TOKEN): drop-in replacement for
+// `reqwest::Client::new()` that attaches an `Authorization: Bearer`
+// default header so every privileged RPC endpoint (wallet balance,
+// send, fee_estimate, etc.) authenticates correctly — both against
+// the local sidecar and against a remote iriumd (FIX 3). Built per
+// call rather than cached because the token can change at runtime
+// when the user edits settings. Falls back to a plain Client if
+// header construction fails (the token must be ASCII; auto-minted
+// tokens are 32 hex chars, so the fallback is only for malformed
+// user-supplied tokens — we still want a working client in that
+// case so the GUI surfaces an HTTP error, not a Tauri error).
+fn rpc_client_with_token(token: Option<String>) -> reqwest::Client {
+    if let Some(t) = token {
+        let mut headers = reqwest::header::HeaderMap::new();
+        if let Ok(val) = reqwest::header::HeaderValue::from_str(&format!("Bearer {}", t)) {
+            headers.insert(reqwest::header::AUTHORIZATION, val);
+            if let Ok(client) = reqwest::Client::builder()
+                .default_headers(headers)
+                .build()
+            {
+                return client;
+            }
+        }
+    }
+    reqwest::Client::new()
+}
+
+fn rpc_client(state: &AppState) -> reqwest::Client {
+    rpc_client_with_token(gui_rpc_bearer(state))
+}
+
+// Same as rpc_client but with a caller-supplied builder so callers
+// that need timeouts (start_node's connectivity check, update probes,
+// etc.) can keep their tuning while still getting authentication.
+fn rpc_client_builder(state: &AppState) -> reqwest::ClientBuilder {
+    let mut builder = reqwest::Client::builder();
+    if let Some(token) = gui_rpc_bearer(state) {
+        let mut headers = reqwest::header::HeaderMap::new();
+        if let Ok(val) = reqwest::header::HeaderValue::from_str(&format!("Bearer {}", token)) {
+            headers.insert(reqwest::header::AUTHORIZATION, val);
+            builder = builder.default_headers(headers);
+        }
+    }
+    builder
+}
+
+// Snapshot the current bearer token from a long-lived Arc reference —
+// for spawned closures that can't carry `State<AppState>` across
+// .await points. The miner spawn loop in start_miner captures this
+// Arc so reward-fetching calls can re-resolve the live token on each
+// retry (the user could have edited the rpc_token in settings between
+// the block-found event and the +13s retry).
+fn snapshot_gui_rpc_bearer(
+    rpc_token_override: &Arc<Mutex<Option<String>>>,
+) -> Option<String> {
+    if let Ok(g) = rpc_token_override.lock() {
+        if let Some(t) = g.clone() {
+            let trimmed = t.trim().to_string();
+            if !trimmed.is_empty() {
+                return Some(trimmed);
+            }
+        }
+    }
+    RPC_TOKEN.get().cloned()
+}
+
+// FIX 2 + 3: extract rpc_token / node_mode / rpc_url out of the
+// opaque settings JSON the frontend writes, and mirror them into
+// AppState. Called from load_settings on launch + save_settings on
+// every user save so AppState always reflects the current settings.
+fn hydrate_settings_into_state(state: &AppState, settings_json: &str) {
+    let parsed: serde_json::Value = match serde_json::from_str(settings_json) {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+    if let Some(t) = parsed.get("rpc_token").and_then(|v| v.as_str()) {
+        let trimmed = t.trim();
+        if let Ok(mut g) = state.rpc_token_override.lock() {
+            *g = if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            };
+        }
+    } else if let Ok(mut g) = state.rpc_token_override.lock() {
+        *g = None;
+    }
+    if let Some(m) = parsed.get("node_mode").and_then(|v| v.as_str()) {
+        if m == "remote" || m == "local" {
+            if let Ok(mut g) = state.node_mode.lock() {
+                *g = m.to_string();
+            }
+        }
+    }
+    // FIX 3: in remote mode the rpc_url from settings overrides the
+    // default 127.0.0.1:38300. In local mode start_node writes its
+    // own rpc_url so we leave whatever's there.
+    let mode = state
+        .node_mode
+        .lock()
+        .ok()
+        .map(|g| g.clone())
+        .unwrap_or_else(|| "local".to_string());
+    if mode == "remote" {
+        if let Some(u) = parsed.get("rpc_url").and_then(|v| v.as_str()) {
+            let trimmed = u.trim();
+            if !trimmed.is_empty() {
+                if let Ok(mut g) = state.rpc_url.lock() {
+                    *g = trimmed.to_string();
+                }
+            }
+        }
+    }
+}
 
 fn init_rpc_token(app_data_dir: &Path) -> String {
     let token_path = app_data_dir.join("rpc_token.txt");
@@ -241,6 +431,37 @@ fn lock_err(e: impl std::fmt::Display) -> String {
     format!("Lock error: {}", e)
 }
 
+// Build a std::process::Command that never allocates a console on
+// Windows. The GUI is linked as /SUBSYSTEM:WINDOWS so it has no
+// attached console; spawning a console-subsystem child (taskkill,
+// git, where, …) via the bare std::process::Command makes Windows
+// allocate a new console for the child, which flashes a black CMD
+// window for ~100ms even when the child exits immediately. Stop
+// Node used to flash four such windows in a row.
+//
+// Setting CREATE_NO_WINDOW (0x08000000) on creation_flags tells the
+// kernel "do not allocate a console for this child" — output still
+// streams through inherited handles if any, but no visible window
+// is ever created. Tauri's Command::new_sidecar() applies the same
+// flag internally, which is why iriumd / irium-wallet / irium-miner
+// start silently while the manual taskkill / git / where spawns
+// below previously did not.
+//
+// On non-Windows targets this is identical to std::process::Command::new.
+fn silent_command(program: &str) -> std::process::Command {
+    let cmd = std::process::Command::new(program);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        let mut cmd = cmd;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        return cmd;
+    }
+    #[cfg(not(target_os = "windows"))]
+    cmd
+}
+
 #[tauri::command]
 fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
@@ -319,8 +540,8 @@ fn find_unique_wallet_path() -> String {
     irium_dir.join(format!("wallet-{}.json", ts)).to_string_lossy().to_string()
 }
 
-async fn get_rpc_info(rpc_url: &str) -> Result<RpcInfo, String> {
-    let client = reqwest::Client::new();
+async fn get_rpc_info(state: &AppState, rpc_url: &str) -> Result<RpcInfo, String> {
+    let client = rpc_client(state);
     let resp = client
         .get(format!("{}/status", rpc_url))
         .timeout(Duration::from_secs(3))
@@ -330,8 +551,8 @@ async fn get_rpc_info(rpc_url: &str) -> Result<RpcInfo, String> {
     resp.json::<RpcInfo>().await.map_err(|e| e.to_string())
 }
 
-async fn get_current_height(rpc_url: &str) -> u64 {
-    get_rpc_info(rpc_url).await
+async fn get_current_height(state: &AppState, rpc_url: &str) -> u64 {
+    get_rpc_info(state, rpc_url).await
         .ok()
         .and_then(|i| i.height)
         .unwrap_or(0)
@@ -785,9 +1006,102 @@ fn reset_seed_reputation() {
 // Opens TCP port 38291 on the router so other NAT-behind nodes
 // can dial us inbound. No relay, no central server — each node
 // does this independently using its own router's UPnP service.
+//
+// FIX 1 (this release): the legacy upnp_local_ipv4() used the
+// "connect to 8.8.8.8 then read local_addr" trick to find the
+// default-route adapter. On Windows hosts with Hyper-V, WSL2, Docker
+// Desktop, or a VPN client active, that trick frequently picks the
+// virtual switch / tunnel adapter instead of the actual LAN. The
+// router accepts the SOAP AddPortMapping but registers the wrong
+// internal client - the mapping appears live in the router UI yet
+// no packets arrive at the real iriumd. The GUI reads
+// "UPnP succeeded? yes" but the inbound port stays closed.
+//
+// This release replaces single-adapter discovery with a two-step
+// approach:
+//   1. SSDP discovers the gateway (whichever adapter the M-SEARCH
+//      response arrives on).
+//   2. Parse the gateway IP out of the SSDP LOCATION URL, then pick
+//      the LOCAL adapter in the gateway's subnet as NewInternalClient.
+//
+// Diagnostics are captured into AppState.upnp_diagnostics and
+// exposed via the new upnp_diagnostics Tauri command so the user
+// can self-diagnose from the Help page.
 // ============================================================
 
-fn upnp_local_ipv4() -> Option<std::net::Ipv4Addr> {
+/// FIX 1: enumerate every local IPv4 adapter, skipping the ones that
+/// can never be the right NewInternalClient for the router-side
+/// AddPortMapping call: loopback, link-local, anything in the 172.16-31
+/// range (almost always Hyper-V switch / Docker / WSL2 on consumer
+/// machines; if your real LAN actually uses 172.16-31 we still try the
+/// gateway-subnet fallback in upnp_local_ipv4_for_gateway).
+fn enumerate_local_ipv4_candidates() -> Vec<std::net::Ipv4Addr> {
+    use if_addrs::IfAddr;
+    let mut out = Vec::new();
+    if let Ok(ifaces) = if_addrs::get_if_addrs() {
+        for iface in ifaces {
+            if iface.is_loopback() {
+                continue;
+            }
+            if let IfAddr::V4(v4) = iface.addr {
+                let oct = v4.ip.octets();
+                // Link-local 169.254/16
+                if oct[0] == 169 && oct[1] == 254 {
+                    continue;
+                }
+                // 172.16-31/12 - almost always a virtual switch on consumer
+                // Windows machines. Real LANs in this range are rare; we
+                // fall back via gateway-subnet match if the user has one.
+                if oct[0] == 172 && (16..=31).contains(&oct[1]) {
+                    continue;
+                }
+                out.push(v4.ip);
+            }
+        }
+    }
+    out
+}
+
+/// FIX 1: parse an SSDP LOCATION URL like "http://192.168.1.1:5000/desc.xml"
+/// and return the host as an Ipv4Addr. Returns None for hostnames or IPv6
+/// LOCATION values - those go through the legacy heuristic path.
+fn extract_ipv4_from_location(location: &str) -> Option<std::net::Ipv4Addr> {
+    let after_scheme = location.split("://").nth(1)?;
+    let host_only = after_scheme.split(['/', ':']).next()?;
+    host_only.parse().ok()
+}
+
+/// FIX 1: given the router's IPv4 (extracted from the SSDP LOCATION URL),
+/// pick the local adapter in the same subnet. Tries /24 first (most home
+/// LANs); falls back to /16. Returns None if no adapter matches; callers
+/// then fall back to the legacy default-route trick. Choosing the right
+/// adapter here is the single most important UPnP bug fix in this
+/// release - it stops the router from registering AddPortMapping against
+/// the Hyper-V virtual switch.
+fn upnp_local_ipv4_for_gateway(gateway: std::net::Ipv4Addr) -> Option<std::net::Ipv4Addr> {
+    let candidates = enumerate_local_ipv4_candidates();
+    let gw = gateway.octets();
+    // /24 exact match
+    for ip in &candidates {
+        let oct = ip.octets();
+        if oct[0] == gw[0] && oct[1] == gw[1] && oct[2] == gw[2] {
+            return Some(*ip);
+        }
+    }
+    // /16 fallback
+    for ip in &candidates {
+        let oct = ip.octets();
+        if oct[0] == gw[0] && oct[1] == gw[1] {
+            return Some(*ip);
+        }
+    }
+    None
+}
+
+/// FIX 1: legacy default-route heuristic, kept as a last-resort fallback
+/// when neither SSDP gateway extraction nor adapter enumeration yields
+/// a candidate (rare; happens on no-network sandboxes).
+fn upnp_local_ipv4_default_route() -> Option<std::net::Ipv4Addr> {
     use std::net::{IpAddr, UdpSocket};
     let sock = UdpSocket::bind("0.0.0.0:0").ok()?;
     sock.connect("8.8.8.8:80").ok()?;
@@ -795,6 +1109,79 @@ fn upnp_local_ipv4() -> Option<std::net::Ipv4Addr> {
         IpAddr::V4(ip) => Some(ip),
         _ => None,
     }
+}
+
+/// FIX 1: classify an IPv4 address as publicly routable. Returns false
+/// for RFC1918 (10/8, 172.16/12, 192.168/16), RFC6598 CGNAT (100.64/10),
+/// loopback (127/8), link-local (169.254/16), and the
+/// 0.0.0.0 / 255.255.255.255 sentinels. Used to detect double-NAT:
+/// UPnP "succeeded" but the external IP is itself behind another NAT,
+/// so the mapping is useless for inbound connections.
+fn is_routable_ipv4(s: &str) -> bool {
+    let Ok(ip) = s.parse::<std::net::Ipv4Addr>() else {
+        return false;
+    };
+    let oct = ip.octets();
+    // Bogus sentinels
+    if oct == [0, 0, 0, 0] || oct == [255, 255, 255, 255] {
+        return false;
+    }
+    // 127/8 loopback
+    if oct[0] == 127 {
+        return false;
+    }
+    // 10/8
+    if oct[0] == 10 {
+        return false;
+    }
+    // 172.16/12
+    if oct[0] == 172 && (16..=31).contains(&oct[1]) {
+        return false;
+    }
+    // 192.168/16
+    if oct[0] == 192 && oct[1] == 168 {
+        return false;
+    }
+    // 100.64/10 - RFC6598 CGNAT
+    if oct[0] == 100 && (64..=127).contains(&oct[1]) {
+        return false;
+    }
+    // 169.254/16 link-local
+    if oct[0] == 169 && oct[1] == 254 {
+        return false;
+    }
+    true
+}
+
+/// FIX 1: full diagnostic snapshot of the last UPnP attempt, exposed via
+/// the upnp_diagnostics Tauri command. Lets the Help page show the user
+/// exactly which step the SOAP dance reached and what failed.
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
+struct UpnpDiagnostics {
+    last_attempt_at_unix: Option<u64>,
+    local_ipv4_candidates: Vec<String>,
+    local_ipv4_chosen: Option<String>,
+    gateway_ipv4: Option<String>,
+    ssdp_location: Option<String>,
+    control_url: Option<String>,
+    external_ip: Option<String>,
+    external_ip_routable: Option<bool>,
+    add_port_mapping_attempts: u8,
+    last_fault: Option<String>,
+    succeeded: bool,
+    double_nat_detected: bool,
+}
+
+/// FIX 1: result of one full try_upnp invocation. The legacy signature
+/// was Option<String>; that lost the diagnostic detail and couldn't
+/// distinguish "real failure" from "mapping succeeded but external IP
+/// is itself private (double NAT)". Callers update three pieces of
+/// AppState from this struct: upnp_external_ip, upnp_double_nat,
+/// upnp_diagnostics.
+struct UpnpAttempt {
+    external_ip: Option<String>,
+    double_nat: bool,
+    diagnostics: UpnpDiagnostics,
 }
 
 async fn upnp_discover_location() -> Option<String> {
@@ -894,55 +1281,289 @@ async fn upnp_soap<B: Into<reqwest::Body>>(
     resp.text().await.ok()
 }
 
-async fn try_upnp(port: u16) -> Option<String> {
-    let local_ip = upnp_local_ipv4()?.to_string();
-    let location = upnp_discover_location().await?;
+/// Helper: build the AddPortMapping SOAP envelope. `empty_remote_host_explicit`
+/// toggles the `<NewRemoteHost></NewRemoteHost>` (full-open) form vs the
+/// `<NewRemoteHost/>` (self-closing) form - some routers reject one but
+/// accept the other. `lease_duration` of 0 means a permanent lease (some
+/// routers only support that).
+fn build_add_port_mapping_soap(
+    svc_type: &str,
+    port: u16,
+    local_ip: &str,
+    lease_duration: u32,
+    empty_remote_host_explicit: bool,
+) -> String {
+    let remote_host_tag = if empty_remote_host_explicit {
+        "<NewRemoteHost></NewRemoteHost>"
+    } else {
+        "<NewRemoteHost/>"
+    };
+    format!(
+        r#"<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:AddPortMapping xmlns:u="{svc}">{rh}<NewExternalPort>{p}</NewExternalPort><NewProtocol>TCP</NewProtocol><NewInternalPort>{p}</NewInternalPort><NewInternalClient>{ip}</NewInternalClient><NewEnabled>1</NewEnabled><NewPortMappingDescription>Irium Core P2P</NewPortMappingDescription><NewLeaseDuration>{lease}</NewLeaseDuration></u:AddPortMapping></s:Body></s:Envelope>"#,
+        svc = svc_type, rh = remote_host_tag, p = port, ip = local_ip, lease = lease_duration,
+    )
+}
 
-    // Fetch device description
-    let client = reqwest::Client::builder()
+/// FIX 1: full try_upnp rewrite. Captures every step into UpnpAttempt so
+/// the caller can show diagnostics in the UI. Order:
+///  1. enumerate local IPv4 candidates (excluding loopback / link-local /
+///     172.16-31 virtual switch range).
+///  2. SSDP discover the router (default-route adapter).
+///  3. extract the router's IPv4 from the LOCATION URL.
+///  4. pick the local adapter in the router's subnet as NewInternalClient.
+///     This is the single change that fixes the Hyper-V / WSL / VPN
+///     adapter mis-selection bug.
+///  5. GetExternalIPAddress, then classify as routable vs RFC1918/CGNAT.
+///  6. DeletePortMapping (clear stale lease).
+///  7. AddPortMapping with retry chain:
+///       - first try: lease=3600s, <NewRemoteHost/> self-closing.
+///       - on fault 725 (OnlyPermanentLeasesSupported): retry lease=0.
+///       - on fault 718 / 726 / Wildcard: retry with explicit empty body.
+///       - on persistent fault: capture in last_fault for diagnostics.
+///  8. Even on success, if the external IP is itself private we flag
+///     double_nat: the mapping is alive on the router but the IP we
+///     would announce is unrouteable; the GUI shows
+///     "Inactive (double NAT)" rather than the misleading "Active".
+async fn try_upnp(port: u16) -> UpnpAttempt {
+    let mut attempt = UpnpAttempt {
+        external_ip: None,
+        double_nat: false,
+        diagnostics: UpnpDiagnostics::default(),
+    };
+    attempt.diagnostics.last_attempt_at_unix = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .map(|d| d.as_secs());
+
+    // Step 1: enumerate local adapter candidates (for diagnostics).
+    let candidates = enumerate_local_ipv4_candidates();
+    attempt.diagnostics.local_ipv4_candidates =
+        candidates.iter().map(|ip| ip.to_string()).collect();
+    tracing::info!(
+        "[upnp] step 1/6: enumerated {} local IPv4 candidate(s): {:?}",
+        candidates.len(),
+        attempt.diagnostics.local_ipv4_candidates
+    );
+
+    // Step 2: SSDP discovery.
+    let location = match upnp_discover_location().await {
+        Some(l) => l,
+        None => {
+            attempt.diagnostics.last_fault = Some("SSDP discovery timed out (no router response)".to_string());
+            tracing::warn!("[upnp] step 2/6 FAILED: SSDP M-SEARCH timed out — router does not advertise WANIPConnection on 239.255.255.250:1900");
+            return attempt;
+        }
+    };
+    attempt.diagnostics.ssdp_location = Some(location.clone());
+    tracing::info!("[upnp] step 2/6: SSDP LOCATION = {}", location);
+
+    // Step 3: extract gateway IP from the LOCATION URL (for adapter match).
+    let gateway = extract_ipv4_from_location(&location);
+    attempt.diagnostics.gateway_ipv4 = gateway.map(|g| g.to_string());
+    tracing::info!(
+        "[upnp] step 3/6: gateway IPv4 from LOCATION = {:?}",
+        attempt.diagnostics.gateway_ipv4
+    );
+
+    // Step 4: pick the local adapter in the gateway's subnet. Fall back
+    // to the legacy default-route heuristic if no adapter matches.
+    let local_ip = gateway
+        .and_then(upnp_local_ipv4_for_gateway)
+        .or_else(upnp_local_ipv4_default_route);
+    let local_ip = match local_ip {
+        Some(ip) => ip.to_string(),
+        None => {
+            attempt.diagnostics.last_fault =
+                Some("Could not determine a local IPv4 for NewInternalClient".to_string());
+            tracing::warn!(
+                "[upnp] step 4/6 FAILED: no local IPv4 adapter matched gateway {:?} and default-route fallback returned nothing — multi-adapter selection has no candidate to use as NewInternalClient",
+                attempt.diagnostics.gateway_ipv4
+            );
+            return attempt;
+        }
+    };
+    attempt.diagnostics.local_ipv4_chosen = Some(local_ip.clone());
+    tracing::info!("[upnp] step 4/6: chose local IPv4 {} as NewInternalClient", local_ip);
+
+    // Fetch device description (used to resolve the WAN service control URL).
+    let client = match reqwest::Client::builder()
         .timeout(Duration::from_secs(5))
-        .build().ok()?;
-    let xml = client.get(&location).send().await.ok()?.text().await.ok()?;
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => {
+            attempt.diagnostics.last_fault = Some("Could not build HTTP client".to_string());
+            tracing::warn!("[upnp] step 5/6 FAILED: could not build reqwest client for device description");
+            return attempt;
+        }
+    };
+    let xml = match client.get(&location).send().await {
+        Ok(r) => match r.text().await {
+            Ok(t) => t,
+            Err(_) => {
+                attempt.diagnostics.last_fault =
+                    Some("Device description fetch returned no body".to_string());
+                tracing::warn!("[upnp] step 5/6 FAILED: device description body empty at {}", location);
+                return attempt;
+            }
+        },
+        Err(e) => {
+            attempt.diagnostics.last_fault =
+                Some("Device description fetch failed (router unreachable)".to_string());
+            tracing::warn!("[upnp] step 5/6 FAILED: GET {} -> {}", location, e);
+            return attempt;
+        }
+    };
 
-    let (ctrl_url, svc_type) = upnp_resolve_control_url(&xml, &location)?;
+    let (ctrl_url, svc_type) = match upnp_resolve_control_url(&xml, &location) {
+        Some(v) => v,
+        None => {
+            attempt.diagnostics.last_fault =
+                Some("Device description missing WANIPConnection / WANPPPConnection service".to_string());
+            tracing::warn!("[upnp] step 5/6 FAILED: device description had no WANIPConnection / WANPPPConnection service block");
+            return attempt;
+        }
+    };
+    attempt.diagnostics.control_url = Some(ctrl_url.clone());
+    tracing::info!("[upnp] step 5/6: control URL = {} (svc: {})", ctrl_url, svc_type);
 
-    // GetExternalIPAddress
+    // Step 5: GetExternalIPAddress + routability classification.
     let ext_ip_soap = format!(
         r#"<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:GetExternalIPAddress xmlns:u="{svc}"/></s:Body></s:Envelope>"#,
         svc = svc_type
     );
     let action = format!("\"{}#GetExternalIPAddress\"", svc_type);
-    let resp_xml = upnp_soap(&ctrl_url, &action, ext_ip_soap).await?;
+    let resp_xml = match upnp_soap(&ctrl_url, &action, ext_ip_soap).await {
+        Some(t) => t,
+        None => {
+            attempt.diagnostics.last_fault =
+                Some("GetExternalIPAddress SOAP call failed".to_string());
+            tracing::warn!("[upnp] step 6/6 FAILED: GetExternalIPAddress SOAP call timed out or returned no body");
+            return attempt;
+        }
+    };
     let ext_ip = {
         const TAG: &str = "NewExternalIPAddress>";
-        let s = resp_xml.find(TAG)? + TAG.len();
-        let e = resp_xml[s..].find('<')? + s;
-        resp_xml[s..e].trim().to_string()
+        match resp_xml.find(TAG) {
+            Some(i) => {
+                let s = i + TAG.len();
+                match resp_xml[s..].find('<') {
+                    Some(j) => resp_xml[s..s + j].trim().to_string(),
+                    None => String::new(),
+                }
+            }
+            None => String::new(),
+        }
     };
-    if ext_ip.is_empty() { return None; }
+    if ext_ip.is_empty() {
+        attempt.diagnostics.last_fault =
+            Some("GetExternalIPAddress returned empty body".to_string());
+        tracing::warn!("[upnp] step 6/6 FAILED: GetExternalIPAddress response had no NewExternalIPAddress tag");
+        return attempt;
+    }
+    attempt.diagnostics.external_ip = Some(ext_ip.clone());
+    let routable = is_routable_ipv4(&ext_ip);
+    attempt.diagnostics.external_ip_routable = Some(routable);
+    tracing::info!(
+        "[upnp] step 6/6: GetExternalIPAddress returned {} (routable={})",
+        ext_ip,
+        routable
+    );
 
-    // DeletePortMapping first (clear stale lease)
+    // Step 6: clear stale lease (best-effort; failure is fine).
     let del_soap = format!(
         r#"<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:DeletePortMapping xmlns:u="{svc}"><NewRemoteHost/><NewExternalPort>{p}</NewExternalPort><NewProtocol>TCP</NewProtocol></u:DeletePortMapping></s:Body></s:Envelope>"#,
         svc = svc_type, p = port
     );
     let _ = upnp_soap(&ctrl_url, &format!("\"{}#DeletePortMapping\"", svc_type), del_soap).await;
 
-    // AddPortMapping
-    let add_soap = format!(
-        r#"<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:AddPortMapping xmlns:u="{svc}"><NewRemoteHost/><NewExternalPort>{p}</NewExternalPort><NewProtocol>TCP</NewProtocol><NewInternalPort>{p}</NewInternalPort><NewInternalClient>{ip}</NewInternalClient><NewEnabled>1</NewEnabled><NewPortMappingDescription>Irium Core P2P</NewPortMappingDescription><NewLeaseDuration>3600</NewLeaseDuration></u:AddPortMapping></s:Body></s:Envelope>"#,
-        svc = svc_type, p = port, ip = local_ip
-    );
-    let add_resp = upnp_soap(&ctrl_url, &format!("\"{}#AddPortMapping\"", svc_type), add_soap).await?;
-
-    // Success if response contains the success envelope (no fault element)
-    if add_resp.contains("Fault") || add_resp.contains("fault") {
-        tracing::warn!("[upnp] AddPortMapping rejected: {}", &add_resp[..add_resp.len().min(200)]);
-        return None;
+    // Step 7: AddPortMapping with fault-driven retries.
+    //   Variant A: lease=3600, <NewRemoteHost/> self-closing  (most routers)
+    //   Variant B: lease=0,    <NewRemoteHost/> self-closing  (permanent-only)
+    //   Variant C: lease=3600, <NewRemoteHost></NewRemoteHost> (wildcard quirk)
+    //   Variant D: lease=0,    <NewRemoteHost></NewRemoteHost> (last resort)
+    let variants: [(u32, bool); 4] = [(3600, false), (0, false), (3600, true), (0, true)];
+    let mut last_fault: Option<String> = None;
+    let mut success = false;
+    for (lease, explicit_empty) in variants {
+        attempt.diagnostics.add_port_mapping_attempts =
+            attempt.diagnostics.add_port_mapping_attempts.saturating_add(1);
+        let add_soap = build_add_port_mapping_soap(&svc_type, port, &local_ip, lease, explicit_empty);
+        let add_action = format!("\"{}#AddPortMapping\"", svc_type);
+        let add_resp = match upnp_soap(&ctrl_url, &add_action, add_soap).await {
+            Some(r) => r,
+            None => {
+                last_fault = Some("AddPortMapping SOAP call timed out".to_string());
+                continue;
+            }
+        };
+        if add_resp.contains("Fault") || add_resp.contains("fault") {
+            // Extract the errorCode for diagnostics + retry routing.
+            let code = {
+                const TAG: &str = "errorCode>";
+                add_resp.find(TAG).and_then(|i| {
+                    let s = i + TAG.len();
+                    add_resp[s..].find('<').map(|j| add_resp[s..s + j].trim().to_string())
+                })
+            };
+            last_fault = Some(format!(
+                "AddPortMapping fault (lease={}, empty_remote_host_explicit={}): code={} body={}",
+                lease,
+                explicit_empty,
+                code.as_deref().unwrap_or("?"),
+                &add_resp[..add_resp.len().min(200)]
+            ));
+            tracing::warn!("[upnp] {}", last_fault.as_deref().unwrap_or(""));
+            // Specific routing — break out early for permanent errors.
+            if let Some(c) = code.as_deref() {
+                // 402 InvalidArgs, 401 Invalid Action - retrying won't help.
+                if c == "401" || c == "402" {
+                    break;
+                }
+            }
+            continue;
+        }
+        success = true;
+        break;
     }
 
-    tracing::info!("[upnp] TCP {} mapped → {}:{}", port, ext_ip, port);
-    Some(ext_ip)
+    if !success {
+        attempt.diagnostics.last_fault = last_fault.clone();
+        tracing::warn!(
+            "[upnp] AddPortMapping FAILED after {} variant(s); last fault: {}",
+            attempt.diagnostics.add_port_mapping_attempts,
+            last_fault.as_deref().unwrap_or("(none)")
+        );
+        return attempt;
+    }
+    tracing::info!(
+        "[upnp] AddPortMapping SUCCESS on attempt {} — external IP {} -> internal {}:{}",
+        attempt.diagnostics.add_port_mapping_attempts,
+        ext_ip,
+        local_ip,
+        port
+    );
+
+    // Step 8: classify success vs double-NAT. Even though the router
+    // accepted AddPortMapping, if the external IP is itself private the
+    // mapping is useless for inbound connections from the public internet.
+    if !routable {
+        attempt.double_nat = true;
+        attempt.diagnostics.double_nat_detected = true;
+        // Intentionally leave attempt.external_ip = None so iriumd does
+        // not announce a private/CGNAT address as its public endpoint.
+        attempt.diagnostics.last_fault = Some(format!(
+            "Router accepted the mapping, but the WAN IP {} is itself private/CGNAT (double NAT). Inbound from the public internet will not work via UPnP.",
+            ext_ip
+        ));
+        tracing::warn!("[upnp] double NAT detected: external IP {} is not publicly routable", ext_ip);
+        return attempt;
+    }
+
+    attempt.external_ip = Some(ext_ip.clone());
+    attempt.diagnostics.succeeded = true;
+    tracing::info!("[upnp] TCP {} mapped via local {} -> {}:{}", port, local_ip, ext_ip, port);
+    attempt
 }
 
 // UPnP mapping refresh cadence. Most consumer routers expire UPnP port
@@ -959,8 +1580,11 @@ static UPNP_REFRESH_RUNNING: std::sync::atomic::AtomicBool =
 
 #[tauri::command]
 async fn try_upnp_port_map(state: State<'_, AppState>) -> Result<Option<String>, String> {
-    let ip = try_upnp(38291).await;
+    let attempt = try_upnp(38291).await;
+    let ip = attempt.external_ip.clone();
     *state.upnp_external_ip.lock().map_err(lock_err)? = ip.clone();
+    *state.upnp_double_nat.lock().map_err(lock_err)? = attempt.double_nat;
+    *state.upnp_diagnostics.lock().map_err(lock_err)? = attempt.diagnostics;
 
     // FIX 6: keep the UPnP mapping alive while the app is running. Routers
     // commonly expire mappings after 1 hour; refreshing every 30 minutes is
@@ -971,6 +1595,8 @@ async fn try_upnp_port_map(state: State<'_, AppState>) -> Result<Option<String>,
         && !UPNP_REFRESH_RUNNING.swap(true, std::sync::atomic::Ordering::SeqCst)
     {
         let upnp_external_ip_ref = Arc::clone(&state.upnp_external_ip);
+        let upnp_double_nat_ref = Arc::clone(&state.upnp_double_nat);
+        let upnp_diag_ref = Arc::clone(&state.upnp_diagnostics);
         tauri::async_runtime::spawn(async move {
             loop {
                 tokio::time::sleep(std::time::Duration::from_secs(
@@ -979,7 +1605,13 @@ async fn try_upnp_port_map(state: State<'_, AppState>) -> Result<Option<String>,
                 .await;
                 let fresh = try_upnp(38291).await;
                 if let Ok(mut g) = upnp_external_ip_ref.lock() {
-                    *g = fresh;
+                    *g = fresh.external_ip.clone();
+                }
+                if let Ok(mut g) = upnp_double_nat_ref.lock() {
+                    *g = fresh.double_nat;
+                }
+                if let Ok(mut g) = upnp_diag_ref.lock() {
+                    *g = fresh.diagnostics;
                 }
                 // No event emission on refresh — silent maintenance. A
                 // failed refresh shows up to the UI on the next get_node_status
@@ -989,6 +1621,18 @@ async fn try_upnp_port_map(state: State<'_, AppState>) -> Result<Option<String>,
     }
 
     Ok(ip)
+}
+
+/// FIX 1: Tauri command returning the last UPnP attempt's full
+/// diagnostic snapshot. The Help page renders this so the user can
+/// self-diagnose: which local adapters were detected, which one was
+/// chosen as NewInternalClient, the gateway IP we matched against, the
+/// SSDP LOCATION URL, the control URL, the external IP returned by
+/// GetExternalIPAddress, whether that IP is publicly routable, the
+/// fault text from the last failed AddPortMapping attempt, etc.
+#[tauri::command]
+async fn upnp_diagnostics(state: State<'_, AppState>) -> Result<UpnpDiagnostics, String> {
+    Ok(state.upnp_diagnostics.lock().map_err(lock_err)?.clone())
 }
 
 // check_port_open: port-forwarding self-test for the Help page's Test
@@ -1008,19 +1652,29 @@ async fn try_upnp_port_map(state: State<'_, AppState>) -> Result<Option<String>,
 // command works regardless of network policy on the user's side.
 #[tauri::command]
 async fn check_port_open(state: State<'_, AppState>) -> Result<PortCheckResult, String> {
-    // Fresh UPnP attempt — try_upnp returns Some(external_ip) on success.
-    // Also cache the result on AppState so a subsequent get_node_status
-    // reflects the fresh value without waiting for the next manual retry.
-    let upnp_external_ip = try_upnp(38291).await;
+    // Fresh UPnP attempt. FIX 1: try_upnp now returns an UpnpAttempt
+    // carrying the external IP plus a double_nat flag (set when the
+    // router's WAN IP is itself RFC1918 / CGNAT) plus a diagnostic
+    // snapshot. Cache all three so a subsequent get_node_status reflects
+    // them without waiting for the next manual retry.
+    let attempt = try_upnp(38291).await;
+    let upnp_external_ip = attempt.external_ip.clone();
+    let double_nat = attempt.double_nat;
     if let Ok(mut guard) = state.upnp_external_ip.lock() {
         *guard = upnp_external_ip.clone();
+    }
+    if let Ok(mut guard) = state.upnp_double_nat.lock() {
+        *guard = double_nat;
+    }
+    if let Ok(mut guard) = state.upnp_diagnostics.lock() {
+        *guard = attempt.diagnostics;
     }
 
     // Scrape iriumd /metrics for irium_inbound_accepted_total. Failures
     // here are non-fatal — we fall back to 0 and let the UPnP signal
     // decide, which mirrors how get_node_metrics handles offline nodes.
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let mut inbound_count: u64 = 0;
     if let Ok(resp) = client
         .get(format!("{}/metrics", rpc_url))
@@ -1043,13 +1697,14 @@ async fn check_port_open(state: State<'_, AppState>) -> Result<PortCheckResult, 
     }
 
     let open = upnp_external_ip.is_some() || inbound_count > 0;
-    let reason = match (upnp_external_ip.as_deref(), inbound_count) {
-        (Some(ip), 0)  => format!("Port 38291 is open — UPnP mapped successfully (external IP {})", ip),
-        (Some(ip), n)  => format!("Port 38291 is open — UPnP active ({}) and {} inbound peer(s) accepted", ip, n),
-        (None, n) if n > 0 => format!("Port 38291 is open — {} inbound peer(s) accepted (manual forwarding)", n),
-        (None, _)      => "Port 38291 appears closed — try manual port forwarding above".to_string(),
+    let reason = match (upnp_external_ip.as_deref(), inbound_count, double_nat) {
+        (Some(ip), 0, _) => format!("Port 38291 is open — UPnP mapped successfully (external IP {})", ip),
+        (Some(ip), n, _) => format!("Port 38291 is open — UPnP active ({}) and {} inbound peer(s) accepted", ip, n),
+        (None, n, _) if n > 0 => format!("Port 38291 is open — {} inbound peer(s) accepted (manual forwarding)", n),
+        (None, _, true) => "UPnP mapping accepted by the router, but the router's WAN IP is itself private (double NAT / CGNAT). Inbound from the public internet will not work via UPnP — see Help for diagnostics, or ask your ISP for a public IPv4.".to_string(),
+        (None, _, false) => "Port 38291 appears closed — try manual port forwarding above".to_string(),
     };
-    Ok(PortCheckResult { open, reason, upnp_external_ip, inbound_count })
+    Ok(PortCheckResult { open, reason, upnp_external_ip, inbound_count, double_nat })
 }
 
 #[tauri::command]
@@ -1060,8 +1715,40 @@ async fn start_node(
 ) -> Result<NodeStartResult, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
+    // FIX 3 (Remote node): when settings.node_mode == "remote" the
+    // user is pointing the GUI at an iriumd they manage themselves
+    // (VPS, dedicated rig, neighbour's node). Spawning the bundled
+    // sidecar would compete for the data directory and create a
+    // duplicate node; instead we just confirm the remote is reachable
+    // and report success. UPnP is also skipped because port mapping
+    // for the *remote* node is the remote operator's problem. The
+    // bundled CPU/GPU miners stay available — they connect via
+    // rpc_url like any other client.
+    let node_mode = state
+        .node_mode
+        .lock()
+        .map(|g| g.clone())
+        .unwrap_or_else(|_| "local".to_string());
+    if node_mode == "remote" {
+        if get_rpc_info(&state, &rpc_url).await.is_ok() {
+            return Ok(NodeStartResult {
+                success: true,
+                message: format!("Connected to remote node at {}", rpc_url),
+                pid: None,
+            });
+        }
+        return Ok(NodeStartResult {
+            success: false,
+            message: format!(
+                "Remote node at {} is unreachable. Confirm the URL and RPC token in Settings.",
+                rpc_url
+            ),
+            pid: None,
+        });
+    }
+
     // If RPC is already reachable the node is running — don't spawn a second instance.
-    if get_rpc_info(&rpc_url).await.is_ok() {
+    if get_rpc_info(&state, &rpc_url).await.is_ok() {
         return Ok(NodeStartResult {
             success: true,
             message: "Node is already running".to_string(),
@@ -1198,14 +1885,17 @@ async fn start_node(
     // UPnP: ask the router to open TCP 38291 so other NAT-behind nodes can
     // dial us inbound. Seeds learn our dialable address and share it via PEX.
     // On success the router's external IP is returned (same as public IP).
-    let upnp_ip = try_upnp(38291).await;
+    let upnp_attempt = try_upnp(38291).await;
+    let upnp_ip = upnp_attempt.external_ip.clone();
     if let Some(ref ip) = upnp_ip {
-        tracing::info!("[start_node] UPnP active — TCP 38291 mapped via router, external IP: {}", ip);
+        tracing::info!("[start_node] UPnP active — TCP 38291 mapped via router, external IP: {} (double_nat={})", ip, upnp_attempt.double_nat);
         *state.upnp_external_ip.lock().map_err(lock_err)? = Some(ip.clone());
     } else {
         tracing::info!("[start_node] UPnP not available — relying on manual port forwarding or inbound-only mode");
         *state.upnp_external_ip.lock().map_err(lock_err)? = None;
     }
+    *state.upnp_double_nat.lock().map_err(lock_err)? = upnp_attempt.double_nat;
+    *state.upnp_diagnostics.lock().map_err(lock_err)? = upnp_attempt.diagnostics;
 
     // Dialable IP: only set when the user has EXPLICITLY confirmed the port
     // is open (via the external-IP override in Settings). UPnP can map the
@@ -1443,7 +2133,9 @@ async fn start_node(
         }
         Err(_) => {
             // Sidecar binary not in src-tauri/binaries/ — try iriumd from system PATH.
-            let mut sys_cmd = std::process::Command::new("iriumd");
+            // silent_command applies CREATE_NO_WINDOW on Windows so no console
+            // flashes for the iriumd child even on the fallback path.
+            let mut sys_cmd = silent_command("iriumd");
             for (k, v) in &node_env {
                 sys_cmd.env(k, v);
             }
@@ -1451,14 +2143,6 @@ async fn start_node(
                 sys_cmd.arg(arg);
             }
             sys_cmd.current_dir(&irium_dir);
-
-            // Suppress the console window on Windows so it doesn't flash open.
-            #[cfg(target_os = "windows")]
-            {
-                use std::os::windows::process::CommandExt;
-                const CREATE_NO_WINDOW: u32 = 0x08000000;
-                sys_cmd.creation_flags(CREATE_NO_WINDOW);
-            }
 
             match sys_cmd.spawn() {
                 Ok(child) => {
@@ -1503,28 +2187,31 @@ async fn stop_node(state: State<'_, AppState>) -> Result<bool, String> {
             let _ = child.kill();
         }
     }
-    // Also kill any externally-started iriumd process (handles nodes started outside the GUI)
+    // Also kill any externally-started iriumd process (handles nodes started outside the GUI).
+    // silent_command applies CREATE_NO_WINDOW on Windows so taskkill does not
+    // flash a CMD window per invocation — previously this loop produced four
+    // visible flashes in a row whenever the user clicked Stop Node.
     #[cfg(target_os = "windows")]
     {
-        let _ = std::process::Command::new("taskkill")
+        let _ = silent_command("taskkill")
             .args(["/F", "/T", "/IM", "iriumd-x86_64-pc-windows-msvc.exe"])
             .output();
-        let _ = std::process::Command::new("taskkill")
+        let _ = silent_command("taskkill")
             .args(["/F", "/T", "/IM", "iriumd.exe"])
             .output();
-        let _ = std::process::Command::new("taskkill")
+        let _ = silent_command("taskkill")
             .args(["/F", "/T", "/IM", "irium-explorer-x86_64-pc-windows-msvc.exe"])
             .output();
-        let _ = std::process::Command::new("taskkill")
+        let _ = silent_command("taskkill")
             .args(["/F", "/T", "/IM", "irium-explorer.exe"])
             .output();
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let _ = std::process::Command::new("pkill")
+        let _ = silent_command("pkill")
             .args(["-9", "-f", "iriumd"])
             .output();
-        let _ = std::process::Command::new("pkill")
+        let _ = silent_command("pkill")
             .args(["-9", "-f", "irium-explorer"])
             .output();
     }
@@ -1544,16 +2231,16 @@ async fn clear_node_state(state: State<'_, AppState>) -> Result<bool, String> {
     }
     #[cfg(target_os = "windows")]
     {
-        let _ = std::process::Command::new("taskkill")
+        let _ = silent_command("taskkill")
             .args(["/F", "/T", "/IM", "iriumd-x86_64-pc-windows-msvc.exe"])
             .output();
-        let _ = std::process::Command::new("taskkill")
+        let _ = silent_command("taskkill")
             .args(["/F", "/T", "/IM", "iriumd.exe"])
             .output();
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let _ = std::process::Command::new("pkill").args(["-9", "-f", "iriumd"]).output();
+        let _ = silent_command("pkill").args(["-9", "-f", "iriumd"]).output();
     }
 
     // Give the process a moment to fully exit before we delete files it may have open.
@@ -1979,7 +2666,7 @@ async fn check_binaries() -> Result<BinaryCheckResult, String> {
 #[tauri::command]
 async fn get_node_metrics(state: State<'_, AppState>) -> Result<NodeMetrics, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let resp = match client
         .get(format!("{}/metrics", rpc_url))
         .timeout(Duration::from_secs(3))
@@ -2028,7 +2715,7 @@ async fn get_node_metrics(state: State<'_, AppState>) -> Result<NodeMetrics, Str
 async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    match get_rpc_info(&rpc_url).await {
+    match get_rpc_info(&state, &rpc_url).await {
         Ok(info) => {
             let tip = info.best_header_tip.as_ref()
                 .map(|t| t.hash.clone())
@@ -2039,7 +2726,7 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
             // Query /peers to get heights reported by each connected peer.
             // This gives the true network tip, not just what iriumd has locally committed.
             let peer_max_height: u64 = {
-                let client = reqwest::Client::new();
+                let client = rpc_client(&state);
                 match client
                     .get(format!("{}/peers", rpc_url))
                     .timeout(Duration::from_secs(3))
@@ -2080,6 +2767,7 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
                 && gap_healer_pending_count == 0;
 
             let upnp_ip = state.upnp_external_ip.lock().map_err(lock_err)?.clone();
+            let upnp_double_nat = *state.upnp_double_nat.lock().map_err(lock_err)?;
             let status = NodeStatus {
                 running: true,
                 synced,
@@ -2092,6 +2780,7 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
                 rpc_url: rpc_url.clone(),
                 upnp_active: upnp_ip.is_some(),
                 upnp_external_ip: upnp_ip,
+                upnp_double_nat,
                 persisted_height,
                 gap_healer_pending_count,
                 fully_synced,
@@ -2103,6 +2792,7 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
             // RPC not reachable — node is offline
             *state.last_node_status.lock().map_err(lock_err)? = None;
             let upnp_ip = state.upnp_external_ip.lock().map_err(lock_err)?.clone();
+            let upnp_double_nat = *state.upnp_double_nat.lock().map_err(lock_err)?;
             Ok(NodeStatus {
                 running: false,
                 synced: false,
@@ -2115,6 +2805,7 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
                 rpc_url,
                 upnp_active: upnp_ip.is_some(),
                 upnp_external_ip: upnp_ip,
+                upnp_double_nat,
                 persisted_height: 0,
                 gap_healer_pending_count: 0,
                 fully_synced: false,
@@ -2158,7 +2849,7 @@ async fn wallet_get_balance(state: State<'_, AppState>) -> Result<WalletBalance,
         return Ok(WalletBalance { confirmed: 0, unconfirmed: 0, total: 0 });
     }
 
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let mut total: u64 = 0;
     for addr in &addresses {
         let url = format!("{}/rpc/balance?address={}", rpc_url, addr);
@@ -2207,7 +2898,7 @@ async fn wallet_list_addresses(state: State<'_, AppState>) -> Result<Vec<Address
         .filter(|l| !l.is_empty())
         .collect();
 
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let mut results = Vec::with_capacity(raw_addrs.len());
     for (idx, address) in raw_addrs.into_iter().enumerate() {
         let balance = fetch_address_balance_sats(&client, &rpc_url, &address).await;
@@ -2354,7 +3045,7 @@ async fn wallet_transactions(
             .collect()
     };
 
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let mut all_txs: Vec<Transaction> = Vec::new();
 
     for addr in &addresses {
@@ -2651,7 +3342,7 @@ async fn get_wallet_info(
         .filter(|l| !l.is_empty())
         .collect();
 
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let mut addresses: Vec<WalletInfoAddress> = Vec::with_capacity(raw_addrs.len());
     let mut sum: u64 = 0;
     let mut any_success = false;
@@ -3205,7 +3896,7 @@ async fn offer_create(
         Some(s) if !s.trim().is_empty() => s.trim().to_string(),
         _ => get_first_wallet_address(wallet_path.clone(), data_dir.clone()).await?,
     };
-    let height = get_current_height(&rpc_url).await;
+    let height = get_current_height(&state, &rpc_url).await;
     let timeout = height + params.timeout_blocks.unwrap_or(1000);
 
     // offer-create --seller <addr> --amount <irm> --payment-method <text> --timeout <height>
@@ -3586,6 +4277,66 @@ async fn agreement_show(state: State<'_, AppState>, agreement_id: String) -> Res
     })
 }
 
+// FIX (audit-422): iriumd's /rpc/agreementaudit expects the full
+// AgreementObject (Deserialize-bound to a 30-field settlement::AgreementObject
+// struct), not just the agreement hash. Sending {agreement_hash: "..."}
+// failed body-extraction with HTTP 422. On top of that the endpoint runs
+// require_rpc_auth, so a fixed body would still 401 without the FIX 2
+// bearer token. Both are solved by routing the call through this Tauri
+// command:
+//   1. agreement-inspect <id> --json reconstitutes the canonical
+//      AgreementObject from the wallet's on-disk record;
+//   2. We POST it under the {agreement: ...} envelope iriumd expects,
+//      via rpc_client which carries the GUI bearer (FIX 2 helper);
+//   3. The unmodified audit JSON comes back as serde_json::Value so
+//      the AuditModal's defensive field extraction keeps working.
+#[tauri::command]
+async fn agreement_audit(
+    state: State<'_, AppState>,
+    agreement_id: String,
+) -> Result<serde_json::Value, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+
+    let inspect_out = run_wallet_cmd(
+        vec!["agreement-inspect".to_string(), agreement_id.clone(), "--json".to_string()],
+        wallet_path,
+        data_dir,
+    )
+    .await?;
+    let raw: serde_json::Value = serde_json::from_str(&inspect_out)
+        .map_err(|e| format!("Parse error on agreement-inspect output: {}", e))?;
+    // agreement-inspect emits {agreement_hash, agreement: {...}} — the
+    // inner `agreement` IS the AgreementObject iriumd needs.
+    let inner = raw.get("agreement").cloned().ok_or_else(|| {
+        "agreement-inspect output missing `agreement` object — wallet record may be corrupt"
+            .to_string()
+    })?;
+
+    let body = serde_json::json!({ "agreement": inner });
+    let client = rpc_client(&state);
+    let resp = client
+        .post(format!("{}/rpc/agreementaudit", rpc_url.trim_end_matches('/')))
+        .timeout(Duration::from_secs(10))
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Audit RPC request failed: {}", e))?;
+    let status = resp.status();
+    if !status.is_success() {
+        let text = resp.text().await.unwrap_or_default();
+        return Err(format!(
+            "Audit RPC returned HTTP {} — {}",
+            status.as_u16(),
+            text.chars().take(300).collect::<String>()
+        ));
+    }
+    resp.json::<serde_json::Value>()
+        .await
+        .map_err(|e| format!("Audit RPC returned malformed JSON: {}", e))
+}
+
 #[tauri::command]
 async fn agreement_remove(state: State<'_, AppState>, agreement_id: String) -> Result<bool, String> {
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
@@ -3625,7 +4376,7 @@ async fn agreement_create(
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let height = get_current_height(&rpc_url).await;
+    let height = get_current_height(&state, &rpc_url).await;
     let deadline_blocks = params.deadline_hours.unwrap_or(24) * BLOCKS_PER_HOUR;
     let timeout = height + deadline_blocks;
 
@@ -4181,7 +4932,7 @@ async fn settlement_create_otc(
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let height = get_current_height(&rpc_url).await;
+    let height = get_current_height(&state, &rpc_url).await;
     let deadline_blocks = params.deadline_hours.unwrap_or(24) * BLOCKS_PER_HOUR;
     let timeout = height + deadline_blocks;
     let amount_irm = format!("{:.8}", sats_to_irm(params.amount_sats));
@@ -4240,7 +4991,7 @@ async fn settlement_create_freelance(
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let height = get_current_height(&rpc_url).await;
+    let height = get_current_height(&state, &rpc_url).await;
     let deadline_blocks = params.deadline_hours.unwrap_or(48) * BLOCKS_PER_HOUR;
     let timeout = height + deadline_blocks;
     let ts = std::time::SystemTime::now()
@@ -4310,7 +5061,7 @@ async fn settlement_create_milestone(
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let height = get_current_height(&rpc_url).await;
+    let height = get_current_height(&state, &rpc_url).await;
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default().as_secs();
@@ -4396,7 +5147,7 @@ async fn settlement_create_deposit(
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let height = get_current_height(&rpc_url).await;
+    let height = get_current_height(&state, &rpc_url).await;
     let deadline_blocks = params.deadline_hours.unwrap_or(24) * BLOCKS_PER_HOUR;
     let timeout = height + deadline_blocks;
     let ts = std::time::SystemTime::now()
@@ -4445,7 +5196,7 @@ async fn settlement_create_merchant_delayed(
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let height = get_current_height(&rpc_url).await;
+    let height = get_current_height(&state, &rpc_url).await;
     let cooldown_blocks = params.cooldown_hours.unwrap_or(72) * BLOCKS_PER_HOUR;
     let deadline_blocks = params.deadline_hours.unwrap_or(336) * BLOCKS_PER_HOUR;
     let settlement_deadline = height + cooldown_blocks;
@@ -4521,7 +5272,7 @@ async fn settlement_create_contractor(
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let height = get_current_height(&rpc_url).await;
+    let height = get_current_height(&state, &rpc_url).await;
     let ts = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default().as_secs();
@@ -4728,8 +5479,8 @@ struct BlockDetails {
 // Returns None only if the HTTP request itself fails — partial data is always
 // returned in Some(BlockDetails) so the caller can update whatever fields
 // iriumd did supply.
-async fn fetch_block_details(rpc_url: &str, height: u64) -> Option<BlockDetails> {
-    let client = reqwest::Client::new();
+async fn fetch_block_details(rpc_url: &str, token: Option<String>, height: u64) -> Option<BlockDetails> {
+    let client = rpc_client_with_token(token);
     let url = format!("{}/rpc/block?height={}", rpc_url.trim_end_matches('/'), height);
     let resp = client
         .get(&url)
@@ -4886,10 +5637,21 @@ async fn start_miner(
     let found_blocks_ref = Arc::clone(&state.found_blocks);
     let miner_addr_ref   = Arc::clone(&state.miner_address);
     let rpc_url_for_reward = rpc_url.clone();
+    // FIX 2 (IRIUM_RPC_TOKEN): capture the override Arc so the
+    // block-reward fetch can resolve the live bearer token on each
+    // retry — important if the user edits the rpc_token between the
+    // block-found event and the +13s retry, or in FIX 3 remote mode
+    // where the local auto-token would 401 against the remote node.
+    let rpc_token_ref_for_reward = Arc::clone(&state.rpc_token_override);
     // TASK 3 captures for the unexpected-exit notification.
     let app_for_event = app.clone();
     let user_initiated_ref = Arc::clone(&state.miner_user_initiated_stop);
     let miner_process_for_cleanup = Arc::clone(&state.miner_process);
+    // BUG 1: clear miner_kind alongside miner_process when the sidecar
+    // terminates (user-initiated OR crash). Without this, get_miner_status
+    // would keep returning running=true after a crash because the kind
+    // discriminator never reset.
+    let miner_kind_for_cleanup = Arc::clone(&state.miner_kind);
     let hashrate_for_clear = Arc::clone(&state.miner_hashrate);
     let sync_for_clear = Arc::clone(&state.miner_sync_status);
     tauri::async_runtime::spawn(async move {
@@ -4912,6 +5674,7 @@ async fn start_miner(
                         .map(|g| *g)
                         .unwrap_or(false);
                     if let Ok(mut g) = miner_process_for_cleanup.lock() { *g = None; }
+                    if let Ok(mut k) = miner_kind_for_cleanup.lock() { *k = None; }
                     if let Ok(mut h) = hashrate_for_clear.lock() { *h = 0.0; }
                     if let Ok(mut s) = sync_for_clear.lock() { *s = None; }
                     if !user_initiated {
@@ -4936,7 +5699,19 @@ async fn start_miner(
             // block iriumd has ingested. We still verify ownership below
             // by comparing the canonical miner_address against our wallet.
             if let Some((height, hash)) = parse_block_found(&line) {
-                record_found_block(&blocks_found_ref, &found_blocks_ref, height, hash);
+                record_found_block(&blocks_found_ref, &found_blocks_ref, height, hash.clone());
+                // FIX 4 (Mining UI): emit a Tauri event so the Miner page
+                // can render a celebratory banner immediately, before the
+                // 10s found-blocks poll catches up. Auto-dismisses on the
+                // frontend after 10s.
+                let _ = app_for_event.emit_all(
+                    "miner-found-block",
+                    serde_json::json!({
+                        "kind": "cpu",
+                        "height": height,
+                        "hash": hash,
+                    }),
+                );
                 // Fire-and-forget detail fetch with three attempts. The
                 // accepted-marker fires AFTER submit_block returns, so the
                 // first fetch usually succeeds; retries at +3s and +13s
@@ -4944,19 +5719,23 @@ async fn start_miner(
                 let fb_for_reward     = Arc::clone(&found_blocks_ref);
                 let addr_for_reward   = Arc::clone(&miner_addr_ref);
                 let rpc_for_reward    = rpc_url_for_reward.clone();
+                let tok_for_reward    = Arc::clone(&rpc_token_ref_for_reward);
                 tauri::async_runtime::spawn(async move {
                     let our = addr_for_reward.lock().ok().and_then(|g| g.clone());
-                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                    let tok = snapshot_gui_rpc_bearer(&tok_for_reward);
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, tok.clone(), height).await {
                         update_block_details(&fb_for_reward, height, details, our.as_deref());
                         return;
                     }
                     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                    let tok = snapshot_gui_rpc_bearer(&tok_for_reward);
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, tok.clone(), height).await {
                         update_block_details(&fb_for_reward, height, details, our.as_deref());
                         return;
                     }
                     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                    let tok = snapshot_gui_rpc_bearer(&tok_for_reward);
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, tok, height).await {
                         update_block_details(&fb_for_reward, height, details, our.as_deref());
                     }
                 });
@@ -4978,6 +5757,10 @@ async fn start_miner(
         }
     });
     *miner_lock = Some(child);
+    // BUG 1: tag the active miner slot as CPU so get_miner_status reads
+    // running=true and get_gpu_miner_status reads running=false while
+    // this sidecar is alive.
+    *state.miner_kind.lock().map_err(lock_err)? = Some(MinerKind::Cpu);
     *state.miner_start_time.lock().map_err(lock_err)? = Some(std::time::Instant::now());
     *state.miner_address.lock().map_err(lock_err)? = Some(address);
     *state.miner_threads.lock().map_err(lock_err)? = threads.unwrap_or(1);
@@ -4998,6 +5781,14 @@ async fn stop_miner(app: tauri::AppHandle, state: State<'_, AppState>) -> Result
     if let Some(child) = miner_lock.take() {
         child.kill().map_err(|e| e.to_string())?;
         drop(miner_lock);
+        // BUG 1: clear miner_kind in lockstep with miner_process so the
+        // very next get_miner_status / get_gpu_miner_status poll returns
+        // running=false on both tabs. The spawn loop's Terminated branch
+        // also clears these as a belt-and-braces (when an external kill
+        // or crash beats us to it), but we clear them eagerly here so the
+        // GUI doesn't briefly show a stale "Active" state in the gap
+        // between SIGKILL delivery and the spawn loop draining its rx.
+        *state.miner_kind.lock().map_err(lock_err)? = None;
         *state.miner_start_time.lock().map_err(lock_err)? = None;
         *state.miner_address.lock().map_err(lock_err)? = None;
         *state.miner_threads.lock().map_err(lock_err)? = 0;
@@ -5013,16 +5804,25 @@ async fn stop_miner(app: tauri::AppHandle, state: State<'_, AppState>) -> Result
 
 #[tauri::command]
 async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, String> {
-    let running = state.miner_process.lock().map_err(lock_err)?.is_some();
-    let uptime_secs = {
+    // BUG 1: report running=true only when a CPU sidecar owns the
+    // process slot. Previously this read miner_process.is_some() which
+    // was also true while the GPU miner was active, causing the CPU tab
+    // to render "Mining Active" with warmup banner while the user was
+    // actually GPU-mining. The associated counters (hashrate, threads,
+    // uptime, sync_status) all describe the active sidecar — those are
+    // only meaningful on the CPU tab when the active miner IS CPU, so we
+    // zero them on the inactive tab to keep the UI tab-local.
+    let kind = *state.miner_kind.lock().map_err(lock_err)?;
+    let running = kind == Some(MinerKind::Cpu);
+    let uptime_secs = if running {
         let t = state.miner_start_time.lock().map_err(lock_err)?;
         t.as_ref().map(|i| i.elapsed().as_secs()).unwrap_or(0)
-    };
-    let address = state.miner_address.lock().map_err(lock_err)?.clone();
-    let threads = *state.miner_threads.lock().map_err(lock_err)?;
+    } else { 0 };
+    let address = if running { state.miner_address.lock().map_err(lock_err)?.clone() } else { None };
+    let threads = if running { *state.miner_threads.lock().map_err(lock_err)? } else { 0 };
 
-    let hashrate_khs = *state.miner_hashrate.lock().map_err(lock_err)?;
-    let sync_status = state.miner_sync_status.lock().map_err(lock_err)?.clone();
+    let hashrate_khs = if running { *state.miner_hashrate.lock().map_err(lock_err)? } else { 0.0 };
+    let sync_status = if running { state.miner_sync_status.lock().map_err(lock_err)?.clone() } else { None };
     let blocks_found = *state.blocks_found.lock().map_err(lock_err)?;
 
     // Pool stats merge — fetch the proxy's /stats with a tight budget so
@@ -5273,10 +6073,16 @@ async fn start_gpu_miner(
     let temp_ref = Arc::clone(&state.gpu_temperature_c);
     let power_ref = Arc::clone(&state.gpu_power_w);
     let rpc_url_for_reward = rpc_url.clone();
+    // FIX 2: snapshot Arc for bearer-token resolution inside the spawn loop.
+    let rpc_token_ref_for_reward = Arc::clone(&state.rpc_token_override);
     // TASK 3 captures for the unexpected-exit notification path.
     let app_for_event = app.clone();
     let user_initiated_ref = Arc::clone(&state.miner_user_initiated_stop);
     let miner_process_for_cleanup = Arc::clone(&state.miner_process);
+    // BUG 1: mirror the CPU-side fix — clear miner_kind alongside
+    // miner_process on Terminated so the GPU tab transitions back to
+    // idle and the CPU tab stays idle when the GPU sidecar dies.
+    let miner_kind_for_cleanup = Arc::clone(&state.miner_kind);
     let hashrate_for_clear = Arc::clone(&state.miner_hashrate);
     let temp_for_clear = Arc::clone(&state.gpu_temperature_c);
     let power_for_clear = Arc::clone(&state.gpu_power_w);
@@ -5300,6 +6106,7 @@ async fn start_gpu_miner(
                         .map(|g| *g)
                         .unwrap_or(false);
                     if let Ok(mut g) = miner_process_for_cleanup.lock() { *g = None; }
+                    if let Ok(mut k) = miner_kind_for_cleanup.lock() { *k = None; }
                     if let Ok(mut h) = hashrate_for_clear.lock() { *h = 0.0; }
                     if let Ok(mut t) = temp_for_clear.lock() { *t = None; }
                     if let Ok(mut p) = power_for_clear.lock() { *p = None; }
@@ -5319,26 +6126,39 @@ async fn start_gpu_miner(
                 _ => break,
             };
             if let Some((height, hash)) = parse_block_found(&line) {
-                record_found_block(&blocks_found_ref, &found_blocks_ref, height, hash);
+                record_found_block(&blocks_found_ref, &found_blocks_ref, height, hash.clone());
+                // FIX 4 (Mining UI): celebratory banner trigger.
+                let _ = app_for_event.emit_all(
+                    "miner-found-block",
+                    serde_json::json!({
+                        "kind": "gpu",
+                        "height": height,
+                        "hash": hash,
+                    }),
+                );
                 // parse_block_found now only matches POST-SUBMIT accepted
                 // signals, so the first fetch normally succeeds; retries at
                 // +3s and +13s defend against transient RPC errors.
                 let fb_for_reward   = Arc::clone(&found_blocks_ref);
                 let addr_for_reward = Arc::clone(&miner_addr_ref);
                 let rpc_for_reward  = rpc_url_for_reward.clone();
+                let tok_for_reward  = Arc::clone(&rpc_token_ref_for_reward);
                 tauri::async_runtime::spawn(async move {
                     let our = addr_for_reward.lock().ok().and_then(|g| g.clone());
-                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                    let tok = snapshot_gui_rpc_bearer(&tok_for_reward);
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, tok.clone(), height).await {
                         update_block_details(&fb_for_reward, height, details, our.as_deref());
                         return;
                     }
                     tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                    let tok = snapshot_gui_rpc_bearer(&tok_for_reward);
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, tok.clone(), height).await {
                         update_block_details(&fb_for_reward, height, details, our.as_deref());
                         return;
                     }
                     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-                    if let Some(details) = fetch_block_details(&rpc_for_reward, height).await {
+                    let tok = snapshot_gui_rpc_bearer(&tok_for_reward);
+                    if let Some(details) = fetch_block_details(&rpc_for_reward, tok, height).await {
                         update_block_details(&fb_for_reward, height, details, our.as_deref());
                     }
                 });
@@ -5354,6 +6174,10 @@ async fn start_gpu_miner(
         }
     });
     *miner_lock = Some(child);
+    // BUG 1: tag the active miner slot as GPU so get_gpu_miner_status
+    // reads running=true while this sidecar is alive, and the CPU tab's
+    // get_miner_status correctly reads running=false.
+    *state.miner_kind.lock().map_err(lock_err)? = Some(MinerKind::Gpu);
     *state.miner_start_time.lock().map_err(lock_err)? = Some(std::time::Instant::now());
     *state.miner_address.lock().map_err(lock_err)? = Some(address);
     Ok(true)
@@ -5366,11 +6190,17 @@ async fn stop_gpu_miner(app: tauri::AppHandle, state: State<'_, AppState>) -> Re
 
 #[tauri::command]
 async fn get_gpu_miner_status(state: State<'_, AppState>) -> Result<GpuMinerStatus, String> {
-    let running = state.miner_process.lock().map_err(lock_err)?.is_some();
-    let hashrate_khs = *state.miner_hashrate.lock().map_err(lock_err)?;
+    // BUG 1: report running=true only when the GPU sidecar owns the
+    // process slot. hashrate / temp / power describe the active
+    // sidecar's GPU; on the CPU-active or idle case they are
+    // meaningless and must be zeroed so the GPU tab does not show
+    // stale numbers from a previous GPU session.
+    let kind = *state.miner_kind.lock().map_err(lock_err)?;
+    let running = kind == Some(MinerKind::Gpu);
+    let hashrate_khs = if running { *state.miner_hashrate.lock().map_err(lock_err)? } else { 0.0 };
     let blocks_found = *state.blocks_found.lock().map_err(lock_err)?;
-    let temperature_c = *state.gpu_temperature_c.lock().map_err(lock_err)?;
-    let power_w = *state.gpu_power_w.lock().map_err(lock_err)?;
+    let temperature_c = if running { *state.gpu_temperature_c.lock().map_err(lock_err)? } else { None };
+    let power_w = if running { *state.gpu_power_w.lock().map_err(lock_err)? } else { None };
     Ok(GpuMinerStatus { running, hashrate_khs, blocks_found, device_name: None, temperature_c, power_w })
 }
 
@@ -5452,6 +6282,9 @@ async fn stratum_connect(
     // connect doesn't accumulate against a previous pool's stats.
     if let Ok(mut a) = state.stratum_shares_accepted.lock() { *a = 0; }
     if let Ok(mut r) = state.stratum_shares_rejected.lock() { *r = 0; }
+    // FIX 4: clear last-share timestamp so the Miner page shows "—"
+    // until the new session lands its first accepted share.
+    if let Ok(mut t) = state.stratum_last_share_time.lock() { *t = None; }
 
     // Clone every Arc the monitor task needs. We can't move the State<'_>
     // wrapper into the task — its lifetime is bound to this command call.
@@ -5462,6 +6295,7 @@ async fn stratum_connect(
     let pool_url_state_ref = Arc::clone(&state.pool_url);
     let shares_accepted_ref = Arc::clone(&state.stratum_shares_accepted);
     let shares_rejected_ref = Arc::clone(&state.stratum_shares_rejected);
+    let last_share_time_ref = Arc::clone(&state.stratum_last_share_time);
     let hashrate_ref = Arc::clone(&state.miner_hashrate);
     let pool_url_owned = pool_url.clone();
     let worker_owned = worker.clone();
@@ -5491,6 +6325,12 @@ async fn stratum_connect(
                 // optional log prefixes a future build might prepend.
                 if line.contains("[stratum] share accepted") {
                     if let Ok(mut a) = shares_accepted_ref.lock() { *a = a.saturating_add(1); }
+                    // FIX 4: capture wall-clock for the freshness pulse.
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_secs())
+                        .unwrap_or(0);
+                    if let Ok(mut t) = last_share_time_ref.lock() { *t = Some(now); }
                 } else if line.contains("[stratum] share rejected") {
                     if let Ok(mut r) = shares_rejected_ref.lock() { *r = r.saturating_add(1); }
                 }
@@ -5599,7 +6439,16 @@ async fn get_stratum_status(state: State<'_, AppState>) -> Result<StratumStatus,
     // spawn loop above. Was previously hardcoded to 0 on both sides.
     let shares_accepted = *state.stratum_shares_accepted.lock().map_err(lock_err)?;
     let shares_rejected = *state.stratum_shares_rejected.lock().map_err(lock_err)?;
-    Ok(StratumStatus { connected: running && pool_url.is_some(), pool_url, worker, shares_accepted, shares_rejected, uptime_secs })
+    let last_share_time = *state.stratum_last_share_time.lock().map_err(lock_err)?;
+    Ok(StratumStatus {
+        connected: running && pool_url.is_some(),
+        pool_url,
+        worker,
+        shares_accepted,
+        shares_rejected,
+        uptime_secs,
+        last_share_time,
+    })
 }
 
 // ============================================================
@@ -5609,7 +6458,7 @@ async fn get_stratum_status(state: State<'_, AppState>) -> Result<StratumStatus,
 #[tauri::command]
 async fn rpc_get_peers(state: State<'_, AppState>) -> Result<Vec<PeerInfo>, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let resp = client
         .get(format!("{}/peers", rpc_url))
         .timeout(Duration::from_secs(5))
@@ -5624,7 +6473,7 @@ async fn rpc_get_peers(state: State<'_, AppState>) -> Result<Vec<PeerInfo>, Stri
 #[tauri::command]
 async fn rpc_get_mempool(state: State<'_, AppState>) -> Result<MempoolInfo, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     // Use /rpc/fee_estimate which includes mempool_size
     let resp = client
         .get(format!("{}/rpc/fee_estimate", rpc_url))
@@ -5644,7 +6493,7 @@ async fn rpc_get_block(
     height_or_hash: String,
 ) -> Result<serde_json::Value, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     // Detect hash vs height: hashes are 64 hex chars
     let url = if height_or_hash.len() == 64 && height_or_hash.chars().all(|c| c.is_ascii_hexdigit()) {
         format!("{}/rpc/block_by_hash?hash={}", rpc_url, height_or_hash)
@@ -5684,7 +6533,7 @@ async fn rpc_get_tx(
     txid: String,
 ) -> Result<serde_json::Value, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let url = format!("{}/rpc/tx?txid={}", rpc_url, txid);
     let resp = client
         .get(&url)
@@ -5716,7 +6565,7 @@ async fn rpc_get_address(
     address: String,
 ) -> Result<serde_json::Value, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     // iriumd exposes the address lookup at /rpc/balance?address=… (see
     // get_balance in src/bin/iriumd.rs). The legacy /rpc/address?addr=…
     // path that this command used to call has never been registered; the
@@ -5751,14 +6600,15 @@ async fn get_recent_blocks(
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
     let n = limit.unwrap_or(20).min(100) as u64;
 
-    let info = get_rpc_info(&rpc_url).await
+    let info = get_rpc_info(&state, &rpc_url).await
         .map_err(|_| "node offline".to_string())?;
     let tip = info.height.unwrap_or(0);
     if tip == 0 { return Ok(vec![]); }
     let height = end_height.map(|h| h.min(tip)).unwrap_or(tip);
 
-    // Build a single shared client with a tight per-request timeout.
-    let client = reqwest::Client::builder()
+    // Build a single shared client with a tight per-request timeout
+    // and the GUI bearer token attached (FIX 2).
+    let client = rpc_client_builder(&state)
         .timeout(Duration::from_secs(3))
         .build()
         .map_err(|e| format!("client: {}", e))?;
@@ -5821,7 +6671,7 @@ async fn get_recent_blocks(
 #[tauri::command]
 async fn get_network_hashrate(state: State<'_, AppState>) -> Result<NetworkHashrateInfo, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let resp = client
         .get(format!("{}/rpc/network_hashrate", rpc_url))
         .timeout(Duration::from_secs(5))
@@ -5848,7 +6698,8 @@ const POOL_STATS_URL: &str = "http://pool.iriumlabs.org:3337/stats";
 
 #[tauri::command]
 async fn get_pool_stats() -> Result<PoolStats, String> {
-    let client = reqwest::Client::new();
+    // External pool host, not iriumd — no bearer token needed.
+    let client = reqwest::Client::builder().build().unwrap_or_default();
     let resp = client
         .get(POOL_STATS_URL)
         .timeout(Duration::from_secs(5))
@@ -5871,7 +6722,7 @@ async fn get_pool_stats() -> Result<PoolStats, String> {
 async fn get_richlist(state: State<'_, AppState>, limit: Option<u32>) -> Result<RichListResponse, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
     let n = limit.unwrap_or(100).clamp(1, 500);
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let resp = client
         .get(format!("{}/rpc/richlist?limit={}", rpc_url, n))
         .timeout(Duration::from_secs(10))
@@ -5887,7 +6738,7 @@ async fn get_richlist(state: State<'_, AppState>, limit: Option<u32>) -> Result<
 #[tauri::command]
 async fn rpc_get_offers_feed(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::new();
+    let client = rpc_client(&state);
     let resp = client
         .get(format!("{}/offers/feed", rpc_url))
         .timeout(Duration::from_secs(10))
@@ -6146,8 +6997,52 @@ async fn detect_public_ip(service_url: String) -> Result<String, String> {
     Ok(ip)
 }
 
+// FIX 3 (Remote node): probe a candidate remote iriumd to confirm
+// rpc_url + rpc_token are correct before the user commits to remote
+// mode. Tight 5-second timeout so a hung remote can't freeze the
+// Settings page. Returns Ok(true) on 2xx; on 401 returns an
+// auth-specific error so the UI can guide the user to check the
+// token. Other failures (timeout, connect refused) bubble up
+// verbatim so the user sees the reqwest reason.
 #[tauri::command]
-async fn save_settings(app_handle: tauri::AppHandle, settings_json: String) -> Result<bool, String> {
+async fn test_remote_connection(
+    rpc_url: String,
+    rpc_token: Option<String>,
+) -> Result<bool, String> {
+    let url = rpc_url.trim().trim_end_matches('/').to_string();
+    if url.is_empty() {
+        return Err("RPC URL is empty".to_string());
+    }
+    let mut builder = reqwest::Client::builder().timeout(Duration::from_secs(5));
+    if let Some(tok) = rpc_token.as_ref().map(|s| s.trim()).filter(|s| !s.is_empty()) {
+        let mut headers = reqwest::header::HeaderMap::new();
+        if let Ok(val) = reqwest::header::HeaderValue::from_str(&format!("Bearer {}", tok)) {
+            headers.insert(reqwest::header::AUTHORIZATION, val);
+            builder = builder.default_headers(headers);
+        }
+    }
+    let client = builder.build().map_err(|e| format!("client: {}", e))?;
+    let resp = client
+        .get(format!("{}/status", url))
+        .send()
+        .await
+        .map_err(|e| format!("connect failed: {}", e))?;
+    let status = resp.status();
+    if status.is_success() {
+        Ok(true)
+    } else if status == reqwest::StatusCode::UNAUTHORIZED {
+        Err("Authentication failed — check the RPC token".to_string())
+    } else {
+        Err(format!("Remote node responded {}", status))
+    }
+}
+
+#[tauri::command]
+async fn save_settings(
+    app_handle: tauri::AppHandle,
+    state: State<'_, AppState>,
+    settings_json: String,
+) -> Result<bool, String> {
     let config = app_handle.config();
     let data_dir = app_data_dir(&config)
         .ok_or("Could not determine app data directory")?;
@@ -6155,11 +7050,18 @@ async fn save_settings(app_handle: tauri::AppHandle, settings_json: String) -> R
     let settings_path = data_dir.join("irium-core-settings.json");
     std::fs::write(&settings_path, &settings_json)
         .map_err(|e| format!("Failed to write settings: {}", e))?;
+    // FIX 2 + 3: mirror rpc_token / node_mode / rpc_url into AppState
+    // so the very next GUI RPC call already uses the new bearer token
+    // and (in remote mode) the new rpc_url. No app restart required.
+    hydrate_settings_into_state(&state, &settings_json);
     Ok(true)
 }
 
 #[tauri::command]
-async fn load_settings(app_handle: tauri::AppHandle) -> Result<Option<String>, String> {
+async fn load_settings(
+    app_handle: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<Option<String>, String> {
     let config = app_handle.config();
     let data_dir = app_data_dir(&config)
         .ok_or("Could not determine app data directory")?;
@@ -6167,6 +7069,9 @@ async fn load_settings(app_handle: tauri::AppHandle) -> Result<Option<String>, S
     if settings_path.exists() {
         let contents = std::fs::read_to_string(&settings_path)
             .map_err(|e| format!("Failed to read settings: {}", e))?;
+        // FIX 2 + 3: hydrate on launch so the first auto-poll from the
+        // dashboard already uses the persisted bearer token / rpc_url.
+        hydrate_settings_into_state(&state, &contents);
         Ok(Some(contents))
     } else {
         Ok(None)
@@ -6355,8 +7260,10 @@ async fn update_node_source() -> Result<NodeUpdatePullResult, String> {
         );
     }
 
-    // Pull the submodule to the latest remote commit.
-    let out = std::process::Command::new("git")
+    // Pull the submodule to the latest remote commit. silent_command keeps
+    // git's stdout/stderr piped through inherited handles but suppresses the
+    // Windows console allocation that would otherwise flash a CMD window.
+    let out = silent_command("git")
         .args(["submodule", "update", "--remote", "--merge", "irium-source"])
         .current_dir(project_root)
         .output()
@@ -6368,7 +7275,7 @@ async fn update_node_source() -> Result<NodeUpdatePullResult, String> {
     }
 
     // Read the new HEAD commit.
-    let head_out = std::process::Command::new("git")
+    let head_out = silent_command("git")
         .args(["rev-parse", "HEAD"])
         .current_dir(&submodule_dir)
         .output()
@@ -7030,8 +7937,8 @@ async fn agreement_dispute_list(state: State<'_, AppState>) -> Result<Vec<Disput
 async fn get_network_metrics(state: State<'_, AppState>) -> Result<NetworkMetrics, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
     let last_status = state.last_node_status.lock().map_err(lock_err)?.clone();
-    let info = get_rpc_info(&rpc_url).await.unwrap_or_default();
-    let client = reqwest::Client::new();
+    let info = get_rpc_info(&state, &rpc_url).await.unwrap_or_default();
+    let client = rpc_client(&state);
     let fee_est = client
         .get(format!("{}/rpc/fee_estimate", rpc_url))
         .timeout(Duration::from_secs(3))
@@ -7265,7 +8172,7 @@ async fn run_diagnostics(state: State<'_, AppState>) -> Result<DiagnosticsResult
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
-    let client = reqwest::Client::builder()
+    let client = rpc_client_builder(&state)
         .timeout(Duration::from_secs(5))
         .build()
         .unwrap_or_default();
@@ -7282,7 +8189,7 @@ async fn run_diagnostics(state: State<'_, AppState>) -> Result<DiagnosticsResult
 
     // 2. /status returns valid JSON
     let status_ok = if rpc_ok {
-        match get_rpc_info(&rpc_url).await {
+        match get_rpc_info(&state, &rpc_url).await {
             Ok(info) => {
                 let h = info.height.unwrap_or(0);
                 checks.push(DiagnosticCheck {
@@ -7419,7 +8326,7 @@ async fn run_diagnostics(state: State<'_, AppState>) -> Result<DiagnosticsResult
         // Fallback: check system PATH
         let in_path = if !has_sidecar {
             let check_cmd = if cfg!(target_os = "windows") { "where" } else { "which" };
-            std::process::Command::new(check_cmd)
+            silent_command(check_cmd)
                 .arg(name)
                 .output()
                 .map(|o| o.status.success())
@@ -7559,6 +8466,54 @@ fn main() {
             // Phase 5: spawn the WebSocket → Tauri event bridge. Reconnects
             // forever; harmless when iriumd is not running.
             spawn_ws_bridge(app.handle());
+
+            // FIX 1 (UPnP): kick off a UPnP discovery on startup so the
+            // first get_node_status / Help page render already has the
+            // chosen-adapter / external-IP / double-NAT verdict cached.
+            // Without this the very first poll always shows
+            // upnp_active=false even when the router would have happily
+            // accepted the mapping, because try_upnp_port_map only ran on
+            // explicit user click. Spawned async so the splash doesn't
+            // block on the SSDP 2s timeout.
+            let upnp_app_handle = app.handle();
+            tauri::async_runtime::spawn(async move {
+                let state = upnp_app_handle.state::<AppState>();
+                let attempt = try_upnp(38291).await;
+                if let Ok(mut g) = state.upnp_external_ip.lock() {
+                    *g = attempt.external_ip.clone();
+                }
+                if let Ok(mut g) = state.upnp_double_nat.lock() {
+                    *g = attempt.double_nat;
+                }
+                if let Ok(mut g) = state.upnp_diagnostics.lock() {
+                    *g = attempt.diagnostics;
+                }
+                if attempt.external_ip.is_some()
+                    && !UPNP_REFRESH_RUNNING.swap(true, std::sync::atomic::Ordering::SeqCst)
+                {
+                    let upnp_external_ip_ref = Arc::clone(&state.upnp_external_ip);
+                    let upnp_double_nat_ref = Arc::clone(&state.upnp_double_nat);
+                    let upnp_diag_ref = Arc::clone(&state.upnp_diagnostics);
+                    tauri::async_runtime::spawn(async move {
+                        loop {
+                            tokio::time::sleep(std::time::Duration::from_secs(
+                                UPNP_REFRESH_INTERVAL_SECS,
+                            ))
+                            .await;
+                            let fresh = try_upnp(38291).await;
+                            if let Ok(mut g) = upnp_external_ip_ref.lock() {
+                                *g = fresh.external_ip.clone();
+                            }
+                            if let Ok(mut g) = upnp_double_nat_ref.lock() {
+                                *g = fresh.double_nat;
+                            }
+                            if let Ok(mut g) = upnp_diag_ref.lock() {
+                                *g = fresh.diagnostics;
+                            }
+                        }
+                    });
+                }
+            });
             Ok(())
         })
         .system_tray(system_tray)
@@ -7598,6 +8553,12 @@ fn main() {
             check_binaries,
             try_upnp_port_map,
             check_port_open,
+            // FIX 1 (UPnP multi-adapter): exposes the full UPnP discovery
+            // trace (chosen LAN adapter, gateway, control URL, retry chain,
+            // double-NAT verdict) so the Help page can show *why* UPnP
+            // failed even when the router's own UI says the mapping is
+            // active.
+            upnp_diagnostics,
             get_app_version,
             check_network_reachable,
             get_system_info,
@@ -7628,6 +8589,8 @@ fn main() {
             save_settings,
             load_settings,
             detect_public_ip,
+            // FIX 3 (Remote node): pre-flight probe used by Settings.
+            test_remote_connection,
             // Offers
             offer_list,
             offer_show,
@@ -7646,6 +8609,7 @@ fn main() {
             // Agreements
             agreement_list,
             agreement_show,
+            agreement_audit,
             agreement_remove,
             agreement_create,
             agreement_pack,
@@ -7785,7 +8749,7 @@ fn main() {
                     "irium-miner-gpu-x86_64-pc-windows-msvc.exe",
                     "irium-explorer-x86_64-pc-windows-msvc.exe",
                 ] {
-                    let _ = std::process::Command::new("taskkill")
+                    let _ = silent_command("taskkill")
                         .args(["/F", "/T", "/IM", name])
                         .output();
                 }

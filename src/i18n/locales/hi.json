@@ -143,7 +143,17 @@
       "wallet_path_description": "आपकी वॉलेट फ़ाइल के लिए कस्टम पथ (डिफ़ॉल्ट के लिए खाली छोड़ें)",
       "wallet_path_placeholder": "~/.irium/wallet.json (डिफ़ॉल्ट)",
       "data_dir_description": "कस्टम iriumd डेटा निर्देशिका (डिफ़ॉल्ट के लिए खाली छोड़ें)",
-      "data_dir_placeholder": "~/.इरियम (डिफ़ॉल्ट)"
+      "data_dir_placeholder": "~/.इरियम (डिफ़ॉल्ट)",
+      "node_mode": "Node mode",
+      "node_mode_description": "Local runs the bundled iriumd. Remote points the GUI at a node you manage elsewhere (VPS, dedicated rig) — bundled miners stay enabled and connect via the URL above.",
+      "node_mode_local": "Local (bundled iriumd)",
+      "node_mode_remote": "Remote node",
+      "rpc_token": "RPC token",
+      "rpc_token_description_local": "Optional. Used as the Bearer token for the GUI's outbound RPC calls. Leave blank to use the auto-minted local token.",
+      "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
+      "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
+      "rpc_token_test_remote": "Test remote",
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
     },
     "buttons": {
       "test_connection": "कनेक्शन का परीक्षण करें",
@@ -538,7 +548,9 @@
       "copied": "कॉपी किया गया",
       "recovery_copied": "पुनर्प्राप्ति वाक्यांश की प्रतिलिपि बनाई गई",
       "wif_copied": "WIF की प्रतिलिपि बनाई गई",
-      "name_invalid_chars": "वॉलेट नाम में शामिल नहीं हो सकता: / \\ : * ? \" < > |"
+      "name_invalid_chars": "वॉलेट नाम में शामिल नहीं हो सकता: / \\ : * ? \" < > |",
+      "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
     }
   },
   "agreements": {
@@ -888,7 +900,9 @@
       "offer_imported": "प्रस्ताव आयातित",
       "import_failed": "आयात विफल: {{reason}}",
       "sync_failed": "समन्वयन विफल: {{reason}}",
-      "default_feeds_added": "डिफ़ॉल्ट फ़ीड जोड़ी गईं"
+      "default_feeds_added": "डिफ़ॉल्ट फ़ीड जोड़ी गईं",
+      "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
+      "take_failed_already_taken": "This offer has already been taken by another buyer."
     }
   },
   "miner": {
@@ -941,7 +955,8 @@
       "gpu_address_placeholder": "पी…",
       "intensity_label": "तीव्रता - {{value}}%",
       "intensity_mac_note": "GPU वॉचडॉग को बैच के मध्य में कर्नेल को नष्ट करने से रोकने के लिए macOS पर तीव्रता 50% तक सीमित कर दी गई है। जीपीयू माइनर स्वचालित रूप से वॉचडॉग स्टालों का पता लगाता है और अगर वह उन्हें देखता है तो सफाई से रुक जाता है।",
-      "pool_preset": "पूल प्रीसेट"
+      "pool_preset": "पूल प्रीसेट",
+      "stratum_worker_use_wallet": "Use my wallet"
     },
     "found_blocks": {
       "section_title": "ब्लॉक मिले",
@@ -986,6 +1001,14 @@
     "opencl": {
       "detected_title": "ओपनसीएल हार्डवेयर का पता चला",
       "none_detected": "कोई ओपनसीएल-सक्षम जीपीयू नहीं मिला"
+    },
+    "unexpected_exit": {
+      "title": "Miner stopped unexpectedly",
+      "body_mac": "Your miner stopped unexpectedly. This can happen on Mac due to GPU power limits or the macOS GPU watchdog. Click Restart Miner to resume.",
+      "body_other": "Your miner stopped unexpectedly. Check the miner log for details, then click Restart Miner to resume.",
+      "restart_cpu": "Restart CPU Miner",
+      "restart_gpu": "Restart GPU Miner",
+      "dismiss": "Dismiss"
     }
   },
   "onboarding": {
@@ -1573,6 +1596,21 @@
       "building_body": "समय पर समझौते पूरे करें, सबूत तुरंत जमा करें और फालतू विवाद उठाने से बचें। सफलतापूर्वक जारी किया गया प्रत्येक अनुबंध आपके स्कोर में इजाफा करता है। विवाद इसे कम करते हैं, भले ही इसका समाधान आपके पक्ष में हो।",
       "callout_label": "बख्शीश:",
       "callout": "किसी बड़े एस्क्रो को वित्तपोषित करने से पहले प्रतिपक्ष की प्रतिष्ठा की जाँच करें। 60 से नीचे का स्कोर पहली बार ट्रेड करने वालों के लिए एक खतरे का संकेत है।"
+    },
+    "upnp_diag": {
+      "title": "UPnP diagnostics",
+      "verdict_ok": "Mapping active",
+      "verdict_double_nat": "Router accepted — but double NAT / CGNAT",
+      "verdict_failed": "Mapping failed",
+      "local_chosen": "Chosen LAN IP",
+      "local_candidates": "Detected adapters",
+      "gateway": "Router IP",
+      "ssdp_location": "SSDP location",
+      "control_url": "Control URL",
+      "external_ip": "External IP",
+      "external_ip_private": "(private — double NAT / CGNAT)",
+      "attempts": "AddPortMapping attempts",
+      "last_fault": "Last UPnP fault"
     }
   },
   "wizards": {
@@ -1724,7 +1762,9 @@
     "line_count": "{{count}} लाइनें",
     "filtered_suffix": "(छाना हुआ)",
     "autoscroll_on": "ऑटो-स्क्रॉल चालू करें",
-    "autoscroll_paused": "ऑटो-स्क्रॉल रोका गया"
+    "autoscroll_paused": "ऑटो-स्क्रॉल रोका गया",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {
@@ -1754,7 +1794,17 @@
     "title": "पिछले सत्र से {{count}} संगरोधित ब्लॉक फ़ाइल(फ़ाइलें) मिलीं।",
     "subtitle": "पुनर्प्राप्ति तक इन ब्लॉकों को खनन इतिहास में नहीं दिखाया जा सकता है।",
     "recover_now": "अभी ठीक हो जाओ",
-    "dismiss": "नकार देना"
+    "dismiss": "नकार देना",
+    "node_running_caption": "Stop the node first, then click Recover Now to delete the quarantined block files.",
+    "clearing": "Clearing...",
+    "stop_node_button": "Stop Node",
+    "stopping_node": "Stopping...",
+    "toast_node_stopped": "Node stopped. You can now recover the quarantined blocks.",
+    "toast_node_stop_failed": "Could not stop the node.",
+    "toast_node_stop_failed_reason": "Could not stop the node: {{reason}}",
+    "toast_recovered": "Recovered {{files}} quarantined block file(s).",
+    "toast_recover_partial": "Recovered {{files}} file(s); some directories could not be removed: {{reason}}",
+    "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
     "miner_active_confirm": "खनन सक्रिय है. माइनर पृष्ठभूमि में चलता रहेगा.\n\nट्रे को छोटा करने के लिए ओके पर क्लिक करें, या विंडो को खुला रखने के लिए रद्द करें पर क्लिक करें और यदि आप पूरी तरह से खनन छोड़ना चाहते हैं तो पहले खनन बंद करें।"
@@ -1788,5 +1838,12 @@
     "receiving": "प्राप्त",
     "full_details_unavailable": "अभी पूरी जानकारी उपलब्ध नहीं है.",
     "view_on_explorer": "एक्सप्लोरर पर देखें"
+  },
+  "notifications": {
+    "agreement_funded": "Agreement {{hash}} funded",
+    "agreement_proof_submitted": "Proof submitted for agreement {{hash}}",
+    "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
+    "agreement_timeout": "Agreement {{hash}} timed out — refund available",
+    "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
   }
 }

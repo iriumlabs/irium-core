@@ -143,7 +143,17 @@
       "wallet_path_description": "Пользовательский путь к файлу вашего кошелька (оставьте пустым по умолчанию)",
       "wallet_path_placeholder": "~/.irium/wallet.json (по умолчанию)",
       "data_dir_description": "Пользовательский каталог данных iriumd (по умолчанию оставьте пустым)",
-      "data_dir_placeholder": "~/.irium (по умолчанию)"
+      "data_dir_placeholder": "~/.irium (по умолчанию)",
+      "node_mode": "Node mode",
+      "node_mode_description": "Local runs the bundled iriumd. Remote points the GUI at a node you manage elsewhere (VPS, dedicated rig) — bundled miners stay enabled and connect via the URL above.",
+      "node_mode_local": "Local (bundled iriumd)",
+      "node_mode_remote": "Remote node",
+      "rpc_token": "RPC token",
+      "rpc_token_description_local": "Optional. Used as the Bearer token for the GUI's outbound RPC calls. Leave blank to use the auto-minted local token.",
+      "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
+      "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
+      "rpc_token_test_remote": "Test remote",
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
     },
     "buttons": {
       "test_connection": "Тестовое соединение",
@@ -538,7 +548,9 @@
       "copied": "Скопировано",
       "recovery_copied": "Восстановительная фраза скопирована.",
       "wif_copied": "WIF скопирован",
-      "name_invalid_chars": "Имя кошелька не может содержать: / \\ : * ? \" < > |"
+      "name_invalid_chars": "Имя кошелька не может содержать: / \\ : * ? \" < > |",
+      "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
     }
   },
   "agreements": {
@@ -888,7 +900,9 @@
       "offer_imported": "Предложение импортировано",
       "import_failed": "Не удалось импортировать: {{reason}}.",
       "sync_failed": "Не удалось синхронизировать: {{reason}}",
-      "default_feeds_added": "Добавлены каналы по умолчанию"
+      "default_feeds_added": "Добавлены каналы по умолчанию",
+      "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
+      "take_failed_already_taken": "This offer has already been taken by another buyer."
     }
   },
   "miner": {
@@ -941,7 +955,8 @@
       "gpu_address_placeholder": "П…",
       "intensity_label": "Интенсивность — {{value}}%",
       "intensity_mac_note": "Интенсивность ограничена на уровне 50 % в macOS, чтобы сторожевой таймер графического процессора не убивал ядра в середине пакета. Майнер на графическом процессоре автоматически обнаруживает зависания сторожевого таймера и останавливается, если все равно их видит.",
-      "pool_preset": "Предустановка бассейна"
+      "pool_preset": "Предустановка бассейна",
+      "stratum_worker_use_wallet": "Use my wallet"
     },
     "found_blocks": {
       "section_title": "Найденные блоки",
@@ -986,6 +1001,14 @@
     "opencl": {
       "detected_title": "Обнаружено оборудование OpenCL",
       "none_detected": "Графический процессор с поддержкой OpenCL не обнаружен"
+    },
+    "unexpected_exit": {
+      "title": "Miner stopped unexpectedly",
+      "body_mac": "Your miner stopped unexpectedly. This can happen on Mac due to GPU power limits or the macOS GPU watchdog. Click Restart Miner to resume.",
+      "body_other": "Your miner stopped unexpectedly. Check the miner log for details, then click Restart Miner to resume.",
+      "restart_cpu": "Restart CPU Miner",
+      "restart_gpu": "Restart GPU Miner",
+      "dismiss": "Dismiss"
     }
   },
   "onboarding": {
@@ -1573,6 +1596,21 @@
       "building_body": "Своевременно заключайте договоры, оперативно предоставляйте доказательства и избегайте необоснованных споров. Каждое успешно заключенное соглашение увеличивает ваш счет. Споры понижают его, даже если они решены в вашу пользу.",
       "callout_label": "Кончик:",
       "callout": "Прежде чем финансировать крупное условное депонирование, проверьте репутацию контрагента. Оценка ниже 60 является тревожным сигналом для сделок, совершаемых впервые."
+    },
+    "upnp_diag": {
+      "title": "UPnP diagnostics",
+      "verdict_ok": "Mapping active",
+      "verdict_double_nat": "Router accepted — but double NAT / CGNAT",
+      "verdict_failed": "Mapping failed",
+      "local_chosen": "Chosen LAN IP",
+      "local_candidates": "Detected adapters",
+      "gateway": "Router IP",
+      "ssdp_location": "SSDP location",
+      "control_url": "Control URL",
+      "external_ip": "External IP",
+      "external_ip_private": "(private — double NAT / CGNAT)",
+      "attempts": "AddPortMapping attempts",
+      "last_fault": "Last UPnP fault"
     }
   },
   "wizards": {
@@ -1724,7 +1762,9 @@
     "line_count": "{{count}} строк",
     "filtered_suffix": "(отфильтровано)",
     "autoscroll_on": "Автоматическая прокрутка включена",
-    "autoscroll_paused": "Автопрокрутка приостановлена"
+    "autoscroll_paused": "Автопрокрутка приостановлена",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {
@@ -1754,7 +1794,17 @@
     "title": "Обнаружены файлы блокировки {{count}}, помещенные в карантин, из предыдущего сеанса.",
     "subtitle": "Эти блоки не могут быть показаны в истории добычи до тех пор, пока они не будут восстановлены.",
     "recover_now": "Восстановить сейчас",
-    "dismiss": "Увольнять"
+    "dismiss": "Увольнять",
+    "node_running_caption": "Stop the node first, then click Recover Now to delete the quarantined block files.",
+    "clearing": "Clearing...",
+    "stop_node_button": "Stop Node",
+    "stopping_node": "Stopping...",
+    "toast_node_stopped": "Node stopped. You can now recover the quarantined blocks.",
+    "toast_node_stop_failed": "Could not stop the node.",
+    "toast_node_stop_failed_reason": "Could not stop the node: {{reason}}",
+    "toast_recovered": "Recovered {{files}} quarantined block file(s).",
+    "toast_recover_partial": "Recovered {{files}} file(s); some directories could not be removed: {{reason}}",
+    "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
     "miner_active_confirm": "Майнинг активен. Майнер продолжит работать в фоновом режиме.\n\nНажмите «ОК», чтобы свернуть окно в трей, или «Отмена», чтобы оставить окно открытым и сначала остановить майнинг, если вы хотите полностью выйти."
@@ -1788,5 +1838,12 @@
     "receiving": "Получение",
     "full_details_unavailable": "Полная информация пока недоступна.",
     "view_on_explorer": "Посмотреть в проводнике"
+  },
+  "notifications": {
+    "agreement_funded": "Agreement {{hash}} funded",
+    "agreement_proof_submitted": "Proof submitted for agreement {{hash}}",
+    "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
+    "agreement_timeout": "Agreement {{hash}} timed out — refund available",
+    "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
   }
 }

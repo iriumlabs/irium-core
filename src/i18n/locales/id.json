@@ -143,7 +143,17 @@
       "wallet_path_description": "Jalur khusus ke file dompet Anda (biarkan kosong untuk default)",
       "wallet_path_placeholder": "~/.irium/wallet.json (bawaan)",
       "data_dir_description": "Direktori data iriumd khusus (biarkan kosong untuk default)",
-      "data_dir_placeholder": "~/.irium (bawaan)"
+      "data_dir_placeholder": "~/.irium (bawaan)",
+      "node_mode": "Node mode",
+      "node_mode_description": "Local runs the bundled iriumd. Remote points the GUI at a node you manage elsewhere (VPS, dedicated rig) — bundled miners stay enabled and connect via the URL above.",
+      "node_mode_local": "Local (bundled iriumd)",
+      "node_mode_remote": "Remote node",
+      "rpc_token": "RPC token",
+      "rpc_token_description_local": "Optional. Used as the Bearer token for the GUI's outbound RPC calls. Leave blank to use the auto-minted local token.",
+      "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
+      "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
+      "rpc_token_test_remote": "Test remote",
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
     },
     "buttons": {
       "test_connection": "Uji koneksi",
@@ -538,7 +548,9 @@
       "copied": "Disalin",
       "recovery_copied": "Frasa pemulihan disalin",
       "wif_copied": "WIF disalin",
-      "name_invalid_chars": "Nama dompet tidak boleh berisi: / \\ : * ? \" < > |"
+      "name_invalid_chars": "Nama dompet tidak boleh berisi: / \\ : * ? \" < > |",
+      "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
     }
   },
   "agreements": {
@@ -888,7 +900,9 @@
       "offer_imported": "Penawaran diimpor",
       "import_failed": "Impor gagal: {{reason}}",
       "sync_failed": "Sinkronisasi gagal: {{reason}}",
-      "default_feeds_added": "Umpan default ditambahkan"
+      "default_feeds_added": "Umpan default ditambahkan",
+      "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
+      "take_failed_already_taken": "This offer has already been taken by another buyer."
     }
   },
   "miner": {
@@ -941,7 +955,8 @@
       "gpu_address_placeholder": "P…",
       "intensity_label": "Intensitas — {{value}}%",
       "intensity_mac_note": "Intensitas dibatasi hingga 50% di macOS untuk mencegah pengawas GPU mematikan kernel di tengah batch. Penambang GPU secara otomatis mendeteksi penghentian pengawas dan berhenti dengan bersih jika ia tetap melihatnya.",
-      "pool_preset": "Prasetel Kolam Renang"
+      "pool_preset": "Prasetel Kolam Renang",
+      "stratum_worker_use_wallet": "Use my wallet"
     },
     "found_blocks": {
       "section_title": "Blok yang Ditemukan",
@@ -986,6 +1001,14 @@
     "opencl": {
       "detected_title": "Perangkat Keras OpenCL Terdeteksi",
       "none_detected": "Tidak ada GPU berkemampuan OpenCL yang terdeteksi"
+    },
+    "unexpected_exit": {
+      "title": "Miner stopped unexpectedly",
+      "body_mac": "Your miner stopped unexpectedly. This can happen on Mac due to GPU power limits or the macOS GPU watchdog. Click Restart Miner to resume.",
+      "body_other": "Your miner stopped unexpectedly. Check the miner log for details, then click Restart Miner to resume.",
+      "restart_cpu": "Restart CPU Miner",
+      "restart_gpu": "Restart GPU Miner",
+      "dismiss": "Dismiss"
     }
   },
   "onboarding": {
@@ -1573,6 +1596,21 @@
       "building_body": "Selesaikan perjanjian tepat waktu, segera kirimkan bukti, dan hindari perselisihan yang tidak penting. Setiap perjanjian yang berhasil dirilis menambah skor Anda. Perselisihan menurunkannya, meskipun diselesaikan sesuai keinginan Anda.",
       "callout_label": "Tip:",
       "callout": "Periksa reputasi rekanan sebelum mendanai escrow dalam jumlah besar. Skor di bawah 60 adalah tanda bahaya untuk perdagangan pertama kali."
+    },
+    "upnp_diag": {
+      "title": "UPnP diagnostics",
+      "verdict_ok": "Mapping active",
+      "verdict_double_nat": "Router accepted — but double NAT / CGNAT",
+      "verdict_failed": "Mapping failed",
+      "local_chosen": "Chosen LAN IP",
+      "local_candidates": "Detected adapters",
+      "gateway": "Router IP",
+      "ssdp_location": "SSDP location",
+      "control_url": "Control URL",
+      "external_ip": "External IP",
+      "external_ip_private": "(private — double NAT / CGNAT)",
+      "attempts": "AddPortMapping attempts",
+      "last_fault": "Last UPnP fault"
     }
   },
   "wizards": {
@@ -1724,7 +1762,9 @@
     "line_count": "{{count}} baris",
     "filtered_suffix": "(tersaring)",
     "autoscroll_on": "Gulir otomatis aktif",
-    "autoscroll_paused": "Gulir otomatis dijeda"
+    "autoscroll_paused": "Gulir otomatis dijeda",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {
@@ -1754,7 +1794,17 @@
     "title": "Ditemukan {{count}} file blok yang dikarantina dari sesi sebelumnya.",
     "subtitle": "Blok-blok ini tidak dapat ditampilkan dalam riwayat penambangan sampai ditemukan kembali.",
     "recover_now": "Pulihkan Sekarang",
-    "dismiss": "Membubarkan"
+    "dismiss": "Membubarkan",
+    "node_running_caption": "Stop the node first, then click Recover Now to delete the quarantined block files.",
+    "clearing": "Clearing...",
+    "stop_node_button": "Stop Node",
+    "stopping_node": "Stopping...",
+    "toast_node_stopped": "Node stopped. You can now recover the quarantined blocks.",
+    "toast_node_stop_failed": "Could not stop the node.",
+    "toast_node_stop_failed_reason": "Could not stop the node: {{reason}}",
+    "toast_recovered": "Recovered {{files}} quarantined block file(s).",
+    "toast_recover_partial": "Recovered {{files}} file(s); some directories could not be removed: {{reason}}",
+    "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
     "miner_active_confirm": "Penambangan aktif. Penambang akan terus berjalan di latar belakang.\n\nKlik OK untuk memperkecil ke baki, atau Batal untuk membiarkan jendela tetap terbuka dan menghentikan penambangan terlebih dahulu jika Anda ingin berhenti sepenuhnya."
@@ -1788,5 +1838,12 @@
     "receiving": "Menerima",
     "full_details_unavailable": "Detail lengkapnya belum tersedia.",
     "view_on_explorer": "Lihat di Penjelajah"
+  },
+  "notifications": {
+    "agreement_funded": "Agreement {{hash}} funded",
+    "agreement_proof_submitted": "Proof submitted for agreement {{hash}}",
+    "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
+    "agreement_timeout": "Agreement {{hash}} timed out — refund available",
+    "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
   }
 }

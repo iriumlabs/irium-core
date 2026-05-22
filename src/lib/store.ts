@@ -151,6 +151,27 @@ interface AppStore {
   setQuarantinedBlockCount: (count: number) => void;
   quarantineBannerDismissed: boolean;
   dismissQuarantineBanner: () => void;
+
+  // FIX B (page-state preservation): React Router unmounts non-matching
+  // routes by default, so any page-local useState data is destroyed on
+  // every navigation. The useEffect-triggered refetches then re-run on
+  // re-mount, producing a visible spinner / empty-state flash before
+  // the data lands a second time — what the user perceives as "everything
+  // reloads when I switch pages".
+  //
+  // The fix pattern: store the last-good list in zustand and render it
+  // immediately on mount while the refetch runs in the background. The
+  // store survives every route change because zustand lives outside the
+  // React tree. On return navigation the page paints instantly with the
+  // cached data; the background refetch silently swaps in fresher rows
+  // when it lands. No spinner, no empty-state flash, no perceived reload.
+  //
+  // Agreements list is wired up first as the canonical example; other
+  // heavy lists (Marketplace offers, Explorer recent blocks, Wallet
+  // transactions) can adopt the same shape incrementally.
+  agreementListCache: import('./types').Agreement[] | null;
+  agreementListFetchedAt: number | null;
+  setAgreementListCache: (list: import('./types').Agreement[]) => void;
 }
 
 interface ErrorEntry {
@@ -461,6 +482,15 @@ export const useStore = create<AppStore>((set) => ({
   setQuarantinedBlockCount: (quarantinedBlockCount) => set({ quarantinedBlockCount }),
   quarantineBannerDismissed: false,
   dismissQuarantineBanner: () => set({ quarantineBannerDismissed: true }),
+
+  // FIX B: see interface for the rationale. Starts null so the page
+  // can still distinguish "never fetched" from "empty list" and show a
+  // skeleton on the very first visit; thereafter the cache is always
+  // populated and re-mounts paint instantly.
+  agreementListCache: null,
+  agreementListFetchedAt: null,
+  setAgreementListCache: (list) =>
+    set({ agreementListCache: list, agreementListFetchedAt: Date.now() }),
 }));
 
 const SETTINGS_KEY = "irium_core_settings";

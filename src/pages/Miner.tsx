@@ -6,6 +6,7 @@ import {
   Monitor, Wifi, WifiOff, Activity, Zap,
   ChevronDown, Server, Hash, Clock, Target,
   Thermometer, Fan, Gauge, Copy, ExternalLink, Timer,
+  Coins, X,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
@@ -204,6 +205,37 @@ function StatCard({ label, value, color, icon: Icon }: {
       </span>
     </motion.div>
   );
+}
+
+// FIX 4 (Mining UI): expected daily reward in IRM given the miner's
+// current kH/s and the chain's current difficulty. Uses the standard
+// Bitcoin-style estimate (your_hashrate / network_hashrate × blocks_per_day
+// × reward). At BLOCKS_PER_HOUR=60 (chain reality, not protocol target)
+// that's 1440 blocks/day × 50 IRM = 72000 IRM of network reward per day,
+// scaled by the miner's share of the hashrate. Returns null when we don't
+// have enough data — the StatCard renders "—" in that case rather than 0.
+const BLOCKS_PER_DAY = 1440;
+const BLOCK_REWARD_IRM = 50;
+function estimateDailyEarnings(hashrateKhs: number | null | undefined, difficulty: number | null | undefined): number | null {
+  if (!hashrateKhs || hashrateKhs <= 0) return null;
+  if (!difficulty || difficulty <= 0) return null;
+  // network_hashrate_hs ≈ difficulty × 2^32 / block_time_secs
+  // block_time_secs at BLOCKS_PER_HOUR=60 is 60.
+  const networkHashrateHs = (difficulty * 4_294_967_296) / 60;
+  const minerHashrateHs = hashrateKhs * 1000;
+  const expectedBlocksPerDay = (minerHashrateHs / networkHashrateHs) * BLOCKS_PER_DAY;
+  return expectedBlocksPerDay * BLOCK_REWARD_IRM;
+}
+
+// FIX 4: "12s ago" / "3m ago" / "2h ago" relative formatter for the
+// last-share pulse on the Stratum tab. Caller passes unix seconds.
+function formatRelativeSeconds(unixSeconds: number | null | undefined, nowSecs: number): string {
+  if (!unixSeconds) return '—';
+  const diff = Math.max(0, nowSecs - unixSeconds);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
 }
 
 function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{ value: number }> }) {
@@ -432,6 +464,11 @@ function CpuMinerTab() {
   const cpuCores = useStore((s) => s.cpuCores);
   const resetMinerHistory = useStore((s) => s.resetMinerHistory);
   const rpcUrl = useStore((s) => s.settings.rpc_url);
+  // FIX D: bring nodeStatus into scope so we can distinguish "the node
+  // is genuinely still syncing the chain" (worth a long-form sync
+  // explainer) from "the miner sidecar just started and the first rate
+  // line has not landed yet" (warm-up — finishes in ~2s).
+  const nodeStatusForSync = useStore((s) => s.nodeStatus);
 
   // Network snapshot used by the block-info strip and the Difficulty stat.
   // Cleared when mining stops so a stopped-then-restarted session never
@@ -540,7 +577,28 @@ function CpuMinerTab() {
               irium-miner's stdout (e.g. "[sync] Miner downloading blocks
               1..21269 from node"); we surface that verbatim below. */}
           {(() => {
-            const isSyncing = !!status?.running && status.hashrate_khs === 0;
+            // FIX D: split the old single "isSyncing" flag into two real
+            // states. nodeSyncing is true only when the chain genuinely
+            // lags the network tip (persisted_height behind, gap_healer
+            // backlog, or fully_synced=false). minerWarmup covers the
+            // brief window where the sidecar is up but the first
+            // hashrate line has not arrived yet — typically 1–3 seconds.
+            // Previously every miner restart showed "Downloading
+            // blockchain data for the first time" regardless of whether
+            // the chain was already in sync.
+            const networkTip = nodeStatusForSync?.network_tip ?? 0;
+            const localHeight = nodeStatusForSync?.persisted_height
+              ?? nodeStatusForSync?.height ?? 0;
+            const heightBehind = networkTip > 0 && localHeight > 0 && (networkTip - localHeight) > 10;
+            const gapPending = (nodeStatusForSync?.gap_healer_pending_count ?? 0) > 0;
+            const notFullySynced = nodeStatusForSync?.running === true
+              && nodeStatusForSync?.fully_synced === false;
+            const nodeSyncing = heightBehind || gapPending || notFullySynced;
+            const minerWarmup = !!status?.running && status.hashrate_khs === 0 && !nodeSyncing;
+            // Legacy alias kept for the header badge below — preserves
+            // the existing "Mining Active — Syncing blocks…" copy when
+            // EITHER the node is syncing OR the miner is warming up.
+            const isSyncing = nodeSyncing || minerWarmup;
             return (
               <>
                 <div className="flex items-center justify-between mb-4">
@@ -596,11 +654,26 @@ function CpuMinerTab() {
                   >
                     <RefreshCw size={12} className="animate-spin flex-shrink-0 mt-0.5" style={{ color: '#fbbf24' }} />
                     <div className="text-xs leading-relaxed">
+                      {/* FIX D: header line. When the node is genuinely
+                          syncing we surface the sidecar's [sync] line if
+                          present. When it's just a miner warm-up we say
+                          so explicitly instead of using "Initializing
+                          miner…" which read as alarming on every restart. */}
                       <p className="font-mono" style={{ color: 'rgba(238,240,255,0.65)' }}>
-                        {status?.sync_status ?? 'Initializing miner…'}
+                        {nodeSyncing
+                          ? (status?.sync_status ?? `Node syncing — height ${localHeight} / network ${networkTip}`)
+                          : 'Warming up miner — waiting for first share rate…'}
                       </p>
+                      {/* FIX D: body line. The old text claimed
+                          "Downloading blockchain data for the first
+                          time" on EVERY restart, which was a lie after
+                          the first install. Now it only appears when
+                          the chain is actually behind the network tip;
+                          warm-up gets a short reassuring caption. */}
                       <p className="mt-0.5" style={{ color: 'rgba(238,240,255,0.35)' }}>
-                        Downloading blockchain data for the first time. This takes a few minutes on first run only — subsequent starts will be instant as blocks are cached locally.
+                        {nodeSyncing
+                          ? 'The node is still catching up to the network tip. Mining is enabled but no shares will be accepted until the local chain matches. This usually finishes within a few minutes.'
+                          : 'The miner sidecar has started. The first hashrate reading lands within 1-3 seconds — no action needed.'}
                       </p>
                     </div>
                   </motion.div>
@@ -730,12 +803,23 @@ function CpuMinerTab() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
         <StatCard label="Hashrate"       value={status === null ? '—' : status.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#A78BFA" icon={Activity} />
         <StatCard label="Est. Block Time" value={etaSeconds ? formatEta(etaSeconds) : '—'} color="#6ec6ff" icon={Timer} />
         <StatCard label="Blocks Found"   value={String(status?.blocks_found ?? 0)} color="#34d399" icon={Hash} />
         <StatCard label="Uptime"         value={status?.uptime_secs ? formatUptime(status.uptime_secs) : '—'} color="#60a5fa" icon={Clock} />
         <StatCard label="Difficulty"     value={netInfo?.difficulty != null ? netInfo.difficulty.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'} color="#fbbf24" icon={Target} />
+        {/* FIX 4 (Mining UI): expected daily IRM at current hashrate × difficulty.
+            Shows "—" until both numbers are available so we never claim 0. */}
+        <StatCard
+          label="Est. Daily IRM"
+          value={(() => {
+            const e = estimateDailyEarnings(status?.hashrate_khs, netInfo?.difficulty);
+            return e == null ? '—' : `${e.toFixed(e >= 1 ? 2 : 4)} IRM`;
+          })()}
+          color="#fbbf24"
+          icon={Coins}
+        />
       </div>
 
       {/* Found Blocks list (Bug 1) */}
@@ -1106,12 +1190,22 @@ function GpuMinerTab() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
         <StatCard label="Hashrate"       value={status === null ? '—' : status.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#60a5fa" icon={Activity} />
         <StatCard label="Est. Block Time" value={etaSeconds ? formatEta(etaSeconds) : '—'} color="#6ec6ff" icon={Timer} />
         <StatCard label="Temperature"    value={!status?.running ? '—' : status.temperature_c != null ? `${status.temperature_c.toFixed(1)}°C` : 'N/A (Linux only)'} color={status?.running && (status.temperature_c ?? 0) > 80 ? '#f87171' : '#fbbf24'} icon={Thermometer} />
         <StatCard label="Power"          value={!status?.running ? '—' : status.power_w != null ? `${status.power_w.toFixed(1)}W` : 'N/A (Linux only)'} color="#a78bfa" icon={Zap} />
         <StatCard label="Blocks Found"   value={String(status?.blocks_found ?? 0)} color="#34d399" icon={Hash} />
+        {/* FIX 4 (Mining UI): expected daily IRM at current hashrate × difficulty. */}
+        <StatCard
+          label="Est. Daily IRM"
+          value={(() => {
+            const e = estimateDailyEarnings(status?.hashrate_khs, netInfo?.difficulty);
+            return e == null ? '—' : `${e.toFixed(e >= 1 ? 2 : 4)} IRM`;
+          })()}
+          color="#fbbf24"
+          icon={Coins}
+        />
       </div>
 
       {/* Found Blocks list */}
@@ -1486,6 +1580,19 @@ function StratumTab() {
   const [worker, setWorker] = useState('');
   const [password, setPassword] = useState('');
   const [selectedPreset, setSelectedPreset] = useState(0);
+  // FIX 4 (Mining UI): first wallet address — used by the "Use my
+  // wallet" auto-fill button to derive a standard <address>.rig1
+  // worker name without forcing the user to copy/paste.
+  const [firstWalletAddress, setFirstWalletAddress] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    wallet.listAddresses().then((list) => {
+      if (cancelled) return;
+      const first = (list ?? []).find((a) => a.address.trim().length > 0);
+      if (first) setFirstWalletAddress(first.address);
+    }).catch(() => { /* user might not have a wallet yet — silent ok */ });
+    return () => { cancelled = true; };
+  }, []);
   // Confirm flyout for Disconnect — mirrors the Stop Mining pattern on
   // the CPU/GPU tabs so dropping in-progress shares isn't a single click.
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
@@ -1572,17 +1679,35 @@ function StratumTab() {
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-4 gap-3 mt-5"
+              className="grid grid-cols-5 gap-3 mt-5"
             >
               {[
-                { label: 'Accepted', value: String(status.shares_accepted), color: '#34d399' },
-                { label: 'Rejected', value: String(status.shares_rejected), color: '#f87171' },
-                { label: 'Ratio',    value: `${shareRatio}%`,               color: '#A78BFA' },
-                { label: 'Uptime',   value: status.uptime_secs ? formatUptime(status.uptime_secs) : '—', color: '#60a5fa' },
-              ].map(({ label, value, color }) => (
+                { label: 'Accepted', value: String(status.shares_accepted), color: '#34d399', highlight: false },
+                { label: 'Rejected', value: String(status.shares_rejected), color: '#f87171', highlight: false },
+                { label: 'Ratio',    value: `${shareRatio}%`,               color: '#A78BFA', highlight: false },
+                { label: 'Uptime',   value: status.uptime_secs ? formatUptime(status.uptime_secs) : '—', color: '#60a5fa', highlight: false },
+                // FIX 4 (Mining UI): last accepted share with pulse when recent.
+                // Backed by stratum_last_share_time on the Rust side; updates
+                // every status poll. Pulse animation = "still earning"; the
+                // user can see at a glance that the miner isn't stalled even
+                // when the hashrate number alone could be misleading.
+                {
+                  label: 'Last share',
+                  value: formatRelativeSeconds(status.last_share_time, Math.floor(Date.now() / 1000)),
+                  color: '#fbbf24',
+                  highlight: !!status.last_share_time && Math.floor(Date.now() / 1000) - status.last_share_time < 30,
+                },
+              ].map(({ label, value, color, highlight }) => (
                 <div key={label} className="flex flex-col gap-1">
                   <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--t3)', fontFamily: '"JetBrains Mono", monospace' }}>{label}</span>
-                  <span className="font-mono font-semibold text-base" style={{ color, fontFamily: '"JetBrains Mono", monospace' }}>{value}</span>
+                  <motion.span
+                    className="font-mono font-semibold text-base"
+                    style={{ color, fontFamily: '"JetBrains Mono", monospace' }}
+                    animate={highlight ? { opacity: [1, 0.55, 1] } : { opacity: 1 }}
+                    transition={highlight ? { duration: 2, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.2 }}
+                  >
+                    {value}
+                  </motion.span>
                 </div>
               ))}
             </motion.div>
@@ -1644,7 +1769,23 @@ function StratumTab() {
         {/* Worker */}
         <div>
           <label className="label">{t('miner.fields.stratum_worker_label')}</label>
-          <input value={worker} onChange={e => setWorker(e.target.value)} placeholder="walletAddress.workerName" className="input" />
+          <div className="flex gap-2">
+            <input value={worker} onChange={e => setWorker(e.target.value)} placeholder="walletAddress.workerName" className="input flex-1" />
+            {/* FIX 4 (Mining UI): one-click worker derivation from the
+                user's first wallet address. Renders only when we have
+                one (no point offering it on a brand-new install with
+                no wallet yet). */}
+            {firstWalletAddress && (
+              <button
+                type="button"
+                onClick={() => setWorker(`${firstWalletAddress}.rig1`)}
+                className="btn-secondary px-3 py-2 text-xs whitespace-nowrap"
+                title={`Auto-fill: ${firstWalletAddress}.rig1`}
+              >
+                {t('miner.fields.stratum_worker_use_wallet')}
+              </button>
+            )}
+          </div>
           <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Format: your_wallet_address.worker_id (e.g. Pxxx…xxxx.rig1)</p>
         </div>
 
@@ -1738,6 +1879,28 @@ export default function Miner() {
     }).then((fn) => { unlisten = fn; }).catch(() => { /* non-Tauri preview */ });
     return () => { if (unlisten) unlisten(); };
   }, []);
+
+  // FIX 4 (Mining UI): listen for backend "miner-found-block" events
+  // and surface a celebratory banner above the tabs with the block
+  // height, miner kind, and a self-dismissing 10s timer. The Found
+  // Blocks list already shows every accepted block on a poll cycle,
+  // but the banner gives the immediate "you just won!" feedback that
+  // makes mining feel rewarding instead of background hum.
+  type FoundBlockEvent = { kind: 'cpu' | 'gpu'; height: number; hash?: string };
+  const [foundBlockBanner, setFoundBlockBanner] = useState<FoundBlockEvent | null>(null);
+  useEffect(() => {
+    let unlisten: UnlistenFn | undefined;
+    let dismissTimer: ReturnType<typeof setTimeout> | undefined;
+    listen<FoundBlockEvent>('miner-found-block', (event) => {
+      setFoundBlockBanner(event.payload);
+      if (dismissTimer) clearTimeout(dismissTimer);
+      dismissTimer = setTimeout(() => setFoundBlockBanner(null), 10_000);
+    }).then((fn) => { unlisten = fn; }).catch(() => { /* non-Tauri preview */ });
+    return () => {
+      if (unlisten) unlisten();
+      if (dismissTimer) clearTimeout(dismissTimer);
+    };
+  }, []);
   const handleRestartFromBanner = () => {
     if (!unexpectedExit) return;
     setActiveTab(unexpectedExit.kind);
@@ -1755,6 +1918,50 @@ export default function Miner() {
       <div className="w-full space-y-5 px-8 py-6">
       <NodeOfflineBanner />
       <QuarantineRecoveryBanner />
+      {/* FIX 4 (Mining UI): celebratory block-found banner. Auto-dismisses
+          after 10s; can be dismissed early with the X button. */}
+      <AnimatePresence>
+        {foundBlockBanner && (
+          <motion.div
+            key="found-block-banner"
+            initial={{ opacity: 0, y: -10, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.96 }}
+            transition={{ duration: 0.25 }}
+            className="px-4 py-3 rounded-lg relative overflow-hidden"
+            style={{
+              background: 'linear-gradient(90deg, rgba(52,211,153,0.16) 0%, rgba(110,198,255,0.10) 60%, rgba(110,198,255,0) 100%)',
+              border: '1px solid rgba(52,211,153,0.40)',
+              color: '#34d399',
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: 'rgba(52,211,153,0.18)', border: '1px solid rgba(52,211,153,0.30)' }}
+              >
+                <Coins size={18} style={{ color: '#34d399' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-display font-semibold text-sm" style={{ color: '#34d399' }}>
+                  Block #{foundBlockBanner.height} mined!
+                </p>
+                <p className="text-xs leading-snug" style={{ color: 'rgba(238,240,255,0.65)' }}>
+                  Your {foundBlockBanner.kind.toUpperCase()} miner just won the network race —
+                  50 IRM is on the way (matures in 100 blocks).
+                </p>
+              </div>
+              <button
+                onClick={() => setFoundBlockBanner(null)}
+                className="btn-ghost p-1.5 shrink-0"
+                aria-label="Dismiss"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {unexpectedExit && (
         <div
           className="px-4 py-3 rounded-lg"

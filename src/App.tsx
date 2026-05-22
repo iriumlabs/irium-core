@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { listen } from '@tauri-apps/api/event';
+import { checkUpdate, installUpdate, onUpdaterEvent } from '@tauri-apps/api/updater';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { getLanguageMeta } from './i18n';
 import { X, Download, Loader2 } from 'lucide-react';
@@ -13,6 +15,7 @@ import TopBar     from './components/layout/TopBar';
 import StatusBar  from './components/layout/StatusBar';
 import TitleBar   from './components/layout/TitleBar';
 import NetworkBackground from './components/layout/NetworkBackground';
+import GlobalAgreementNotifier from './components/GlobalAgreementNotifier';
 const Dashboard    = lazy(() => import('./pages/Dashboard'));
 const Wallet       = lazy(() => import('./pages/Wallet'));
 const Settlement   = lazy(() => import('./pages/Settlement'));
@@ -111,6 +114,40 @@ function SyncProgressBanner() {
 
 function UpdateBanner() {
   const { updateInfo, updateBannerDismissed, dismissUpdateBanner } = useStore();
+  // FIX 6 (Auto-updater): in-banner install state. Mirrors the Settings
+  // page Update Center flow but keeps the surface minimal — banner is
+  // a one-line nudge, full progress UI lives in Settings for users who
+  // want to see byte-level download progress.
+  const [installing, setInstalling] = useState(false);
+  const handleInstallNow = async () => {
+    setInstalling(true);
+    const unlistenStatus = await onUpdaterEvent(({ status, error }) => {
+      if (status === 'ERROR') {
+        toast.error(error ?? 'Update install failed');
+        setInstalling(false);
+      } else if (status === 'DONE') {
+        toast.success('Update installed — restart Irium Core to apply');
+        dismissUpdateBanner();
+        setInstalling(false);
+      }
+    });
+    try {
+      const result = await checkUpdate();
+      if (!result.shouldUpdate) {
+        toast.success('You are already on the latest version');
+        setInstalling(false);
+        unlistenStatus();
+        return;
+      }
+      await installUpdate();
+    } catch (e) {
+      toast.error(String(e));
+      setInstalling(false);
+    } finally {
+      unlistenStatus();
+    }
+  };
+
   if (!updateInfo?.available || updateBannerDismissed) return null;
   return (
     <motion.div
@@ -126,6 +163,17 @@ function UpdateBanner() {
           Irium Core <span className="font-semibold">{updateInfo.latest_version}</span> is available
           <span className="text-white/50"> (current: {updateInfo.current_version})</span>
         </span>
+        {/* FIX 6: in-app installer button — downloads + verifies signed
+            installer via Tauri auto-updater (endpoint configured in
+            tauri.conf.json → latest.json on GitHub Releases). */}
+        <button
+          onClick={handleInstallNow}
+          disabled={installing}
+          className="btn-ghost py-0.5 px-2 text-xs text-irium-300 hover:text-irium-100 disabled:opacity-50 flex items-center gap-1"
+        >
+          {installing ? <Loader2 size={11} className="animate-spin" /> : null}
+          {installing ? 'Installing…' : 'Install Now'}
+        </button>
         {updateInfo.release_url && (
           <a
             href={updateInfo.release_url}
@@ -133,7 +181,7 @@ function UpdateBanner() {
             rel="noopener noreferrer"
             className="btn-ghost py-0.5 px-2 text-xs text-irium-300 hover:text-irium-100"
           >
-            Download →
+            Release notes →
           </a>
         )}
       </div>
@@ -258,6 +306,13 @@ function AppLayout() {
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
         <NetworkBackground key={settings.theme} />
       </div>
+
+      {/* FIX 8: route-agnostic listener that surfaces agreement state
+          transitions (funded / proof_submitted / satisfied / timeout /
+          proof_reorged) as toasts regardless of which page the user is
+          on. Page-level useIriumEvents handlers stay in place — they
+          handle data refresh, not notification. */}
+      <GlobalAgreementNotifier />
 
       <TitleBar />
       <Sidebar />

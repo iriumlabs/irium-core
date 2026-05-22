@@ -141,7 +141,17 @@
       "wallet_path_description": "Custom path to your wallet file (leave blank for default)",
       "wallet_path_placeholder": "~/.irium/wallet.json (default)",
       "data_dir_description": "Custom iriumd data directory (leave blank for default)",
-      "data_dir_placeholder": "~/.irium (default)"
+      "data_dir_placeholder": "~/.irium (default)",
+      "node_mode": "Node mode",
+      "node_mode_description": "Local runs the bundled iriumd. Remote points the GUI at a node you manage elsewhere (VPS, dedicated rig) — bundled miners stay enabled and connect via the URL above.",
+      "node_mode_local": "Local (bundled iriumd)",
+      "node_mode_remote": "Remote node",
+      "rpc_token": "RPC token",
+      "rpc_token_description_local": "Optional. Used as the Bearer token for the GUI's outbound RPC calls. Leave blank to use the auto-minted local token.",
+      "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
+      "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
+      "rpc_token_test_remote": "Test remote",
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
     },
     "buttons": {
       "test_connection": "Test connection",
@@ -529,6 +539,8 @@
       "no_seed_backup": "This wallet has no seed backup — use WIF Key or Export Backup File instead",
       "no_address_loaded": "No address loaded",
       "restored_backup": "Wallet restored from backup",
+      "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up.",
       "wif_saved": "WIF key saved",
       "need_12_words": "Enter at least 12 mnemonic words",
       "enter_wif": "Enter a WIF key",
@@ -940,6 +952,7 @@
       "stratum_url_placeholder": "stratum+tcp://pool.example.com:3333",
       "stratum_worker_label": "Worker Name",
       "stratum_worker_hint": "Format: your_wallet_address.worker_id (e.g. Pxxx…xxxx.rig1)",
+      "stratum_worker_use_wallet": "Use my wallet",
       "stratum_password_label": "Pool password (usually \"x\")",
       "devices_label": "Devices (multi-GPU)",
       "threads_label_full": "Threads — {{current}} of {{max}} cores{{suffix}}",
@@ -1469,6 +1482,21 @@
       "result_details": "Details: {{reason}}",
       "test_failed": "Could not run port check: {{reason}}"
     },
+    "upnp_diag": {
+      "title": "UPnP diagnostics",
+      "verdict_ok": "Mapping active",
+      "verdict_double_nat": "Router accepted — but double NAT / CGNAT",
+      "verdict_failed": "Mapping failed",
+      "local_chosen": "Chosen LAN IP",
+      "local_candidates": "Detected adapters",
+      "gateway": "Router IP",
+      "ssdp_location": "SSDP location",
+      "control_url": "Control URL",
+      "external_ip": "External IP",
+      "external_ip_private": "(private — double NAT / CGNAT)",
+      "attempts": "AddPortMapping attempts",
+      "last_fault": "Last UPnP fault"
+    },
     "quarantine": {
       "section_title": "Quarantined Blocks Recovery",
       "description": "iriumd quarantines block files it cannot validate. They live in orphaned_<timestamp> folders inside your blocks directory. Clearing them is safe — the node re-fetches the affected heights from peers.",
@@ -1732,7 +1760,9 @@
     "line_count": "{{count}} lines",
     "filtered_suffix": " (filtered)",
     "autoscroll_on": "Auto-scroll on",
-    "autoscroll_paused": "Auto-scroll paused"
+    "autoscroll_paused": "Auto-scroll paused",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {
@@ -1806,5 +1836,12 @@
     "receiving": "Receiving",
     "full_details_unavailable": "Full details not available yet.",
     "view_on_explorer": "View on Explorer"
+  },
+  "notifications": {
+    "agreement_funded": "Agreement {{hash}} funded",
+    "agreement_proof_submitted": "Proof submitted for agreement {{hash}}",
+    "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
+    "agreement_timeout": "Agreement {{hash}} timed out — refund available",
+    "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
   }
 }

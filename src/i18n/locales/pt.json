@@ -143,7 +143,17 @@
       "wallet_path_description": "Caminho personalizado para o arquivo da sua carteira (deixe em branco por padrão)",
       "wallet_path_placeholder": "~/.irium/wallet.json (padrão)",
       "data_dir_description": "Diretório de dados iriumd personalizado (deixe em branco por padrão)",
-      "data_dir_placeholder": "~/.irium (padrão)"
+      "data_dir_placeholder": "~/.irium (padrão)",
+      "node_mode": "Node mode",
+      "node_mode_description": "Local runs the bundled iriumd. Remote points the GUI at a node you manage elsewhere (VPS, dedicated rig) — bundled miners stay enabled and connect via the URL above.",
+      "node_mode_local": "Local (bundled iriumd)",
+      "node_mode_remote": "Remote node",
+      "rpc_token": "RPC token",
+      "rpc_token_description_local": "Optional. Used as the Bearer token for the GUI's outbound RPC calls. Leave blank to use the auto-minted local token.",
+      "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
+      "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
+      "rpc_token_test_remote": "Test remote",
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
     },
     "buttons": {
       "test_connection": "Conexão de teste",
@@ -538,7 +548,9 @@
       "copied": "Copiado",
       "recovery_copied": "Frase de recuperação copiada",
       "wif_copied": "WIF copiado",
-      "name_invalid_chars": "O nome da carteira não pode conter: / \\ : * ? \" < > |"
+      "name_invalid_chars": "O nome da carteira não pode conter: / \\ : * ? \" < > |",
+      "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
     }
   },
   "agreements": {
@@ -888,7 +900,9 @@
       "offer_imported": "Oferta importada",
       "import_failed": "Falha na importação: {{reason}}",
       "sync_failed": "Falha na sincronização: {{reason}}",
-      "default_feeds_added": "Feeds padrão adicionados"
+      "default_feeds_added": "Feeds padrão adicionados",
+      "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
+      "take_failed_already_taken": "This offer has already been taken by another buyer."
     }
   },
   "miner": {
@@ -941,7 +955,8 @@
       "gpu_address_placeholder": "P…",
       "intensity_label": "Intensidade — {{value}}%",
       "intensity_mac_note": "A intensidade é limitada a 50% no macOS para evitar que o watchdog da GPU mate os kernels no meio do lote. O minerador de GPU detecta automaticamente travamentos de watchdog e para de forma limpa se os vir de qualquer maneira.",
-      "pool_preset": "Predefinição de pool"
+      "pool_preset": "Predefinição de pool",
+      "stratum_worker_use_wallet": "Use my wallet"
     },
     "found_blocks": {
       "section_title": "Blocos encontrados",
@@ -986,6 +1001,14 @@
     "opencl": {
       "detected_title": "Hardware OpenCL detectado",
       "none_detected": "Nenhuma GPU compatível com OpenCL detectada"
+    },
+    "unexpected_exit": {
+      "title": "Miner stopped unexpectedly",
+      "body_mac": "Your miner stopped unexpectedly. This can happen on Mac due to GPU power limits or the macOS GPU watchdog. Click Restart Miner to resume.",
+      "body_other": "Your miner stopped unexpectedly. Check the miner log for details, then click Restart Miner to resume.",
+      "restart_cpu": "Restart CPU Miner",
+      "restart_gpu": "Restart GPU Miner",
+      "dismiss": "Dismiss"
     }
   },
   "onboarding": {
@@ -1573,6 +1596,21 @@
       "building_body": "Conclua os acordos dentro do prazo, envie as provas prontamente e evite levantar disputas frívolas. Cada acordo liberado com sucesso aumenta sua pontuação. As disputas o diminuem, mesmo que sejam resolvidas a seu favor.",
       "callout_label": "Dica:",
       "callout": "Verifique a reputação de uma contraparte antes de financiar um grande depósito. Uma pontuação abaixo de 60 é uma bandeira vermelha para negociações pela primeira vez."
+    },
+    "upnp_diag": {
+      "title": "UPnP diagnostics",
+      "verdict_ok": "Mapping active",
+      "verdict_double_nat": "Router accepted — but double NAT / CGNAT",
+      "verdict_failed": "Mapping failed",
+      "local_chosen": "Chosen LAN IP",
+      "local_candidates": "Detected adapters",
+      "gateway": "Router IP",
+      "ssdp_location": "SSDP location",
+      "control_url": "Control URL",
+      "external_ip": "External IP",
+      "external_ip_private": "(private — double NAT / CGNAT)",
+      "attempts": "AddPortMapping attempts",
+      "last_fault": "Last UPnP fault"
     }
   },
   "wizards": {
@@ -1724,7 +1762,9 @@
     "line_count": "{{count}} linhas",
     "filtered_suffix": "(filtrado)",
     "autoscroll_on": "Rolagem automática ativada",
-    "autoscroll_paused": "Rolagem automática pausada"
+    "autoscroll_paused": "Rolagem automática pausada",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {
@@ -1754,7 +1794,17 @@
     "title": "Foram encontrados {{count}} arquivos de bloco em quarentena de uma sessão anterior.",
     "subtitle": "Esses blocos não podem ser mostrados no histórico de mineração até serem recuperados.",
     "recover_now": "Recupere agora",
-    "dismiss": "Liberar"
+    "dismiss": "Liberar",
+    "node_running_caption": "Stop the node first, then click Recover Now to delete the quarantined block files.",
+    "clearing": "Clearing...",
+    "stop_node_button": "Stop Node",
+    "stopping_node": "Stopping...",
+    "toast_node_stopped": "Node stopped. You can now recover the quarantined blocks.",
+    "toast_node_stop_failed": "Could not stop the node.",
+    "toast_node_stop_failed_reason": "Could not stop the node: {{reason}}",
+    "toast_recovered": "Recovered {{files}} quarantined block file(s).",
+    "toast_recover_partial": "Recovered {{files}} file(s); some directories could not be removed: {{reason}}",
+    "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
     "miner_active_confirm": "A mineração está ativa. O minerador continuará funcionando em segundo plano.\n\nClique em OK para minimizar para a bandeja ou em Cancelar para manter a janela aberta e interromper a mineração primeiro se quiser sair completamente."
@@ -1788,5 +1838,12 @@
     "receiving": "Recebendo",
     "full_details_unavailable": "Detalhes completos ainda não disponíveis.",
     "view_on_explorer": "Ver no Explorer"
+  },
+  "notifications": {
+    "agreement_funded": "Agreement {{hash}} funded",
+    "agreement_proof_submitted": "Proof submitted for agreement {{hash}}",
+    "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
+    "agreement_timeout": "Agreement {{hash}} timed out — refund available",
+    "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
   }
 }

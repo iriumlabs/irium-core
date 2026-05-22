@@ -143,7 +143,17 @@
       "wallet_path_description": "지갑 파일의 사용자 정의 경로(기본값을 위해 비워 두세요)",
       "wallet_path_placeholder": "~/.irium/wallet.json (기본값)",
       "data_dir_description": "사용자 정의 iriumd 데이터 디렉토리(기본값을 사용하려면 비워두세요)",
-      "data_dir_placeholder": "~/.irium (기본값)"
+      "data_dir_placeholder": "~/.irium (기본값)",
+      "node_mode": "Node mode",
+      "node_mode_description": "Local runs the bundled iriumd. Remote points the GUI at a node you manage elsewhere (VPS, dedicated rig) — bundled miners stay enabled and connect via the URL above.",
+      "node_mode_local": "Local (bundled iriumd)",
+      "node_mode_remote": "Remote node",
+      "rpc_token": "RPC token",
+      "rpc_token_description_local": "Optional. Used as the Bearer token for the GUI's outbound RPC calls. Leave blank to use the auto-minted local token.",
+      "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
+      "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
+      "rpc_token_test_remote": "Test remote",
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
     },
     "buttons": {
       "test_connection": "테스트 연결",
@@ -538,7 +548,9 @@
       "copied": "복사됨",
       "recovery_copied": "복구 문구가 복사되었습니다.",
       "wif_copied": "WIF가 복사되었습니다.",
-      "name_invalid_chars": "지갑 이름은 다음을 포함할 수 없습니다: / \\ : * ? \" < > |"
+      "name_invalid_chars": "지갑 이름은 다음을 포함할 수 없습니다: / \\ : * ? \" < > |",
+      "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
     }
   },
   "agreements": {
@@ -888,7 +900,9 @@
       "offer_imported": "쿠폰을 가져왔습니다.",
       "import_failed": "가져오기 실패: {{reason}}",
       "sync_failed": "동기화 실패: {{reason}}",
-      "default_feeds_added": "기본 피드가 추가되었습니다."
+      "default_feeds_added": "기본 피드가 추가되었습니다.",
+      "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
+      "take_failed_already_taken": "This offer has already been taken by another buyer."
     }
   },
   "miner": {
@@ -941,7 +955,8 @@
       "gpu_address_placeholder": "피…",
       "intensity_label": "강도 — {{value}}%",
       "intensity_mac_note": "GPU 감시가 배치 중간에 커널을 종료하는 것을 방지하기 위해 macOS에서는 강도가 50%로 제한되었습니다. GPU 마이너는 감시 장치 정지를 자동으로 감지하고 어쨌든 발견하면 완전히 중지합니다.",
-      "pool_preset": "풀 프리셋"
+      "pool_preset": "풀 프리셋",
+      "stratum_worker_use_wallet": "Use my wallet"
     },
     "found_blocks": {
       "section_title": "발견된 블록",
@@ -986,6 +1001,14 @@
     "opencl": {
       "detected_title": "OpenCL 하드웨어 감지됨",
       "none_detected": "OpenCL 지원 GPU가 감지되지 않음"
+    },
+    "unexpected_exit": {
+      "title": "Miner stopped unexpectedly",
+      "body_mac": "Your miner stopped unexpectedly. This can happen on Mac due to GPU power limits or the macOS GPU watchdog. Click Restart Miner to resume.",
+      "body_other": "Your miner stopped unexpectedly. Check the miner log for details, then click Restart Miner to resume.",
+      "restart_cpu": "Restart CPU Miner",
+      "restart_gpu": "Restart GPU Miner",
+      "dismiss": "Dismiss"
     }
   },
   "onboarding": {
@@ -1573,6 +1596,21 @@
       "building_body": "기한 내에 계약을 완료하고, 신속하게 증거를 제출하고, 사소한 분쟁을 일으키지 마십시오. 성공적으로 릴리스된 각 계약은 점수에 추가됩니다. 귀하에게 유리하게 해결되더라도 분쟁이 발생하면 그 금액이 낮아집니다.",
       "callout_label": "팁:",
       "callout": "대규모 에스크로 자금을 조달하기 전에 상대방의 평판을 확인하십시오. 60점 미만의 점수는 최초 거래에 대한 위험 신호입니다."
+    },
+    "upnp_diag": {
+      "title": "UPnP diagnostics",
+      "verdict_ok": "Mapping active",
+      "verdict_double_nat": "Router accepted — but double NAT / CGNAT",
+      "verdict_failed": "Mapping failed",
+      "local_chosen": "Chosen LAN IP",
+      "local_candidates": "Detected adapters",
+      "gateway": "Router IP",
+      "ssdp_location": "SSDP location",
+      "control_url": "Control URL",
+      "external_ip": "External IP",
+      "external_ip_private": "(private — double NAT / CGNAT)",
+      "attempts": "AddPortMapping attempts",
+      "last_fault": "Last UPnP fault"
     }
   },
   "wizards": {
@@ -1724,7 +1762,9 @@
     "line_count": "{{count}} 라인",
     "filtered_suffix": "(거르는)",
     "autoscroll_on": "자동 스크롤 켜기",
-    "autoscroll_paused": "자동 스크롤이 일시중지되었습니다."
+    "autoscroll_paused": "자동 스크롤이 일시중지되었습니다.",
+    "level_label": "Level",
+    "clear_levels": "Clear"
   },
   "modals": {
     "tx_detail": {
@@ -1754,7 +1794,17 @@
     "title": "이전 세션에서 격리된 블록 파일 {{count}}을(를) 찾았습니다.",
     "subtitle": "이러한 블록은 복구될 때까지 채굴 기록에 표시될 수 없습니다.",
     "recover_now": "지금 복구",
-    "dismiss": "해고하다"
+    "dismiss": "해고하다",
+    "node_running_caption": "Stop the node first, then click Recover Now to delete the quarantined block files.",
+    "clearing": "Clearing...",
+    "stop_node_button": "Stop Node",
+    "stopping_node": "Stopping...",
+    "toast_node_stopped": "Node stopped. You can now recover the quarantined blocks.",
+    "toast_node_stop_failed": "Could not stop the node.",
+    "toast_node_stop_failed_reason": "Could not stop the node: {{reason}}",
+    "toast_recovered": "Recovered {{files}} quarantined block file(s).",
+    "toast_recover_partial": "Recovered {{files}} file(s); some directories could not be removed: {{reason}}",
+    "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
     "miner_active_confirm": "채굴이 활발합니다. 광부는 백그라운드에서 계속 실행됩니다.\n\n트레이로 최소화하려면 확인을 클릭하고, 완전히 종료하려면 창을 열어두고 채굴을 먼저 중지하려면 취소를 클릭하세요."
@@ -1788,5 +1838,12 @@
     "receiving": "전수",
     "full_details_unavailable": "전체 세부정보는 아직 제공되지 않습니다.",
     "view_on_explorer": "탐색기에서 보기"
+  },
+  "notifications": {
+    "agreement_funded": "Agreement {{hash}} funded",
+    "agreement_proof_submitted": "Proof submitted for agreement {{hash}}",
+    "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
+    "agreement_timeout": "Agreement {{hash}} timed out — refund available",
+    "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
   }
 }

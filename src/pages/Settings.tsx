@@ -34,7 +34,7 @@ import { relaunch } from "@tauri-apps/api/process";
 import { listen } from "@tauri-apps/api/event";
 import { useStore } from "../lib/store";
 import { rpc, diagnostics, update, nodeUpdate, node, config } from "../lib/tauri";
-import { DEFAULT_SETTINGS, type DiagnosticsResult, type NodeUpdateCheckResult, type Theme, timeAgo, type PeerInfo } from "../lib/types";
+import { DEFAULT_SETTINGS, type DiagnosticsResult, type NodeUpdateCheckResult, type Theme, type UpnpDiagnostics, timeAgo, type PeerInfo } from "../lib/types";
 import { ONBOARDING_KEY, FORCE_ONBOARDING_KEY } from "./Onboarding";
 import { startAggressivePoll } from '../hooks/useNodePoller';
 
@@ -163,6 +163,11 @@ export default function Settings() {
   const [testingRpc, setTestingRpc] = useState(false);
   const [rpcOk, setRpcOk] = useState<boolean | null>(null);
   const [rpcError, setRpcError] = useState<string | null>(null);
+  // FIX 2 / FIX 3: masked RPC token + remote-connection test state.
+  const [showRpcToken, setShowRpcToken] = useState(false);
+  const [testingRemote, setTestingRemote] = useState(false);
+  const [remoteOk, setRemoteOk] = useState<boolean | null>(null);
+  const [remoteError, setRemoteError] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetInput, setResetInput] = useState('');
   const confirmResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -227,6 +232,35 @@ export default function Settings() {
   // via useRef going out of scope), so an app restart still re-arms it.
   const nodeRunningSinceRef = useRef<number | null>(null);
   const [nowTick, setNowTick] = useState(0); // re-render every second to update elapsed time
+
+  // FIX C: pull the live UPnP diagnostic trace so the Settings card can
+  // show the user *which step failed* without them having to navigate
+  // to Help → Test Connection. Polls every 5s while the node is
+  // running; cleared when node stops. Backend updates the trace
+  // every time try_upnp runs (startup + 30-minute refresh loop +
+  // explicit Retry button).
+  const [upnpDiag, setUpnpDiag] = useState<UpnpDiagnostics | null>(null);
+  useEffect(() => {
+    if (!nodeStatus?.running) {
+      setUpnpDiag(null);
+      return;
+    }
+    let cancelled = false;
+    const fetchDiag = async () => {
+      try {
+        const d = await node.upnpDiagnostics();
+        if (!cancelled) setUpnpDiag(d ?? null);
+      } catch {
+        if (!cancelled) setUpnpDiag(null);
+      }
+    };
+    fetchDiag();
+    const id = setInterval(fetchDiag, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [nodeStatus?.running]);
   useEffect(() => {
     if (nodeStatus?.running && nodeRunningSinceRef.current === null) {
       nodeRunningSinceRef.current = Date.now();
@@ -235,13 +269,31 @@ export default function Settings() {
   // Tick once per second while node is running and we're still inside the
   // 60s detecting window. Stops once we transition out so it doesn't burn
   // cycles forever.
+  //
+  // FIX C: when the interval cleanup runs at the 60s boundary, fire one
+  // FINAL setNowTick from a setTimeout scheduled just past the boundary.
+  // Without this, the IIFE that picks statusKind keeps reading
+  // `inDetectingWindow = true` from its last render and the UI sticks on
+  // "Detecting…" forever instead of transitioning to "Inactive". The
+  // followup tick forces one more re-render after the window has
+  // expired so the statusKind branch flips to 'inactive'.
   useEffect(() => {
     if (!nodeStatus?.running) return;
     const started = nodeRunningSinceRef.current;
     if (started === null) return;
-    if (Date.now() - started > 60_000) return; // already past the window
+    const elapsed = Date.now() - started;
+    if (elapsed > 60_000) return; // already past the window
     const id = setInterval(() => setNowTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
+    // Schedule one boundary-crossing tick so the statusKind IIFE re-runs
+    // and renders 'inactive' the moment we leave the detecting window.
+    const finalTick = setTimeout(
+      () => setNowTick((t) => t + 1),
+      Math.max(0, 60_500 - elapsed),
+    );
+    return () => {
+      clearInterval(id);
+      clearTimeout(finalTick);
+    };
   }, [nodeStatus?.running, nowTick]);
 
   useEffect(() => {
@@ -265,7 +317,7 @@ export default function Settings() {
     });
   }, [setUpdateInfo, t]);
 
-  const TEXT_SETTING_KEYS: ReadonlyArray<string> = ['rpc_url', 'wallet_path', 'data_dir', 'external_ip'];
+  const TEXT_SETTING_KEYS: ReadonlyArray<string> = ['rpc_url', 'wallet_path', 'data_dir', 'external_ip', 'rpc_token'];
 
   const patch = <K extends keyof typeof local>(key: K, value: (typeof local)[K]) => {
     setLocal((prev) => ({ ...prev, [key]: value }));
@@ -829,6 +881,133 @@ export default function Settings() {
                 onChange={(v) => patch("auto_start_node", v)}
               />
             </FieldRow>
+
+            {/* FIX 3 (Remote node): Local vs Remote mode toggle. In
+                Remote mode the bundled iriumd sidecar is not spawned;
+                the GUI talks directly to whatever rpc_url points at.
+                The bundled CPU/GPU miners stay enabled in Remote
+                mode — they connect to the configured rpc_url too. */}
+            <FieldRow
+              label={t('settings.fields.node_mode')}
+              description={t('settings.fields.node_mode_description')}
+            >
+              {/* FIX A: native <select> popup uses OS-default styling
+                  for <option> rows — on Windows/WebView2 the popup paints a
+                  white background and the .input class's light `color`
+                  bled through making the text invisible. Explicit inline
+                  styles on both the <select> closed-state and each <option>
+                  give the popup a theme-matching dark bg + light text;
+                  Chromium respects inline option styling so the popup is
+                  now legible without changing the .input class globally. */}
+              <select
+                value={local.node_mode ?? "local"}
+                onChange={(e) => patch("node_mode", e.target.value as "local" | "remote")}
+                className="input w-full text-sm"
+                style={{ color: '#e8ecff', background: 'rgba(0,0,0,0.40)' }}
+              >
+                <option value="local" style={{ color: '#e8ecff', background: '#10131f' }}>
+                  {t('settings.fields.node_mode_local')}
+                </option>
+                <option value="remote" style={{ color: '#e8ecff', background: '#10131f' }}>
+                  {t('settings.fields.node_mode_remote')}
+                </option>
+              </select>
+            </FieldRow>
+
+            {/* FIX 2 (IRIUM_RPC_TOKEN): masked Bearer token for the
+                GUI's outbound RPC calls. Optional in Local mode (auto-
+                minted token works), required in Remote mode pointing
+                at an authenticated node. */}
+            <FieldRow
+              label={t('settings.fields.rpc_token')}
+              description={
+                local.node_mode === "remote"
+                  ? t('settings.fields.rpc_token_description_remote')
+                  : t('settings.fields.rpc_token_description_local')
+              }
+            >
+              <div className="flex gap-2">
+                <input
+                  type={showRpcToken ? "text" : "password"}
+                  value={local.rpc_token ?? ""}
+                  onChange={(e) => patch("rpc_token", e.target.value || undefined)}
+                  placeholder={t('settings.fields.rpc_token_placeholder')}
+                  className="input flex-1 font-mono text-sm"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowRpcToken((v) => !v)}
+                  className="btn-secondary px-3 py-2 text-xs flex items-center gap-1.5 shrink-0"
+                  aria-label={showRpcToken ? "Hide token" : "Show token"}
+                >
+                  {showRpcToken ? <EyeOff size={13} /> : <Eye size={13} />}
+                </button>
+                {/* FIX 3: explicit remote-connection probe so the user
+                    can confirm rpc_url + rpc_token are correct before
+                    flipping node_mode to "remote" and losing the
+                    bundled iriumd. 5-second timeout server-side. */}
+                {local.node_mode === "remote" && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setTestingRemote(true);
+                      setRemoteOk(null);
+                      setRemoteError(null);
+                      try {
+                        await rpc.testRemoteConnection(local.rpc_url, local.rpc_token);
+                        setRemoteOk(true);
+                      } catch (e) {
+                        setRemoteOk(false);
+                        setRemoteError(String(e));
+                      } finally {
+                        setTestingRemote(false);
+                      }
+                    }}
+                    disabled={testingRemote || !local.rpc_url}
+                    className="btn-secondary px-3 py-2 text-xs flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+                  >
+                    {testingRemote ? (
+                      <RefreshCw size={13} className="animate-spin" />
+                    ) : remoteOk === true ? (
+                      <CheckCircle size={13} className="text-emerald-400" />
+                    ) : remoteError ? (
+                      <AlertTriangle size={13} className="text-rose-400" />
+                    ) : (
+                      <Zap size={13} />
+                    )}
+                    {testingRemote
+                      ? t('settings.test_states.testing')
+                      : t('settings.fields.rpc_token_test_remote')}
+                  </button>
+                )}
+              </div>
+              <AnimatePresence>
+                {remoteOk === true && (
+                  <motion.p
+                    key="remote-ok"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    className="mt-1.5 text-xs text-emerald-400 flex items-center gap-1"
+                  >
+                    <CheckCircle size={12} /> {t('settings.fields.rpc_token_test_remote_ok')}
+                  </motion.p>
+                )}
+                {remoteError && (
+                  <motion.p
+                    key="remote-error"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    className="mt-1.5 text-xs text-rose-400 flex items-center gap-1"
+                  >
+                    <AlertTriangle size={12} /> {remoteError}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </FieldRow>
           </Section>
         </motion.div>
 
@@ -1082,6 +1261,49 @@ export default function Settings() {
                     <p className="text-xs text-white/30 leading-relaxed">
                       {t('settings.port_reachability.inactive_paragraph')}
                     </p>
+                  )}
+                  {/* FIX C: inline UPnP diagnostic trace. Renders when
+                      the status is non-green so the user can see which
+                      step of the SOAP dance failed (SSDP, adapter
+                      selection, control URL resolve, GetExternalIPAddress,
+                      AddPortMapping) without leaving Settings. Mirrors
+                      a subset of the Help page drawer. */}
+                  {upnpDiag && (statusKind === 'detecting' || statusKind === 'inactive') && (
+                    <div className="mt-2 rounded-md border border-white/8 bg-white/[0.02] px-3 py-2 space-y-1 text-[11px] font-mono">
+                      <div className="flex justify-between gap-3">
+                        <span className="text-white/40">Chosen LAN IP</span>
+                        <span className="text-white/75">{upnpDiag.local_ipv4_chosen ?? '—'}</span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-white/40">Router IP</span>
+                        <span className="text-white/75">{upnpDiag.gateway_ipv4 ?? '—'}</span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-white/40">Control URL</span>
+                        <span className="text-white/70 truncate max-w-[60%]" title={upnpDiag.control_url ?? ''}>
+                          {upnpDiag.control_url ? upnpDiag.control_url.replace(/^https?:\/\//, '') : '—'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-white/40">External IP</span>
+                        <span className="text-white/75">
+                          {upnpDiag.external_ip ?? '—'}
+                          {upnpDiag.external_ip && upnpDiag.external_ip_routable === false && (
+                            <span className="text-amber-300/80 ml-1.5">(private — double NAT)</span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-white/40">AddPortMapping tries</span>
+                        <span className="text-white/70">{upnpDiag.add_port_mapping_attempts}</span>
+                      </div>
+                      {upnpDiag.last_fault && (
+                        <div className="pt-1 mt-1 border-t border-white/8">
+                          <div className="text-white/40 mb-0.5">Last fault</div>
+                          <div className="text-rose-300/85 break-all leading-snug">{upnpDiag.last_fault}</div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               );

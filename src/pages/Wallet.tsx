@@ -13,7 +13,7 @@ import {
 import toast from "react-hot-toast";
 import clsx from "clsx";
 import { useStore } from "../lib/store";
-import { wallet, config } from "../lib/tauri";
+import { wallet, config, node } from "../lib/tauri";
 import TxDetailModal from "../components/TxDetailModal";
 import { formatIRM, timeAgo, SATS_PER_IRM, computeConfirmations, getAddressBadgeText } from "../lib/types";
 import type { AddressInfo, Transaction, SendResult, WalletCreateResult } from "../lib/types";
@@ -1099,7 +1099,7 @@ export default function WalletPage() {
                   </button>
                 </div>
                 <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-3 text-sm text-amber-300 leading-relaxed">
-                  This will overwrite your current wallet data. Make sure you have your WIF key or backup file before continuing.
+                  This will overwrite your current wallet data. Make sure you have your WIF key or backup file before continuing. The node will restart automatically once the restore completes so the new wallet state is picked up cleanly.
                 </div>
                 <p className="text-xs text-white/40 font-mono truncate">{restoreBackupPath}</p>
                 <div className="flex gap-3">
@@ -1110,7 +1110,28 @@ export default function WalletPage() {
                       setRestoringBackup(true);
                       try {
                         await wallet.restoreBackup(restoreBackupPath);
-                        toast.success(t('wallet.toasts.restored_backup'));
+                        // FIX 5: cycle the local node sidecar so any in-memory
+                        // caches (wallet-touching RPCs that may have stale
+                        // utxo/history snapshots) get rebuilt from the fresh
+                        // wallet file. Best-effort — if stop or start fail we
+                        // still consider the restore itself a success and tell
+                        // the user to restart manually. node.stop is a no-op
+                        // in node_mode=remote (FIX 3): the remote node is not
+                        // ours to bounce.
+                        let restarted = false;
+                        try {
+                          await node.stop();
+                          await node.start();
+                          restarted = true;
+                        } catch {
+                          // swallow — we'll fall through to the toast below.
+                        }
+                        toast.success(
+                          restarted
+                            ? t('wallet.toasts.restored_backup_with_restart')
+                            : t('wallet.toasts.restored_backup_manual_restart'),
+                          { duration: restarted ? 4000 : 8000 },
+                        );
                         setShowRestoreBackupConfirm(false);
                         loadData();
                       } catch (e) {
