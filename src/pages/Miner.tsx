@@ -256,16 +256,30 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
 }
 
 // ── GPU mining active indicator ─────────────────────────────────
-// Pure-CSS hex candidate stream. The rows are static (pre-generated
-// at module load) and the visual motion comes from a single CSS
-// @keyframes animation (`hashStreamScroll` in globals.css) that
-// translates the doubled row stack vertically. No setInterval, no
-// setState, no framer-motion — the browser composites the translateY
-// transform on the GPU so scroll/paint elsewhere on the page is never
-// blocked by this animation. The header dot pulses via Tailwind's
-// animate-pulse (also pure CSS keyframes). Total JS animation overhead
-// while running: zero re-renders, zero allocations per frame.
-function HashCandidateStream({ active }: { active: boolean }) {
+// An honest "mining active" strip — no fake hash candidate values.
+// The previous version scrolled a hardcoded set of hex strings which
+// looked like real candidate hashes but were just static data on a
+// loop. This replacement shows only real signal:
+//   - pulsing green dot + "Mining Active" label
+//   - block height currently being mined
+//   - small CSS-animated waveform that represents activity (its bars
+//     pulse at fixed timings — they do NOT encode any data)
+//   - current hashrate prominently on the right
+//
+// All animations are pure CSS (`hashingWaveform` keyframes in
+// globals.css + Tailwind's animate-pulse). No setInterval, no setState,
+// no framer-motion. The container has fixed height + contain: strict
+// + overflow: hidden so it can never bleed outside its own bounds,
+// regardless of viewport size or scroll position.
+function HashCandidateStream({
+  active,
+  hashrateKhs,
+  blockHeight,
+}: {
+  active: boolean;
+  hashrateKhs: number;
+  blockHeight: number | null;
+}) {
   if (!active) return null;
   return (
     <div
@@ -273,64 +287,70 @@ function HashCandidateStream({ active }: { active: boolean }) {
       style={{
         background: 'rgba(110,198,255,0.04)',
         border: '1px solid rgba(110,198,255,0.12)',
+        // Strict containment — the browser is told nothing inside this
+        // element can affect layout/paint/size/style outside the box.
+        // Combined with the fixed height + overflow: hidden, the strip
+        // cannot visually escape no matter what the children try.
+        contain: 'strict',
+        height: 56,
+        overflow: 'hidden',
       }}
     >
-      <div className="flex items-center gap-2 mb-2">
-        <span
-          className="block w-1.5 h-1.5 rounded-full animate-pulse"
-          style={{ background: '#6ec6ff', boxShadow: '0 0 6px rgba(110,198,255,0.55)' }}
-        />
-        <span
-          className="text-[10px] uppercase tracking-wider font-display font-bold"
-          style={{ color: 'rgba(238,240,255,0.55)' }}
-        >
-          Hashing candidates
-        </span>
-      </div>
-      <div
-        style={{
-          height: 72,
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          className="space-y-1 font-mono text-xs leading-tight"
-          style={{
-            fontFamily: '"JetBrains Mono", monospace',
-            color: 'rgba(110,198,255,0.55)',
-            letterSpacing: '0.04em',
-            animation: 'hashStreamScroll 6s linear infinite',
-            willChange: 'transform',
-          }}
-        >
-          {HASH_STREAM_ROWS.map((hex, i) => (
-            <div key={i}>{hex}</div>
-          ))}
-          {/* Duplicate the set so the scroll loops seamlessly: when
-              the animation reaches -50% the second copy occupies the
-              window and the next iteration snaps back to 0 unnoticed. */}
-          {HASH_STREAM_ROWS.map((hex, i) => (
-            <div key={`dup-${i}`}>{hex}</div>
+      <div className="flex items-center justify-between gap-4 h-full">
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            className="block w-2 h-2 rounded-full animate-pulse flex-shrink-0"
+            style={{
+              background: '#34d399',
+              boxShadow: '0 0 8px rgba(52,211,153,0.6)',
+            }}
+          />
+          <span
+            className="text-[10px] uppercase tracking-wider font-display font-bold flex-shrink-0"
+            style={{ color: '#34d399' }}
+          >
+            Mining Active
+          </span>
+          {blockHeight !== null && (
+            <span
+              className="text-[10px] text-white/40 truncate"
+              style={{ fontFamily: '"JetBrains Mono", monospace' }}
+            >
+              · block #{blockHeight.toLocaleString('en-US')}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-end gap-1 flex-shrink-0" style={{ height: 16 }}>
+          {Array.from({ length: 14 }).map((_, i) => (
+            <span
+              key={i}
+              style={{
+                display: 'inline-block',
+                width: 3,
+                background: 'linear-gradient(180deg, #6ec6ff, #a78bfa)',
+                borderRadius: 1.5,
+                animation: 'hashingWaveform 0.9s ease-in-out infinite',
+                animationDelay: `${i * 0.07}s`,
+                willChange: 'height, opacity',
+              }}
+            />
           ))}
         </div>
+
+        <span
+          className="font-mono font-semibold text-sm flex-shrink-0"
+          style={{
+            color: '#6ec6ff',
+            fontFamily: '"JetBrains Mono", monospace',
+          }}
+        >
+          {hashrateKhs.toFixed(1)} KH/s
+        </span>
       </div>
     </div>
   );
 }
-
-// Static deterministic hex rows for the candidate-stream animation.
-// Fixed at module load so the same set shows every mount — no random
-// churn, no per-tick allocation, no re-render trigger.
-const HASH_STREAM_ROWS: string[] = [
-  'a3f9c2b16e8d472f01e88b4d72c109af3f5839ea7c1d2f88c0bd1e4a',
-  '7e02b34d1f968b715c094290d6e38b71a04c5d2e8b7710fa2f96b3c0',
-  '9b1d4f72a0873e6cbf095d188a45c2f1e0a72b3c9f81d04ebdc8c711',
-  '0a3fe8d27b1c9f44c2e06b8a91fde5c7d8e2b1a0f9c4e7a36e1c8b0d',
-  '2c5b8d4e1f6a90c378b24e6d50fcab1907e3d8b2c1f4a9e0d5b06c92',
-  '6d7c8e9b0a1f2c3d4e5f6789abcdef01234567890abcdef0fedcba98',
-  'f1e2d3c4b5a6978685746362514049382716050d1c2b3a49a8b7c6d5',
-  '5e9c8b7a6d4f3e2c1b0a9f8e7d6c5b4a39281706f4e3d2c1d3e8a5f7',
-];
 
 // ── Found Blocks list (Bug 1) ─────────────────────────────────
 // Polls the Rust shell every 10s for the list of blocks this app
@@ -1232,7 +1252,11 @@ function GpuMinerTab() {
             </motion.div>
           )}
 
-          <HashCandidateStream active={!!status?.running} />
+          <HashCandidateStream
+            active={!!status?.running}
+            hashrateKhs={status?.hashrate_khs ?? 0}
+            blockHeight={netInfo?.height != null ? netInfo.height + 1 : null}
+          />
 
           <AnimatePresence>
             {status?.running && history.length > 1 ? (

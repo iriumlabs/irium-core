@@ -234,14 +234,13 @@
     radial-gradient(ellipse 40% 40% at 60% 40%, rgba(244,114,182,0.12) 0%, transparent 55%);
 }
 
-/* ── Keyframes: hash candidate stream (Miner.tsx HashCandidateStream) ──────── */
-/* Pure-CSS infinite vertical scroll. The component renders the row set
-   twice; translating from 0 to -50% pages through the first copy and
-   when the loop restarts the second copy is already in position, so the
-   transition is seamless without any JS. */
-@keyframes hashStreamScroll {
-  from { transform: translateY(0); }
-  to   { transform: translateY(-50%); }
+/* ── Keyframes: GPU mining active waveform (Miner.tsx HashCandidateStream) ─── */
+/* Each bar element runs this animation with its own animation-delay so the
+   ensemble reads as an audio-EQ-style pulse. The bar heights are not data —
+   they are pure decorative motion to signal "the miner is active". */
+@keyframes hashingWaveform {
+  0%, 100% { height: 30%; opacity: 0.45; }
+  50%      { height: 100%; opacity: 1; }
 }
 
 /* ── Reset ──────────────────────────────────────────────────────────────────── */
