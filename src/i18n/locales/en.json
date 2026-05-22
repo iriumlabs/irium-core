@@ -1761,7 +1761,17 @@
   "quarantine_banner": {
     "title": "Found {{count}} quarantined block file(s) from a previous session.",
     "subtitle": "These blocks cannot be shown in mining history until recovered.",
+    "node_running_caption": "Stop the node first, then click Recover Now to delete the quarantined block files.",
     "recover_now": "Recover Now",
+    "clearing": "Clearing...",
+    "stop_node_button": "Stop Node",
+    "stopping_node": "Stopping...",
+    "toast_node_stopped": "Node stopped. You can now recover the quarantined blocks.",
+    "toast_node_stop_failed": "Could not stop the node.",
+    "toast_node_stop_failed_reason": "Could not stop the node: {{reason}}",
+    "toast_recovered": "Recovered {{files}} quarantined block file(s).",
+    "toast_recover_partial": "Recovered {{files}} file(s); some directories could not be removed: {{reason}}",
+    "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}",
     "dismiss": "Dismiss"
   },
   "titlebar": {
