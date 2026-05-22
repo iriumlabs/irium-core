@@ -257,19 +257,29 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{
 
 // ── GPU mining active animation ─────────────────────────────────
 // Subtle hex-hash "candidate stream" shown in the GPU hero card
-// while mining. Each tick (80 ms) pushes a fresh random 32-char hex
+// while mining. Each tick (200 ms) pushes a fresh random 32-char hex
 // onto the top of a 4-row stack and drops the oldest. The newest row
 // slides in from the left, glows soft cyan, and fades out as it ages
 // down the stack. The hex values are not real nonces — the
 // irium-miner-gpu sidecar does not emit current candidate hashes —
-// but the constant 12.5 Hz cadence gives the user visible motion
+// but the constant 5 Hz cadence gives the user visible motion
 // proof that the miner is doing work, especially during the 1-3 s
-// warmup window before the hashrate area chart populates. Unmounts
-// (and the interval is cleared) as soon as status.running flips to
-// false or the user navigates away from the GPU tab.
+// warmup window before the hashrate area chart populates.
+//
+// Perf notes:
+//   - 200 ms tick (was 80 ms / 12.5 Hz) so the React re-render rate
+//     stays light and doesn't fight scroll on slower hardware.
+//   - Rows container has a fixed pixel height so the row pushes/drops
+//     never reflow the surrounding hero card — only the rows region
+//     repaints, and the outer layout is stable.
+//   - will-change: transform, opacity hints the browser to GPU-promote
+//     each row so the slide-in compositor work stays off the main
+//     thread (no paint thrash on the rest of the page).
+// Unmounts (and the interval is cleared) as soon as status.running
+// flips to false or the user navigates away from the GPU tab.
 function HashCandidateStream({ active }: { active: boolean }) {
   const ROW_COUNT = 4;
-  const TICK_MS = 80;
+  const TICK_MS = 200;
   const [rows, setRows] = useState<string[]>(() =>
     Array.from({ length: ROW_COUNT }, () => randomHex(32))
   );
@@ -295,7 +305,7 @@ function HashCandidateStream({ active }: { active: boolean }) {
       <div className="flex items-center gap-2 mb-2">
         <motion.span
           className="block w-1.5 h-1.5 rounded-full"
-          style={{ background: '#6ec6ff', boxShadow: '0 0 6px rgba(110,198,255,0.55)' }}
+          style={{ background: '#6ec6ff', boxShadow: '0 0 6px rgba(110,198,255,0.55)', willChange: 'opacity' }}
           animate={{ opacity: [0.4, 1, 0.4] }}
           transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
         />
@@ -308,7 +318,14 @@ function HashCandidateStream({ active }: { active: boolean }) {
       </div>
       <div
         className="space-y-1 font-mono text-xs leading-tight overflow-hidden"
-        style={{ fontFamily: '"JetBrains Mono", monospace' }}
+        style={{
+          fontFamily: '"JetBrains Mono", monospace',
+          // Fixed height so the rows region never grows/shrinks. 4 rows ×
+          // ~14 px line-height + 3 × 4 px space-y gap ≈ 72 px. This pins
+          // the layout box so each push/drop only repaints inside this
+          // window — no reflow of the hero card or anything below it.
+          height: 72,
+        }}
       >
         {rows.map((hex, i) => (
           <motion.div
@@ -323,6 +340,7 @@ function HashCandidateStream({ active }: { active: boolean }) {
             style={{
               textShadow: i === 0 ? '0 0 8px rgba(110,198,255,0.35)' : 'none',
               letterSpacing: '0.04em',
+              willChange: 'transform, opacity',
             }}
           >
             {hex}

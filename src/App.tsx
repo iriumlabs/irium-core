@@ -325,13 +325,17 @@ function AppLayout() {
         <SyncProgressBanner />
 
         <main className="flex-1 overflow-y-auto">
-          <AnimatePresence mode="wait" initial={false}>
+          {/* No mode="wait" — exit and enter overlap so navigation feels
+              instant. The outgoing page fades/slides up while the incoming
+              page fades/slides in simultaneously (50%+ perceived speedup
+              vs. serial exit-then-enter). Duration tightened to 0.15 s. */}
+          <AnimatePresence initial={false}>
             <motion.div
               key={location.pathname}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0  }}
               exit={{    opacity: 0, y: -8 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
               style={{ height: '100%' }}
             >
               <ErrorBoundary>
