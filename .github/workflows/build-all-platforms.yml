@@ -153,6 +153,13 @@ jobs:
           Pop-Location
           if (-not (Test-Path "$libDir\OpenCL.lib")) { throw 'OpenCL.lib generation failed' }
           Write-Host "Generated OpenCL.lib at $libDir\OpenCL.lib ($((Get-Item "$libDir\OpenCL.lib").Length) bytes)"
+          # Belt: cl-sys's Windows build.rs does not consult INTELOCLSDKROOT; it
+          # hardcodes "C:\Program Files (x86)\OCL_SDK_Light\lib\x86_64" as a
+          # search path. Mirror the synthesized lib there too.
+          $oclSdkLightLib = "C:\Program Files (x86)\OCL_SDK_Light\lib\x86_64"
+          New-Item -ItemType Directory -Path $oclSdkLightLib -Force | Out-Null
+          Copy-Item "$libDir\OpenCL.lib" (Join-Path $oclSdkLightLib "OpenCL.lib") -Force
+          Write-Host "Mirrored OpenCL.lib to $oclSdkLightLib (cl-sys fallback)"
           "INTELOCLSDKROOT=$stubRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       # Cache both the GUI crate and the irium node crate independently so
@@ -174,10 +181,38 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      # Capture the current GPU binary's SHA-256 so the post-build verify
+      # step can detect "cargo build --features gpu silently failed". If
+      # the hash hasn't changed after the build, the installer would ship
+      # the stale binary checked out from git HEAD.
+      - name: Capture pre-build GPU binary hash (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $f = "src-tauri/binaries/irium-miner-gpu-x86_64-pc-windows-msvc.exe"
+          $h = if (Test-Path $f) { (Get-FileHash $f -Algorithm SHA256).Hash.ToLower() } else { "__missing__" }
+          "GPU_PREBUILD_SHA=$h" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Pre-build GPU sha=$h"
+
       # Compile iriumd, irium-wallet, irium-miner from source.
       # First build: 30–90 min; subsequent runs use the Rust cache above.
       - name: Build irium node binaries
         run: node scripts/build-irium-node.js
+
+      # build-irium-node.js intentionally swallows GPU build failures with
+      # only a warning so local devs without OpenCL can still build the
+      # core binaries. CI must fail loud — otherwise the Windows installer
+      # silently ships whatever stale GPU binary is in git HEAD.
+      - name: Verify GPU binary was rebuilt (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $f = "src-tauri/binaries/irium-miner-gpu-x86_64-pc-windows-msvc.exe"
+          $now = (Get-FileHash $f -Algorithm SHA256).Hash.ToLower()
+          if ($now -eq $env:GPU_PREBUILD_SHA) {
+            throw "GPU binary unchanged during CI build (sha=$now). cargo build --features gpu silently failed - investigate before shipping."
+          }
+          Write-Host "GPU binary rebuilt OK (sha=$now)"
 
       - name: Type-check frontend
         run: npx tsc --noEmit
