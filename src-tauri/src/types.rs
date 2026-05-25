@@ -765,6 +765,16 @@ pub struct StratumStatus {
     // counters.
     #[serde(default)]
     pub last_share_time: Option<u64>,
+    // Pool-wide difficulty (asic.current_diff) and aggregate hashrate
+    // (asic + cpu_gpu hashrate_estimate_hps, in kH/s), pulled from
+    // pool.iriumlabs.org:3337/stats via fetch_pool_stats_for_miner_status.
+    // Same shape MinerStatus uses (types.rs:561-564); shared 30s cache in
+    // AppState avoids hitting the proxy on every 5 s Stratum-status poll.
+    // None when the proxy is unreachable or stats are stale → UI renders "—".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pool_diff: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pool_hashrate_khs: Option<f64>,
 }
 
 // ============================================================

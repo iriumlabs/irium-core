@@ -89,6 +89,14 @@ struct AppState {
     // is parsed. Surfaced through StratumStatus.last_share_time so
     // the Miner page can render "12s ago" with a freshness pulse.
     stratum_last_share_time: Arc<Mutex<Option<u64>>>,
+    // 30 s in-memory cache for pool.iriumlabs.org:3337/stats lookups
+    // (asic.current_diff + aggregate hashrate). Shared by
+    // get_stratum_status, which polls every 5 s — caching keeps the p99
+    // poll latency ~0 ms inside the window instead of paying the proxy's
+    // 2 s timeout budget. Proxy values don't change on sub-30s timescales
+    // so the staleness is invisible. None until the first successful
+    // fetch; entries are overwritten in place on cache miss/expiry.
+    pool_stats_cache: Arc<Mutex<Option<PoolStatsCacheEntry>>>,
     // TASK 3: distinguishes a user-initiated `stop_miner` call from an
     // unexpected termination (macOS GPU watchdog kill, OOM, segfault, etc).
     // start_miner / start_gpu_miner reset to false on entry; stop_miner
@@ -121,6 +129,13 @@ struct AppState {
     // "remote" → skip sidecar spawn, talk to whatever rpc_url points
     // at. Hydrated from settings JSON on save/load; default "local".
     node_mode: Arc<Mutex<String>>,
+}
+
+#[derive(Clone)]
+struct PoolStatsCacheEntry {
+    fetched_at_unix: u64,
+    pool_diff: Option<u64>,
+    pool_hashrate_khs: Option<f64>,
 }
 
 impl AppState {
@@ -157,6 +172,7 @@ impl AppState {
             stratum_shares_accepted: Arc::new(Mutex::new(0)),
             stratum_shares_rejected: Arc::new(Mutex::new(0)),
             stratum_last_share_time: Arc::new(Mutex::new(None)),
+            pool_stats_cache: Arc::new(Mutex::new(None)),
             miner_user_initiated_stop: Arc::new(Mutex::new(false)),
             pending_txs: Arc::new(Mutex::new(HashMap::new())),
             rpc_token_override: Arc::new(Mutex::new(None)),
@@ -5905,6 +5921,41 @@ async fn fetch_pool_stats_for_miner_status() -> (Option<u64>, Option<f64>) {
     (pool_diff, pool_hashrate_khs)
 }
 
+/// 30-s cache wrapper around fetch_pool_stats_for_miner_status. Returns
+/// the cached (pool_diff, pool_hashrate_khs) pair if the last fetch was
+/// less than 30 s ago; otherwise refetches and updates the cache. Used by
+/// get_stratum_status (5 s poll) so only one in six polls pays the proxy
+/// round-trip. Cache miss on lock-poisoning is silent — the underlying
+/// fetcher still runs and returns fresh values, just without the side
+/// effect of writing them back.
+const POOL_STATS_CACHE_TTL_SECS: u64 = 30;
+
+async fn fetch_pool_stats_with_cache(state: &AppState) -> (Option<u64>, Option<f64>) {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    if let Ok(g) = state.pool_stats_cache.lock() {
+        if let Some(entry) = g.as_ref() {
+            if now.saturating_sub(entry.fetched_at_unix) < POOL_STATS_CACHE_TTL_SECS {
+                return (entry.pool_diff, entry.pool_hashrate_khs);
+            }
+        }
+    }
+
+    let (pool_diff, pool_hashrate_khs) = fetch_pool_stats_for_miner_status().await;
+
+    if let Ok(mut g) = state.pool_stats_cache.lock() {
+        *g = Some(PoolStatsCacheEntry {
+            fetched_at_unix: now,
+            pool_diff,
+            pool_hashrate_khs,
+        });
+    }
+    (pool_diff, pool_hashrate_khs)
+}
+
 // ============================================================
 // GPU MINER
 // ============================================================
@@ -6474,6 +6525,14 @@ async fn get_stratum_status(state: State<'_, AppState>) -> Result<StratumStatus,
     let shares_accepted = *state.stratum_shares_accepted.lock().map_err(lock_err)?;
     let shares_rejected = *state.stratum_shares_rejected.lock().map_err(lock_err)?;
     let last_share_time = *state.stratum_last_share_time.lock().map_err(lock_err)?;
+    // Pool-wide difficulty (asic.current_diff from /stats) and aggregate
+    // hashrate, via the 30 s cache. Silent fallback to (None, None) when
+    // the proxy is unreachable — the frontend renders "—" rather than a
+    // stale value. get_miner_status (CPU miner tab) keeps calling
+    // fetch_pool_stats_for_miner_status directly to preserve its own
+    // existing behavior; the cache exists specifically to make the 5 s
+    // Stratum-tab poll cheap.
+    let (pool_diff, pool_hashrate_khs) = fetch_pool_stats_with_cache(&state).await;
     Ok(StratumStatus {
         connected: running && pool_url.is_some(),
         pool_url,
@@ -6482,6 +6541,8 @@ async fn get_stratum_status(state: State<'_, AppState>) -> Result<StratumStatus,
         shares_rejected,
         uptime_secs,
         last_share_time,
+        pool_diff,
+        pool_hashrate_khs,
     })
 }
 
