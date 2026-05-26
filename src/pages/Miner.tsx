@@ -238,20 +238,6 @@ function formatRelativeSeconds(unixSeconds: number | null | undefined, nowSecs: 
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-// Phase 1A: step a kH/s value up through MH/s, GH/s, TH/s for the
-// Stratum tab's "Your Hashrate" card. Stratum miners (ASICs especially)
-// produce values far above the CPU tab's KH/s range, so the CPU tab's
-// raw `${x.toFixed(1)} KH/s` would render "61000000.0 KH/s" for a
-// 61 GH/s chip. This helper formats compactly.
-function formatYourHashrate(khs: number): string {
-  if (khs <= 0) return '—';
-  if (khs >= 1e9)  return `${(khs / 1e9).toFixed(2)} PH/s`;
-  if (khs >= 1e6)  return `${(khs / 1e6).toFixed(2)} TH/s`;
-  if (khs >= 1e3)  return `${(khs / 1e3).toFixed(2)} GH/s`;
-  if (khs >= 1)    return `${khs.toFixed(2)} KH/s`;
-  return `${(khs * 1000).toFixed(0)} H/s`;
-}
-
 // Phase 1A: one row inside the Stratum-tab "Recent Activity" card.
 // Renders the icon+color appropriate for the event kind, a one-line
 // message (sharing the reject reason or error detail when present),
@@ -1879,10 +1865,9 @@ function StratumTab() {
 
       {/* Pool diff & hashrate when connected */}
       {status?.connected && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <StatCard label="Pool Difficulty" value={status.pool_diff ? status.pool_diff.toLocaleString('en-US') : '—'} color="#fbbf24" icon={Target} />
           <StatCard label="Pool Hashrate"   value={status.pool_hashrate_khs ? `${(status.pool_hashrate_khs / 1000).toFixed(1)} MH/s` : '—'} color="#A78BFA" icon={Gauge} />
-          <StatCard label="Your Hashrate"   value={status.your_hashrate_khs ? formatYourHashrate(status.your_hashrate_khs) : '—'} color="#34d399" icon={Activity} />
         </div>
       )}
 
@@ -2015,12 +2000,33 @@ function StratumTab() {
         </div>
       </div>
 
-      {/* Info banner */}
+      {/* Info banner — clarifies the role of this tab for ASIC users.
+          The previous text directed users to a fictional Stratum proxy at
+          127.0.0.1:4444 that did not exist anywhere in the codebase. ASIC
+          owners should connect their hardware directly to the pool URL;
+          the Connect-to-Pool button on this tab spawns the bundled
+          irium-miner sidecar in stratum-client mode, which CPU-mines on
+          this machine — orthogonal to any external ASIC. */}
       <div className="card p-4 flex gap-3" style={{ borderColor: 'rgba(110,198,255,0.30)' }}>
         <Server size={16} style={{ color: '#6ec6ff', flexShrink: 0, marginTop: 1 }} />
-        <div className="text-xs space-y-1" style={{ color: 'var(--t2)' }}>
-          <p className="font-semibold font-display" style={{ color: '#6ec6ff' }}>ASIC &amp; External Miner Support</p>
-          <p style={{ color: 'var(--t3)' }}>Point your ASIC miner or mining software to the Stratum proxy at <span className="font-mono" style={{ color: 'var(--t2)', fontFamily: '"JetBrains Mono", monospace' }}>127.0.0.1:4444</span> once connected to a pool.</p>
+        <div className="text-xs space-y-2" style={{ color: 'var(--t2)' }}>
+          <p className="font-semibold font-display" style={{ color: '#6ec6ff' }}>Pool mining with an external ASIC or GPU</p>
+          <p style={{ color: 'var(--t3)' }}>
+            Point your ASIC or GPU mining software directly at the pool URL above (e.g.{' '}
+            <span className="font-mono" style={{ color: 'var(--t2)', fontFamily: '"JetBrains Mono", monospace' }}>
+              stratum+tcp://pool.iriumlabs.org:3333
+            </span>
+            ). Irium Core monitors the pool-side share statistics shown here; your hardware's local hashrate is reported by the miner itself.
+          </p>
+          <p style={{ color: 'var(--t3)' }}>
+            The{' '}
+            <strong style={{ color: 'var(--t2)' }}>Connect to Pool</strong>{' '}
+            button below starts pool mining using your CPU via the bundled{' '}
+            <span className="font-mono" style={{ color: 'var(--t2)', fontFamily: '"JetBrains Mono", monospace' }}>
+              irium-miner
+            </span>{' '}
+            sidecar — useful only if you also want this machine to contribute CPU hashrate to the pool. External ASICs do not need this button.
+          </p>
         </div>
       </div>
     </div>
@@ -2032,7 +2038,7 @@ function StratumTab() {
 const TABS = [
   { key: 'cpu',     label: 'CPU Miner',   icon: Cpu     },
   { key: 'gpu',     label: 'GPU Miner',   icon: Monitor },
-  { key: 'stratum', label: 'ASIC / Pool', icon: Server  },
+  { key: 'stratum', label: 'Pool / Stratum', icon: Server  },
 ] as const;
 
 type TabKey = typeof TABS[number]['key'];
