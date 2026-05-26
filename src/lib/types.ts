@@ -474,6 +474,19 @@ export interface FoundBlock {
   orphaned?: boolean;
 }
 
+// Phase 1A: discriminator for stratum-tab activity-log entries.
+// Matches Rust StratumEventKind with #[serde(rename_all = "snake_case")].
+export type StratumEventKind = 'accepted' | 'rejected' | 'error';
+
+// Phase 1A: one entry in the stratum-tab activity log. ts is unix seconds
+// (same clock as StratumStatus.last_share_time). detail carries the reject
+// reason or error text; omitted for accepted entries.
+export interface StratumEvent {
+  ts: number;
+  kind: StratumEventKind;
+  detail?: string;
+}
+
 export interface StratumStatus {
   connected: boolean;
   pool_url?: string;
@@ -483,6 +496,15 @@ export interface StratumStatus {
   pool_hashrate_khs?: number;
   pool_diff?: number;
   last_share_time?: number;
+  // Phase 1A: own miner's local hashrate in kH/s. Populated from the
+  // shared `miner_hashrate` field in Rust AppState (same value the CPU
+  // miner tab reads). undefined until the first rate line arrives from
+  // the sidecar; UI should render "—" in that case.
+  your_hashrate_khs?: number;
+  // Phase 1A: ring buffer of the last 10 stratum events, newest-first.
+  // Always present (defaults to []) when status comes back from
+  // get_stratum_status — even an empty array is a valid value.
+  recent_events?: StratumEvent[];
   // M-23 fix: Rust serializes this as a required `u64` (always emitted) so
   // marking it optional in TS forced unnecessary `?? 0` guards on every
   // call site. Promoted to required to match the backend contract.

@@ -749,6 +749,30 @@ pub struct FoundBlock {
     pub orphaned: bool,
 }
 
+// Phase 1A (Stratum tab real-time activity): kind discriminator for the
+// ring-buffer entries surfaced via StratumStatus.recent_events. snake_case
+// rename so the JSON shape matches the TS literal union 'accepted' |
+// 'rejected' | 'error' without per-call .toLowerCase() on the frontend.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum StratumEventKind {
+    Accepted,
+    Rejected,
+    Error,
+}
+
+// Phase 1A: one entry in the Stratum-tab activity log. `ts` is unix
+// seconds (same clock as StratumStatus.last_share_time). `detail` carries
+// the reject reason or error text; None for Accepted entries since there
+// is nothing useful to display.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct StratumEvent {
+    pub ts: u64,
+    pub kind: StratumEventKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StratumStatus {
     pub connected: bool,
@@ -775,6 +799,25 @@ pub struct StratumStatus {
     pub pool_diff: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pool_hashrate_khs: Option<f64>,
+    // Phase 1A: own miner's local hashrate in kH/s — same `miner_hashrate`
+    // value the CPU miner tab reads from MinerStatus, surfaced here too so
+    // the Stratum tab can render a "Your Hashrate" card alongside the
+    // pool-wide pool_hashrate_khs. Wrapped Option<f64>: None when the
+    // sidecar hasn't emitted a rate line yet (~1M nonces in) so the UI
+    // renders "—" instead of "0 KH/s". The shared field is reset to 0 on
+    // every stratum_connect alongside the share counters so a stale CPU-
+    // tab value can't leak into a fresh stratum session; the CPU tab
+    // re-populates from its own rate lines within ~30 s.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub your_hashrate_khs: Option<f64>,
+    // Phase 1A: snapshot of the AppState.stratum_recent_events ring buffer
+    // (max 10 entries, newest first). Captures accepted/rejected shares +
+    // error lines from the irium-miner sidecar with timestamps and (for
+    // rejected/error) the reason text. Reset to empty on every
+    // stratum_connect. Empty Vec serializes as [] (not omitted) so the
+    // frontend can rely on a stable array shape.
+    #[serde(default)]
+    pub recent_events: Vec<StratumEvent>,
 }
 
 // ============================================================

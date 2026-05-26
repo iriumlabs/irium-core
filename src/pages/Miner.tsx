@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Cpu, Play, Square, RefreshCw, ArrowRight,
-  Monitor, Wifi, WifiOff, Activity, Zap,
+  Monitor, Wifi, WifiOff, Activity, Zap, AlertCircle, CheckCircle2, History,
   ChevronDown, Server, Hash, Clock, Target,
   Thermometer, Fan, Gauge, Copy, ExternalLink, Timer,
   Coins, X,
@@ -17,7 +17,7 @@ import { platform as osPlatform } from '@tauri-apps/api/os';
 import { miner, gpuMiner, stratum, wallet } from '../lib/tauri';
 import { useStore } from '../lib/store';
 import type { LucideIcon } from 'lucide-react';
-import type { FoundBlock, GpuPlatform, AddressInfo } from '../lib/types';
+import type { FoundBlock, GpuPlatform, AddressInfo, StratumEvent } from '../lib/types';
 import { formatIRM } from '../lib/types';
 import NodeOfflineBanner from '../components/NodeOfflineBanner';
 import QuarantineRecoveryBanner from '../components/QuarantineRecoveryBanner';
@@ -236,6 +236,56 @@ function formatRelativeSeconds(unixSeconds: number | null | undefined, nowSecs: 
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
+}
+
+// Phase 1A: step a kH/s value up through MH/s, GH/s, TH/s for the
+// Stratum tab's "Your Hashrate" card. Stratum miners (ASICs especially)
+// produce values far above the CPU tab's KH/s range, so the CPU tab's
+// raw `${x.toFixed(1)} KH/s` would render "61000000.0 KH/s" for a
+// 61 GH/s chip. This helper formats compactly.
+function formatYourHashrate(khs: number): string {
+  if (khs <= 0) return '—';
+  if (khs >= 1e9)  return `${(khs / 1e9).toFixed(2)} PH/s`;
+  if (khs >= 1e6)  return `${(khs / 1e6).toFixed(2)} TH/s`;
+  if (khs >= 1e3)  return `${(khs / 1e3).toFixed(2)} GH/s`;
+  if (khs >= 1)    return `${khs.toFixed(2)} KH/s`;
+  return `${(khs * 1000).toFixed(0)} H/s`;
+}
+
+// Phase 1A: one row inside the Stratum-tab "Recent Activity" card.
+// Renders the icon+color appropriate for the event kind, a one-line
+// message (sharing the reject reason or error detail when present),
+// and a relative timestamp (e.g. "12s ago"). Long details are truncated
+// at 60 chars with a "…" so a multi-line stderr blob can't break layout.
+function ActivityRow({ evt, nowSecs }: { evt: StratumEvent; nowSecs: number }) {
+  const truncate = (s: string) => (s.length > 60 ? `${s.slice(0, 57)}…` : s);
+  let icon: React.ReactNode;
+  let color: string;
+  let label: string;
+  if (evt.kind === 'accepted') {
+    icon = <CheckCircle2 size={12} />;
+    color = '#34d399';
+    label = 'Share accepted';
+  } else if (evt.kind === 'rejected') {
+    icon = <AlertCircle size={12} />;
+    color = '#f87171';
+    label = evt.detail ? `Share rejected — ${truncate(evt.detail)}` : 'Share rejected';
+  } else {
+    icon = <AlertCircle size={12} />;
+    color = '#fbbf24';
+    label = evt.detail ? `Pool error — ${truncate(evt.detail)}` : 'Pool error';
+  }
+  return (
+    <li className="flex items-center gap-2 text-xs">
+      <span style={{ color, flexShrink: 0 }}>{icon}</span>
+      <span className="flex-1 min-w-0 truncate" style={{ color, fontFamily: '"JetBrains Mono", monospace' }}>
+        {label}
+      </span>
+      <span className="flex-shrink-0 tabular-nums" style={{ color: 'var(--t3)', fontFamily: '"JetBrains Mono", monospace' }}>
+        {formatRelativeSeconds(evt.ts, nowSecs)}
+      </span>
+    </li>
+  );
 }
 
 function ChartTooltip({ active, payload }: { active?: boolean; payload?: Array<{ value: number }> }) {
@@ -1829,9 +1879,39 @@ function StratumTab() {
 
       {/* Pool diff & hashrate when connected */}
       {status?.connected && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <StatCard label="Pool Difficulty" value={status.pool_diff ? status.pool_diff.toLocaleString('en-US') : '—'} color="#fbbf24" icon={Target} />
           <StatCard label="Pool Hashrate"   value={status.pool_hashrate_khs ? `${(status.pool_hashrate_khs / 1000).toFixed(1)} MH/s` : '—'} color="#A78BFA" icon={Gauge} />
+          <StatCard label="Your Hashrate"   value={status.your_hashrate_khs ? formatYourHashrate(status.your_hashrate_khs) : '—'} color="#34d399" icon={Activity} />
+        </div>
+      )}
+
+      {/* Phase 1A: Recent Activity — last 10 accepted/rejected/error events
+          from the stratum sidecar. Renders only when connected (the events
+          buffer is empty otherwise). The "now" timestamp is computed once
+          per render so all rows share the same reference frame. */}
+      {status?.connected && (
+        <div className="card p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <History size={13} style={{ color: '#6ec6ff' }} />
+            <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>
+              Recent Activity
+            </h3>
+            <span className="ml-auto text-[10px]" style={{ color: 'var(--t3)', fontFamily: '"JetBrains Mono", monospace' }}>
+              last {status.recent_events?.length ?? 0}
+            </span>
+          </div>
+          {!status.recent_events || status.recent_events.length === 0 ? (
+            <p className="text-xs" style={{ color: 'var(--t3)' }}>
+              Waiting for first share…
+            </p>
+          ) : (
+            <ul className="space-y-1.5">
+              {status.recent_events.map((evt, i) => (
+                <ActivityRow key={`${evt.ts}-${evt.kind}-${i}`} evt={evt} nowSecs={Math.floor(Date.now() / 1000)} />
+              ))}
+            </ul>
+          )}
         </div>
       )}
 

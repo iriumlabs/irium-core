@@ -14,7 +14,7 @@ use dirs;
 
 mod types;
 use types::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 // ============================================================
 // STATE
@@ -89,6 +89,12 @@ struct AppState {
     // is parsed. Surfaced through StratumStatus.last_share_time so
     // the Miner page can render "12s ago" with a freshness pulse.
     stratum_last_share_time: Arc<Mutex<Option<u64>>>,
+    // Phase 1A: ring buffer of recent stratum events (last 10) for the
+    // Stratum-tab "Recent Activity" card. Bounded VecDeque — newest at the
+    // front, oldest popped when len >= STRATUM_EVENT_RING_CAP. Reset to
+    // empty on every stratum_connect alongside the share counters. No
+    // persistence: this is purely an in-session UX surface.
+    stratum_recent_events: Arc<Mutex<VecDeque<StratumEvent>>>,
     // 30 s in-memory cache for pool.iriumlabs.org:3337/stats lookups
     // (asic.current_diff + aggregate hashrate). Shared by
     // get_stratum_status, which polls every 5 s — caching keeps the p99
@@ -172,6 +178,7 @@ impl AppState {
             stratum_shares_accepted: Arc::new(Mutex::new(0)),
             stratum_shares_rejected: Arc::new(Mutex::new(0)),
             stratum_last_share_time: Arc::new(Mutex::new(None)),
+            stratum_recent_events: Arc::new(Mutex::new(VecDeque::with_capacity(STRATUM_EVENT_RING_CAP))),
             pool_stats_cache: Arc::new(Mutex::new(None)),
             miner_user_initiated_stop: Arc::new(Mutex::new(false)),
             pending_txs: Arc::new(Mutex::new(HashMap::new())),
@@ -389,6 +396,31 @@ const BOOTSTRAP_ALLOWED_BAN_SIGNERS:    &str = include_str!("../../irium-source/
 
 fn sats_to_irm(sats: u64) -> f64 {
     sats as f64 / 100_000_000.0
+}
+
+// Phase 1A: max entries kept in the AppState.stratum_recent_events ring
+// buffer surfaced to the Stratum-tab "Recent Activity" card. Bounded so
+// the buffer stays cheap to clone on each 5 s get_stratum_status poll.
+const STRATUM_EVENT_RING_CAP: usize = 10;
+
+/// Push a stratum event to the front of the ring buffer, dropping the
+/// oldest when the buffer reaches STRATUM_EVENT_RING_CAP. Lock-poison
+/// silent — events are best-effort UX, not safety-critical.
+fn push_stratum_event(
+    ring: &Arc<Mutex<VecDeque<StratumEvent>>>,
+    kind: StratumEventKind,
+    detail: Option<String>,
+) {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    if let Ok(mut g) = ring.lock() {
+        if g.len() >= STRATUM_EVENT_RING_CAP {
+            g.pop_back();
+        }
+        g.push_front(StratumEvent { ts: now, kind, detail });
+    }
 }
 
 fn parse_hashrate_khs(line: &str) -> Option<f64> {
@@ -6370,6 +6402,15 @@ async fn stratum_connect(
     // FIX 4: clear last-share timestamp so the Miner page shows "—"
     // until the new session lands its first accepted share.
     if let Ok(mut t) = state.stratum_last_share_time.lock() { *t = None; }
+    // Phase 1A: clear stale per-miner hashrate (shared with the CPU tab,
+    // populated by parse_hashrate_khs) so the new Stratum session starts
+    // from "—" rather than displaying whatever the CPU miner tab last set.
+    // The CPU tab's own monitor will overwrite this within ~30 s if a CPU
+    // miner is running simultaneously (rare — only one miner_process slot).
+    if let Ok(mut h) = state.miner_hashrate.lock() { *h = 0.0; }
+    // Phase 1A: clear the activity ring buffer for the new session so the
+    // user sees only events from this connection.
+    if let Ok(mut e) = state.stratum_recent_events.lock() { e.clear(); }
 
     // Clone every Arc the monitor task needs. We can't move the State<'_>
     // wrapper into the task — its lifetime is bound to this command call.
@@ -6382,6 +6423,7 @@ async fn stratum_connect(
     let shares_rejected_ref = Arc::clone(&state.stratum_shares_rejected);
     let last_share_time_ref = Arc::clone(&state.stratum_last_share_time);
     let hashrate_ref = Arc::clone(&state.miner_hashrate);
+    let events_ref = Arc::clone(&state.stratum_recent_events);
     let pool_url_owned = pool_url.clone();
     let worker_owned = worker.clone();
     let password_owned = password.clone();
@@ -6416,8 +6458,18 @@ async fn stratum_connect(
                         .map(|d| d.as_secs())
                         .unwrap_or(0);
                     if let Ok(mut t) = last_share_time_ref.lock() { *t = Some(now); }
+                    // Phase 1A: append to the activity ring buffer.
+                    push_stratum_event(&events_ref, StratumEventKind::Accepted, None);
                 } else if line.contains("[stratum] share rejected") {
                     if let Ok(mut r) = shares_rejected_ref.lock() { *r = r.saturating_add(1); }
+                    // Phase 1A: extract the reject reason ("share rejected: <reason>"),
+                    // trim, drop empties. None for "share rejected" with no colon.
+                    let detail = line
+                        .splitn(2, "share rejected:")
+                        .nth(1)
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty());
+                    push_stratum_event(&events_ref, StratumEventKind::Rejected, detail);
                 }
                 if let Some(khs) = parse_hashrate_khs(&line) {
                     if let Ok(mut h) = hashrate_ref.lock() { *h = khs; }
@@ -6427,6 +6479,13 @@ async fn stratum_connect(
                 // no user-visible feedback.
                 if is_stratum_error_line(&line) {
                     let _ = app_clone.emit_all("stratum_error", line.clone());
+                    // Phase 1A: also capture in the activity log so the user
+                    // can scroll back to errors they dismissed from the toast.
+                    push_stratum_event(
+                        &events_ref,
+                        StratumEventKind::Error,
+                        Some(line.clone()),
+                    );
                 }
             }
 
@@ -6525,6 +6584,23 @@ async fn get_stratum_status(state: State<'_, AppState>) -> Result<StratumStatus,
     let shares_accepted = *state.stratum_shares_accepted.lock().map_err(lock_err)?;
     let shares_rejected = *state.stratum_shares_rejected.lock().map_err(lock_err)?;
     let last_share_time = *state.stratum_last_share_time.lock().map_err(lock_err)?;
+    // Phase 1A: per-miner local hashrate (kH/s). The miner_hashrate field
+    // is populated by the monitor loop's parse_hashrate_khs call. Treat
+    // 0.0 as "no data yet" → None so the UI renders "—" instead of "0 KH/s".
+    let your_hashrate_khs = {
+        let h = *state.miner_hashrate.lock().map_err(lock_err)?;
+        if h > 0.0 { Some(h) } else { None }
+    };
+    // Phase 1A: snapshot the activity ring buffer. Cloning the VecDeque
+    // into a Vec here is cheap (≤10 small structs) and lets us drop the
+    // lock immediately, before the async fetch_pool_stats_with_cache call.
+    let recent_events: Vec<StratumEvent> = state
+        .stratum_recent_events
+        .lock()
+        .map_err(lock_err)?
+        .iter()
+        .cloned()
+        .collect();
     // Pool-wide difficulty (asic.current_diff from /stats) and aggregate
     // hashrate, via the 30 s cache. Silent fallback to (None, None) when
     // the proxy is unreachable — the frontend renders "—" rather than a
@@ -6543,6 +6619,8 @@ async fn get_stratum_status(state: State<'_, AppState>) -> Result<StratumStatus,
         last_share_time,
         pool_diff,
         pool_hashrate_khs,
+        your_hashrate_khs,
+        recent_events,
     })
 }
 
