@@ -1217,6 +1217,20 @@
       "dismiss": "Dismiss",
       "retry": "Retry"
     },
+    "calculator": {
+      "title": "Mining Calculator",
+      "your_hashrate": "Your hashrate",
+      "placeholder": "0",
+      "network_label": "Network",
+      "block_reward_label": "Block reward",
+      "protocol_target": "Protocol target",
+      "protocol_target_sub": "10-min blocks (chain design target)",
+      "current_rate": "Current chain rate",
+      "current_rate_sub": "~1-min blocks (current observed)",
+      "blocks_per_day_suffix": "blocks/day",
+      "irm_per_day_suffix": "IRM/day",
+      "disclaimer": "Estimates only — actual earnings depend on luck, pool fees, and difficulty changes. Calculator uses live network hashrate, refreshed every 60s."
+    },
     "search": {
       "placeholders": {
         "block": "Block height or hash (e.g. 21000 or 00a3b…)",

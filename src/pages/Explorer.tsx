@@ -7,6 +7,7 @@ import {
   Copy, CheckCircle2, RefreshCw, Search,
   Cpu, Users, Layers, Clock, Activity, Zap, TrendingUp, Coins,
   Wallet, ArrowRightLeft, Trophy, Medal, Award, Server, UserCircle2, Lock,
+  Calculator,
 } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { rpc, wallet } from '../lib/tauri';
@@ -163,6 +164,183 @@ function StatCardSkeleton() {
     <div className="px-4 py-3 animate-pulse" style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.06)', borderRadius: 8, minHeight: 76 }}>
       <div className="h-2 w-12 rounded mb-2" style={{ background: 'rgba(255,255,255,0.05)' }} />
       <div className="h-5 w-20 rounded" style={{ background: 'rgba(255,255,255,0.05)' }} />
+    </div>
+  );
+}
+
+// ── Mining Calculator ────────────────────────────────────────
+// Formatters for the calculator output rows. Kept local to the
+// component-area of the file because they are tuned for "expected
+// daily mining yield" units and not general-purpose elsewhere.
+function fmtBlocks(n: number | null): string {
+  if (n === null) return '—';
+  if (n < 0.0001) return '<0.0001';
+  if (n < 1)      return n.toFixed(4);
+  if (n < 100)    return n.toFixed(2);
+  return Math.round(n).toLocaleString('en-US');
+}
+
+function fmtIrm(n: number | null): string {
+  if (n === null) return '—';
+  if (n < 0.01)   return '<0.01';
+  if (n < 100)    return n.toFixed(2);
+  return Math.round(n).toLocaleString('en-US');
+}
+
+type HashUnit = 'TH' | 'GH' | 'MH' | 'KH' | 'H';
+const HASH_UNIT_TO_HPS: Record<HashUnit, number> = {
+  TH: 1e12, GH: 1e9, MH: 1e6, KH: 1e3, H: 1,
+};
+
+function MiningCalculatorCard({ networkHps }: { networkHps: number | null }) {
+  const { t } = useTranslation();
+  const [input, setInput] = useState('');
+  const [unit, setUnit] = useState<HashUnit>('TH');
+
+  // parseFloat() returns NaN on empty / non-numeric input; both Number.isNaN()
+  // and the <= 0 guard reject those so the outputs render '—' rather than
+  // 'NaN blocks/day'. parseFloat also accepts '17.5' and '1e6' which is the
+  // intended behavior for a hashrate field.
+  const parsed = parseFloat(input);
+  const userHps =
+    Number.isFinite(parsed) && parsed > 0 ? parsed * HASH_UNIT_TO_HPS[unit] : null;
+
+  const haveBoth = userHps !== null && networkHps !== null && networkHps > 0;
+  const ratio = haveBoth ? userHps! / networkHps! : null;
+  // 144 = 86_400 / 600 (10-min protocol target).
+  // 1_440 = 86_400 / 60 (currently observed ~1-min block time; matches the
+  // BLOCKS_PER_HOUR=60 figure used elsewhere in the app for cooldowns).
+  // Both numbers are shown so the user can compare design-target yield
+  // against current-reality yield without the calculator picking a side.
+  const protocolBlocksPerDay = ratio !== null ? ratio * 144  : null;
+  const currentBlocksPerDay  = ratio !== null ? ratio * 1440 : null;
+  const protocolIrmPerDay    = protocolBlocksPerDay !== null ? protocolBlocksPerDay * 50 : null;
+  const currentIrmPerDay     = currentBlocksPerDay  !== null ? currentBlocksPerDay  * 50 : null;
+
+  return (
+    <div style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.10)', borderRadius: 8, padding: '14px 16px' }}>
+      {/* Input row */}
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex-1 min-w-[200px]">
+          <label className="flex items-center gap-1.5 mb-1.5" style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.30)', fontFamily: '"Space Grotesk", sans-serif' }}>
+            <Calculator size={10} style={{ color: '#6ec6ff', opacity: 0.75 }} />
+            {t('explorer.calculator.your_hashrate')}
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={t('explorer.calculator.placeholder')}
+              className="flex-1 px-3 py-2 outline-none"
+              style={{
+                background: 'rgba(0,0,0,0.40)',
+                border: '1px solid rgba(110,198,255,0.14)',
+                borderRadius: 7,
+                color: 'rgba(238,240,255,0.85)',
+                fontFamily: '"JetBrains Mono", monospace',
+                fontSize: 13,
+                transition: 'border-color 0.15s',
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(110,198,255,0.38)'; }}
+              onBlur={(e)  => { e.currentTarget.style.borderColor = 'rgba(110,198,255,0.14)'; }}
+            />
+            <select
+              value={unit}
+              onChange={(e) => setUnit(e.target.value as HashUnit)}
+              className="px-3 py-2 outline-none"
+              style={{
+                background: 'rgba(0,0,0,0.40)',
+                border: '1px solid rgba(110,198,255,0.14)',
+                borderRadius: 7,
+                color: 'rgba(238,240,255,0.85)',
+                fontFamily: '"JetBrains Mono", monospace',
+                fontSize: 13,
+              }}
+            >
+              <option value="TH">TH/s</option>
+              <option value="GH">GH/s</option>
+              <option value="MH">MH/s</option>
+              <option value="KH">KH/s</option>
+              <option value="H">H/s</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Network context row */}
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1" style={{ fontSize: 11, color: 'rgba(255,255,255,0.40)', fontFamily: '"Space Grotesk", sans-serif' }}>
+        <span>
+          {t('explorer.calculator.network_label')}: <span style={{ color: 'rgba(255,255,255,0.70)', fontFamily: '"JetBrains Mono", monospace' }}>{networkHps != null && networkHps > 0 ? formatHashrate(networkHps) : '—'}</span>
+        </span>
+        <span>
+          {t('explorer.calculator.block_reward_label')}: <span style={{ color: 'rgba(255,255,255,0.70)', fontFamily: '"JetBrains Mono", monospace' }}>50 IRM</span>
+        </span>
+      </div>
+
+      {/* Output rows — protocol target then current chain rate.
+          Two visually-distinct row styles so the user reads them as two
+          different perspectives, not as alternatives to pick between. */}
+      <div className="mt-4 space-y-2.5">
+        <CalculatorOutputRow
+          accent="#a78bfa"
+          label={t('explorer.calculator.protocol_target')}
+          sub={t('explorer.calculator.protocol_target_sub')}
+          blocks={protocolBlocksPerDay}
+          irm={protocolIrmPerDay}
+          blocksSuffix={t('explorer.calculator.blocks_per_day_suffix')}
+          irmSuffix={t('explorer.calculator.irm_per_day_suffix')}
+        />
+        <CalculatorOutputRow
+          accent="#34d399"
+          label={t('explorer.calculator.current_rate')}
+          sub={t('explorer.calculator.current_rate_sub')}
+          blocks={currentBlocksPerDay}
+          irm={currentIrmPerDay}
+          blocksSuffix={t('explorer.calculator.blocks_per_day_suffix')}
+          irmSuffix={t('explorer.calculator.irm_per_day_suffix')}
+        />
+      </div>
+
+      <p className="mt-3" style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', lineHeight: 1.45, fontFamily: '"Space Grotesk", sans-serif' }}>
+        {t('explorer.calculator.disclaimer')}
+      </p>
+    </div>
+  );
+}
+
+function CalculatorOutputRow({
+  accent, label, sub, blocks, irm, blocksSuffix, irmSuffix,
+}: {
+  accent: string;
+  label: string;
+  sub: string;
+  blocks: number | null;
+  irm: number | null;
+  blocksSuffix: string;
+  irmSuffix: string;
+}) {
+  return (
+    <div className="px-3.5 py-2.5" style={{ background: 'rgba(0,0,0,0.20)', border: `1px solid ${accent}22`, borderLeft: `2px solid ${accent}`, borderRadius: 6 }}>
+      <div className="flex items-baseline justify-between gap-3 flex-wrap">
+        <div className="flex flex-col">
+          <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: accent, fontFamily: '"Space Grotesk", sans-serif' }}>
+            {label}
+          </span>
+          <span style={{ fontSize: 9.5, color: 'rgba(255,255,255,0.30)', fontFamily: '"Space Grotesk", sans-serif' }}>
+            {sub}
+          </span>
+        </div>
+        <div className="flex items-baseline gap-4" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'rgba(238,240,255,0.90)' }}>
+            ≈ {fmtBlocks(blocks)} <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.40)', fontWeight: 500 }}>{blocksSuffix}</span>
+          </span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: accent }}>
+            ≈ {fmtIrm(irm)} <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.40)', fontWeight: 500 }}>{irmSuffix}</span>
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1569,6 +1747,14 @@ export default function Explorer() {
             </>
           )}
         </div>
+
+        {/* ── Mining Calculator ─────────────────────────── */}
+        {running && (
+          <div>
+            <SectionLabel title={t('explorer.calculator.title')} />
+            <MiningCalculatorCard networkHps={hashrateInfo?.hashrate ?? null} />
+          </div>
+        )}
 
         {/* ── Search ─────────────────────────────────────── */}
         {running && (
