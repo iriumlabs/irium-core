@@ -185,6 +185,12 @@ export default function Settings() {
   const [clearingState, setClearingState] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const confirmClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Reset Node State (Keep Blocks) — safer alternative to Clear & Resync.
+  // Uses a modal confirmation pattern (not the inline double-click) because
+  // the success path takes 5-15 min and users benefit from up-front context
+  // on what's about to happen.
+  const [resettingState, setResettingState] = useState(false);
+  const [showResetStateConfirm, setShowResetStateConfirm] = useState(false);
   const [showDetectPanel, setShowDetectPanel] = useState(false);
   // M14: persist user's chosen IP-detection URL so it survives unmount/restart.
   const DETECT_SERVICE_URL_KEY = 'irium-detect-service-url';
@@ -612,6 +618,38 @@ export default function Settings() {
       toast.error(e instanceof Error ? e.message : t('settings.toasts.clear_state_failed'));
     } finally {
       setClearingState(false);
+    }
+  };
+
+  const handleResetNodeState = async () => {
+    setShowResetStateConfirm(false);
+    setResettingState(true);
+    try {
+      const result = await node.resetStateKeepBlocks();
+      if (!result.success) {
+        toast.error(t('settings.node_data_info.reset_state_failed', { reason: 'backend returned success=false' }));
+        return;
+      }
+      if (result.state_existed && result.backup_path) {
+        toast.success(t('settings.node_data_info.reset_state_success', { path: result.backup_path }));
+      } else {
+        toast.success(t('settings.node_data_info.reset_state_no_backup'));
+      }
+      // Auto-restart iriumd — same pattern as handleClearStateClick.
+      await new Promise((r) => setTimeout(r, 800));
+      const startResult = await node.start(undefined, local.external_ip);
+      if (startResult.success) {
+        toast.success(t('settings.node_data_info.reset_state_rebuilding'));
+        startAggressivePoll(15_000);
+      } else {
+        toast.error(startResult.message);
+      }
+    } catch (e: unknown) {
+      toast.error(t('settings.node_data_info.reset_state_failed', {
+        reason: e instanceof Error ? e.message : String(e),
+      }));
+    } finally {
+      setResettingState(false);
     }
   };
 
@@ -1756,6 +1794,27 @@ export default function Settings() {
                 )}
               </div>
             </FieldRow>
+            <FieldRow
+              label={t('settings.node_data_info.reset_state_button')}
+              description={t('settings.node_data_info.reset_state_description')}
+            >
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowResetStateConfirm(true)}
+                  disabled={resettingState}
+                  className="btn-secondary px-4 py-2 text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {resettingState ? (
+                    <RefreshCw size={13} className="animate-spin" />
+                  ) : (
+                    <RotateCcw size={13} />
+                  )}
+                  {resettingState
+                    ? t('settings.node_data_info.reset_state_resetting')
+                    : t('settings.node_data_info.reset_state_button')}
+                </button>
+              </div>
+            </FieldRow>
           </Section>
         </motion.div>
 
@@ -1855,6 +1914,55 @@ export default function Settings() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* ── Reset Node State confirmation modal ───────────────── */}
+      <AnimatePresence>
+        {showResetStateConfirm && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowResetStateConfirm(false)}
+            />
+            <motion.div
+              className="relative z-10 w-full max-w-md mx-4 rounded-xl border border-white/10 p-5 space-y-4"
+              style={{ background: 'rgba(16,18,32,0.97)' }}
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <div className="flex items-start gap-3">
+                <RotateCcw size={18} className="mt-0.5 shrink-0 text-irium-400" />
+                <div>
+                  <p className="text-sm font-semibold text-white">{t('settings.node_data_info.reset_state_confirm_title')}</p>
+                  <p className="mt-1.5 text-xs text-white/55 leading-relaxed">
+                    {t('settings.node_data_info.reset_state_confirm_body')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setShowResetStateConfirm(false)}
+                  className="flex-1 px-4 py-2 text-xs rounded-lg border border-white/10 text-white/60 hover:text-white/80 hover:border-white/20 transition-colors"
+                >
+                  {t('settings.node_data_info.cancel')}
+                </button>
+                <button
+                  onClick={handleResetNodeState}
+                  className="flex-1 px-4 py-2 text-xs rounded-lg bg-irium-500/20 border border-irium-500/40 text-irium-300 hover:bg-irium-500/30 transition-colors font-medium"
+                >
+                  {t('settings.node_data_info.reset_state_proceed')}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Update Node Source confirmation modal ─────────────── */}
       <AnimatePresence>

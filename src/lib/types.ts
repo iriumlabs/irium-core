@@ -45,6 +45,19 @@ export interface NodeMetrics {
   outbound_dial_success_total: number;
 }
 
+// Returned by reset_node_state_keep_blocks. The Rust command renames
+// ~/.irium/state/ to ~/.irium/state.bak-<unix_ms>/ and recreates a fresh
+// state directory; blocks/ is preserved so iriumd rebuilds the UTXO set
+// from local block files on next start (~5-15 min) instead of a full
+// network resync (~hours). state_existed=false means there was no state
+// dir to rename (e.g. fresh install) — backup_path is still computed but
+// the UI should show a "no backup needed" message in that case.
+export interface ResetNodeStateResult {
+  success: boolean;
+  backup_path: string | null;
+  state_existed: boolean;
+}
+
 // Returned by get_system_info — cpu_cores reflects
 // std::thread::available_parallelism() on the host.
 export interface SystemInfo {
@@ -214,6 +227,11 @@ export interface Offer {
   amount: number; // satoshis
   description?: string;
   payment_method?: string;
+  // Free-text describing what the seller wants in return (e.g. "50 USDT",
+  // "200 EUR cash", "1 BTC"). Set at offer-creation time when the user
+  // fills in the asset/payment-reference field. Optional because older
+  // offers and minimal CreateOfferParams calls may omit it.
+  asset_reference?: string;
   status?: string;
   created_at?: number;
   ranking_score?: number;

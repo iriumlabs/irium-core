@@ -10,7 +10,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
-import { settlement, rpc, agreements as agreementsApi, invoices, tradeStatus, reputationActions, agreementSpend, proofs } from '../lib/tauri';
+import { settlement, agreements as agreementsApi, invoices, tradeStatus, reputationActions, agreementSpend, proofs } from '../lib/tauri';
 import { safeInvoke } from '../lib/invoke';
 import { useIriumEvents } from '../lib/hooks';
 import NodeOfflineBanner from '../components/NodeOfflineBanner';
@@ -23,8 +23,12 @@ type TemplateId = 'otc' | 'freelance' | 'milestone' | 'deposit' | 'merchant_dela
 
 interface TemplateConfig {
   id: TemplateId;
-  name: string;
-  desc: string;
+  // i18n keys — resolve via t() at render. Stored as keys rather than
+  // literals so the module-level const doesn't lock the language at load
+  // time. `t(\`settlement.templates.${id}\`)` and
+  // `t(\`settlement.templates_desc.${id}\`)` are the canonical lookups.
+  nameKey: string;
+  descKey: string;
   Icon: React.ElementType;
   glowBg: string;
   iconBg: string;
@@ -35,8 +39,8 @@ interface TemplateConfig {
 const TEMPLATES: TemplateConfig[] = [
   {
     id: 'otc',
-    name: 'OTC Trade',
-    desc: 'Use this to buy or sell IRM peer-to-peer. The buyer locks IRM in escrow, makes an off-chain payment, and the seller confirms receipt to release funds.',
+    nameKey: 'settlement.templates.otc',
+    descKey: 'settlement.templates_desc.otc',
     Icon: ArrowLeftRight,
     glowBg: 'bg-irium-500',
     iconBg: 'bg-irium-500/20',
@@ -45,8 +49,8 @@ const TEMPLATES: TemplateConfig[] = [
   },
   {
     id: 'freelance',
-    name: 'Freelance',
-    desc: 'Use this for freelance work or services. The client locks payment in escrow upfront. Funds release when the contractor completes the work and submits proof.',
+    nameKey: 'settlement.templates.freelance',
+    descKey: 'settlement.templates_desc.freelance',
     Icon: Briefcase,
     glowBg: 'bg-blue-500',
     iconBg: 'bg-blue-500/20',
@@ -55,8 +59,8 @@ const TEMPLATES: TemplateConfig[] = [
   },
   {
     id: 'milestone',
-    name: 'Milestone',
-    desc: 'Use this for large projects split into stages. Each milestone has its own escrow and proof requirement. Partial releases happen as milestones complete.',
+    nameKey: 'settlement.templates.milestone',
+    descKey: 'settlement.templates_desc.milestone',
     Icon: Target,
     glowBg: 'bg-green-500',
     iconBg: 'bg-green-500/20',
@@ -65,8 +69,8 @@ const TEMPLATES: TemplateConfig[] = [
   },
   {
     id: 'deposit',
-    name: 'Deposit',
-    desc: 'Use this for refundable deposits or collateral. Funds lock on-chain and return automatically if conditions are not met by the deadline.',
+    nameKey: 'settlement.templates.deposit',
+    descKey: 'settlement.templates_desc.deposit',
     Icon: Landmark,
     glowBg: 'bg-amber-500',
     iconBg: 'bg-amber-500/20',
@@ -75,8 +79,8 @@ const TEMPLATES: TemplateConfig[] = [
   },
   {
     id: 'merchant_delayed',
-    name: 'Merchant Delayed',
-    desc: 'Merchant sale with a built-in cool-down window. Funds are held in escrow and the merchant can claim only after the dispute window closes.',
+    nameKey: 'settlement.templates.merchant_delayed',
+    descKey: 'settlement.templates_desc.merchant_delayed',
     Icon: Hourglass,
     glowBg: 'bg-orange-500',
     iconBg: 'bg-orange-500/20',
@@ -85,8 +89,8 @@ const TEMPLATES: TemplateConfig[] = [
   },
   {
     id: 'contractor',
-    name: 'Contractor Milestones',
-    desc: 'Contractor work split into milestones. Each milestone has its own escrow and deliverable proof requirement. Funds release stage by stage.',
+    nameKey: 'settlement.templates.contractor',
+    descKey: 'settlement.templates_desc.contractor',
     Icon: Hammer,
     glowBg: 'bg-teal-500',
     iconBg: 'bg-teal-500/20',
@@ -125,14 +129,20 @@ const DEFAULT_FORM: FormState = {
 
 type View = 'hub' | 'grid' | 'wizard' | 'success';
 
+// Lightweight TFunction surface — enough for our t('key') and
+// t('key', {var}) usage without pulling i18next types module-wide.
+type TFn = (key: string, options?: Record<string, unknown>) => string;
+
+// Returns i18n KEYS, not literals — callers resolve via t(). Pure module-
+// level function so it cannot reach the React i18n hook directly.
 function getLabels(id: TemplateId): { partyA: string; partyB: string } {
   switch (id) {
-    case 'otc':              return { partyA: 'Buyer Address',      partyB: 'Seller Address'     };
-    case 'freelance':        return { partyA: 'Client Address',     partyB: 'Contractor Address' };
-    case 'milestone':        return { partyA: 'Payer Address',      partyB: 'Payee Address'      };
-    case 'deposit':          return { partyA: 'Depositor Address',  partyB: 'Recipient Address'  };
-    case 'merchant_delayed': return { partyA: 'Buyer Address',      partyB: 'Merchant Address'   };
-    case 'contractor':       return { partyA: 'Client Address',     partyB: 'Contractor Address' };
+    case 'otc':              return { partyA: 'settlement.role_labels.buyer',     partyB: 'settlement.role_labels.seller'     };
+    case 'freelance':        return { partyA: 'settlement.role_labels.client',    partyB: 'settlement.role_labels.contractor' };
+    case 'milestone':        return { partyA: 'settlement.role_labels.payer',     partyB: 'settlement.role_labels.payee'      };
+    case 'deposit':          return { partyA: 'settlement.role_labels.depositor', partyB: 'settlement.role_labels.recipient'  };
+    case 'merchant_delayed': return { partyA: 'settlement.role_labels.buyer',     partyB: 'settlement.role_labels.merchant'   };
+    case 'contractor':       return { partyA: 'settlement.role_labels.client',    partyB: 'settlement.role_labels.contractor' };
   }
 }
 
@@ -142,65 +152,65 @@ const MAX_IRM_SUPPLY = 100_000_000;
 // user mistyping `999999999` could lock funds for ~114,000 years.
 const MAX_DEADLINE_HOURS = 8760;
 
-function validateStep0(id: TemplateId, form: FormState): Record<string, string> {
+function validateStep0(id: TemplateId, form: FormState, t: TFn): Record<string, string> {
   const errs: Record<string, string> = {};
-  if (!form.partyA.trim()) errs.partyA = 'Address is required';
-  if (!form.partyB.trim()) errs.partyB = 'Address is required';
+  if (!form.partyA.trim()) errs.partyA = t('settlement.form_errors.address_required');
+  if (!form.partyB.trim()) errs.partyB = t('settlement.form_errors.address_required');
   if (form.partyA.trim() && form.partyB.trim() && form.partyA.trim() === form.partyB.trim()) {
-    errs.partyB = 'Party A and Party B cannot be the same address';
+    errs.partyB = t('settlement.form_errors.same_party');
   }
   const amt = parseFloat(form.amountIrm);
-  if (!form.amountIrm.trim() || isNaN(amt) || amt <= 0) errs.amountIrm = 'Enter a positive amount';
-  else if (amt > MAX_IRM_SUPPLY) errs.amountIrm = `Amount cannot exceed ${MAX_IRM_SUPPLY.toLocaleString('en-US')} IRM (total supply)`;
+  if (!form.amountIrm.trim() || isNaN(amt) || amt <= 0) errs.amountIrm = t('settlement.form_errors.positive_amount');
+  else if (amt > MAX_IRM_SUPPLY) errs.amountIrm = t('settlement.form_errors.amount_exceeds_supply', { max: MAX_IRM_SUPPLY.toLocaleString('en-US') });
   if (id === 'milestone' || id === 'contractor') {
     const mc = parseInt(form.milestoneCount);
-    if (isNaN(mc) || mc < 2 || mc > 20) errs.milestoneCount = 'Between 2 and 20';
+    if (isNaN(mc) || mc < 2 || mc > 20) errs.milestoneCount = t('settlement.form_errors.milestones_range');
   }
   // M-14: validate deadlineHours <= 1 year for every template that uses it.
   if (id !== 'milestone' && id !== 'contractor') {
     const dh = parseFloat(form.deadlineHours);
     if (form.deadlineHours.trim() && (isNaN(dh) || dh < 1 || dh > MAX_DEADLINE_HOURS)) {
-      errs.deadlineHours = `Deadline must be between 1 and ${MAX_DEADLINE_HOURS} hours (1 year)`;
+      errs.deadlineHours = t('settlement.form_errors.deadline_range', { max: MAX_DEADLINE_HOURS });
     }
   }
   if (id === 'merchant_delayed') {
     const ch = parseFloat(form.cooldownHours);
     if (form.cooldownHours.trim() && (isNaN(ch) || ch < 1 || ch > MAX_DEADLINE_HOURS)) {
-      errs.cooldownHours = `Cool-down must be between 1 and ${MAX_DEADLINE_HOURS} hours (1 year)`;
+      errs.cooldownHours = t('settlement.form_errors.cooldown_range', { max: MAX_DEADLINE_HOURS });
     }
   }
   return errs;
 }
 
-function getReviewRows(id: TemplateId, form: FormState): Array<{ label: string; value: string; highlight?: boolean }> {
+function getReviewRows(id: TemplateId, form: FormState, t: TFn): Array<{ label: string; value: string; highlight?: boolean }> {
   const labels = getLabels(id);
   const amountSats = Math.round(parseFloat(form.amountIrm || '0') * SATS_PER_IRM);
   const rows: Array<{ label: string; value: string; highlight?: boolean }> = [
-    { label: labels.partyA, value: form.partyA || '—' },
-    { label: labels.partyB, value: form.partyB || '—' },
-    { label: 'Amount', value: form.amountIrm ? `${form.amountIrm} IRM (${amountSats.toLocaleString('en-US')} sats)` : '—', highlight: true },
+    { label: t(labels.partyA), value: form.partyA || '—' },
+    { label: t(labels.partyB), value: form.partyB || '—' },
+    { label: t('settlement.review_labels.amount'), value: form.amountIrm ? `${form.amountIrm} IRM (${amountSats.toLocaleString('en-US')} sats)` : '—', highlight: true },
   ];
-  if (id !== 'milestone' && id !== 'contractor') rows.push({ label: 'Deadline', value: `${form.deadlineHours}h` });
-  if ((id === 'freelance' || id === 'contractor') && form.scope) rows.push({ label: 'Scope', value: form.scope });
+  if (id !== 'milestone' && id !== 'contractor') rows.push({ label: t('settlement.review_labels.deadline'), value: `${form.deadlineHours}h` });
+  if ((id === 'freelance' || id === 'contractor') && form.scope) rows.push({ label: t('settlement.review_labels.scope'), value: form.scope });
   if (id === 'milestone' || id === 'contractor') {
-    rows.push({ label: 'Milestones', value: form.milestoneCount });
+    rows.push({ label: t('settlement.review_labels.milestones'), value: form.milestoneCount });
     const count = parseInt(form.milestoneCount) || 1;
     if (form.amountIrm) {
       const totalSats = Math.round(parseFloat(form.amountIrm) * SATS_PER_IRM);
       const perMsSats = Math.floor(totalSats / count);
       const remainder = totalSats - perMsSats * count;
       const note = remainder > 0 ? ` (last gets +${remainder} sats)` : '';
-      rows.push({ label: 'Per Milestone', value: `${formatIRM(perMsSats)}${note}` });
+      rows.push({ label: t('settlement.review_labels.per_milestone'), value: `${formatIRM(perMsSats)}${note}` });
     }
   }
   if (id === 'merchant_delayed') {
-    rows.push({ label: 'Cool-down Window', value: `${form.cooldownHours}h` });
-    rows.push({ label: 'Total Escrow Window', value: `${form.deadlineHours}h` });
-    if (form.memo) rows.push({ label: 'Memo', value: form.memo });
+    rows.push({ label: t('settlement.review_labels.cooldown_window'), value: `${form.cooldownHours}h` });
+    rows.push({ label: t('settlement.review_labels.total_escrow_window'), value: `${form.deadlineHours}h` });
+    if (form.memo) rows.push({ label: t('settlement.review_labels.memo'), value: form.memo });
   }
-  if (id === 'otc' && form.memo) rows.push({ label: 'Memo', value: form.memo });
-  if (id === 'otc' && form.assetReference) rows.push({ label: 'Asset Ref', value: form.assetReference });
-  if (id === 'otc' && form.paymentMethod) rows.push({ label: 'Payment', value: form.paymentMethod });
+  if (id === 'otc' && form.memo) rows.push({ label: t('settlement.review_labels.memo'), value: form.memo });
+  if (id === 'otc' && form.assetReference) rows.push({ label: t('settlement.review_labels.asset_ref'), value: form.assetReference });
+  if (id === 'otc' && form.paymentMethod) rows.push({ label: t('settlement.review_labels.payment'), value: form.paymentMethod });
   return rows;
 }
 
@@ -215,7 +225,9 @@ function PreviewCard({
   form: FormState;
   feeRate: number;
 }) {
-  const t = TEMPLATES.find((x) => x.id === id)!;
+  const { t } = useTranslation();
+  const tmpl = TEMPLATES.find((x) => x.id === id)!;
+  const templateName = t(tmpl.nameKey);
   const amtSats = Math.round(parseFloat(form.amountIrm || '0') * SATS_PER_IRM);
   const hasContent = amtSats > 0 || form.partyA || form.partyB;
   const milestoneCount = parseInt(form.milestoneCount) || 1;
@@ -223,31 +235,31 @@ function PreviewCard({
   return (
     <div
       className={`card p-5 h-fit sticky top-0 transition-all duration-500
-        ${hasContent ? `border ${t.borderColor} preview-pulse` : 'border-white/5'}`}
+        ${hasContent ? `border ${tmpl.borderColor} preview-pulse` : 'border-white/5'}`}
     >
       <div className="flex items-center gap-2 mb-4">
-        <div className={`w-7 h-7 rounded-lg ${t.iconBg} flex items-center justify-center`}>
-          <t.Icon size={14} className={t.iconColor} />
+        <div className={`w-7 h-7 rounded-lg ${tmpl.iconBg} flex items-center justify-center`}>
+          <tmpl.Icon size={14} className={tmpl.iconColor} />
         </div>
-        <p className="font-display font-semibold text-sm text-white">{t.name} Preview</p>
+        <p className="font-display font-semibold text-sm text-white">{templateName} {t('settlement.preview.preview_suffix')}</p>
         {hasContent && (
           <span className="ml-auto w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse-slow" />
         )}
       </div>
 
       {!hasContent ? (
-        <p className="text-xs text-white/20 text-center py-4">Fill the form to see a live preview</p>
+        <p className="text-xs text-white/20 text-center py-4">{t('settlement.preview.fill_hint')}</p>
       ) : (
         <div className="space-y-2.5">
           {form.partyA && (
             <div className="flex justify-between text-xs gap-2">
-              <span className="text-white/40 shrink-0">{getLabels(id).partyA.split(' ')[0]}</span>
+              <span className="text-white/40 shrink-0">{t(getLabels(id).partyA).split(' ')[0]}</span>
               <span className="font-mono text-white/60 truncate max-w-[60%]">{form.partyA}</span>
             </div>
           )}
           {form.partyB && (
             <div className="flex justify-between text-xs gap-2">
-              <span className="text-white/40 shrink-0">{getLabels(id).partyB.split(' ')[0]}</span>
+              <span className="text-white/40 shrink-0">{t(getLabels(id).partyB).split(' ')[0]}</span>
               <span className="font-mono text-white/60 truncate max-w-[60%]">{form.partyB}</span>
             </div>
           )}
@@ -256,40 +268,40 @@ function PreviewCard({
             <>
               <div className="border-t border-white/5 pt-2.5" />
               <div className="flex justify-between text-xs">
-                <span className="text-white/40">Amount</span>
-                <span className={`font-mono font-semibold ${t.iconColor}`}>{formatIRM(amtSats)}</span>
+                <span className="text-white/40">{t('settlement.preview.amount')}</span>
+                <span className={`font-mono font-semibold ${tmpl.iconColor}`}>{formatIRM(amtSats)}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-white/40">Sats</span>
+                <span className="text-white/40">{t('settlement.preview.sats')}</span>
                 <span className="font-mono text-white/50">{amtSats.toLocaleString('en-US')}</span>
               </div>
               {feeRate > 0 && (
                 <div className="flex justify-between text-xs">
-                  <span className="text-white/40 flex items-center gap-1"><Zap size={9} />Fee rate</span>
+                  <span className="text-white/40 flex items-center gap-1"><Zap size={9} />{t('settlement.preview.fee_rate')}</span>
                   <span className="font-mono text-white/50">{feeRate} sat/b</span>
                 </div>
               )}
               {(id === 'milestone' || id === 'contractor') && milestoneCount > 1 && (
                 <div className="flex justify-between text-xs">
-                  <span className="text-white/40">Per milestone</span>
+                  <span className="text-white/40">{t('settlement.preview.per_milestone')}</span>
                   <span className="font-mono text-white/50">{formatIRM(Math.floor(amtSats / milestoneCount))}</span>
                 </div>
               )}
               {form.deadlineHours && id !== 'milestone' && id !== 'contractor' && id !== 'merchant_delayed' && (
                 <div className="flex justify-between text-xs">
-                  <span className="text-white/40">Deadline</span>
+                  <span className="text-white/40">{t('settlement.preview.deadline')}</span>
                   <span className="font-mono text-white/50">{form.deadlineHours}h</span>
                 </div>
               )}
               {id === 'merchant_delayed' && form.cooldownHours && (
                 <div className="flex justify-between text-xs">
-                  <span className="text-white/40">Cool-down</span>
+                  <span className="text-white/40">{t('settlement.preview.cooldown')}</span>
                   <span className="font-mono text-white/50">{form.cooldownHours}h</span>
                 </div>
               )}
               {id === 'merchant_delayed' && form.deadlineHours && (
                 <div className="flex justify-between text-xs">
-                  <span className="text-white/40">Total window</span>
+                  <span className="text-white/40">{t('settlement.preview.total_window')}</span>
                   <span className="font-mono text-white/50">{form.deadlineHours}h</span>
                 </div>
               )}
@@ -298,8 +310,8 @@ function PreviewCard({
 
           <div className="border-t border-white/5 pt-2.5">
             <div className="flex justify-between text-xs font-display font-semibold">
-              <span className="text-white/40">Type</span>
-              <span className={t.iconColor}>{t.name}</span>
+              <span className="text-white/40">{t('settlement.preview.type')}</span>
+              <span className={tmpl.iconColor}>{templateName}</span>
             </div>
           </div>
         </div>
@@ -357,6 +369,7 @@ function StatTile({ label, value, hint }: { label: string; value: React.ReactNod
 }
 
 function SellerDashboardCard({ address }: { address: string }) {
+  const { t } = useTranslation();
   const [data, setData] = useState<SellerStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -390,11 +403,11 @@ function SellerDashboardCard({ address }: { address: string }) {
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-xs font-semibold text-white/35 uppercase tracking-wider">Seller Dashboard</div>
+        <div className="text-xs font-semibold text-white/35 uppercase tracking-wider">{t('settlement.seller_dashboard')}</div>
         {address && <div className="font-mono text-[10px] text-white/30">{address.slice(0, 8)}…{address.slice(-6)}</div>}
       </div>
       {!address ? (
-        <div className="text-center py-6 text-white/30 text-sm">Select a wallet address to view seller stats.</div>
+        <div className="text-center py-6 text-white/30 text-sm">{t('settlement.dashboard.select_seller_hint')}</div>
       ) : loading ? (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -402,23 +415,23 @@ function SellerDashboardCard({ address }: { address: string }) {
           ))}
         </div>
       ) : err ? (
-        <div className="text-center py-6 text-white/30 text-sm">Seller status unavailable.</div>
+        <div className="text-center py-6 text-white/30 text-sm">{t('settlement.seller_status_unavailable')}</div>
       ) : data ? (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-            <StatTile label="Active offers" value={data.active_offers ?? 0} />
-            <StatTile label="Open agreements" value={data.open_agreements ?? 0} />
-            <StatTile label="Completed" value={data.completed_agreements ?? 0} />
+            <StatTile label={t('settlement.dashboard.active_offers')} value={data.active_offers ?? 0} />
+            <StatTile label={t('settlement.dashboard.open_agreements')} value={data.open_agreements ?? 0} />
+            <StatTile label={t('settlement.dashboard.completed')} value={data.completed_agreements ?? 0} />
             <StatTile
-              label="Total received"
+              label={t('settlement.dashboard.total_received')}
               value={data.total_volume != null ? `${formatIRM(data.total_volume)} IRM` : '—'}
-              hint="Lifetime volume of released agreements where you were the seller (sats → IRM)"
+              hint={t('settlement.dashboard.total_received_hint')}
             />
-            <StatTile label="Reputation" value={fmtReputationPct(data.reputation_score)} />
+            <StatTile label={t('settlement.dashboard.reputation')} value={fmtReputationPct(data.reputation_score)} />
           </div>
           {data.restrictions && data.restrictions.length > 0 && (
             <div className="mt-3 rounded-lg p-3 text-xs text-amber-300 border border-amber-500/30 bg-amber-500/10">
-              <strong className="text-amber-200">Restrictions: </strong>
+              <strong className="text-amber-200">{t('settlement.dashboard.restrictions_label')}</strong>
               {data.restrictions.join(', ')}
             </div>
           )}
@@ -429,6 +442,7 @@ function SellerDashboardCard({ address }: { address: string }) {
 }
 
 function BuyerDashboardCard({ address }: { address: string }) {
+  const { t } = useTranslation();
   const [data, setData] = useState<BuyerStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -457,11 +471,11 @@ function BuyerDashboardCard({ address }: { address: string }) {
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-xs font-semibold text-white/35 uppercase tracking-wider">Buyer Dashboard</div>
+        <div className="text-xs font-semibold text-white/35 uppercase tracking-wider">{t('settlement.buyer_dashboard')}</div>
         {address && <div className="font-mono text-[10px] text-white/30">{address.slice(0, 8)}…{address.slice(-6)}</div>}
       </div>
       {!address ? (
-        <div className="text-center py-6 text-white/30 text-sm">Select a wallet address to view buyer stats.</div>
+        <div className="text-center py-6 text-white/30 text-sm">{t('settlement.dashboard.select_buyer_hint')}</div>
       ) : loading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -469,22 +483,22 @@ function BuyerDashboardCard({ address }: { address: string }) {
           ))}
         </div>
       ) : err ? (
-        <div className="text-center py-6 text-white/30 text-sm">Buyer status unavailable.</div>
+        <div className="text-center py-6 text-white/30 text-sm">{t('settlement.buyer_status_unavailable')}</div>
       ) : data ? (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatTile label="Active purchases" value={data.active_agreements ?? 0} />
-            <StatTile label="Completed" value={data.completed_agreements ?? 0} />
+            <StatTile label={t('settlement.dashboard.active_purchases')} value={data.active_agreements ?? 0} />
+            <StatTile label={t('settlement.dashboard.completed')} value={data.completed_agreements ?? 0} />
             <StatTile
-              label="Total spent"
+              label={t('settlement.dashboard.total_spent')}
               value={data.total_spent != null ? `${formatIRM(data.total_spent)} IRM` : '—'}
-              hint="Lifetime volume of released agreements where you were the buyer (sats → IRM)"
+              hint={t('settlement.dashboard.total_spent_hint')}
             />
-            <StatTile label="Reputation" value={fmtReputationPct(data.reputation_score)} />
+            <StatTile label={t('settlement.dashboard.reputation')} value={fmtReputationPct(data.reputation_score)} />
           </div>
           {data.restrictions && data.restrictions.length > 0 && (
             <div className="mt-3 rounded-lg p-3 text-xs text-amber-300 border border-amber-500/30 bg-amber-500/10">
-              <strong className="text-amber-200">Restrictions: </strong>
+              <strong className="text-amber-200">{t('settlement.dashboard.restrictions_label')}</strong>
               {data.restrictions.join(', ')}
             </div>
           )}
@@ -596,26 +610,28 @@ export default function SettlementPage() {
     return JSON.stringify({ template: selectedTemplate, params }, null, 2);
   }, [selectedTemplate, form]);
 
-  const steps = ['Details', 'Review & Confirm'];
+  const steps = [t('settlement.wizard.step_details_short'), t('settlement.wizard.step_review_confirm')];
 
   useEffect(() => {
-    rpc.mempool().then(m => {
-      // min_fee_per_byte from mempool info
-      if (typeof (m as { size?: number }).size === 'number') {
-        setFeeRate(1);
-      }
-    }).catch(() => {});
-    // Also try fee_estimate endpoint — routes through Tauri's HTTP API to
-    // bypass CSP/CORS (see Settings.tsx and Onboarding.tsx for the same swap).
+    // Routes through Tauri's HTTP API to bypass CSP/CORS (see Settings.tsx
+    // and Onboarding.tsx for the same swap). Falls back to 1 sat/byte when
+    // the endpoint is unreachable or returns a zero/missing value — that
+    // matches the historical default and gives the preview card a sensible
+    // value to render instead of leaving feeRate at 0.
     const fetchFee = async () => {
       try {
         const resp = await tauriFetch<{ min_fee_per_byte?: number }>(`${rpcUrl}/rpc/fee_estimate`, {
           method: 'GET', timeout: 2, responseType: ResponseType.JSON,
         });
-        if (resp.ok && resp.data?.min_fee_per_byte) {
-          setFeeRate(resp.data.min_fee_per_byte);
+        const fee = resp.ok ? resp.data?.min_fee_per_byte : undefined;
+        if (typeof fee === 'number' && fee > 0) {
+          setFeeRate(fee);
+        } else {
+          setFeeRate(1);
         }
-      } catch { /* offline */ }
+      } catch {
+        setFeeRate(1);
+      }
     };
     fetchFee();
   }, [rpcUrl]);
@@ -723,7 +739,7 @@ export default function SettlementPage() {
 
   const handleNext = () => {
     if (!selectedTemplate) return;
-    const errs = validateStep0(selectedTemplate, form);
+    const errs = validateStep0(selectedTemplate, form, t);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
@@ -798,7 +814,8 @@ export default function SettlementPage() {
       setView('success');
       toast.success(t('settlement.toasts.agreement_created'));
     } catch (e) {
-      toast.error(String(e));
+      console.error('[settlement] create agreement failed:', e);
+      toast.error(t('settlement.errors.generic_failure'));
     } finally {
       setLoading(false);
     }
@@ -807,14 +824,16 @@ export default function SettlementPage() {
   const copySummary = useCallback(() => {
     if (!result || !selectedTemplate) return;
     const tmpl = TEMPLATES.find((x) => x.id === selectedTemplate)!;
+    const tmplName = t(tmpl.nameKey);
+    const amountLabel = t('settlement.review_labels.amount');
     const amtSats = Math.round(parseFloat(form.amountIrm || '0') * SATS_PER_IRM);
     const lines = [
-      `Irium ${tmpl.name} Agreement`,
+      `Irium ${tmplName} Agreement`,
       `ID: ${result.agreement_id}`,
       result.hash ? `Hash: ${result.hash}` : '',
-      `Amount: ${form.amountIrm} IRM (${amtSats.toLocaleString('en-US')} sats)`,
-      ...getReviewRows(selectedTemplate, form)
-        .filter(r => !['Amount'].includes(r.label) && r.value !== '—')
+      `${amountLabel}: ${form.amountIrm} IRM (${amtSats.toLocaleString('en-US')} sats)`,
+      ...getReviewRows(selectedTemplate, form, t)
+        .filter(r => r.label !== amountLabel && r.value !== '—')
         .map(r => `${r.label}: ${r.value}`),
     ].filter(Boolean).join('\n');
     navigator.clipboard.writeText(lines);
@@ -846,7 +865,7 @@ export default function SettlementPage() {
         <div>
           <h1 className="page-title">{t('settlement.page_title_hub')}</h1>
           <p className="page-subtitle">
-            Trustless on-chain settlements using Irium's proof-based escrow system
+            {t('settlement.page_subtitle')}
           </p>
         </div>
         <button
@@ -876,9 +895,9 @@ export default function SettlementPage() {
                 a.status === 'funded' && (a.proof_status === 'none' || a.proof_status == null)
               ).length;
               const stats = [
-                { label: 'Total Agreements', value: allAgreements.length > 0 ? String(allAgreements.length) : '0' },
-                { label: 'Pending Proofs',   value: String(pendingProofs) },
-                { label: 'Total Volume',     value: totalVol > 0 ? `${totalVol.toFixed(4)} IRM` : '0 IRM' },
+                { label: t('settlement.hub.total_agreements'), value: allAgreements.length > 0 ? String(allAgreements.length) : '0' },
+                { label: t('settlement.hub.pending_proofs'),   value: String(pendingProofs) },
+                { label: t('settlement.hub.total_volume'),     value: totalVol > 0 ? `${totalVol.toFixed(4)} IRM` : '0 IRM' },
               ];
               return (
                 <div className="grid grid-cols-3 gap-3">
@@ -907,10 +926,10 @@ export default function SettlementPage() {
                   <Zap size={20} style={{ color: '#6ec6ff' }} />
                 </div>
                 <div>
-                  <div className="font-display font-bold text-lg text-white">I'm Selling</div>
-                  <div className="text-white/45 text-sm mt-1">Create an offer, share with buyer, receive payment on proof</div>
+                  <div className="font-display font-bold text-lg text-white">{t('settlement.hub.selling_title')}</div>
+                  <div className="text-white/45 text-sm mt-1">{t('settlement.hub.selling_subtitle')}</div>
                 </div>
-                <div className="text-xs font-medium" style={{ color: '#6ec6ff' }}>Start Seller Flow →</div>
+                <div className="text-xs font-medium" style={{ color: '#6ec6ff' }}>{t('settlement.hub.selling_cta')}</div>
               </motion.button>
 
               <motion.button
@@ -924,10 +943,10 @@ export default function SettlementPage() {
                   <ArrowLeftRight size={20} style={{ color: '#a78bfa' }} />
                 </div>
                 <div>
-                  <div className="font-display font-bold text-lg text-white">I'm Buying</div>
-                  <div className="text-white/45 text-sm mt-1">Find an offer, fund escrow, release payment on delivery</div>
+                  <div className="font-display font-bold text-lg text-white">{t('settlement.hub.buying_title')}</div>
+                  <div className="text-white/45 text-sm mt-1">{t('settlement.hub.buying_subtitle')}</div>
                 </div>
-                <div className="text-xs font-medium" style={{ color: '#a78bfa' }}>Start Buyer Flow →</div>
+                <div className="text-xs font-medium" style={{ color: '#a78bfa' }}>{t('settlement.hub.buying_cta')}</div>
               </motion.button>
             </div>
 
@@ -938,13 +957,13 @@ export default function SettlementPage() {
                 template grid. */}
             <div className="card p-5">
               <div className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-4">
-                How it works
+                {t('settlement.hub.how_it_works')}
               </div>
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  'Create or find an agreement',
-                  'Lock IRM in escrow on-chain',
-                  'Submit proof — funds release automatically',
+                  t('settlement.hub.step_create'),
+                  t('settlement.hub.step_lock'),
+                  t('settlement.hub.step_proof'),
                 ].map((step, i) => (
                   <div key={i} className="flex flex-col items-start gap-2">
                     <div
@@ -971,7 +990,7 @@ export default function SettlementPage() {
                 onClick={() => setView('grid')}
                 className="btn-secondary text-sm py-2 px-4"
               >
-                Create Agreement Directly (advanced)
+                {t('settlement.hub.create_direct')}
               </button>
             </div>
 
@@ -989,7 +1008,7 @@ export default function SettlementPage() {
                 <div className="flex items-start gap-2.5">
                   <AlertCircle size={14} className="flex-shrink-0 mt-0.5" style={{ color: '#f87171' }} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold text-red-300 mb-1">Couldn't load agreements</div>
+                    <div className="text-sm font-semibold text-red-300 mb-1">{t('settlement.hub.load_error_title')}</div>
                     <div className="text-xs text-white/55 break-all">{hubError}</div>
                   </div>
                 </div>
@@ -1066,8 +1085,8 @@ export default function SettlementPage() {
                     <template.Icon size={32} className={template.iconColor} />
                   </div>
                   <div className="relative z-10">
-                    <div className="font-display font-bold text-xl text-white">{template.name}</div>
-                    <div className="text-white/50 text-sm mt-1.5">{template.desc}</div>
+                    <div className="font-display font-bold text-xl text-white">{t(template.nameKey)}</div>
+                    <div className="text-white/50 text-sm mt-1.5">{t(template.descKey)}</div>
                   </div>
                 </motion.div>
               ))}
@@ -1121,10 +1140,16 @@ export default function SettlementPage() {
                   <div className="lg:col-span-3 card p-6 space-y-4">
                     <div className="mb-2">
                       <h2 className="font-display font-bold text-xl text-white">
-                        {TEMPLATES.find((t) => t.id === selectedTemplate)?.name}
+                        {(() => {
+                          const tmpl = TEMPLATES.find((x) => x.id === selectedTemplate);
+                          return tmpl ? t(tmpl.nameKey) : '';
+                        })()}
                       </h2>
                       <p className="text-white/40 text-sm mt-0.5">
-                        {TEMPLATES.find((t) => t.id === selectedTemplate)?.desc}
+                        {(() => {
+                          const tmpl = TEMPLATES.find((x) => x.id === selectedTemplate);
+                          return tmpl ? t(tmpl.descKey) : '';
+                        })()}
                       </p>
                     </div>
 
@@ -1147,7 +1172,7 @@ export default function SettlementPage() {
 
                     {/* Party A */}
                     <ShakeField error={errors.partyA}>
-                      <label className="label">{getLabels(selectedTemplate).partyA}</label>
+                      <label className="label">{t(getLabels(selectedTemplate).partyA)}</label>
                       <input
                         className={`input ${errors.partyA ? 'border-red-500/50' : ''}`}
                         placeholder={t('settlement.wizard.fields.party_placeholder')}
@@ -1163,7 +1188,7 @@ export default function SettlementPage() {
 
                     {/* Party B */}
                     <ShakeField error={errors.partyB}>
-                      <label className="label">{getLabels(selectedTemplate).partyB}</label>
+                      <label className="label">{t(getLabels(selectedTemplate).partyB)}</label>
                       <input
                         className={`input ${errors.partyB ? 'border-red-500/50' : ''}`}
                         placeholder={t('settlement.wizard.fields.party_placeholder')}
@@ -1409,7 +1434,7 @@ export default function SettlementPage() {
                   </div>
 
                   <div className="glass rounded-xl p-5 space-y-3">
-                    {getReviewRows(selectedTemplate, form).map((row) => (
+                    {getReviewRows(selectedTemplate, form, t).map((row) => (
                       <div key={row.label} className="flex justify-between items-start gap-4 text-sm">
                         <span className="text-white/40 shrink-0">{row.label}</span>
                         <span className={`font-mono text-right break-all ${row.highlight ? 'text-irium-300 font-semibold' : 'text-white/80'}`}>
@@ -1860,6 +1885,7 @@ function GuidedSettlementActions({
   payer,
   payee,
 }: GuidedSettlementActionsProps) {
+  const { t } = useTranslation();
   // Local addresses tell us whether the local wallet is the funder, the
   // payee, or a third party watching. Both roles can appear on the same
   // machine (single-wallet testing); we prefer the funder role when both
@@ -1912,7 +1938,8 @@ function GuidedSettlementActions({
       // Event will flip status, but optimistically advance for snappier UI.
       setStatus((prev) => (prev === 'created' ? 'funded' : prev));
     } catch (e) {
-      toast.error(String(e));
+      console.error('[settlement] fund failed:', e);
+      toast.error(t('settlement.errors.generic_failure'));
     } finally {
       setBusy(null);
     }
@@ -1930,7 +1957,8 @@ function GuidedSettlementActions({
       toast.success('Attestation submitted');
       setStatus((prev) => (prev === 'created' || prev === 'funded' ? 'proof_submitted' : prev));
     } catch (e) {
-      toast.error(String(e));
+      console.error('[settlement] attest failed:', e);
+      toast.error(t('settlement.errors.generic_failure'));
     } finally {
       setBusy(null);
     }
@@ -1943,7 +1971,8 @@ function GuidedSettlementActions({
       if (res.txid) toast.success(`Released: ${res.txid.slice(0, 12)}…`);
       setStatus('satisfied');
     } catch (e) {
-      toast.error(String(e));
+      console.error('[settlement] release failed:', e);
+      toast.error(t('settlement.errors.generic_failure'));
     } finally {
       setBusy(null);
     }

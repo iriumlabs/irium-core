@@ -264,7 +264,7 @@
     },
     "security_info": {
       "wallet_local": "Irium Core stores your wallet file locally. Your private keys never leave your machine. The wallet file is encrypted. Always back up your seed phrase and keep it offline.",
-      "rpc_token_warning": "If you set IRIUM_RPC_TOKEN on your node, the GUI currently uses the default unauthenticated connection. Token-based auth support is coming in a future release."
+      "rpc_token_warning": "Token-based authentication is supported. To use IRIUM_RPC_TOKEN, paste the token into the RPC Token field in the Node Connection section above; the Test Remote button will verify it before you switch to Remote mode."
     },
     "diagnostics": {
       "description": "Runs 7 checks against your node, wallet, and binary setup.",
@@ -314,7 +314,17 @@
       "clearing": "Clearing…",
       "confirm_resync": "Confirm — this will resync!",
       "clear_resync": "Clear & Resync",
-      "confirm_hint": "Click again to confirm. Blocks will be re-downloaded."
+      "confirm_hint": "Click again to confirm. Blocks will be re-downloaded.",
+      "reset_state_button": "Reset Node State (Keep Blocks)",
+      "reset_state_description": "Lighter alternative to Clear & Resync. Keeps your downloaded blocks and rebuilds the UTXO set locally. Use this when you see transaction signature failures.",
+      "reset_state_confirm_title": "Reset Node State?",
+      "reset_state_confirm_body": "This renames your state folder to a timestamped backup and keeps your downloaded blocks. iriumd will rebuild the UTXO set from local blocks on next start — typically 5 to 15 minutes versus hours for a full chain resync. Use this when you see transaction signature failures or other UTXO-state corruption. Your wallet and agreements are not affected.",
+      "reset_state_proceed": "Reset state",
+      "reset_state_resetting": "Resetting…",
+      "reset_state_success": "State reset — backup at {{path}}",
+      "reset_state_no_backup": "No existing state to back up — fresh state created",
+      "reset_state_rebuilding": "Node restarting — rebuilding UTXO set from local blocks (5-15 min)",
+      "reset_state_failed": "Reset failed: {{reason}}"
     },
     "developer_info": {
       "reset_onboarding": "Reset onboarding",
@@ -379,7 +389,7 @@
       "peer_search_subtitle": "Block #{{height}} · iriumd is discovering the network. If stuck, try Clear & Restart.",
       "clear_restart": "Clear & Restart",
       "sync_stalled": "Sync stalled — {{count}} blocks behind",
-      "sync_stalled_subtitle": "Block #{{height}} / #{{tip}} · Chain state may be corrupted. Clear & Restart to resync from scratch.",
+      "sync_stalled_subtitle": "Your node is behind the network. Click Clear & Restart to delete local chain data and resync from the network.",
       "height_stuck": "Block height hasn't increased in {{minutes}}m",
       "height_stuck_subtitle": "If your node appears stuck, try restarting or clearing the chain state.",
       "restart_node": "Restart Node",
@@ -735,6 +745,7 @@
   },
   "settlement": {
     "page_title": "Settlement",
+    "page_subtitle": "Trustless on-chain settlements using Irium's proof-based escrow system",
     "hub": {
       "total_agreements": "Total Agreements",
       "pending_proofs": "Pending Proofs",
@@ -743,7 +754,18 @@
       "load_error_title": "Couldn't load agreements",
       "empty_state": "You haven't created any agreements yet.",
       "create_first": "Create your first agreement →",
-      "create_offer": "Create offer"
+      "create_offer": "Create offer",
+      "selling_title": "I'm Selling",
+      "selling_subtitle": "Create an offer, share with buyer, receive payment on proof",
+      "selling_cta": "Start Seller Flow →",
+      "buying_title": "I'm Buying",
+      "buying_subtitle": "Find an offer, fund escrow, release payment on delivery",
+      "buying_cta": "Start Buyer Flow →",
+      "create_direct": "Create Agreement Directly (advanced)",
+      "how_it_works": "How it works",
+      "step_create": "Create or find an agreement",
+      "step_lock": "Lock IRM in escrow on-chain",
+      "step_proof": "Submit proof — funds release automatically"
     },
     "templates": {
       "otc": "OTC Trade",
@@ -753,11 +775,79 @@
       "merchant_delayed": "Merchant Delayed",
       "contractor": "Contractor Milestones"
     },
+    "templates_desc": {
+      "otc": "Use this to buy or sell IRM peer-to-peer. The buyer locks IRM in escrow, makes an off-chain payment, and the seller confirms receipt to release funds.",
+      "freelance": "Use this for freelance work or services. The client locks payment in escrow upfront. Funds release when the contractor completes the work and submits proof.",
+      "milestone": "Use this for large projects split into stages. Each milestone has its own escrow and proof requirement. Partial releases happen as milestones complete.",
+      "deposit": "Use this for refundable deposits or collateral. Funds lock on-chain and return automatically if conditions are not met by the deadline.",
+      "merchant_delayed": "Merchant sale with a built-in cool-down window. Funds are held in escrow and the merchant can claim only after the dispute window closes.",
+      "contractor": "Contractor work split into milestones. Each milestone has its own escrow and deliverable proof requirement. Funds release stage by stage."
+    },
+    "role_labels": {
+      "buyer": "Buyer Address",
+      "seller": "Seller Address",
+      "client": "Client Address",
+      "contractor": "Contractor Address",
+      "payer": "Payer Address",
+      "payee": "Payee Address",
+      "depositor": "Depositor Address",
+      "recipient": "Recipient Address",
+      "merchant": "Merchant Address"
+    },
+    "form_errors": {
+      "address_required": "Address is required",
+      "same_party": "Party A and Party B cannot be the same address",
+      "positive_amount": "Enter a positive amount",
+      "amount_exceeds_supply": "Amount cannot exceed {{max}} IRM (total supply)",
+      "milestones_range": "Between 2 and 20",
+      "deadline_range": "Deadline must be between 1 and {{max}} hours (1 year)",
+      "cooldown_range": "Cool-down must be between 1 and {{max}} hours (1 year)"
+    },
+    "review_labels": {
+      "amount": "Amount",
+      "deadline": "Deadline",
+      "scope": "Scope",
+      "milestones": "Milestones",
+      "per_milestone": "Per Milestone",
+      "cooldown_window": "Cool-down Window",
+      "total_escrow_window": "Total Escrow Window",
+      "memo": "Memo",
+      "asset_ref": "Asset Ref",
+      "payment": "Payment"
+    },
+    "preview": {
+      "preview_suffix": "Preview",
+      "fill_hint": "Fill the form to see a live preview",
+      "amount": "Amount",
+      "sats": "Sats",
+      "fee_rate": "Fee rate",
+      "per_milestone": "Per milestone",
+      "deadline": "Deadline",
+      "cooldown": "Cool-down",
+      "total_window": "Total window",
+      "type": "Type"
+    },
+    "dashboard": {
+      "select_seller_hint": "Select a wallet address to view seller stats.",
+      "select_buyer_hint": "Select a wallet address to view buyer stats.",
+      "active_offers": "Active offers",
+      "open_agreements": "Open agreements",
+      "completed": "Completed",
+      "active_purchases": "Active purchases",
+      "total_received": "Total received",
+      "total_received_hint": "Lifetime volume of released agreements where you were the seller (sats → IRM)",
+      "total_spent": "Total spent",
+      "total_spent_hint": "Lifetime volume of released agreements where you were the buyer (sats → IRM)",
+      "reputation": "Reputation",
+      "restrictions_label": "Restrictions: "
+    },
     "wizard": {
       "step_template": "Choose Settlement Type",
       "step_form": "Fill Details",
       "step_review": "Review",
       "step_success": "Agreement Created",
+      "step_details_short": "Details",
+      "step_review_confirm": "Review & Confirm",
       "review_title": "Review Details",
       "confirm_create": "Create agreement",
       "creating": "Creating…",
@@ -785,6 +875,9 @@
     "buyer_dashboard": "Buyer Dashboard",
     "seller_status_unavailable": "Seller status unavailable.",
     "buyer_status_unavailable": "Buyer status unavailable.",
+    "errors": {
+      "generic_failure": "Something went wrong. Please check your node is running and try again."
+    },
     "toasts": {
       "fee_unavailable": "Fee estimate unavailable",
       "agreement_created": "Agreement created!",
@@ -803,6 +896,286 @@
     "review_agreement": "Review Agreement",
     "modals": {
       "payment_invoice": "Payment Invoice"
+    }
+  },
+  "settlement_ui": {
+    "hub": {
+      "title": "Settlement",
+      "subtitle": "Lock IRM in escrow. Release on confirmation. Refund on timeout.",
+      "safe_trade_title": "Safe Trade",
+      "safe_trade_subtitle": "Lock IRM, swap for anything. Both sides protected.",
+      "pay_for_work_title": "Pay for Work",
+      "pay_for_work_subtitle": "Fund a job in one payment or by milestone. Money releases when work is done.",
+      "deposit_title": "Refundable Deposit",
+      "deposit_subtitle": "Lock IRM as a guarantee. Get it back automatically if conditions aren't met.",
+      "active_title": "Active Agreements",
+      "active_empty": "No active agreements yet. Start one above.",
+      "active_load_error": "Couldn't load agreements — your node may be offline.",
+      "other_party": "Other party",
+      "amount": "Amount",
+      "start_cta": "Start",
+      "toast_released": "Funds released to the other party.",
+      "toast_refunded": "Refund claimed — funds are returning to your wallet."
+    },
+    "status": {
+      "setting_up": "Setting up",
+      "waiting": "Waiting",
+      "ready_release": "Ready to release",
+      "ready_refund": "Ready to refund",
+      "disputed": "Disputed — referee assigned",
+      "complete": "Complete",
+      "refunded": "Refunded",
+      "expired": "Expired",
+      "unknown": "Status unknown",
+      "checking": "Checking…"
+    },
+    "actions": {
+      "release_funds": "Release Funds",
+      "claim_refund": "Claim Refund",
+      "view_dispute": "View Dispute",
+      "view_details": "View Details",
+      "report_problem": "Something went wrong?"
+    },
+    "amount": {
+      "over_max": "Maximum is {{max}} IRM"
+    },
+    "address": {
+      "placeholder": "Q… or P… address",
+      "paste": "Paste from clipboard",
+      "format_error": "This doesn't look like a valid Irium address."
+    },
+    "duration": {
+      "preset_1h": "1 hour",
+      "preset_4h": "4 hours",
+      "preset_24h": "24 hours",
+      "preset_48h": "2 days",
+      "preset_1w": "1 week",
+      "custom": "Custom",
+      "custom_placeholder": "hours",
+      "hours_suffix": "hours",
+      "expires_around": "Expires around {{datetime}}"
+    },
+    "deal_code": {
+      "code_label": "Deal code",
+      "paste_placeholder": "Paste the trade code your seller sent you here…",
+      "building": "Building deal code…",
+      "copy_code": "Copy Deal Code",
+      "copy_id": "Copy Agreement ID",
+      "copied": "Copied to clipboard",
+      "paste": "Paste",
+      "verify": "Verify Trade",
+      "imported": "Trade verified",
+      "import_success": "Trade imported and verified",
+      "fallback_explainer": "Couldn't build a deal code. Share this agreement ID instead — your buyer's node will need to be online to fetch the rest."
+    },
+    "technical": {
+      "title": "Technical Details",
+      "empty": "No data available.",
+      "copied": "Copied"
+    },
+    "errors": {
+      "generic": "Something went wrong — please try again.",
+      "node_offline": "Your Irium node is not running. Start it from the Dashboard, then try again.",
+      "network_timeout": "The request took too long. Check your connection and try again.",
+      "auth_failed": "Your node rejected the request. Check your RPC token in Settings.",
+      "insufficient_funds": "Not enough IRM in your wallet for this action.",
+      "coinbase_immature": "Some of your IRM came from recent mining and isn't spendable yet. Try again after a few more blocks.",
+      "double_spend": "Another pending transaction is using the same funds. Wait a moment, then try again.",
+      "already_settled": "This agreement is already settled. Refresh to see its current state.",
+      "refund_not_ready": "You can't claim a refund yet. Wait until the deadline passes.",
+      "release_not_ready": "Funds aren't ready to release yet. Wait for proof confirmation.",
+      "agreement_mismatch": "This deal code doesn't match the agreement on your node. Ask the other party to resend it.",
+      "expired": "This trade has already expired.",
+      "bad_secret": "The release key is wrong. Check that you have the right deal code.",
+      "bad_address": "That address doesn't look right. Double-check and try again.",
+      "bad_format": "The data couldn't be read. It may be corrupted or from a different app.",
+      "fs_blocked": "The app couldn't save the deal code locally. Check your disk permissions.",
+      "file_missing": "Couldn't find the saved deal code file.",
+      "pack_not_found": "We couldn't find this agreement on your node.",
+      "unpack_signature_invalid": "The deal code is signed wrong. Don't trust it — ask the other party to resend.",
+      "dispute_duplicate": "A dispute is already open for this agreement.",
+      "dispute_not_party": "Only the buyer or seller can raise a dispute on this trade."
+    },
+    "safe_trade": {
+      "step1_title": "Which side of the trade are you on?",
+      "step1_subtitle": "Pick the side that matches your role.",
+      "selling_button": "I'm selling IRM",
+      "selling_subtitle": "You're locking IRM in escrow and waiting for payment.",
+      "buying_button": "I'm buying IRM",
+      "buying_subtitle": "You're paying off-chain and receiving IRM.",
+      "status_title": "Status",
+      "status_initial": "Setting up — your funds are being locked.",
+      "status_waiting_verify": "Waiting for your buyer to verify the deal.",
+      "status_waiting_payment": "Buyer verified — waiting for their off-chain payment.",
+      "status_ready_release": "Payment confirmed. Releasing funds to your buyer now.",
+      "toast_funded": "Escrow funded.",
+      "toast_released": "Funds released to the other party.",
+      "toast_release_pending": "Payment recorded. Funds will release after the next few blocks confirm.",
+      "errors": {
+        "buyer_required": "Enter the buyer's Irium address.",
+        "amount_required": "Enter how much IRM you want to lock.",
+        "receiving_required": "Tell your buyer what you're expecting in return."
+      },
+      "review": {
+        "you_lock": "You are locking",
+        "buyer_sends": "Buyer will send",
+        "deadline": "Deadline",
+        "deadline_value": "If not paid in {{hours}} hours, your IRM returns automatically.",
+        "lock_funds": "Lock Funds",
+        "tx_note": "This will create a transaction on the Irium blockchain."
+      },
+      "share": {
+        "title": "Share this with your buyer",
+        "subtitle": "Send the code to your buyer. They'll use it to verify the trade before paying you off-chain."
+      },
+      "selling": {
+        "step2_title": "Set up your trade",
+        "step2_subtitle": "Tell us who your buyer is and how much you're locking.",
+        "step3_title": "Review your trade",
+        "step3_subtitle": "Double-check everything before locking funds.",
+        "step4_title": "Funds locked — share this with your buyer",
+        "step4_subtitle": "Send the deal code to your buyer. They'll use it to verify the trade before paying you.",
+        "buyer_address_label": "Buyer's Irium address",
+        "amount_label": "How much IRM are you locking?",
+        "amount_helper": "Held in escrow until you confirm you received payment.",
+        "receiving_label": "What are they sending you?",
+        "receiving_placeholder": "e.g. 200 USDT, bank transfer, cash",
+        "deadline_label": "How long should this trade stay open?",
+        "deadline_helper": "If they don't pay within this time, your IRM returns automatically.",
+        "release_button": "I received payment — Release funds to buyer"
+      },
+      "buying": {
+        "step2_title": "Paste the trade code from your seller",
+        "step2_subtitle": "Your seller sent you a code. Paste it below to verify the trade.",
+        "step3_title": "Verify these trade details",
+        "step3_subtitle": "Make sure the details match what you agreed off-chain.",
+        "step4_title": "Send your payment then wait",
+        "step4_subtitle": "Send the agreed payment to your seller. Your IRM will arrive automatically once they confirm.",
+        "review_intro": "This trade has been imported and verified on your node. The seller's IRM is locked in escrow — you'll receive it when you've sent off-chain payment and the seller confirms.",
+        "seller_locks": "Seller is locking",
+        "seller_label": "Seller",
+        "trade_id_label": "Trade ID",
+        "details_unavailable": "Couldn't fetch trade details from your node. You can still proceed, but verify the agreement ID matches what your seller sent you.",
+        "cancel_button": "Something's wrong — Cancel",
+        "confirm_button": "This looks right — I'll send payment",
+        "status_waiting": "Waiting for the seller to confirm payment received.",
+        "status_releasing": "Payment confirmed — IRM is on its way.",
+        "status_complete": "Complete — IRM has arrived in your wallet.",
+        "view_agreements": "View in Agreements"
+      }
+    },
+    "pay_for_work": {
+      "step1_title": "Single payment or by milestone?",
+      "step1_subtitle": "Choose how you'll pay.",
+      "single_button": "Single payment",
+      "single_subtitle": "Pay everything upfront when the work is done.",
+      "milestone_button": "By milestone",
+      "milestone_subtitle": "Pay in stages as each part is completed.",
+      "step2_title": "Set up the payment",
+      "step2_subtitle_single": "Tell us who you're paying and how much.",
+      "step2_subtitle_milestone": "Tell us the total, the number of stages, and what's expected.",
+      "step3_title": "Review",
+      "step3_subtitle": "Double-check before locking funds.",
+      "step4_title": "Funds locked",
+      "step4_subtitle": "Waiting for the work to be delivered.",
+      "contractor_label": "Who are you paying?",
+      "amount_label_single": "How much?",
+      "amount_label_milestone": "Total amount to lock",
+      "amount_helper_milestone": "Split equally across the milestones below.",
+      "count_label": "How many milestones?",
+      "per_milestone_preview": "Each milestone: {{amount}}",
+      "deadline_label": "Deadline",
+      "deadline_helper": "How long until the funds auto-refund if work isn't confirmed.",
+      "description_label": "Description (optional)",
+      "description_placeholder": "What is being delivered? (max 200 chars)",
+      "errors": {
+        "contractor_required": "Enter who you're paying.",
+        "amount_required": "Enter how much IRM you're locking.",
+        "count_range": "Between 2 and 10 milestones."
+      },
+      "review": {
+        "paying": "Paying",
+        "locking": "Locking",
+        "milestones": "Milestones",
+        "milestones_value": "{{count}} milestones · {{per}} each",
+        "deadline": "Deadline",
+        "deadline_value": "{{hours}} hours",
+        "scope": "Description",
+        "lock_funds": "Lock Funds",
+        "lock_all": "Lock All Funds"
+      },
+      "status_title": "Status",
+      "status_setting_up": "Setting up — funds are being locked.",
+      "status_pending": "Waiting for funding to confirm on-chain.",
+      "status_in_progress": "Funds locked. Waiting for work to be delivered.",
+      "status_can_refund": "Deadline reached. You can claim a refund.",
+      "status_complete": "Complete. Payment has been released.",
+      "mark_complete": "Mark as Complete — Release Payment",
+      "claim_refund": "Claim Refund",
+      "toast_released": "Payment released to the contractor.",
+      "toast_release_pending": "Completion recorded. Funds will release after the next few blocks confirm.",
+      "toast_refunded": "Refund claimed — funds are returning to your wallet."
+    },
+    "deposit": {
+      "step1_title": "Set up your deposit",
+      "step1_subtitle": "Lock IRM as a guarantee. Get it back automatically if conditions aren't met.",
+      "step2_title": "Review",
+      "step2_subtitle": "Double-check before locking the deposit.",
+      "step3_title": "Deposit locked",
+      "step3_subtitle": "Held in escrow until you release it, or until the deadline passes and you claim it back.",
+      "recipient_label": "Who receives it if conditions are met?",
+      "amount_label": "Deposit amount",
+      "purpose_label": "Purpose",
+      "purpose_placeholder": "e.g. Rental security deposit",
+      "purpose_helper": "A note for your records. Stored locally — the other party may not see this.",
+      "deadline_label": "Return deadline",
+      "deadline_helper": "If the recipient doesn't claim it by this deadline, you can claim it back.",
+      "preset_1m": "1 month",
+      "preset_3m": "3 months",
+      "errors": {
+        "recipient_required": "Enter the recipient's Irium address.",
+        "amount_required": "Enter how much IRM you're depositing."
+      },
+      "review": {
+        "recipient": "Recipient",
+        "amount": "Amount",
+        "purpose": "Purpose",
+        "deadline": "Return deadline",
+        "deadline_value": "{{hours}} hours from now",
+        "lock_deposit": "Lock Deposit"
+      },
+      "status_title": "Status",
+      "status_setting_up": "Setting up — your deposit is being locked.",
+      "status_locked": "Locked in escrow. Will release on your action, or auto-refund after the deadline.",
+      "status_can_claim_back": "Deadline reached. You can claim the deposit back.",
+      "status_released": "Released to the recipient.",
+      "status_refunded": "Refunded to your wallet.",
+      "release_button": "Release to recipient",
+      "claim_back_button": "Claim back",
+      "toast_released": "Deposit released to the recipient.",
+      "toast_refunded": "Deposit claimed back — funds are returning to your wallet."
+    },
+    "dispute": {
+      "step1_title": "What happened?",
+      "step1_subtitle": "Describe the problem in your own words. The other party will see this.",
+      "step2_title": "Dispute recorded",
+      "step2_subtitle": "Your dispute is now on the Irium blockchain.",
+      "about_agreement": "About this agreement",
+      "reason_label": "Describe the problem",
+      "reason_placeholder": "What went wrong? Be specific — the other party will read this.",
+      "evidence_label": "Add evidence (file)",
+      "evidence_coming_soon": "File attachments are coming in a future release.",
+      "submit_button": "Report a problem",
+      "confirm_title": "Your dispute has been recorded on-chain.",
+      "confirm_body": "The other party has been notified. Contact them directly to work out a resolution. If you can't reach an agreement, the next step is an off-app conversation — automated referee resolution is coming in a future release.",
+      "next_step_note": "While the dispute is open, neither side can release or refund the funds. Talk to your counterparty before anything else.",
+      "back_to_hub": "Back to Settlement",
+      "view_agreements": "View Agreements",
+      "toast_submitted": "Dispute recorded on-chain.",
+      "errors": {
+        "no_agreement": "No agreement selected. Open one from the hub and try again.",
+        "reason_required": "Please describe what went wrong."
+      }
     }
   },
   "marketplace": {

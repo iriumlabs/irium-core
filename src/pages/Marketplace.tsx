@@ -1,15 +1,45 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, RefreshCw, Search, Globe, X, Rss, Star, Download, Upload, Compass, HelpCircle, Trash2, AlertTriangle, Radio } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../lib/store';
-import { offers, feeds, feedOps } from '../lib/tauri';
+import { offers, feeds, feedOps, wallet } from '../lib/tauri';
 import { useIriumEvents } from '../lib/hooks';
 import NodeOfflineBanner from '../components/NodeOfflineBanner';
 import { formatIRM, timeAgo, truncateAddr, SATS_PER_IRM } from '../lib/types';
 import type { Offer, FeedEntry } from '../lib/types';
+
+// Map raw payment_method strings (which the seller types freely — e.g.
+// "bank-transfer", "PAYPAL", "usdt_trc20") into title-cased plain English
+// with known acronyms preserved. The offer's underlying string is kept
+// verbatim in the backend; this is purely a presentation helper.
+const PAYMENT_METHOD_ACRONYMS: Record<string, string> = {
+  paypal: 'PayPal', usdt: 'USDT', usdc: 'USDC', btc: 'BTC', eth: 'ETH',
+  sepa: 'SEPA', iban: 'IBAN', ach: 'ACH', trc20: 'TRC-20', erc20: 'ERC-20',
+  ltc: 'LTC', bch: 'BCH', xmr: 'XMR',
+};
+function prettifyPaymentMethod(raw: string): string {
+  if (!raw) return '';
+  const lower = raw.trim().toLowerCase();
+  if (PAYMENT_METHOD_ACRONYMS[lower]) return PAYMENT_METHOD_ACRONYMS[lower];
+  return lower
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((w) => PAYMENT_METHOD_ACRONYMS[w] ?? w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+// "Stale" offers: open for >7 days with no taker. Surfaces a REMOVE badge
+// so the user knows it's been sitting unused. Treated as advisory only —
+// the offer stays valid until explicitly deleted or expired.
+const STALE_OFFER_AGE_SECONDS = 7 * 24 * 60 * 60;
+function isStaleOffer(o: Offer): boolean {
+  if (!o.created_at) return false;
+  const ageS = Date.now() / 1000 - o.created_at;
+  return ageS > STALE_OFFER_AGE_SECONDS && (o.status === 'open' || !o.status);
+}
 
 // ─── Animation variants ────────────────────────────────────────
 const containerVariants = {
@@ -66,16 +96,37 @@ async function openSavePicker(opts: { defaultName: string; extensions: string[];
 }
 
 // ─── Offer Card ────────────────────────────────────────────────
-function OfferCard({ offer, onTake, onOpenDetail, onExport, onDelete, isOnline }: { offer: Offer; onTake: () => void; onOpenDetail: () => void; onExport?: () => void; onDelete?: () => void; isOnline: boolean }) {
+// Visible fields (in order of visual weight):
+//   1. Amount in IRM — large headline, gradient text
+//   2. Payment method (prettified plain English)
+//   3. asset_reference (what the seller wants in exchange) when present
+//   4. Seller address (12 chars) + time-ago
+//   5. Description if any, then optional reputation bar
+// Raw offer.id moves into a <details> "Technical details" disclosure at
+// the bottom — power-user info, not the headline.
+//
+// REMOVE is now an actual button (was a non-clickable <span> before).
+// Both REMOVE and the trash icon route to the same onDelete handler so
+// stale-offer cleanup works regardless of which control the user clicks.
+function OfferCard({
+  offer,
+  onTake,
+  onOpenDetail,
+  onExport,
+  onDelete,
+  isOwnOffer,
+  isOnline,
+}: {
+  offer: Offer;
+  onTake: () => void;
+  onOpenDetail: () => void;
+  onExport?: () => void;
+  onDelete?: () => void;
+  isOwnOffer: boolean;
+  isOnline: boolean;
+}) {
   const navigate = useNavigate();
   const score = offer.reputation?.score ?? 0;
-  // BUG 2 fix: only local offers can be deleted — remote offers (fetched
-  // from another seller's feed) have no local file under ~/.irium/offers/
-  // for the backend to remove. The wallet binary marks local offers with
-  // source = 'local' and remote ones with source = 'remote:<feed-url>'.
-  // When source is missing we conservatively treat the offer as local
-  // (covers older offer files written before this field was tracked).
-  const isLocalOffer = !offer.source || offer.source === 'local';
   const riskBadge =
     offer.risk_signal === 'low'
       ? 'badge-success'
@@ -83,60 +134,112 @@ function OfferCard({ offer, onTake, onOpenDetail, onExport, onDelete, isOnline }
       ? 'badge-warning'
       : 'badge-error';
 
+  const completedCount = offer.reputation?.completed ?? 0;
+  const showRepBar = completedCount > 0 && offer.reputation?.score !== undefined;
+  const showRankBadge = completedCount > 0 && offer.ranking_score !== undefined && offer.ranking_score > 0;
+
+  const stale = isStaleOffer(offer);
+  const prettyMethod = prettifyPaymentMethod(offer.payment_method ?? '');
+  const wantsLabel = (offer.asset_reference ?? '').trim();
+
+  // Whether to expose the destructive "remove" affordance on this card.
+  // Local-cache deletion works for ANY cached offer regardless of where
+  // it originated: the backend (offer_remove in main.rs:4148) iterates
+  // <data_dir>/offers/*.json by offer_id and deletes the matching file
+  // — remote-feed-fetched offers are stored exactly the same way as
+  // user-created ones. We only refuse 'taken' / 'completed', which the
+  // backend also rejects (main.rs:4183).
+  const canRemove =
+    !!onDelete && offer.status !== 'taken' && offer.status !== 'completed';
+
   return (
     <motion.div
       variants={itemVariants}
       onClick={onOpenDetail}
-      className="card-interactive flex items-center gap-4 px-4 py-3.5 cursor-pointer"
+      className="card-interactive flex items-start gap-4 px-4 py-3.5 cursor-pointer"
     >
-      {/* Left: id, seller, optional description — flexes to fill */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="font-mono text-[11px] text-white/55 truncate">{offer.id}</span>
-          {offer.payment_method && (
-            <span className="badge badge-info text-[9px]">{offer.payment_method}</span>
+      {/* Left: amount (large, prominent) + meta */}
+      <div className="flex-1 min-w-0 space-y-1.5">
+        {/* Amount as headline */}
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span
+            className="font-display font-bold text-2xl tabular-nums"
+            style={{
+              background: 'linear-gradient(90deg, #d4eeff 0%, #6ec6ff 55%, #a78bfa 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              letterSpacing: '0.01em',
+            }}
+          >
+            {formatIRM(offer.amount)}
+          </span>
+          {prettyMethod && (
+            <span className="text-sm text-white/65">· paid via {prettyMethod}</span>
           )}
           {offer.risk_signal && (
             <span
               className={`badge ${riskBadge} text-[9px]`}
               title={
                 offer.risk_signal === 'low'
-                  ? 'Low risk — seller has a clean recent record (no sybil suppression, no disputes ≥10%).'
+                  ? 'Low risk — seller has a clean recent record.'
                   : offer.risk_signal === 'medium'
-                  ? 'Medium risk — limited reputation history or some warning signals. Inspect the seller before trading.'
-                  : 'High risk — sybil-suppressed, self-trading, or disputes ≥10%. Trade with caution.'
+                  ? 'Medium risk — limited reputation history or warning signals.'
+                  : 'High risk — sybil-suppressed, self-trading, or disputes ≥10%.'
               }
             >
               {offer.risk_signal}
             </span>
           )}
-          {offer.ranking_score !== undefined && (
-            <span className="badge badge-irium text-[9px]">⭐ {offer.ranking_score}</span>
+          {showRankBadge && (
+            <span className="badge badge-irium text-[9px] flex items-center gap-0.5">
+              <Star size={9} /> {offer.ranking_score}
+            </span>
           )}
         </div>
-        {offer.seller && (
+
+        {/* What the seller wants in exchange — primary trade context.
+            Only render when asset_reference is actually populated; an
+            empty line here looks broken to a normal user. */}
+        {wantsLabel && (
+          <div className="text-xs text-white/65">
+            <span className="text-white/40">In exchange for:</span> <span className="text-white">{wantsLabel}</span>
+          </div>
+        )}
+
+        {/* Seller address (12 chars) + time-ago */}
+        {(offer.seller || offer.created_at) && (
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[10px] text-white/35">{truncateAddr(offer.seller, 8, 6)}</span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate('/reputation', { state: { prefillAddress: offer.seller } });
-              }}
-              className="text-[10px] text-irium-400 hover:text-irium-300 flex items-center gap-1 transition-colors"
-            >
-              <Star size={9} /> reputation
-            </button>
+            {offer.seller && (
+              <>
+                <span className="font-mono text-[10px] text-white/40">{truncateAddr(offer.seller, 5, 4)}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate('/reputation', { state: { prefillAddress: offer.seller } });
+                  }}
+                  className="text-[10px] text-irium-400 hover:text-irium-300 transition-colors"
+                >
+                  rep
+                </button>
+              </>
+            )}
             {offer.created_at && (
-              <span className="text-[10px] text-white/30">· {timeAgo(offer.created_at)}</span>
+              <span className="text-[10px] text-white/30">
+                {offer.seller ? '· ' : ''}{timeAgo(offer.created_at)}
+              </span>
             )}
           </div>
         )}
+
+        {/* Description — free-text price note or extra detail */}
         {offer.description && (
-          <div className="text-white/45 text-[11px] mt-1 line-clamp-1">{offer.description}</div>
+          <div className="text-white/55 text-xs line-clamp-2">{offer.description}</div>
         )}
-        {/* Reputation score bar */}
-        {offer.reputation?.score !== undefined && (
-          <div className="flex items-center gap-2 mt-1.5">
+
+        {/* Reputation bar — only when the seller actually has history */}
+        {showRepBar && (
+          <div className="flex items-center gap-2">
             <div className="h-1 flex-1 max-w-[140px] rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.40)' }}>
               <motion.div
                 className="h-full rounded-full"
@@ -146,107 +249,104 @@ function OfferCard({ offer, onTake, onOpenDetail, onExport, onDelete, isOnline }
                 transition={{ duration: 0.8, ease: 'easeOut' }}
               />
             </div>
-            <span className="text-[9px] text-white/35">{offer.reputation.completed ?? 0} completed</span>
+            <span className="text-[9px] text-white/35">{completedCount} completed</span>
           </div>
         )}
-      </div>
 
-      {/* Center: amount in brand-gradient */}
-      <div
-        className="font-display font-bold text-lg tabular-nums flex-shrink-0"
-        style={{
-          background: 'linear-gradient(90deg, #d4eeff 0%, #6ec6ff 55%, #a78bfa 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-          letterSpacing: '0.01em',
-        }}
-      >
-        {formatIRM(offer.amount)}
-      </div>
-
-      {/* Right: Export (My Offers only) + Delete (My Offers only) + Take Offer */}
-      {onExport && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onExport();
-          }}
-          title="Export this offer as JSON to share with a buyer"
-          className="btn-ghost text-xs p-1.5 flex-shrink-0 text-irium-400 hover:text-irium-300"
-        >
-          <Download size={13} />
-        </button>
-      )}
-      {/* Delete button has three mutually-exclusive states:
-            - local + open/no-status: active red Trash (deletable)
-            - local + taken: disabled Trash with tooltip explaining why
-              the offer can't be removed until the agreement settles
-            - remote: "remote" badge — the canonical record lives on the
-              seller's node and there's nothing local to remove. */}
-      {onDelete && isLocalOffer && (!offer.status || offer.status === 'open') && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          title="Delete this offer from your local store"
-          className="btn-ghost text-xs p-1.5 flex-shrink-0 text-red-400 hover:text-red-300"
-        >
-          <Trash2 size={13} />
-        </button>
-      )}
-      {onDelete && isLocalOffer && offer.status === 'taken' && (
-        <button
-          disabled
+        {/* Technical details — collapsed by default. Holds offer.id,
+            on-chain source, status, and timeout height. stopPropagation
+            on the outer details element so toggling the disclosure
+            doesn't also fire the card's onOpenDetail click. */}
+        <details
+          className="mt-1"
           onClick={(e) => e.stopPropagation()}
-          title="Cannot delete — offer has been taken. Resolve the agreement first."
-          className="btn-ghost text-xs p-1.5 flex-shrink-0 text-white/20 cursor-not-allowed"
         >
-          <Trash2 size={13} />
-        </button>
-      )}
-      {/* LAYER 2: expired offers (chain tip past timeout_height) get an
-          Expired badge AND an active delete button — no agreement to
-          resolve, safe to remove. */}
-      {onDelete && isLocalOffer && offer.status === 'expired' && (
-        <>
-          <span
-            className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-bold rounded"
+          <summary className="cursor-pointer text-[10px] text-white/25 hover:text-white/60 select-none">
+            Technical details
+          </summary>
+          <div className="mt-2 space-y-1 text-[10px] font-mono text-white/45">
+            <div><span className="text-white/30">ID:</span> {offer.id}</div>
+            {offer.source && <div><span className="text-white/30">Source:</span> {offer.source}</div>}
+            {offer.status && <div><span className="text-white/30">Status:</span> {offer.status}</div>}
+            {offer.timeout_height != null && (
+              <div><span className="text-white/30">Timeout height:</span> #{offer.timeout_height.toLocaleString('en-US')}</div>
+            )}
+          </div>
+        </details>
+      </div>
+
+      {/* Right: action stack — REMOVE button (when stale/expired and
+          deletable), EXPIRED badge, Export (My Offers), Trash (My Offers),
+          Take Offer (other-people's offers). */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Stale OR expired offer that the user can remove → clickable
+            REMOVE button. This used to be a non-clickable <span>; users
+            were clicking it expecting deletion and nothing happened. */}
+        {(stale || offer.status === 'expired') && canRemove && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete!(); }}
+            title={
+              offer.status === 'expired'
+                ? 'Delete this expired offer from your local store'
+                : 'Open for more than 7 days with no taker — remove it.'
+            }
+            className="inline-flex items-center px-2 py-1 text-[10px] font-bold rounded transition-colors cursor-pointer"
             style={{
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              color: 'rgba(255,255,255,0.55)',
+              background: offer.status === 'expired' ? 'rgba(255,255,255,0.06)' : 'rgba(245,158,11,0.12)',
+              border: offer.status === 'expired' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(245,158,11,0.45)',
+              color: offer.status === 'expired' ? 'rgba(255,255,255,0.75)' : '#fbbf24',
               letterSpacing: '0.08em',
             }}
           >
-            EXPIRED
-          </span>
+            {offer.status === 'expired' ? 'EXPIRED · REMOVE' : 'REMOVE'}
+          </button>
+        )}
+        {onExport && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onExport(); }}
+            title="Export this offer as JSON to share with a buyer"
+            className="btn-ghost text-xs p-1.5 text-irium-400 hover:text-irium-300"
+          >
+            <Download size={13} />
+          </button>
+        )}
+
+        {/* Standalone trash — for active offers (open or no status) that
+            don't already have the REMOVE button above. stale/expired
+            cases share the same onDelete handler via the REMOVE button.
+            Works for ANY source (local or remote-cached) — the backend
+            deletes by offer_id, source-agnostic. */}
+        {onDelete && (!offer.status || offer.status === 'open') && !stale && (
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            title="Delete this expired offer from your local store"
-            className="btn-ghost text-xs p-1.5 flex-shrink-0 text-red-400 hover:text-red-300"
+            title="Remove this offer from your local cache"
+            className="btn-ghost text-xs p-1.5 text-red-400 hover:text-red-300"
           >
             <Trash2 size={13} />
           </button>
-        </>
-      )}
-      {onDelete && !isLocalOffer && (
-        <span
-          title="This offer is from another seller and cannot be deleted from your local store."
-          className="text-[10px] text-white/25 flex-shrink-0 px-1"
-        >
-          remote
-        </span>
-      )}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onTake();
-        }}
-        disabled={!isOnline}
-        title={!isOnline ? 'Node must be online to take offers' : undefined}
-        className="btn-primary text-xs py-1.5 px-4 flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        Take Offer
-      </button>
+        )}
+        {onDelete && offer.status === 'taken' && (
+          <button
+            disabled
+            onClick={(e) => e.stopPropagation()}
+            title="Cannot delete — offer has been taken. Resolve the agreement first."
+            className="btn-ghost text-xs p-1.5 text-white/20 cursor-not-allowed"
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
+
+        {!isOwnOffer && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onTake(); }}
+            disabled={!isOnline}
+            title={!isOnline ? 'Node must be online to take offers' : undefined}
+            className="btn-primary text-xs py-1.5 px-4 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Take Offer
+          </button>
+        )}
+      </div>
     </motion.div>
   );
 }
@@ -731,6 +831,10 @@ export default function MarketplacePage() {
   const [activeTab, setActiveTab] = useState<Tab>('browse');
   const [offerList, setOfferList] = useState<Offer[]>([]);
   const [myOffers, setMyOffers] = useState<Offer[]>([]);
+  // ALL of the user's wallet addresses. Used to (a) hide own offers from
+  // the Browse list, (b) populate the My Offers list by address match,
+  // and (c) hide the Take Offer button on the user's own cards.
+  const [myAddresses, setMyAddresses] = useState<Set<string>>(new Set());
   const [feedList, setFeedList] = useState<FeedEntry[]>([]);
   const [loading, setLoading] = useState(true);
   // Tracks whether the next load is the *first* one for the current
@@ -763,6 +867,23 @@ export default function MarketplacePage() {
   const [filterMinIrm, setFilterMinIrm] = useState('');
   const [filterMaxIrm, setFilterMaxIrm] = useState('');
   const [filterPayment, setFilterPayment] = useState<string>('');
+
+  // Fetch the user's wallet addresses once — they rarely change mid-
+  // session and the My-Offers / Browse filters all key off this set.
+  // Normalize via trim() because the wallet binary sometimes serializes
+  // addresses with leading/trailing whitespace that the offer's seller
+  // field doesn't carry, which silently breaks the .has() filter.
+  useEffect(() => {
+    wallet.listAddresses()
+      .then((addrs) => {
+        const normalized = (addrs ?? [])
+          .map((a) => (a.address ?? '').trim())
+          .filter(Boolean);
+        const set = new Set(normalized);
+        setMyAddresses(set);
+      })
+      .catch(() => { /* empty set → filtering is a no-op until reload */ });
+  }, []);
 
   // ── Data loaders ─────────────────────────────────────────────
   // Race guard for loadOffers. Without this, the user-triggered tab-entry
@@ -824,8 +945,18 @@ export default function MarketplacePage() {
     // resolved in well under 100ms.
     const skeletonTimer = setTimeout(() => setLoading(true), 200);
     try {
-      const data = await offers.list({ source: 'local' });
-      setMyOffers(data);
+      // Load all-source then filter client-side to offers whose seller
+      // matches one of the user's wallet addresses. This is stricter
+      // than source: 'local' (which would also include offers imported
+      // from other sellers' JSON exports — those are "local files" but
+      // not "your offers"). Trim both sides so any stray whitespace in
+      // the offer's seller field doesn't silently drop the match.
+      const data = await offers.list({ source: 'all' });
+      const mine = (data ?? []).filter((o) => {
+        const s = (o.seller ?? '').trim();
+        return s.length > 0 && myAddresses.has(s);
+      });
+      setMyOffers(mine);
     } catch (e) {
       if (nodeStatus?.running) {
         toast.error(t('marketplace.toasts.failed_load_my', { reason: String(e) }));
@@ -856,7 +987,8 @@ export default function MarketplacePage() {
   // firing a redundant loadOffers() on mount, which caused 4 toast errors.
   // Browse-mode is debounced 400ms so per-keystroke min/max amount edits
   // don't fire an RPC per character; tab changes get the same 400ms but it
-  // is barely perceptible.
+  // is barely perceptible. myAddresses is in the deps so the My-Offers
+  // address-match filter applies as soon as wallet.listAddresses resolves.
   useEffect(() => {
     if (activeTab === 'browse') {
       const t = setTimeout(loadOffers, 400);
@@ -865,7 +997,7 @@ export default function MarketplacePage() {
     if (activeTab === 'my-offers') loadMyOffers();
     if (activeTab === 'feeds') loadFeeds();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, filterSource, filterSort, filterMinIrm, filterMaxIrm, filterPayment]);
+  }, [activeTab, filterSource, filterSort, filterMinIrm, filterMaxIrm, filterPayment, myAddresses]);
 
   // Phase 5: real-time refresh on offer.* events from the Rust WS bridge.
   // Polling stays as a fallback when the WS connection is down. Silent
@@ -1017,12 +1149,20 @@ export default function MarketplacePage() {
   };
 
   // ── Filtered offers ──────────────────────────────────────────
-  // Phase 8 — also match against the seller's full address so users can
-  // grep for a known counterparty. Existing matches (description /
-  // payment_method / id) are preserved.
-  const filteredOffers = offerList
-    .filter((o) => {
-      if (searchQuery) {
+  // Browse excludes the user's own offers — those belong in My Offers
+  // and you can't trade with yourself anyway. Compare via trim() so a
+  // legacy offer whose seller carries trailing whitespace still gets
+  // hidden. Then phase 8's search filter matches description /
+  // payment_method / id / seller. Sort applies last.
+  const filteredOffers = useMemo(() => {
+    return offerList
+      .filter((o) => {
+        const sellerTrim = (o.seller ?? '').trim();
+        if (sellerTrim && myAddresses.has(sellerTrim)) return false;
+        return true;
+      })
+      .filter((o) => {
+        if (!searchQuery) return true;
         const q = searchQuery.toLowerCase();
         return (
           o.description?.toLowerCase().includes(q) ||
@@ -1030,14 +1170,13 @@ export default function MarketplacePage() {
           o.id.toLowerCase().includes(q) ||
           (o.seller?.toLowerCase().includes(q) ?? false)
         );
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      if (filterSort === 'score') return (b.ranking_score ?? 0) - (a.ranking_score ?? 0);
-      if (filterSort === 'amount') return b.amount - a.amount;
-      return (b.created_at ?? 0) - (a.created_at ?? 0);
-    });
+      })
+      .sort((a, b) => {
+        if (filterSort === 'score') return (b.ranking_score ?? 0) - (a.ranking_score ?? 0);
+        if (filterSort === 'amount') return b.amount - a.amount;
+        return (b.created_at ?? 0) - (a.created_at ?? 0);
+      });
+  }, [offerList, myAddresses, searchQuery, filterSort]);
 
   // ── Render ───────────────────────────────────────────────────
   return (
@@ -1295,15 +1434,28 @@ export default function MarketplacePage() {
               animate="visible"
               className="space-y-2"
             >
-              {filteredOffers.map((offer) => (
-                <OfferCard
-                  key={offer.id}
-                  offer={offer}
-                  onTake={() => setShowTakeModal(offer)}
-                  onOpenDetail={() => setShowDetailModal(offer)}
-                  isOnline={!!nodeStatus?.running}
-                />
-              ))}
+              {filteredOffers.map((offer) => {
+                const sellerTrim = (offer.seller ?? '').trim();
+                const isOwn = sellerTrim.length > 0 && myAddresses.has(sellerTrim);
+                return (
+                  <OfferCard
+                    key={offer.id}
+                    offer={offer}
+                    onTake={() => setShowTakeModal(offer)}
+                    onOpenDetail={() => setShowDetailModal(offer)}
+                    onExport={isOwn ? () => handleExportOffer(offer.id) : undefined}
+                    // Browse: always allow local-cache removal. Backend
+                    // deletes by offer_id regardless of origin (source);
+                    // remote-fetched offers are still local files on
+                    // disk and behave the same as user-created ones.
+                    // Users need this to clean stale gossip clutter
+                    // (d1-gossip-*, phase-* test data, etc.).
+                    onDelete={() => setShowDeleteOfferModal(offer)}
+                    isOwnOffer={isOwn}
+                    isOnline={!!nodeStatus?.running}
+                  />
+                );
+              })}
             </motion.div>
           )}
 
@@ -1407,6 +1559,7 @@ export default function MarketplacePage() {
                   onOpenDetail={() => setShowDetailModal(offer)}
                   onExport={() => handleExportOffer(offer.id)}
                   onDelete={() => setShowDeleteOfferModal(offer)}
+                  isOwnOffer={true}
                   isOnline={!!nodeStatus?.running}
                 />
               ))}
@@ -1627,6 +1780,7 @@ export default function MarketplacePage() {
             setShowDetailModal(null);
             setShowTakeModal(o);
           }}
+          isOwnOffer={!!(showDetailModal.seller && myAddresses.has(showDetailModal.seller))}
           isOnline={!!nodeStatus?.running}
         />
       )}
@@ -1692,11 +1846,13 @@ function OfferDetailModal({
   offer,
   onClose,
   onTake,
+  isOwnOffer,
   isOnline,
 }: {
   offer: Offer;
   onClose: () => void;
   onTake: () => void;
+  isOwnOffer: boolean;
   isOnline: boolean;
 }) {
   const navigate = useNavigate();
@@ -1887,17 +2043,21 @@ function OfferDetailModal({
           )}
 
           <div className="flex gap-3">
-            <button onClick={onClose} className="btn-secondary flex-1 justify-center">
+            <button onClick={onClose} className={isOwnOffer ? 'btn-primary flex-1 justify-center' : 'btn-secondary flex-1 justify-center'}>
               Close
             </button>
-            <button
-              onClick={onTake}
-              disabled={!isOnline}
-              title={!isOnline ? 'Node must be online to take offers' : undefined}
-              className="btn-primary flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Take Offer
-            </button>
+            {/* Take Offer is hidden on the user's own offers — they
+                can't trade with themselves. */}
+            {!isOwnOffer && (
+              <button
+                onClick={onTake}
+                disabled={!isOnline}
+                title={!isOnline ? 'Node must be online to take offers' : undefined}
+                className="btn-primary flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Take Offer
+              </button>
+            )}
           </div>
         </motion.div>
       </motion.div>

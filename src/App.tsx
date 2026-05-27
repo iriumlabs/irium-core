@@ -18,7 +18,12 @@ import NetworkBackground from './components/layout/NetworkBackground';
 import GlobalAgreementNotifier from './components/GlobalAgreementNotifier';
 const Dashboard    = lazy(() => import('./pages/Dashboard'));
 const Wallet       = lazy(() => import('./pages/Wallet'));
-const Settlement   = lazy(() => import('./pages/Settlement'));
+const SettlementHub    = lazy(() => import('./pages/settlement-ui/SettlementHub'));
+const SettlementLegacy = lazy(() => import('./pages/Settlement'));
+const SafeTradeFlow    = lazy(() => import('./pages/settlement-ui/SafeTradeFlow'));
+const PayForWorkFlow   = lazy(() => import('./pages/settlement-ui/PayForWorkFlow'));
+const DepositFlow      = lazy(() => import('./pages/settlement-ui/DepositFlow'));
+const DisputeFlow      = lazy(() => import('./pages/settlement-ui/DisputeFlow'));
 const Marketplace  = lazy(() => import('./pages/Marketplace'));
 const Agreements   = lazy(() => import('./pages/Agreements'));
 const Reputation   = lazy(() => import('./pages/Reputation'));
@@ -344,7 +349,12 @@ function AppLayout() {
                     The page lazy imports above are intentionally kept
                     so re-enabling is a one-line swap of <Navigate>
                     back to the original element. */}
-                <Route path="/settlement"     element={<Settlement />} />
+                <Route path="/settlement"            element={<SettlementHub />}    />
+                <Route path="/settlement-legacy"     element={<SettlementLegacy />} />
+                <Route path="/settlement/safe-trade"   element={<SafeTradeFlow />}    />
+                <Route path="/settlement/pay-for-work" element={<PayForWorkFlow />}   />
+                <Route path="/settlement/deposit"              element={<DepositFlow />}      />
+                <Route path="/settlement/dispute/:agreementId" element={<DisputeFlow />}      />
                 <Route path="/marketplace"    element={<Marketplace />} />
                 <Route path="/agreements"     element={<Agreements />} />
                 <Route path="/agreements/:id" element={<Agreements />} />

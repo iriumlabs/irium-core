@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen, FileJson, AlertCircle, Copy, FileText, Receipt, PenLine, ShieldCheck, Gavel, CheckCircle2, XCircle, HelpCircle, Trash2 } from 'lucide-react';
@@ -6,7 +6,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetch as tauriFetch, Body, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
-import { agreements, proofs, agreementSpend, disputes, invoices, agreementStore } from '../lib/tauri';
+import { agreements, proofs, agreementSpend, disputes, invoices, agreementStore, wallet } from '../lib/tauri';
+import StatusBadge from '../components/settlement-ui/StatusBadge';
+import { derivePlainStatus } from '../components/settlement-ui/PlainStatus';
 import { useIriumEvents } from '../lib/hooks';
 import NodeOfflineBanner from '../components/NodeOfflineBanner';
 import {
@@ -90,6 +92,20 @@ export default function AgreementsPage() {
   const selectedAddress = addresses[activeAddrIdx]?.address ?? '';
   const [pageView, setPageView] = useState<PageView>('agreements');
   const [filter, setFilter] = useState<StatusFilter>('all');
+  // Fix 3: My / All scope. Defaults to 'my' so the user lands on a
+  // filtered view containing only agreements they are a party to.
+  // 'all' is the power-user view (everything the local node knows) and
+  // is where the Clean up old test data button lives.
+  const [scope, setScope] = useState<'my' | 'all'>('my');
+  // User wallet addresses, fetched via wallet.listAddresses(). Used to
+  // identify agreements the user is a party to. Falls back to the
+  // single selectedAddress from the store when fetch hasn't returned
+  // yet.
+  const [myAddresses, setMyAddresses] = useState<Set<string>>(() => new Set(selectedAddress ? [selectedAddress] : []));
+  // Cleanup-modal state — list of agreement ids the user has chosen
+  // to remove via the Clean up old test data flow. Null = modal closed.
+  const [cleanupCandidates, setCleanupCandidates] = useState<string[] | null>(null);
+  const [cleanupRunning, setCleanupRunning] = useState(false);
   // Phase 8 — client-side search input. Matches against id, buyer,
   // seller, and the user-defined label. Empty string = no filter.
   const [searchQuery, setSearchQuery] = useState('');
@@ -163,6 +179,17 @@ export default function AgreementsPage() {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  // Fix 3: pull all wallet addresses so we can answer "is the user a
+  // party to this agreement" for the My / All scope filter and the
+  // AgreementRow other-party calculation. Fires once on mount; we
+  // accept stale data for the rest of the session (the addresses
+  // list rarely changes mid-session).
+  useEffect(() => {
+    wallet.listAddresses()
+      .then((addrs) => setMyAddresses(new Set((addrs ?? []).map((a) => a.address))))
+      .catch(() => { /* keep the selectedAddress-only fallback set above */ });
   }, []);
 
   // H-14 fix: refresh when the tab regains visibility so a user returning
@@ -283,6 +310,15 @@ export default function AgreementsPage() {
   };
 
   const filteredAgreements = agreementList.filter((a) => {
+    // Fix 3 — My / All scope. Default 'my' hides agreements where the
+    // local user isn't a party. 'all' is the power-user view.
+    if (scope === 'my') {
+      const userIsParty = !!(
+        (a.buyer && myAddresses.has(a.buyer)) ||
+        (a.seller && myAddresses.has(a.seller))
+      );
+      if (!userIsParty) return false;
+    }
     if (filter !== 'all' && a.status !== filter) return false;
     const q = searchQuery.trim().toLowerCase();
     if (!q) return true;
@@ -294,6 +330,56 @@ export default function AgreementsPage() {
       label.includes(q)
     );
   });
+
+  // Pre-fetch per-agreement status for every row in the current view.
+  // This drives the real lifecycle-state badge (Fix 3) without waiting
+  // for the user to expand a card. Skips agreements whose status we've
+  // already cached. Concurrency is implicit but capped by the browser's
+  // HTTP/2 multiplexing window since each call hits the same iriumd.
+  useEffect(() => {
+    const todo = filteredAgreements
+      .map((a) => a.id)
+      .filter((id) => statusByAgreement[id] === undefined);
+    if (todo.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      for (const id of todo) {
+        if (cancelled) return;
+        try {
+          const s = await agreementSpend.status(id);
+          if (cancelled) return;
+          if (s) setStatusByAgreement((prev) => ({ ...prev, [id]: s }));
+        } catch { /* per-row failure is non-fatal — fall back to list-shape status */ }
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredAgreements.length, scope, filter]);
+
+  // Fix 3 — Clean up old test data. Match agreement ids containing
+  // any of the four user-supplied substrings. Case-insensitive. Used
+  // by the All-tab cleanup button to populate the candidate list.
+  const findCleanupCandidates = useCallback((): string[] => {
+    const pattern = /test|gossip|demo|pr/i;
+    return agreementList.filter((a) => pattern.test(a.id)).map((a) => a.id);
+  }, [agreementList]);
+
+  const handleRunCleanup = async () => {
+    if (!cleanupCandidates) return;
+    setCleanupRunning(true);
+    try {
+      let ok = 0;
+      let fail = 0;
+      for (const id of cleanupCandidates) {
+        try { await agreements.remove(id); ok++; } catch { fail++; }
+      }
+      toast.success(`Removed ${ok} agreement${ok === 1 ? '' : 's'}${fail > 0 ? ` (${fail} failed)` : ''}`);
+      setCleanupCandidates(null);
+      await loadData();
+    } finally {
+      setCleanupRunning(false);
+    }
+  };
 
   return (
     <motion.div
@@ -365,6 +451,38 @@ export default function AgreementsPage() {
 
       {pageView === 'agreements' && (
       <>
+      {/* Fix 3 — My / All scope toggle. Default 'my' so the page lands
+          on the user-relevant subset. 'all' is the power-user view and
+          exposes the "Clean up old test data" affordance. */}
+      <div className="flex items-center gap-3 mb-3 flex-wrap">
+        <div className="flex items-center gap-1 rounded-lg bg-white/[0.04] p-1">
+          {(['my', 'all'] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setScope(s)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                scope === s ? 'bg-irium-500/30 text-irium-300' : 'text-white/50 hover:text-white'
+              }`}
+            >
+              {s === 'my' ? 'My Agreements' : 'All'}
+            </button>
+          ))}
+        </div>
+        {scope === 'all' && (() => {
+          const matches = findCleanupCandidates();
+          if (matches.length === 0) return null;
+          return (
+            <button
+              onClick={() => setCleanupCandidates(matches)}
+              className="ml-auto text-xs text-white/45 hover:text-rose-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="Remove agreements with IDs containing test / gossip / demo / pr from your local store"
+            >
+              <Trash2 size={11} /> Clean up old test data ({matches.length})
+            </button>
+          );
+        })()}
+      </div>
+
       {/* Phase 8 — agreement search. Filters the already-loaded list by
           id, buyer/seller address, or user-defined label. Client-side
           only — no RPC. */}
@@ -643,6 +761,64 @@ export default function AgreementsPage() {
                   onClick={() => handleDeleteAgreement(deleteAgreementId)}
                 >
                   Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Fix 3 — Clean up old test data confirmation modal. Lists every
+          matching agreement id so the user can sanity-check before the
+          bulk delete fires. Cancel is a no-op; Confirm removes each id
+          via agreement.remove() then reloads the list. */}
+      <AnimatePresence>
+        {cleanupCandidates !== null && (
+          <motion.div
+            key="cleanup-overlay"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.7)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="card w-full max-w-md p-6"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+            >
+              <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
+                <Trash2 size={16} className="text-rose-400" /> Clean up old test data
+              </h2>
+              <p className="text-sm text-white/60 mb-2">
+                Found {cleanupCandidates.length} agreement{cleanupCandidates.length === 1 ? '' : 's'} with an id containing <span className="font-mono text-white/80">test</span>, <span className="font-mono text-white/80">gossip</span>, <span className="font-mono text-white/80">demo</span>, or <span className="font-mono text-white/80">pr</span>.
+              </p>
+              <p className="text-xs text-white/40 mb-3">
+                This removes them from your local store only. The counterparty's copy is not affected. Active on-chain HTLCs are not touched — funds still need to be released or refunded separately.
+              </p>
+              {cleanupCandidates.length > 0 && (
+                <div className="max-h-48 overflow-y-auto rounded-lg bg-white/[0.03] border border-white/8 p-2 mb-4 space-y-1">
+                  {cleanupCandidates.map((id) => (
+                    <div key={id} className="font-mono text-[10px] text-white/55 break-all">{id}</div>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-3 justify-end">
+                <button
+                  className="btn-ghost text-sm py-1.5 px-4"
+                  onClick={() => setCleanupCandidates(null)}
+                  disabled={cleanupRunning}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn-primary text-sm py-1.5 px-4 bg-rose-600 hover:bg-rose-500 flex items-center gap-1.5"
+                  onClick={handleRunCleanup}
+                  disabled={cleanupRunning || cleanupCandidates.length === 0}
+                >
+                  {cleanupRunning ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                  Remove {cleanupCandidates.length}
                 </button>
               </div>
             </motion.div>
@@ -951,7 +1127,19 @@ function AgreementCard({
             <span className="font-mono text-xs text-white/60">
               {a.id.slice(0, 14)}
             </span>
-            <span className={`badge ${statusColor(a.status)}`}>{a.status}</span>
+            {/* Fix 3 — derive the displayed status from the live RPC
+                fetch (statusInfo) when available, falling back to the
+                list-response shape. PlainStatus maps "unknown" lifecycle
+                states to a clearer "Status unknown" / "Checking…" label
+                so the badge never shows the literal string "unknown". */}
+            <StatusBadge
+              status={derivePlainStatus({
+                agreementStatus: statusInfo?.status ?? a.status,
+                releaseEligible: statusInfo?.release_eligible ?? a.release_eligible,
+                refundEligible: statusInfo?.refund_eligible,
+              })}
+              size="sm"
+            />
             {a.template && (
               <span className="badge badge-irium">{a.template}</span>
             )}
@@ -968,11 +1156,11 @@ function AgreementCard({
           {/* Buyer → Seller flow */}
           <div className="flex items-center gap-2 text-xs text-white/40">
             <span className="font-mono">
-              {a.buyer ? truncateAddr(a.buyer, 6, 4) : '—'}
+              {a.buyer ? truncateAddr(a.buyer, 5, 4) : '—'}
             </span>
             <span className="text-white/20">→</span>
             <span className="font-mono">
-              {a.seller ? truncateAddr(a.seller, 6, 4) : '—'}
+              {a.seller ? truncateAddr(a.seller, 5, 4) : '—'}
             </span>
             <span className="mx-1 text-white/20">·</span>
             <span className="font-display font-semibold text-white/70">
@@ -1755,6 +1943,37 @@ function ReleaseModal({ agreement, onClose, onSuccess, isOnline }: ReleaseModalP
   const { t } = useTranslation();
   const [releasing, setReleasing] = useState(false);
   const [secret, setSecret] = useState('');
+  // True when `secret` came from the local agreement_secrets store via
+  // get_agreement_secret, false once the user edits the field. Drives the
+  // "Auto-loaded from local store" indicator below the input.
+  const [autoLoaded, setAutoLoaded] = useState(false);
+
+  // Auto-fetch the HTLC preimage for Hub-created agreements. The Rust
+  // command resolves to <data_dir>/agreement_secrets/<id>.hex, which only
+  // exists for agreements the GUI created itself; for peer-created ones
+  // the call rejects and the field stays empty so the user can paste.
+  useEffect(() => {
+    let cancelled = false;
+    agreements
+      .getSecret(agreement.id)
+      .then((preimage) => {
+        if (cancelled) return;
+        const trimmed = preimage.trim();
+        if (trimmed && /^[0-9a-fA-F]{64}$/.test(trimmed)) {
+          setSecret(trimmed);
+          setAutoLoaded(true);
+        }
+      })
+      .catch(() => {
+        // Expected for agreements created by a peer — no persisted preimage.
+      });
+    return () => { cancelled = true; };
+  }, [agreement.id]);
+
+  const handleSecretChange = (value: string) => {
+    setSecret(value);
+    if (autoLoaded) setAutoLoaded(false);
+  };
 
   // Validate the HTLC preimage. Empty is allowed (the wallet binary will try
   // to auto-derive a secret it owns) — non-empty must be a 64-char hex string.
@@ -1830,12 +2049,16 @@ function ReleaseModal({ agreement, onClose, onSuccess, isOnline }: ReleaseModalP
             className={`input font-mono text-xs ${secretError ? 'border-red-500/50' : ''}`}
             placeholder={t('agreements.placeholders.secret_preimage')}
             value={secret}
-            onChange={(e) => setSecret(e.target.value)}
+            onChange={(e) => handleSecretChange(e.target.value)}
             autoComplete="off"
             spellCheck={false}
           />
           {secretError ? (
             <p className="text-xs text-red-400 mt-1">{secretError}</p>
+          ) : autoLoaded ? (
+            <p className="text-xs text-emerald-400/80 mt-1 flex items-center gap-1">
+              <CheckCircle2 size={11} /> Auto-loaded from local agreement-secrets store
+            </p>
           ) : (
             <p className="text-xs text-white/40 mt-1">
               Required if you did not create this agreement yourself. Leave blank if your wallet auto-derives it.

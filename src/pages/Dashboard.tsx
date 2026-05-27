@@ -308,14 +308,33 @@ const itemVariants = {
 
 function useCountUp(target: number, duration = 1200, active = true): number {
   const [count, setCount] = useState(0);
+  // Track the value we most recently settled on so subsequent target
+  // updates animate from there rather than from 0. The previous version
+  // hard-coded `start = 0`, which made every poll tick (block-height
+  // refresh, peer count refresh, balance refresh) jump the displayed
+  // value back to 0 and ramp up again over 1200ms — producing a stale
+  // mid-animation reading that didn't match the raw source (e.g. block
+  // height card showing 16320 while the sync bar showed 17486). Using a
+  // ref keeps the dep array stable at [target, active] so this effect
+  // doesn't re-run on every render.
+  const lastValueRef = useRef(0);
   useEffect(() => {
-    if (!active || target === 0) { setCount(target); return; }
-    let start = 0;
-    const step = target / (duration / 16);
+    if (!active) return;
+    const start = lastValueRef.current;
+    if (start === target) { setCount(target); return; }
+    if (target === 0) { setCount(0); lastValueRef.current = 0; return; }
+    const totalFrames = Math.max(1, Math.round(duration / 16));
+    const delta = target - start;
+    let frameNum = 0;
     const timer = setInterval(() => {
-      start += step;
-      if (start >= target) { setCount(target); clearInterval(timer); }
-      else setCount(Math.floor(start));
+      frameNum++;
+      if (frameNum >= totalFrames) {
+        setCount(target);
+        lastValueRef.current = target;
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(start + (delta * frameNum) / totalFrames));
+      }
     }, 16);
     return () => clearInterval(timer);
   }, [target, active]);
@@ -782,8 +801,14 @@ export default function Dashboard() {
                 </button>
               </div>
             </motion.div>
-          ) : nodeStatus.running && nodeStatus.network_tip > 0 && (nodeStatus.network_tip - nodeStatus.height) > 50 ? (
-            /* ── Has peers but stuck behind chain tip ─────────── */
+          ) : nodeStatus.running && nodeStatus.network_tip > 0 && (nodeStatus.network_tip - nodeStatus.height) > 500 ? (
+            /* ── Has peers but stuck >500 blocks behind chain tip ─────────
+               At ~60 blocks/hour (see project memory), 500 blocks ≈ 8 hours
+               of missed catch-up. The previous threshold of 50 fired after
+               ~50 minutes — far too eager for normal sync after a brief
+               disconnect, and the banner copy ("chain state may be
+               corrupted") panicked users into clicking Clear & Restart on
+               nodes that just needed time to catch up. */
             <motion.div
               key="stuck-banner"
               initial={{ opacity: 0, height: 0 }}
