@@ -234,11 +234,63 @@ jobs:
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           releaseName: ${{ github.ref_type == 'tag' && format('Irium Core {0}', github.ref_name) || '' }}
           releaseBody: |
-            feat: GPU miner intensity slider wired to batch size
-            feat: GPU temperature and power display on Linux
-            feat: estimated block time on CPU and GPU dashboards
-            fix: GPU miner intensity persists across navigation
-            fix: NSIS installer Irium branding
+            Build in progress — release notes will be updated automatically.
           releaseDraft: false
           prerelease: false
           args: --target ${{ matrix.target }}
+
+  # ── Publish-release: consolidates the matrix into one final state ─────
+  # tauri-action@v0 creates each release as a draft and tries to unset
+  # the draft flag at the end of each matrix job's upload. When matrix
+  # jobs race or any one fails between create-release and set-draft-false,
+  # the release can be left stuck as a draft.
+  #
+  # This job runs once, ONLY after every matrix build succeeded
+  # (needs: build-tauri), and authoritatively does two things:
+  #   1. Regenerates the release body from the git log between the
+  #      previous tag and this one — every release gets accurate notes
+  #      reflecting what actually changed, not the static placeholder
+  #      tauri-action seeded.
+  #   2. Sets draft=false to publish the release.
+  #
+  # gh release edit is idempotent — setting draft=false on an already
+  # published release is a no-op, and overwriting notes with the same
+  # content is harmless. So even if tauri-action's own end-of-job patch
+  # already ran for one or more platforms, this job is the final source
+  # of truth.
+  publish-release:
+    name: Publish release (consolidate draft, regenerate notes)
+    needs: build-tauri
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout (full history for git describe)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Regenerate notes from commits and unset draft
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Find the most recent tag that is an ancestor of the parent
+          # of the current tag's commit. Falls back to empty string when
+          # this is the very first tag in the repo's history.
+          PREV_TAG=$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            NOTES=$(git log "${PREV_TAG}..${{ github.ref_name }}" --pretty=format:'- %s' --no-merges)
+            HEADER="**Changes since ${PREV_TAG}:**"
+          else
+            NOTES="- Initial release."
+            HEADER="**Changes:**"
+          fi
+          BODY=$(printf '%s\n\n%s\n' "$HEADER" "$NOTES")
+          # Single PATCH that overwrites the body AND clears the draft
+          # flag. Both side effects land atomically from the API's
+          # perspective so users never see a half-finalized release.
+          gh release edit "${{ github.ref_name }}" \
+            --draft=false \
+            --notes "$BODY" \
+            --repo "${{ github.repository }}"
