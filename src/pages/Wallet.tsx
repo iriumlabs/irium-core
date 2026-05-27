@@ -139,10 +139,21 @@ export default function WalletPage() {
     try {
       const addrs = await wallet.listAddresses();
       if (addrs) setAddresses(addrs);
-    } catch {
+    } catch (e) {
+      // Surface the actual backend error (e.g. "irium-wallet sidecar not
+      // found: …", "Wallet command failed: …") in BOTH the dev console
+      // and the toast. The previous handler discarded `e` entirely,
+      // which meant a generic "Failed to load wallet addresses" toast
+      // was the only signal — no path to actually diagnose what
+      // broke. console.error first so a screen-shot or "open
+      // DevTools" instruction always has the raw error available.
+      // eslint-disable-next-line no-console
+      console.error('[Wallet] wallet.listAddresses failed:', e);
       // Only surface errors when the node is supposed to be running —
       // offline wallets are a valid mode.
-      if (nodeStatusRef.current?.running) toast.error(t('wallet.toasts.failed_load_addresses'));
+      if (nodeStatusRef.current?.running) {
+        toast.error(`${t('wallet.toasts.failed_load_addresses')}: ${String(e)}`);
+      }
     } finally {
       hasLoadedOnceRef.current = true;
       setLoadingAddresses(false);

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -616,6 +616,74 @@ function shortAddr(a: string): string {
 // on mount and on each Refresh click. Stats change slowly enough that
 // background polling would be wasteful and risk hammering the proxy.
 
+// Per-miner row returned by pool.iriumlabs.org:3337/miners. Matches the
+// shape produced by /opt/irium-pool/stats-proxy.py: workers are keyed by
+// Stratum worker name (<address>.<rig>), profile distinguishes ASIC vs
+// CPU/GPU, hashrate_15m and last_share_ago_seconds may be null while the
+// rolling window warms up (< 2 min of samples).
+interface MinerRow {
+  worker: string;
+  profile: 'asic' | 'cpu_gpu';
+  accepted: number;
+  rejected: number;
+  reject_rate_pct: number | null;
+  hashrate_15m: number | null;
+  last_share_ago_seconds: number | null;
+}
+
+interface MinersResponse {
+  total_miners: number;
+  miners: MinerRow[];
+}
+
+// Hashrate formatter that tolerates null and 0 — the existing inline
+// formatHashrate inside PoolStatsSection is typed `(hps: number)` and is
+// only called from a code path that already null-checked. Per-miner rows
+// can carry null (warmup) or 0 (no shares yet) so we need a separate fn.
+const formatMinerHashrate = (hps: number | null | undefined): string => {
+  if (hps == null) return '—';
+  if (hps === 0) return '0 H/s';
+  if (hps >= 1e12) return `${(hps / 1e12).toFixed(2)} TH/s`;
+  if (hps >= 1e9)  return `${(hps / 1e9).toFixed(2)} GH/s`;
+  if (hps >= 1e6)  return `${(hps / 1e6).toFixed(2)} MH/s`;
+  if (hps >= 1e3)  return `${(hps / 1e3).toFixed(2)} KH/s`;
+  return `${Math.round(hps)} H/s`;
+};
+
+// Plain-English elapsed-time formatter for the per-miner table. The existing
+// timeAgo() from ../lib/types takes a unix timestamp; the proxy returns a
+// delta in seconds, so we wrap it with a different unit and pick natural
+// English phrasing (single vs plural, "just now" for very recent).
+const formatAgoPlainEnglish = (secs: number | null | undefined): string => {
+  if (secs == null) return '—';
+  if (secs < 5) return 'just now';
+  if (secs < 60) {
+    const s = Math.floor(secs);
+    return `${s} second${s === 1 ? '' : 's'} ago`;
+  }
+  if (secs < 3600) {
+    const m = Math.floor(secs / 60);
+    return `${m} minute${m === 1 ? '' : 's'} ago`;
+  }
+  if (secs < 86400) {
+    const h = Math.floor(secs / 3600);
+    return `${h} hour${h === 1 ? '' : 's'} ago`;
+  }
+  const d = Math.floor(secs / 86400);
+  return `${d} day${d === 1 ? '' : 's'} ago`;
+};
+
+// Truncate a stratum worker name to 12 visible characters using the
+// "head…tail" pattern (5 head + 1 ellipsis + 6 tail = 12). The full
+// worker name is preserved in the `title` attribute on the rendering site
+// for hover-to-see-full-name.
+const truncateMinerWorker = (w: string, n: number = 12): string => {
+  if (w.length <= n) return w;
+  const headLen = 5;
+  const tailLen = Math.max(1, n - headLen - 1);
+  return `${w.slice(0, headLen)}…${w.slice(-tailLen)}`;
+};
+
 function PoolStatsTile({
   label, value, sub, accent,
 }: {
@@ -647,28 +715,83 @@ function PoolStatsTile({
 function PoolStatsSection() {
   const { t } = useTranslation();
   const [stats, setStats] = useState<PoolStats | null>(null);
+  // Per-miner rows from pool.iriumlabs.org:3337/miners. Fetched in parallel
+  // with /stats via Promise.all so a slow upstream on one endpoint doesn't
+  // serialize the other. Null until the first successful fetch; empty
+  // array on a fetch that succeeded but returned zero workers.
+  const [miners, setMiners] = useState<MinerRow[]>([]);
+  // User's wallet addresses — used to highlight rows for workers the user
+  // owns (worker name "<address>.<rig>"). Once on mount; wallet addition
+  // mid-session is rare and the next refresh picks it up if needed.
+  const [myAddresses, setMyAddresses] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string>('');
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
-  const fetchStats = useCallback(async () => {
-    setLoading(true);
+  // Parallel fetch of both endpoints. /stats goes via the Tauri command
+  // (which is cached 30s on the Rust side); /miners is a direct browser
+  // fetch since no Tauri wrapper exists and the CSP already permits the
+  // host. Network failures on /miners alone don't escalate to the
+  // section's err state — the aggregate tiles stay valid even if the
+  // per-miner table is temporarily empty.
+  const fetchStats = useCallback(async (silent: boolean = false) => {
+    if (!silent) setLoading(true);
     setErr('');
     try {
-      const result = await rpc.poolStats();
-      if (!result) throw new Error('empty response');
-      setStats(result);
+      const [statsResult, minersResp] = await Promise.all([
+        rpc.poolStats(),
+        fetch('http://pool.iriumlabs.org:3337/miners')
+          .then((r) => (r.ok ? (r.json() as Promise<MinersResponse>) : null))
+          .catch(() => null),
+      ]);
+      if (!statsResult) throw new Error('empty response');
+      setStats(statsResult);
+      if (minersResp) setMiners(minersResp.miners ?? []);
       setLastUpdated(Math.floor(Date.now() / 1000));
     } catch (e) {
-      setErr(String(e));
+      if (!silent) setErr(String(e));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
+  // Initial fetch + 30-second background refresh. Silent on the polled
+  // refreshes so the loading skeleton only appears on the first paint and
+  // on user-initiated Refresh clicks.
   useEffect(() => {
-    fetchStats();
+    fetchStats(false);
+    const id = setInterval(() => fetchStats(true), 30_000);
+    return () => clearInterval(id);
   }, [fetchStats]);
+
+  // Wallet addresses for the "yours" highlight. Tolerates a wallet that's
+  // not yet initialised — empty set just means no rows highlighted.
+  useEffect(() => {
+    let cancelled = false;
+    wallet.listAddresses().then((list) => {
+      if (cancelled) return;
+      setMyAddresses(
+        new Set((list ?? []).map((a) => (a.address ?? '').trim()).filter(Boolean)),
+      );
+    }).catch(() => { /* empty set → no rows highlighted, harmless */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Sort: wallet-owned workers first (pinned to top), then by 15-min
+  // hashrate desc, then by accepted-share count desc. Tie-breakers
+  // matter — a healthy miner with zero recent hashrate (just connected)
+  // shouldn't be ordered ahead of one that's been producing all day.
+  const sortedMiners = useMemo(() => {
+    return [...miners].sort((a, b) => {
+      const aMine = myAddresses.has((a.worker.split('.')[0] ?? '').trim());
+      const bMine = myAddresses.has((b.worker.split('.')[0] ?? '').trim());
+      if (aMine !== bMine) return aMine ? -1 : 1;
+      const aHr = a.hashrate_15m ?? 0;
+      const bHr = b.hashrate_15m ?? 0;
+      if (aHr !== bHr) return bHr - aHr;
+      return b.accepted - a.accepted;
+    });
+  }, [miners, myAddresses]);
 
   const integrityLabel = (raw: string) =>
     raw === 'healthy' ? t('explorer.pool_stats.integrity_healthy')
@@ -714,7 +837,7 @@ function PoolStatsSection() {
           )}
         </div>
         <button
-          onClick={fetchStats}
+          onClick={() => fetchStats(false)}
           disabled={loading}
           className="btn-secondary text-xs gap-2 flex-shrink-0"
         >
@@ -858,6 +981,116 @@ function PoolStatsSection() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Per-miner table — fetched from pool.iriumlabs.org:3337/miners
+              alongside /stats (parallel Promise.all, 30 s polling). Rows
+              are pre-sorted: wallet-owned workers pinned to top, then by
+              15-min hashrate desc, then by accepted-share count desc. */}
+          <div
+            className="p-4"
+            style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.13)', borderRadius: 8 }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#d4eeff', fontFamily: '"Space Grotesk", sans-serif' }}>
+                  Active Miners
+                </span>
+                <span className="font-mono" style={{ fontSize: 11, color: 'rgba(110,198,255,0.55)' }}>
+                  {sortedMiners.length} {sortedMiners.length === 1 ? 'worker' : 'workers'}
+                </span>
+              </div>
+              {myAddresses.size > 0 && sortedMiners.some((m) => myAddresses.has((m.worker.split('.')[0] ?? '').trim())) && (
+                <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.45)' }}>
+                  Your miners pinned to top
+                </span>
+              )}
+            </div>
+            {sortedMiners.length === 0 ? (
+              <div className="py-6 text-center" style={{ fontSize: 12, color: 'rgba(255,255,255,0.40)' }}>
+                No active miners reporting.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full" style={{ fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ color: 'rgba(255,255,255,0.40)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: '"Space Grotesk", sans-serif' }}>
+                      <th className="text-left py-2 pr-3 font-semibold">Worker</th>
+                      <th className="text-right py-2 px-3 font-semibold">Accepted</th>
+                      <th className="text-right py-2 px-3 font-semibold">Rejected</th>
+                      <th className="text-right py-2 px-3 font-semibold">Reject %</th>
+                      <th className="text-right py-2 px-3 font-semibold">Hashrate (15m)</th>
+                      <th className="text-right py-2 pl-3 font-semibold">Last Share</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedMiners.map((m, idx) => {
+                      const addressPart = (m.worker.split('.')[0] ?? '').trim();
+                      const isMine = addressPart.length > 0 && myAddresses.has(addressPart);
+                      // Color by reject rate: < 10% green, 10-30% amber,
+                      // > 30% red. Null (not enough samples) → dim grey.
+                      const rejectColor =
+                        m.reject_rate_pct == null ? 'rgba(255,255,255,0.40)'
+                        : m.reject_rate_pct < 10 ? '#34d399'
+                        : m.reject_rate_pct < 30 ? '#fbbf24'
+                        : '#f87171';
+                      return (
+                        <tr
+                          key={`${m.worker}-${m.profile}-${idx}`}
+                          style={{
+                            borderTop: '1px solid rgba(255,255,255,0.04)',
+                            ...(isMine ? {
+                              background: 'rgba(110,198,255,0.07)',
+                              boxShadow: 'inset 3px 0 0 0 rgba(110,198,255,0.55)',
+                            } : {}),
+                          }}
+                        >
+                          <td className="py-2 pr-3" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
+                            <span title={m.worker}>{truncateMinerWorker(m.worker, 12)}</span>
+                            {isMine && (
+                              <span
+                                className="ml-2"
+                                style={{
+                                  display: 'inline-block',
+                                  padding: '1px 6px',
+                                  borderRadius: 3,
+                                  background: 'rgba(110,198,255,0.18)',
+                                  border: '1px solid rgba(110,198,255,0.40)',
+                                  color: '#6ec6ff',
+                                  fontSize: 9,
+                                  fontWeight: 700,
+                                  letterSpacing: '0.04em',
+                                  textTransform: 'uppercase',
+                                  fontFamily: '"Space Grotesk", sans-serif',
+                                  verticalAlign: 'middle',
+                                }}
+                              >
+                                yours
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono" style={{ color: '#34d399' }}>
+                            {m.accepted.toLocaleString('en-US')}
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono" style={{ color: m.rejected > 0 ? '#fda4af' : 'rgba(255,255,255,0.30)' }}>
+                            {m.rejected.toLocaleString('en-US')}
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono" style={{ color: rejectColor }}>
+                            {m.reject_rate_pct == null ? '—' : `${m.reject_rate_pct.toFixed(1)}%`}
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono" style={{ color: 'rgba(255,255,255,0.80)' }}>
+                            {formatMinerHashrate(m.hashrate_15m)}
+                          </td>
+                          <td className="py-2 pl-3 text-right" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                            {formatAgoPlainEnglish(m.last_share_ago_seconds)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </>
       )}
