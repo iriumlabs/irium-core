@@ -2278,6 +2278,86 @@ async fn clear_node_state(state: State<'_, AppState>) -> Result<bool, String> {
     Ok(true)
 }
 
+// Result struct for reset_node_state_keep_blocks. Reported back to the
+// frontend so the Settings UI can show the user the path to the backup
+// (and the state_existed flag lets the modal display "no state to back
+// up" gracefully for fresh installs).
+#[derive(serde::Serialize)]
+struct ResetNodeStateResult {
+    success: bool,
+    backup_path: String,
+    state_existed: bool,
+}
+
+// reset_node_state_keep_blocks: lighter alternative to clear_node_state.
+// Kills the local iriumd sidecar, renames ~/.irium/state/ to
+// ~/.irium/state.bak-<unix_ms>/, and re-creates a fresh state dir via
+// setup_data_dir_inner. PRESERVES ~/.irium/blocks/ so iriumd rebuilds
+// the in-memory UTXO set from local block files on next start (~5-15
+// min) instead of resyncing from the network (~hours).
+//
+// Use this when a user reports transaction-verification failures or
+// other UTXO-state corruption symptoms. clear_node_state remains the
+// nuclear option for full-resync scenarios (suspected block corruption).
+//
+// rename() is atomic on a single filesystem - which ~/.irium/state and
+// ~/.irium/state.bak-* always are (same parent dir). No cross-device
+// fallback needed.
+#[tauri::command]
+async fn reset_node_state_keep_blocks(state: State<'_, AppState>) -> Result<ResetNodeStateResult, String> {
+    // Kill the node first (same pattern as clear_node_state).
+    {
+        let mut proc_lock = state.node_process.lock().map_err(lock_err)?;
+        if let Some(child) = proc_lock.take() {
+            let _ = child.kill();
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let _ = silent_command("taskkill")
+            .args(["/F", "/T", "/IM", "iriumd-x86_64-pc-windows-msvc.exe"])
+            .output();
+        let _ = silent_command("taskkill")
+            .args(["/F", "/T", "/IM", "iriumd.exe"])
+            .output();
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = silent_command("pkill").args(["-9", "-f", "iriumd"]).output();
+    }
+
+    // Give the process a moment to exit before touching files.
+    std::thread::sleep(std::time::Duration::from_millis(1500));
+
+    let home_dir = dirs::home_dir()
+        .ok_or_else(|| "Cannot determine home directory".to_string())?;
+    let irium_dir = home_dir.join(".irium");
+    let state_dir = irium_dir.join("state");
+
+    // Millisecond-precision suffix avoids collision on rapid double-click.
+    let unix_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| format!("Cannot read system time: {}", e))?
+        .as_millis();
+    let backup_path = irium_dir.join(format!("state.bak-{}", unix_ms));
+
+    let state_existed = state_dir.exists();
+    if state_existed {
+        std::fs::rename(&state_dir, &backup_path)
+            .map_err(|e| format!("Failed to rename state dir to {}: {}", backup_path.display(), e))?;
+    }
+
+    // Recreate fresh state/ with seed files so iriumd has its bootstrap
+    // peers and trust anchors ready on next start.
+    let _ = setup_data_dir_inner().await;
+
+    Ok(ResetNodeStateResult {
+        success: true,
+        backup_path: backup_path.display().to_string(),
+        state_existed,
+    })
+}
+
 // ─── Quarantined-blocks recovery ──────────────────────────────────────────────
 // iriumd quarantines block files it cannot validate by renaming them into
 // `<blocks>/orphaned_<unix_ts>/` (see iriumd::quarantine_single_block_file at
@@ -8599,6 +8679,7 @@ fn main() {
             get_node_metrics,
             setup_data_dir,
             clear_node_state,
+            reset_node_state_keep_blocks,
             scan_quarantined_blocks,
             clear_quarantined_blocks,
             save_discovered_peers,

@@ -9,7 +9,7 @@ import type {
   OtcParams, FreelanceParams, MilestoneParams, DepositParams,
   MerchantDelayedParams, ContractorMilestoneParams,
   PeerInfo, MempoolInfo, DiagnosticsResult, UpdateCheckResult,
-  NodeUpdateCheckResult, NodeUpdatePullResult,
+  NodeUpdateCheckResult, NodeUpdatePullResult, ResetNodeStateResult,
   WalletCreateResult, WalletFileInfo, WalletInfo,
   MultisigCreateResult, MultisigSpendResult,
   Invoice, InvoiceImportResult,
@@ -50,6 +50,16 @@ export const node = {
 
   clearState: () =>
     safeInvoke<boolean>('clear_node_state'),
+
+  // Lighter alternative to clearState. Renames ~/.irium/state/ to a
+  // timestamped backup and recreates a fresh state dir, but preserves
+  // ~/.irium/blocks/ so iriumd rebuilds the UTXO set from local blocks
+  // on next start (~5-15 min) instead of a full network resync (~hours).
+  // Backend kills the node before touching files; caller should restart
+  // iriumd after the call resolves. Use when a user reports tx-signature
+  // failures or other UTXO-state corruption.
+  resetStateKeepBlocks: () =>
+    safeInvoke<ResetNodeStateResult>('reset_node_state_keep_blocks'),
 
   // Walks <data_dir>/blocks/ for orphaned_<ts>/ subdirs (created by iriumd
   // when a block fails validation) and counts the files inside. Returns
@@ -281,6 +291,21 @@ export const agreements = {
 
   refund: (agreementId: string, broadcast?: boolean) =>
     safeInvoke<ReleaseResult>('agreement_refund', { agreementId, broadcast }),
+
+  // Hub-created agreements persist a random HTLC preimage at
+  // <data_dir>/agreement_secrets/<agreement_id>.hex when the GUI is the
+  // agreement creator. This fetches it so the Release UI can pre-fill
+  // the secret field instead of asking the user to paste 64 hex chars.
+  // Errors when the file is absent (e.g. agreement created by a peer).
+  getSecret: (agreementId: string) =>
+    safeInvoke<string>('get_agreement_secret', { agreementId }),
+
+  // Per-milestone preimage for milestone/contractor templates. Index is
+  // 0-based and matches the on-chain milestone order assigned by the
+  // settlement_create_milestone / settlement_create_contractor handlers.
+  // Errors when absent (peer-created agreement, or index out of range).
+  getMilestoneSecret: (agreementId: string, index: number) =>
+    safeInvoke<string>('get_milestone_secret', { agreementId, index }),
 
   remove: (agreementId: string) =>
     safeInvoke<boolean>('agreement_remove', { agreementId }),
