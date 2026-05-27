@@ -535,6 +535,12 @@ export default function Dashboard() {
   const [txLoadError, setTxLoadError] = useState(false);
   const [lastTip, setLastTip] = useState<string>('');
   const [tickerGlow, setTickerGlow] = useState(false);
+  // Inline confirmation gate for the destructive "Full Wipe & Resync"
+  // path on the sync-stalled banner. Component-local (not Zustand)
+  // because the confirm-row lifecycle is purely UI: it should hide the
+  // moment the user clicks Confirm or Cancel, not when the eventual
+  // catch-up unmounts the banner.
+  const [showFullWipeConfirm, setShowFullWipeConfirm] = useState(false);
 
   const statsRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(statsRef, { once: true });
@@ -862,7 +868,7 @@ export default function Dashboard() {
               className="overflow-hidden"
             >
               <div
-                className="relative flex items-center gap-3 rounded-xl px-5 py-4 overflow-hidden"
+                className="relative rounded-xl overflow-hidden"
                 style={{
                   background: 'rgba(8,11,22,0.94)',
                   border: '1px solid rgba(245,158,11,0.45)',
@@ -873,7 +879,7 @@ export default function Dashboard() {
                   className="absolute inset-0 pointer-events-none"
                   style={{ background: 'radial-gradient(ellipse 60% 100% at 0% 0%, rgba(245,158,11,0.16) 0%, transparent 70%)' }}
                 />
-                <div className="relative flex items-center gap-3 flex-1">
+                <div className="relative flex items-center gap-3 px-5 py-4">
                   <div
                     className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.40)' }}
@@ -887,31 +893,123 @@ export default function Dashboard() {
                     <p className="text-xs mt-0.5" style={{ color: 'rgba(238,240,255,0.55)' }}>
                       {t('dashboard.banners.sync_stalled_subtitle', { height: nodeStatus.height.toLocaleString('en-US'), tip: nodeStatus.network_tip.toLocaleString('en-US') })}
                     </p>
+                    <p className="text-[11px] mt-1" style={{ color: 'rgba(238,240,255,0.42)' }}>
+                      {t('dashboard.banners.quick_vs_full_hint')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* Primary — Quick Reset (UTXO rebuild from local blocks, ~5-15 min). */}
+                    <button
+                      onClick={handleResetStateKeepBlocks}
+                      disabled={operation === 'clearing'}
+                      title={t('dashboard.banners.reset_keep_blocks_tooltip')}
+                      className="relative inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-display font-semibold transition-all active:scale-[0.97] disabled:opacity-50"
+                      style={{
+                        background: 'rgba(245,158,11,0.16)',
+                        border: '1px solid rgba(245,158,11,0.55)',
+                        color: '#fff',
+                        boxShadow: '0 0 16px rgba(245,158,11,0.18)',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (operation === 'clearing') return;
+                        e.currentTarget.style.background  = 'rgba(245,158,11,0.24)';
+                        e.currentTarget.style.borderColor = 'rgba(245,158,11,0.75)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background  = 'rgba(245,158,11,0.16)';
+                        e.currentTarget.style.borderColor = 'rgba(245,158,11,0.55)';
+                      }}
+                    >
+                      <RefreshCw size={12} className={operation === 'clearing' ? 'animate-spin' : ''} /> {t('dashboard.banners.reset_keep_blocks_label')}
+                    </button>
+                    {/* Secondary — Full Wipe (destructive: deletes blocks/, forces network resync).
+                        Smaller, red outline. Opens the inline confirm row instead of firing
+                        immediately so the user has a chance to cancel. Disabled while the
+                        confirm row is already open to prevent double-trigger. */}
+                    <button
+                      onClick={() => setShowFullWipeConfirm(true)}
+                      disabled={operation === 'clearing' || showFullWipeConfirm}
+                      className="inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-display font-semibold transition-colors disabled:opacity-50"
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid rgba(239,68,68,0.42)',
+                        color: 'rgba(252,165,165,0.88)',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (operation === 'clearing' || showFullWipeConfirm) return;
+                        e.currentTarget.style.background  = 'rgba(239,68,68,0.12)';
+                        e.currentTarget.style.borderColor = 'rgba(239,68,68,0.62)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background  = 'transparent';
+                        e.currentTarget.style.borderColor = 'rgba(239,68,68,0.42)';
+                      }}
+                    >
+                      {t('dashboard.banners.full_wipe_label')}
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={handleResetStateKeepBlocks}
-                  disabled={operation === 'clearing'}
-                  title={t('dashboard.banners.reset_keep_blocks_tooltip')}
-                  className="relative flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-display font-semibold transition-all active:scale-[0.97] disabled:opacity-50"
-                  style={{
-                    background: 'rgba(245,158,11,0.16)',
-                    border: '1px solid rgba(245,158,11,0.55)',
-                    color: '#fff',
-                    boxShadow: '0 0 16px rgba(245,158,11,0.18)',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (operation === 'clearing') return;
-                    e.currentTarget.style.background  = 'rgba(245,158,11,0.24)';
-                    e.currentTarget.style.borderColor = 'rgba(245,158,11,0.75)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background  = 'rgba(245,158,11,0.16)';
-                    e.currentTarget.style.borderColor = 'rgba(245,158,11,0.55)';
-                  }}
-                >
-                  <RefreshCw size={12} className={operation === 'clearing' ? 'animate-spin' : ''} /> {t('dashboard.banners.reset_keep_blocks_label')}
-                </button>
+                {/* Inline confirmation strip — only rendered when the user has
+                    clicked Full Wipe. Visually subordinate (lighter tint, smaller
+                    padding) and separated by a top border. Confirm fires the
+                    existing handleReconnect (clearState + restart). Cancel just
+                    hides this row. Both controls share the operation-disabled
+                    gate so they can't double-fire mid-clear. */}
+                {showFullWipeConfirm && (
+                  <div
+                    className="relative flex items-center gap-3 px-5 py-3"
+                    style={{
+                      borderTop: '1px solid rgba(239,68,68,0.28)',
+                      background: 'rgba(239,68,68,0.06)',
+                    }}
+                  >
+                    <span className="text-xs flex-1" style={{ color: 'rgba(252,165,165,0.92)' }}>
+                      {t('dashboard.banners.full_wipe_confirm_text')}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setShowFullWipeConfirm(false);
+                        handleReconnect();
+                      }}
+                      disabled={operation === 'clearing'}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-display font-semibold transition-colors disabled:opacity-50"
+                      style={{
+                        background: 'rgba(239,68,68,0.18)',
+                        border: '1px solid rgba(239,68,68,0.55)',
+                        color: '#fff',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (operation === 'clearing') return;
+                        e.currentTarget.style.background  = 'rgba(239,68,68,0.28)';
+                        e.currentTarget.style.borderColor = 'rgba(239,68,68,0.78)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background  = 'rgba(239,68,68,0.18)';
+                        e.currentTarget.style.borderColor = 'rgba(239,68,68,0.55)';
+                      }}
+                    >
+                      {t('dashboard.banners.full_wipe_confirm_button')}
+                    </button>
+                    <button
+                      onClick={() => setShowFullWipeConfirm(false)}
+                      className="inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-display font-semibold transition-colors text-white/65 hover:text-white/90"
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid rgba(255,255,255,0.16)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background  = 'rgba(255,255,255,0.06)';
+                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.28)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background  = 'transparent';
+                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.16)';
+                      }}
+                    >
+                      {t('dashboard.banners.full_wipe_cancel_button')}
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
           ) : heightLastChanged !== null && (Date.now() - heightLastChanged) > 30 * 60 * 1000 && (nodeStatus?.peers ?? 0) > 0 && Date.now() > heightWarnDismissedUntil ? (
