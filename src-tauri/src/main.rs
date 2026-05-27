@@ -688,18 +688,41 @@ async fn run_wallet_cmd(
         }
     }
 
-    let cmd = Command::new_sidecar("irium-wallet")
-        .map_err(|e| format!("irium-wallet sidecar not found: {}. Place binary in src-tauri/binaries/", e))?
-        .envs(env_vars)
-        .args(&args);
+    // Retry on the specific ENOENT race ("os error 2"). The wallet binary
+    // walks ~/.irium for the wallet file plus a couple of adjacent state
+    // files (peers.json etc) and during a Clear & Restart there's a brief
+    // window where state/ is being recreated by iriumd. Concurrent
+    // list-addresses calls (page switches, polling) can hit transient
+    // ENOENT even though the wallet itself is fine — the next call a few
+    // seconds later succeeds. 3 retries × 2 s gives the init window
+    // enough time to settle without making a genuine "wallet missing"
+    // failure too slow for the user. Only the literal "os error 2"
+    // substring triggers retry; all other failures (bad args, RPC down,
+    // corrupted wallet) propagate immediately so the real error surfaces.
+    const MAX_ATTEMPTS: u32 = 4;
+    const RETRY_DELAY_MS: u64 = 2000;
+    let mut last_stderr = String::new();
+    for attempt in 1..=MAX_ATTEMPTS {
+        let cmd = Command::new_sidecar("irium-wallet")
+            .map_err(|e| format!("irium-wallet sidecar not found: {}. Place binary in src-tauri/binaries/", e))?
+            .envs(env_vars.clone())
+            .args(&args);
 
-    let output = cmd.output().map_err(|e| format!("Failed to run wallet command: {}", e))?;
+        let output = cmd.output().map_err(|e| format!("Failed to run wallet command: {}", e))?;
 
-    if output.status.success() {
-        Ok(output.stdout)
-    } else {
-        Err(format!("Wallet command failed: {}", output.stderr.trim()))
+        if output.status.success() {
+            return Ok(output.stdout);
+        }
+
+        last_stderr = output.stderr.trim().to_string();
+        if attempt < MAX_ATTEMPTS && last_stderr.contains("os error 2") {
+            tokio::time::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS)).await;
+            continue;
+        }
+        break;
     }
+
+    Err(format!("Wallet command failed: {}", last_stderr))
 }
 
 async fn run_wallet_cmd_with_rpc(

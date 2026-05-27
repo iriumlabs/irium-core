@@ -9,6 +9,7 @@ import {
   Wallet, ArrowRightLeft, Trophy, Medal, Award, Server, UserCircle2, Lock,
   Calculator,
 } from 'lucide-react';
+import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
 import { rpc, wallet } from '../lib/tauri';
 import { timeAgo, formatIRM, SATS_PER_IRM } from '../lib/types';
@@ -729,20 +730,41 @@ function PoolStatsSection() {
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
   // Parallel fetch of both endpoints. /stats goes via the Tauri command
-  // (which is cached 30s on the Rust side); /miners is a direct browser
-  // fetch since no Tauri wrapper exists and the CSP already permits the
-  // host. Network failures on /miners alone don't escalate to the
-  // section's err state — the aggregate tiles stay valid even if the
-  // per-miner table is temporarily empty.
+  // (which is cached 30s on the Rust side); /miners goes via tauriFetch
+  // (Rust-side reqwest) — NOT browser fetch. The renderer is served from
+  // a tauri:// origin and Chromium blocks plain http:// targets as mixed
+  // content regardless of the CSP connect-src directive, so the old
+  // browser-fetch path failed silently with a swallowed catch and the
+  // per-miner table never populated. tauriFetch bypasses the browser
+  // policy by routing the request through the Rust process; the URL is
+  // already in `http.scope` in tauri.conf.json so the request is
+  // permitted by Tauri's own allowlist. Errors are now logged via
+  // console.error so any future regression is diagnosable from DevTools
+  // instead of vanishing into a silent .catch.
   const fetchStats = useCallback(async (silent: boolean = false) => {
     if (!silent) setLoading(true);
     setErr('');
     try {
       const [statsResult, minersResp] = await Promise.all([
         rpc.poolStats(),
-        fetch('http://pool.iriumlabs.org:3337/miners')
-          .then((r) => (r.ok ? (r.json() as Promise<MinersResponse>) : null))
-          .catch(() => null),
+        tauriFetch<MinersResponse>('http://pool.iriumlabs.org:3337/miners', {
+          method: 'GET',
+          responseType: ResponseType.JSON,
+          timeout: 10,
+        })
+          .then((r) => {
+            if (!r.ok) {
+              // eslint-disable-next-line no-console
+              console.warn('[Explorer] /miners non-ok status:', r.status, r.data);
+              return null;
+            }
+            return r.data;
+          })
+          .catch((e) => {
+            // eslint-disable-next-line no-console
+            console.error('[Explorer] /miners fetch failed:', e);
+            return null;
+          }),
       ]);
       if (!statsResult) throw new Error('empty response');
       setStats(statsResult);
