@@ -35,6 +35,15 @@ function prettifyPaymentMethod(raw: string): string {
 // so the user knows it's been sitting unused. Treated as advisory only —
 // the offer stays valid until explicitly deleted or expired.
 const STALE_OFFER_AGE_SECONDS = 7 * 24 * 60 * 60;
+
+// Client-side "never show again" list for offers the user has Removed.
+// Persisted in localStorage so removing an offer survives both a page
+// reload and a feeds.sync() re-import from a remote feed. Without this,
+// the 60-second Browse-tab auto-sync (and every Browse-tab entry) would
+// silently re-download removed offers from any configured remote feed
+// that still publishes them and the offer would reappear in the UI.
+// Stored as a JSON array of string IDs.
+const BLOCKED_OFFERS_KEY = 'irium-marketplace-blocked-offer-ids';
 function isStaleOffer(o: Offer): boolean {
   if (!o.created_at) return false;
   const ageS = Date.now() / 1000 - o.created_at;
@@ -835,6 +844,41 @@ export default function MarketplacePage() {
   // the Browse list, (b) populate the My Offers list by address match,
   // and (c) hide the Take Offer button on the user's own cards.
   const [myAddresses, setMyAddresses] = useState<Set<string>>(new Set());
+  // Client-side blocklist of offer IDs the user has Removed. Lazy
+  // initializer reads the persisted set from localStorage so the
+  // blocklist survives reload. A useEffect below writes back on every
+  // change. blockOfferId is the one place that mutates the set — it's
+  // called from handleDeleteOffer BEFORE the backend offers.remove() so
+  // even if the backend rejects (offer taken, file already gone, etc.)
+  // the offer stays hidden in the UI.
+  const [blockedOfferIds, setBlockedOfferIds] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(BLOCKED_OFFERS_KEY);
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr)
+        ? new Set(arr.filter((x): x is string => typeof x === 'string'))
+        : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(BLOCKED_OFFERS_KEY, JSON.stringify(Array.from(blockedOfferIds)));
+    } catch {
+      // localStorage may be unavailable (private mode) or full — non-fatal,
+      // the in-memory set still works for the current session.
+    }
+  }, [blockedOfferIds]);
+  const blockOfferId = (id: string) => {
+    setBlockedOfferIds((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  };
   const [feedList, setFeedList] = useState<FeedEntry[]>([]);
   const [loading, setLoading] = useState(true);
   // Tracks whether the next load is the *first* one for the current
@@ -953,6 +997,9 @@ export default function MarketplacePage() {
       // the offer's seller field doesn't silently drop the match.
       const data = await offers.list({ source: 'all' });
       const mine = (data ?? []).filter((o) => {
+        // Blocklist drop — own offer the user Removed should not reappear
+        // even if backend delete propagation lagged or a feed re-imported.
+        if (blockedOfferIds.has(o.id)) return false;
         const s = (o.seller ?? '').trim();
         return s.length > 0 && myAddresses.has(s);
       });
@@ -1108,6 +1155,11 @@ export default function MarketplacePage() {
   };
 
   const handleDeleteOffer = async (offer: Offer) => {
+    // Block in the UI first — persists to localStorage and survives a
+    // feeds.sync() re-import. Even if the backend offers.remove() below
+    // fails (offer already taken, file already gone, etc.) the offer
+    // stays hidden in the UI for this session and across reloads.
+    blockOfferId(offer.id);
     try {
       await offers.remove(offer.id);
       toast.success(t('marketplace.toasts.offer_deleted'));
@@ -1156,6 +1208,10 @@ export default function MarketplacePage() {
   // payment_method / id / seller. Sort applies last.
   const filteredOffers = useMemo(() => {
     return offerList
+      // Client-side blocklist — always wins regardless of source. An
+      // offer the user Removed stays hidden even if the next feeds.sync()
+      // re-imported it from a remote feed.
+      .filter((o) => !blockedOfferIds.has(o.id))
       .filter((o) => {
         const sellerTrim = (o.seller ?? '').trim();
         if (sellerTrim && myAddresses.has(sellerTrim)) return false;
@@ -1176,7 +1232,7 @@ export default function MarketplacePage() {
         if (filterSort === 'amount') return b.amount - a.amount;
         return (b.created_at ?? 0) - (a.created_at ?? 0);
       });
-  }, [offerList, myAddresses, searchQuery, filterSort]);
+  }, [offerList, myAddresses, blockedOfferIds, searchQuery, filterSort]);
 
   // ── Render ───────────────────────────────────────────────────
   return (
