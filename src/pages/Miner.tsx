@@ -6,7 +6,7 @@ import {
   Monitor, Wifi, WifiOff, Activity, Zap, AlertCircle, CheckCircle2, History,
   ChevronDown, Server, Hash, Clock, Target,
   Thermometer, Fan, Gauge, Copy, ExternalLink, Timer,
-  Coins, X,
+  Coins, X, BarChart3,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
@@ -2045,6 +2045,7 @@ type TabKey = typeof TABS[number]['key'];
 
 export default function Miner() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabKey>('cpu');
 
   // TASK 3: backend emits "miner-exited-unexpectedly" whenever the miner
@@ -2197,30 +2198,62 @@ export default function Miner() {
         <p className="page-subtitle">{t('miner.page_subtitle')}</p>
       </div>
 
-      {/* Tabs */}
-      <div
-        className="flex gap-1 p-1 rounded-xl"
-        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', width: 'fit-content' }}
-      >
-        {TABS.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setActiveTab(key)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-display font-semibold transition-all duration-200"
-            style={activeTab === key ? {
-              background: 'linear-gradient(135deg, rgba(110,198,255,0.25) 0%, rgba(59,130,246,0.15) 100%)',
-              border: '1px solid rgba(110,198,255,0.35)',
-              color: '#A78BFA',
-              boxShadow: '0 2px 8px rgba(110,198,255,0.15)',
-            } : {
-              color: 'rgba(238,240,255,0.40)',
-              border: '1px solid transparent',
-            }}
-          >
-            <Icon size={14} />
-            {label}
-          </button>
-        ))}
+      {/* Tabs + View Pool Stats deep-link.
+          The Mining page focuses on local mining controls; pool-wide
+          stats (network hashrate, worker leaderboard, etc.) live in the
+          Block Explorer's existing Pool Stats tab. This small secondary
+          button is the shortcut. Explorer reads `pageTab` from
+          location.state via a lazy useState initializer and pre-selects
+          its Pool Stats tab on arrival. No data is fetched here. */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div
+          className="flex gap-1 p-1 rounded-xl"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', width: 'fit-content' }}
+        >
+          {TABS.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-display font-semibold transition-all duration-200"
+              style={activeTab === key ? {
+                background: 'linear-gradient(135deg, rgba(110,198,255,0.25) 0%, rgba(59,130,246,0.15) 100%)',
+                border: '1px solid rgba(110,198,255,0.35)',
+                color: '#A78BFA',
+                boxShadow: '0 2px 8px rgba(110,198,255,0.15)',
+              } : {
+                color: 'rgba(238,240,255,0.40)',
+                border: '1px solid transparent',
+              }}
+            >
+              <Icon size={14} />
+              {label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => navigate('/explorer', { state: { pageTab: 'pool_stats' } })}
+          title="Open the public pool's live miner stats in the Block Explorer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-display font-semibold transition-colors"
+          style={{
+            color: 'rgba(238,240,255,0.65)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            background: 'rgba(255,255,255,0.03)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = '#A78BFA';
+            e.currentTarget.style.background = 'rgba(167,139,250,0.10)';
+            e.currentTarget.style.borderColor = 'rgba(167,139,250,0.30)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'rgba(238,240,255,0.65)';
+            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)';
+          }}
+        >
+          <BarChart3 size={12} />
+          View Pool Stats
+          <ArrowRight size={12} />
+        </button>
       </div>
 
       {/* Tab content */}

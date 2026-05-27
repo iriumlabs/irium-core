@@ -1338,10 +1338,15 @@ export default function Explorer() {
   const location    = useLocation();
 
   // Page-level tab: 'overview' renders the existing stats + search + blocks
-  // table; 'rich_list' swaps the body for the Top Holders table. Tab choice
-  // is local to this page — no deep-link state needed since the body is
-  // cheap to mount/unmount.
-  const [pageTab, setPageTab] = useState<PageTab>('overview');
+  // table; 'rich_list' swaps the body for the Top Holders table;
+  // 'pool_stats' shows the public pool snapshot. Lazy initializer reads
+  // `pageTab` from location.state so a deep-link from another page (e.g.
+  // the Mining page's "View Pool Stats" button) can pre-select a specific
+  // tab. Falls back to 'overview' for a bare /explorer visit.
+  const [pageTab, setPageTab] = useState<PageTab>(() => {
+    const ns = location.state as { pageTab?: PageTab } | null;
+    return ns?.pageTab ?? 'overview';
+  });
 
   // Block list state — grows as user loads older blocks
   const [blocks,        setBlocks]        = useState<ExplorerBlock[]>([]);
