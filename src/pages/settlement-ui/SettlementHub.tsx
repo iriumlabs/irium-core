@@ -4,15 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeftRight, Briefcase, Shield, ArrowRight } from 'lucide-react';
 import ActiveAgreementsPanel from '../../components/settlement-ui/ActiveAgreementsPanel';
 
-// SettlementHub — the new landing view for the Settlement section.
-// Three big entry cards above the fold (Safe Trade / Pay for Work /
+// SettlementHub — the landing view for the Settlement section. Three
+// big entry cards above the fold (Safe Trade / Pay for Work /
 // Refundable Deposit), then the Active Agreements list below.
-//
-// In Phase 1 the three cards navigate to /settlement-legacy as a
-// transitional fallback — the real Safe Trade / Pay for Work / Deposit
-// flows ship in Phases 2 / 3 / 4 and will swap in here one card at a
-// time. The hub itself, the cards' visual design, and the active panel
-// stay unchanged across those phases.
 
 interface HubCardSpec {
   id: 'safe_trade' | 'pay_for_work' | 'deposit';
@@ -66,16 +60,12 @@ export default function SettlementHub() {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  // Phase 1 placeholder: all three cards land on /settlement-legacy
-  // until Phase 2 / 3 / 4 fill in the real flows. The card.id is
-  // forwarded via location state so future phases can read it without
-  // any further route changes.
+  // HubCardSpec.id is a closed string-literal union of the three IDs
+  // below, so TS enforces exhaustiveness — no fallback arm needed.
   const handleCardClick = (cardId: HubCardSpec['id']) => {
     if (cardId === 'safe_trade')   { navigate('/settlement/safe-trade');   return; }
     if (cardId === 'pay_for_work') { navigate('/settlement/pay-for-work'); return; }
     if (cardId === 'deposit')      { navigate('/settlement/deposit');      return; }
-    // Any future card falls through to the legacy UI as a working path.
-    navigate('/settlement-legacy', { state: { fromHub: cardId } });
   };
 
   // Inline release / refund are handled inside ActiveAgreementsPanel.
