@@ -7195,24 +7195,29 @@ async fn set_wallet_config(
     wallet_path: Option<String>,
     data_dir: Option<String>,
 ) -> Result<bool, String> {
-    // Reject a stale persisted wallet_path (file moved/deleted between runs)
-    // by falling back to the resolved default. v1.0.55 fix: previously this
-    // branch set the state to None on the assumption that irium-wallet would
-    // default to ~/.irium/wallet.json on its own. The binary's fallback uses
-    // env::var("HOME") which is unset on Windows, so it resolved to a bogus
-    // "/.irium/wallet.json" (drive root) and every wallet command failed
-    // with "read wallet: ... os error 2" intermittently — whenever settings
-    // happened to carry a stale path. Resolve the path explicitly so
-    // IRIUM_WALLET_FILE always carries an absolute, OS-correct path.
+    // Ensure state.wallet_path is always Some(_) with an absolute,
+    // OS-correct path the wallet sidecar can read via IRIUM_WALLET_FILE.
+    // Three cases:
+    //   1. Some(p) where p exists on disk → use p
+    //   2. Some(p) where p does not exist (stale persisted path) → default
+    //   3. None (settings.json has no wallet_path field, e.g. fresh install
+    //      or a pre-v1.0.55 install whose settings.json never included it)
+    //      → default
+    //
+    // v1.0.55 fixed case 2 but left case 3 untouched, so a fresh install on
+    // Windows still hit the sidecar's HOME-unset fallback ("/.irium/wallet.json"
+    // resolves to drive root) and every wallet command failed with
+    // "read wallet: ... os error 2" until the user explicitly picked a wallet.
     let validated_wallet_path = match wallet_path {
-        Some(p) if !std::path::Path::new(&p).exists() => {
+        Some(p) if std::path::Path::new(&p).exists() => Some(p),
+        Some(p) => {
             tracing::warn!(
                 "[set_wallet_config] persisted wallet_path does not exist on disk: {} — falling back to default",
                 p
             );
             Some(resolve_wallet_path())
         }
-        other => other,
+        None => Some(resolve_wallet_path()),
     };
     *state.wallet_path.lock().map_err(lock_err)? = validated_wallet_path;
     *state.data_dir.lock().map_err(lock_err)? = data_dir;
