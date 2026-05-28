@@ -152,12 +152,17 @@ export default function DepositFlow() {
   // Step 1 — setup form.
   const renderStep1 = () => (
     <div className="card p-6 space-y-5">
-      <AddressInput
-        value={recipient}
-        onChange={(v) => { setRecipient(v); if (errors.recipient) setErrors((p) => { const n = { ...p }; delete n.recipient; return n; }); }}
-        label={t('settlement_ui.deposit.recipient_label')}
-        error={errors.recipient}
-      />
+      <div className="space-y-1">
+        <AddressInput
+          value={recipient}
+          onChange={(v) => { setRecipient(v); if (errors.recipient) setErrors((p) => { const n = { ...p }; delete n.recipient; return n; }); }}
+          label={t('settlement_ui.deposit.recipient_label')}
+          error={errors.recipient}
+        />
+        <p className="text-xs text-white/35">
+          This person receives the deposit if conditions are met. If they don't claim it before the deadline, you automatically get it back.
+        </p>
+      </div>
       <AmountInput
         value={amountIrm}
         onChange={(v) => { setAmountIrm(v); if (errors.amount) setErrors((p) => { const n = { ...p }; delete n.amount; return n; }); }}

@@ -1279,7 +1279,7 @@ export default function MarketplacePage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="page-title">{t('marketplace.page_title')}</h1>
-          <p className="page-subtitle">Browse and post settlement offers on the Irium peer-to-peer network.</p>
+          <p className="page-subtitle">Post public offers for anyone to find and take. For private deals with someone specific, use Settlement.</p>
         </div>
         <button
           onClick={() => navigate('/help#marketplace')}
@@ -1617,6 +1617,25 @@ export default function MarketplacePage() {
                 Create Offer
               </button>
             </div>
+          </div>
+
+          {/* My Offers info banner — clarifies what posting an offer
+              actually does. Two common questions from new sellers:
+              "can anyone see this?" (yes) and "is my balance locked?"
+              (no, not until a buyer takes the offer and funds the
+              escrow). Blue left-border info style. */}
+          <div
+            className="flex items-start gap-2.5 px-4 py-3 mb-5"
+            style={{
+              background: 'rgba(110,198,255,0.06)',
+              border: '1px solid rgba(110,198,255,0.18)',
+              borderLeft: '3px solid #6ec6ff',
+              borderRadius: 8,
+            }}
+          >
+            <p style={{ fontSize: 11.5, color: 'rgba(238,240,255,0.70)', lineHeight: 1.55 }}>
+              Your offers are visible to other Irium users on the network. Your balance only locks when a buyer takes your offer and funds the escrow — not when you create the offer.
+            </p>
           </div>
 
           {loading ? (
