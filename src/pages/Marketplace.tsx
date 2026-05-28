@@ -1102,27 +1102,26 @@ export default function MarketplacePage() {
   useEffect(() => {
     if (activeTab !== 'browse') return;
     // Each time the Browse tab is (re-)entered, count the next load as
-    // "initial" so the skeleton shows once. Subsequent 60 s auto-ticks
-    // and event-driven refreshes inside the same browse session flip
-    // isInitialLoad to false (inside loadOffers), suppressing the
-    // skeleton flicker for everything except the first paint.
+    // "initial" so the skeleton shows once. Event-driven refreshes inside
+    // the same browse session flip isInitialLoad to false (inside
+    // loadOffers), suppressing the skeleton flicker for everything except
+    // the first paint.
+    //
+    // The recurring 60-s feeds.sync() interval that used to live here was
+    // moved to App.tsx so the sync keeps ticking regardless of which
+    // route the user is on. This effect now only runs the tab-entry
+    // sync+load — once the user is in the Browse view, the WS bridge's
+    // offer.* events (via useIriumEvents) handle steady-state freshness.
     setIsInitialLoad(true);
-    const syncAndLoad = async (silent: boolean = false) => {
+    (async () => {
       try {
         await feeds.sync();
       } catch {
         // silent — partial-failure responses are normal when one of N
         // discovered feeds is temporarily unreachable
       }
-      await loadOffers(silent);
-    };
-    // Tab-entry sync runs NON-SILENT so the user gets the loading skeleton
-    // while feeds.sync is in flight (gated by isInitialLoad inside
-    // loadOffers — only the first call paints the skeleton; everything
-    // else updates in place).
-    syncAndLoad(false);
-    const id = setInterval(() => syncAndLoad(true), 60_000);
-    return () => clearInterval(id);
+      await loadOffers(false);
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
@@ -1180,6 +1179,17 @@ export default function MarketplacePage() {
       await loadMyOffers();
     } catch (e) {
       toast.error(t('marketplace.toasts.delete_failed', { reason: String(e) }));
+      // Even on backend rejection the local blocklist (blockOfferId above)
+      // has already hidden this offer for the rest of the session and
+      // across reloads. Close the modal and re-fetch so the row goes
+      // away immediately — the user still sees the toast that explains
+      // why iriumd refused. Without this, the modal sits open on the
+      // same offer and `myOffers` still shows the row until the next
+      // tab-switch or WS event, which reads to the user as "delete did
+      // nothing." With this, the only difference between success and
+      // failure paths is the toast colour.
+      setShowDeleteOfferModal(null);
+      await loadMyOffers();
     }
   };
 

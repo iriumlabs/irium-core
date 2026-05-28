@@ -51,7 +51,16 @@ const Help         = lazy(() => import('./pages/Help'));
 import Onboarding, { ONBOARDING_KEY, FORCE_ONBOARDING_KEY, Splash } from './pages/Onboarding';
 import { useNodePoller, startAggressivePoll } from './hooks/useNodePoller';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import { node, config, update, wallet, feeds } from './lib/tauri';
+import { node, config, update, wallet, feeds, feedOps } from './lib/tauri';
+
+// Set once per install when feedOps.bootstrap() has successfully added the
+// hardcoded BOOTSTRAP_FEEDS list (irium-wallet.rs:11070) to ~/.irium/feeds.json.
+// Survives app restarts. Cleared by the user's "Reset onboarding" path is
+// deliberately NOT wired - bootstrap is first-install plumbing, not part of
+// the onboarding flow, and re-running it is idempotent on the backend so
+// the localStorage flag is just an optimisation to skip a wallet-binary
+// spawn on every launch.
+const MARKETPLACE_BOOTSTRAP_KEY = 'irium-marketplace-bootstrap-done';
 import { useStore } from './lib/store';
 import type { UpdateCheckResult } from './lib/types';
 
@@ -286,19 +295,70 @@ function AppLayout() {
       });
   }, [nodeStatus?.running, setQuarantinedBlockCount]);
 
-  // Marketplace feed sync trigger. Fires exactly once per session when the
-  // node first reaches a running state — pulls offers from every URL the
-  // wallet knows about (manual feeds.json + P2P-discovered_feeds.json) so
-  // the local offer cache reflects the network as soon as the app is up,
-  // not only after the user visits the Marketplace tab. Errors are
-  // swallowed (a transient unreachable feed is normal); the Marketplace
-  // Browse tab also runs sync on a 30-s interval as the steady-state
-  // refresh, this fire-once is for the cold-start window.
+  // Marketplace feed pipeline at app level (decentralised — no required
+  // central feed hub). Three steps, all triggered by the node reaching a
+  // running state:
+  //
+  //   1. First-install bootstrap (one-shot). Calls feedOps.bootstrap() ->
+  //      irium-wallet feed-bootstrap, which adds the hardcoded
+  //      BOOTSTRAP_FEEDS list (irium-wallet.rs:11070) to ~/.irium/feeds.json.
+  //      Gated by MARKETPLACE_BOOTSTRAP_KEY in localStorage so subsequent
+  //      launches skip the wallet-binary spawn. Idempotent on the backend
+  //      anyway — feed-bootstrap dedups by URL — so the flag is purely an
+  //      optimisation.
+  //
+  //   2. Cold-start sync. Pulls offers from every URL the wallet knows
+  //      about. feeds.sync() (irium-wallet.rs:9149) already merges
+  //      ~/.irium/feeds.json (manual + bootstrap) AND
+  //      ~/.irium/discovered_feeds.json (URLs announced by peers during the
+  //      P2P handshake via IRIUM_MARKETPLACE_FEED_URL). That makes the
+  //      whole marketplace decentralised end-to-end: any peer's feed URL
+  //      is picked up automatically without the user adding it manually
+  //      and without depending on a central hub.
+  //
+  //   3. Steady-state poll (60 s). Same sync call on a recurring timer so
+  //      offers stay fresh regardless of which page the user is on. The
+  //      Marketplace Browse tab no longer runs its own setInterval — that
+  //      timer was tab-mounted and froze the moment the user switched to
+  //      Settings or any other route.
+  //
+  // Errors at every step are swallowed: transient unreachable feeds are
+  // normal in a P2P network, and surfacing them to the user as toasts
+  // would be noise.
   useEffect(() => {
     if (marketplaceFeedSyncFired.current) return;
     if (!nodeStatus?.running) return;
     marketplaceFeedSyncFired.current = true;
-    feeds.sync().catch(() => { /* silent */ });
+    (async () => {
+      try {
+        if (!localStorage.getItem(MARKETPLACE_BOOTSTRAP_KEY)) {
+          await feedOps.bootstrap();
+          try { localStorage.setItem(MARKETPLACE_BOOTSTRAP_KEY, '1'); } catch {}
+        }
+      } catch {
+        // Bootstrap failed (wallet binary missing, RPC down, etc).
+        // Leave the flag unset so the next launch retries; the user can
+        // still click "Use Default Feeds" in the Feed Registry tab.
+      }
+      try {
+        await feeds.sync();
+      } catch {
+        // Same swallowing rationale.
+      }
+    })();
+  }, [nodeStatus?.running]);
+
+  // App-level recurring feed sync. 60 s cadence matches the cadence the
+  // Marketplace Browse tab used to run, just lifted out of the tab-mounted
+  // effect so it keeps ticking when the user is on Wallet / Settings /
+  // Miner / wherever. The interval is bound to node.running so the timer
+  // stops cleanly when the node stops and restarts on next node-up.
+  useEffect(() => {
+    if (!nodeStatus?.running) return;
+    const id = setInterval(() => {
+      feeds.sync().catch(() => { /* silent — same as cold-start */ });
+    }, 60_000);
+    return () => clearInterval(id);
   }, [nodeStatus?.running]);
 
   useEffect(() => {
