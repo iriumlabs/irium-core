@@ -2255,42 +2255,81 @@ fn iriumd_rpc_alive() -> bool {
     }
 }
 
-/// Sends a SIGTERM-style soft signal to all iriumd processes and polls
-/// `iriumd_rpc_alive` up to `timeout_ms` for the RPC port to go quiet.
-/// Returns true if iriumd has exited within the budget, false otherwise.
+/// POSTs http://127.0.0.1:38300/rpc/stop with the local Bearer token to
+/// request a graceful drain-and-exit from iriumd. Returns true on any
+/// 2xx response, false on connect/timeout/auth/non-2xx errors. The
+/// underlying endpoint flushes peers, drains the persist queue with
+/// the IRIUM_PERSIST_DRAIN_SECS envelope (default 15 s, clamped to 20 s),
+/// then calls std::process::exit(0); see iriumd.rs:stop_handler.
 ///
-/// On Unix the SIGTERM triggers iriumd's signal handler at
-/// irium-source/src/bin/iriumd.rs:9446-9476: peers are flushed to the
-/// runtime database and the persist queue is drained (default 15 s,
-/// configurable via IRIUM_PERSIST_DRAIN_SECS). Without this graceful
-/// path a force-kill mid-write leaves the state index referencing block
-/// files that are unlinked or partial, which on next start triggers an
-/// expensive state rebuild (5-15 min) or in worse cases a full resync.
-///
-/// On Windows, iriumd has no #[cfg(windows)] signal-handler in the
-/// upstream code. `taskkill` without /F sends WM_CLOSE, which a console
-/// app without a window does not consume — the poll loop will therefore
-/// time out and the caller's force-kill fallback runs. The plumbing is
-/// in place so the moment iriumd ships a SetConsoleCtrlHandler /
-/// tokio::signal::ctrl_c handler the Windows path starts behaving
-/// gracefully too with no desktop-side change needed.
-fn try_iriumd_graceful_shutdown(timeout_ms: u64) -> bool {
-    #[cfg(target_os = "windows")]
+/// 2 s timeout because a hung iriumd should not stall the helper — the
+/// OS-level fallback path can still try SIGTERM after this returns false.
+fn post_iriumd_stop_rpc() -> bool {
+    let token = RPC_TOKEN.get().cloned().unwrap_or_default();
+    let client = match reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(2))
+        .build()
     {
-        for name in [
-            "iriumd-x86_64-pc-windows-msvc.exe",
-            "iriumd.exe",
-        ] {
-            let _ = silent_command("taskkill")
-                .args(["/IM", name])
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+    match client
+        .post("http://127.0.0.1:38300/rpc/stop")
+        .bearer_auth(&token)
+        .send()
+    {
+        Ok(r) => r.status().is_success(),
+        Err(_) => false,
+    }
+}
+
+/// Tries iriumd's /rpc/stop endpoint first, then falls back to an OS-
+/// level soft signal (SIGTERM on Unix, taskkill no-/F on Windows) only
+/// if the RPC request failed. Polls `iriumd_rpc_alive` up to `timeout_ms`
+/// for the RPC port to go quiet. Returns true if iriumd has exited
+/// within the budget, false otherwise.
+///
+/// Why two channels:
+///   1. /rpc/stop is the only graceful path that actually fires in the
+///      Tauri-sidecar case. iriumd is spawned with CREATE_NO_WINDOW so
+///      it has no console, which means tokio::signal::ctrl_c() never
+///      receives anything on the iriumd side. The HTTP path bypasses
+///      the console subsystem entirely. iriumd's stop_handler runs the
+///      same flush+drain logic as the SIGTERM handler (see
+///      irium-source/src/bin/iriumd.rs:stop_handler) then exits via
+///      std::process::exit(0), so the poll below sees the RPC port go
+///      quiet and returns true with no force-kill needed.
+///   2. The OS-level soft signal stays as a backup for two scenarios:
+///      (a) iriumd's RPC has hung but the persist task is still healthy
+///          — the SIGTERM handler can still drain even if HTTP cannot
+///          respond; and
+///      (b) on Linux/macOS pkill -TERM is the familiar fallback for
+///          users used to managing daemons.
+///
+/// On Windows the OS-level fallback is mostly a no-op (taskkill without
+/// /F sends WM_CLOSE which a console-less app does not consume) — kept
+/// for cheap-and-harmless symmetry when /rpc/stop already succeeded.
+fn try_iriumd_graceful_shutdown(timeout_ms: u64) -> bool {
+    let rpc_ok = post_iriumd_stop_rpc();
+
+    if !rpc_ok {
+        #[cfg(target_os = "windows")]
+        {
+            for name in [
+                "iriumd-x86_64-pc-windows-msvc.exe",
+                "iriumd.exe",
+            ] {
+                let _ = silent_command("taskkill")
+                    .args(["/IM", name])
+                    .output();
+            }
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = silent_command("pkill")
+                .args(["-TERM", "-f", "iriumd"])
                 .output();
         }
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        let _ = silent_command("pkill")
-            .args(["-TERM", "-f", "iriumd"])
-            .output();
     }
 
     let start = std::time::Instant::now();
