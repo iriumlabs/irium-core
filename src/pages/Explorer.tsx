@@ -11,9 +11,12 @@ import {
 } from 'lucide-react';
 import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
-import { rpc, wallet } from '../lib/tauri';
+import { rpc, wallet, miner, gpuMiner, stratum } from '../lib/tauri';
 import { timeAgo, formatIRM, SATS_PER_IRM } from '../lib/types';
-import type { ExplorerBlock, NetworkHashrateInfo, RichListEntry, PoolStats } from '../lib/types';
+import type {
+  ExplorerBlock, NetworkHashrateInfo, RichListEntry, PoolStats,
+  MinerStatus, GpuMinerStatus, StratumStatus,
+} from '../lib/types';
 
 type SearchTab = 'block' | 'tx' | 'address';
 type PageTab = 'overview' | 'rich_list' | 'pool_stats';
@@ -709,6 +712,278 @@ function PoolStatsTile({
         {value}
       </span>
       {sub && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.40)' }}>{sub}</span>}
+    </div>
+  );
+}
+
+// Network-side response shape from iriumd's /rpc/network_hashrate. Fields
+// match irium-source/src/bin/iriumd.rs:NetworkHashrateResponse one-for-one.
+// hashrate / avg_block_time are nullable on the wire while the rolling
+// window is still warming up (the endpoint needs at least 2 blocks of
+// timestamp data); we treat both null and 0 as "—" in the render.
+interface NetworkHashrateResp {
+  tip_height: number;
+  current_network_era: string;
+  current_network_era_description: string;
+  current_network_era_tagline: string | null;
+  early_participation_signal: boolean;
+  difficulty: number;
+  hashrate: number | null;
+  avg_block_time: number | null;
+  window: number;
+  sample_blocks: number;
+}
+
+// Human-readable block-time formatter. The chain targets 10 min but the
+// observed mean on the small current network is ~1-2 min/block; we render
+// in seconds below 60 s, minutes below an hour, then hours.
+function formatBlockTime(secs: number | null | undefined): string {
+  if (secs == null || secs <= 0) return '—';
+  if (secs < 60) return `${Math.round(secs)}s`;
+  if (secs < 3600) return `${(secs / 60).toFixed(1)}m`;
+  return `${(secs / 3600).toFixed(1)}h`;
+}
+
+// NetworkMiningOverview — three-panel summary at the top of the Pool
+// Stats tab. Sits above PoolStatsSection and gives the user a single-
+// screen answer to "how is the network doing, how is the pool doing,
+// how am I doing?" before drilling into the per-miner table below.
+//
+// All three panels refresh together on a single 30 s timer:
+//   Panel 1 — Network Summary: iriumd /rpc/network_hashrate via
+//             tauriFetch (no auth required; check_rate only).
+//   Panel 2 — Pool Mining: pool.iriumlabs.org:3337/miners via
+//             tauriFetch + the existing get_pool_stats Tauri command
+//             for the lifetime blocks-found counter.
+//   Panel 3 — Your Mining: local miner / gpu-miner / stratum status
+//             via the existing Tauri commands. "Solo vs Pool" is
+//             derived from stratum.connected — if the stratum client
+//             is connected the CPU/GPU miner is feeding it work
+//             through the pool path; otherwise the miner is talking
+//             directly to iriumd over RPC (solo mode).
+//
+// Promise.allSettled so a single slow/failing endpoint never blocks
+// the others — each panel renders whatever it has and shows "—" for
+// the rest until the next poll.
+function NetworkMiningOverview() {
+  const [network, setNetwork] = useState<NetworkHashrateResp | null>(null);
+  const [poolMiners, setPoolMiners] = useState<MinerRow[] | null>(null);
+  const [poolAggregate, setPoolAggregate] = useState<PoolStats | null>(null);
+  const [cpuStatus, setCpuStatus] = useState<MinerStatus | null>(null);
+  const [gpuStatus, setGpuStatus] = useState<GpuMinerStatus | null>(null);
+  const [stratumS, setStratumS] = useState<StratumStatus | null>(null);
+
+  const fetchAll = useCallback(async () => {
+    const [netR, poolMinersR, poolStatsR, cpuR, gpuR, strR] = await Promise.allSettled([
+      tauriFetch<NetworkHashrateResp>('http://127.0.0.1:38300/rpc/network_hashrate', {
+        method: 'GET',
+        responseType: ResponseType.JSON,
+        timeout: 5,
+      }),
+      tauriFetch<MinersResponse>('http://pool.iriumlabs.org:3337/miners', {
+        method: 'GET',
+        responseType: ResponseType.JSON,
+        timeout: 10,
+      }),
+      rpc.poolStats().catch(() => null),
+      miner.status().catch(() => null),
+      gpuMiner.status().catch(() => null),
+      stratum.status().catch(() => null),
+    ]);
+    if (netR.status === 'fulfilled' && netR.value.ok && netR.value.data) {
+      setNetwork(netR.value.data);
+    }
+    if (poolMinersR.status === 'fulfilled' && poolMinersR.value.ok && poolMinersR.value.data) {
+      setPoolMiners(poolMinersR.value.data.miners ?? []);
+    }
+    if (poolStatsR.status === 'fulfilled') setPoolAggregate(poolStatsR.value);
+    if (cpuR.status === 'fulfilled') setCpuStatus(cpuR.value);
+    if (gpuR.status === 'fulfilled') setGpuStatus(gpuR.value);
+    if (strR.status === 'fulfilled') setStratumS(strR.value);
+  }, []);
+
+  useEffect(() => {
+    fetchAll();
+    const id = setInterval(fetchAll, 30_000);
+    return () => clearInterval(id);
+  }, [fetchAll]);
+
+  // ── Derived values ──────────────────────────────────────────
+
+  // Panel 1: network-wide.
+  const networkHashrate = network?.hashrate ?? null;
+  const networkDifficulty = network?.difficulty ?? null;
+  const avgBlockTime = network?.avg_block_time ?? null;
+
+  // Panel 2: pool aggregate from the per-miner rows.
+  const poolRows = poolMiners ?? [];
+  // Sum hashrate_15m across all pool rows. The /miners proxy now emits
+  // session_status; prefer 'active' rows so a stale leftover row (idle
+  // > 10 min, zero hashrate, same base address as an active row) is
+  // already filtered before it could distort the total.
+  const poolHashrate = poolRows.length > 0
+    ? poolRows.reduce((sum, m) => sum + (m.hashrate_15m ?? 0), 0)
+    : null;
+  // Active miner count: rows that submitted a share in the last 10 min
+  // AND have a non-zero rolling hashrate. The proxy's session_status
+  // field already encodes this; we count session_status==='active' if
+  // present and fall back to a hashrate>0 test when it's not.
+  type MinerRowExt = MinerRow & { session_status?: 'active' | 'stale' };
+  const activePoolMiners = poolRows.filter((m) => {
+    const ext = m as MinerRowExt;
+    if (ext.session_status) return ext.session_status === 'active';
+    return (m.hashrate_15m ?? 0) > 0;
+  }).length;
+  const poolBlocksFound = poolAggregate?.total_blocks_found ?? null;
+  const poolShareOfNetwork = (poolHashrate != null && networkHashrate != null && networkHashrate > 0)
+    ? (poolHashrate / networkHashrate) * 100
+    : null;
+
+  // Panel 1 derived: estimated active miners across the whole network.
+  // Heuristic: assume the pool's average-active-miner hashrate is
+  // representative of the wider network's average. This biases low for
+  // networks where mega-farms mine solo (typical Bitcoin pattern) but is
+  // the best single-data-source proxy available without crawling other
+  // pools. Falls back to "—" when we don't have enough samples.
+  const avgPoolMinerHashrate = (poolHashrate != null && activePoolMiners > 0)
+    ? poolHashrate / activePoolMiners
+    : null;
+  const estimatedNetworkMiners = (networkHashrate != null && avgPoolMinerHashrate != null && avgPoolMinerHashrate > 0)
+    ? Math.max(1, Math.round(networkHashrate / avgPoolMinerHashrate))
+    : null;
+
+  // Panel 3: local mining state.
+  const cpuRunning = cpuStatus?.running === true;
+  const gpuRunning = gpuStatus?.running === true;
+  const isMining = cpuRunning || gpuRunning;
+  // Hashrate fields on both miner-status structs are in kH/s; convert to
+  // H/s for the shared formatter. Sum across CPU + GPU when both run.
+  const yourHashrateHps = (
+    (cpuRunning ? (cpuStatus?.hashrate_khs ?? 0) : 0) +
+    (gpuRunning ? (gpuStatus?.hashrate_khs ?? 0) : 0)
+  ) * 1000;
+  // Solo vs pool: stratum.connected is the authoritative bit. When the
+  // user starts mining via the Miner page's "Pool" button the desktop
+  // wires the miner up to the stratum client, and stratum.status()
+  // reports connected=true. Direct Mine-Solo path keeps stratum
+  // disconnected, so isMining + !stratum.connected = Solo.
+  const stratumConnected = stratumS?.connected === true;
+  const yourMode = !isMining ? '—' : (stratumConnected ? 'Pool' : 'Solo');
+  const yourBlocksFound = (cpuStatus?.blocks_found ?? 0) + (gpuStatus?.blocks_found ?? 0);
+
+  // ── Render ──────────────────────────────────────────────────
+
+  const panelStyle: React.CSSProperties = {
+    background: 'var(--bg-elev-1)',
+    border: '1px solid rgba(110,198,255,0.10)',
+    borderRadius: 8,
+  };
+  const panelTitleStyle: React.CSSProperties = {
+    fontSize: 13,
+    fontWeight: 800,
+    color: '#d4eeff',
+    fontFamily: '"Space Grotesk", sans-serif',
+    letterSpacing: '0.02em',
+  };
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <h2 style={{ fontSize: 16, fontWeight: 800, color: '#d4eeff', fontFamily: '"Space Grotesk", sans-serif', letterSpacing: '0.02em' }}>
+          Network Mining Overview
+        </h2>
+        <p className="mt-1" style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.45)' }}>
+          One-screen view of network, pool, and your own mining. Refreshes every 30 seconds.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Panel 1 — Network Summary */}
+        <div className="p-4 space-y-3" style={panelStyle}>
+          <h3 style={panelTitleStyle}>Network Summary</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <PoolStatsTile
+              label="Network Hashrate"
+              value={networkHashrate != null ? formatHashrate(networkHashrate) : '—'}
+              accent="#6ec6ff"
+            />
+            <PoolStatsTile
+              label="Difficulty"
+              value={networkDifficulty != null ? formatDifficulty(networkDifficulty) : '—'}
+              accent="#6ec6ff"
+            />
+            <PoolStatsTile
+              label="Avg Block Time"
+              value={formatBlockTime(avgBlockTime)}
+              accent="#6ec6ff"
+            />
+            <PoolStatsTile
+              label="Est. Active Miners"
+              value={estimatedNetworkMiners != null ? estimatedNetworkMiners.toLocaleString('en-US') : '—'}
+              sub="network-wide estimate"
+              accent="#6ec6ff"
+            />
+          </div>
+        </div>
+
+        {/* Panel 2 — Pool Mining */}
+        <div className="p-4 space-y-3" style={panelStyle}>
+          <h3 style={panelTitleStyle}>Pool Mining</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <PoolStatsTile
+              label="Pool Hashrate"
+              value={poolHashrate != null ? formatHashrate(poolHashrate) : '—'}
+              accent="#a78bfa"
+            />
+            <PoolStatsTile
+              label="Active Pool Miners"
+              value={poolRows.length > 0 ? activePoolMiners.toLocaleString('en-US') : '—'}
+              accent="#a78bfa"
+            />
+            <PoolStatsTile
+              label="Pool Blocks Found"
+              value={poolBlocksFound != null ? poolBlocksFound.toLocaleString('en-US') : '—'}
+              sub="all time"
+              accent="#a78bfa"
+            />
+            <PoolStatsTile
+              label="Pool / Network"
+              value={poolShareOfNetwork != null ? `${poolShareOfNetwork.toFixed(1)}%` : '—'}
+              sub="share of network hashrate"
+              accent="#a78bfa"
+            />
+          </div>
+        </div>
+
+        {/* Panel 3 — Your Mining */}
+        <div className="p-4 space-y-3" style={panelStyle}>
+          <h3 style={panelTitleStyle}>Your Mining</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <PoolStatsTile
+              label="Your Hashrate"
+              value={isMining && yourHashrateHps > 0 ? formatHashrate(yourHashrateHps) : (isMining ? 'collecting…' : '—')}
+              accent="#34d399"
+            />
+            <PoolStatsTile
+              label="Mode"
+              value={yourMode}
+              sub={isMining ? (stratumConnected ? 'connected via stratum' : 'direct to local node') : 'not mining'}
+              accent="#34d399"
+            />
+            <PoolStatsTile
+              label="Active Miners"
+              value={`${cpuRunning ? 'CPU ' : ''}${gpuRunning ? 'GPU ' : ''}`.trim() || 'none'}
+              accent="#34d399"
+            />
+            <PoolStatsTile
+              label="Blocks You Found"
+              value={yourBlocksFound.toLocaleString('en-US')}
+              sub="this session"
+              accent="#34d399"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1982,7 +2257,12 @@ export default function Explorer() {
         {/* Rich-list or Pool-stats takes over the body when selected.
             The Overview path falls through to the original layout. */}
         {pageTab === 'rich_list' ? <RichListSection running={running} /> :
-         pageTab === 'pool_stats' ? <PoolStatsSection /> : (
+         pageTab === 'pool_stats' ? (
+           <div className="space-y-6">
+             <NetworkMiningOverview />
+             <PoolStatsSection />
+           </div>
+         ) : (
         <>
 
         {/* ── Network Stats ─────────────────────────────── */}
