@@ -247,12 +247,17 @@ export default function SafeTradeFlow() {
   // Selling Step 2 — collect trade details.
   const renderSellingStep2 = () => (
     <div className="card p-6 space-y-5">
-      <AddressInput
-        value={sBuyerAddr}
-        onChange={(v) => { setSBuyerAddr(v); if (sErrors.buyer) setSErrors((p) => { const n = { ...p }; delete n.buyer; return n; }); }}
-        label={t('settlement_ui.safe_trade.selling.buyer_address_label')}
-        error={sErrors.buyer}
-      />
+      <div className="space-y-1">
+        <AddressInput
+          value={sBuyerAddr}
+          onChange={(v) => { setSBuyerAddr(v); if (sErrors.buyer) setSErrors((p) => { const n = { ...p }; delete n.buyer; return n; }); }}
+          label={t('settlement_ui.safe_trade.selling.buyer_address_label')}
+          error={sErrors.buyer}
+        />
+        <p className="text-xs text-white/35">
+          You need the buyer's address so the escrow knows who receives the IRM once you confirm payment received.
+        </p>
+      </div>
       <AmountInput
         value={sAmountIrm}
         onChange={(v) => { setSAmountIrm(v); if (sErrors.amount) setSErrors((p) => { const n = { ...p }; delete n.amount; return n; }); }}

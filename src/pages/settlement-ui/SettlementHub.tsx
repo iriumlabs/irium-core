@@ -83,7 +83,7 @@ export default function SettlementHub() {
         {/* Header — single-purpose page title + one-line subtitle. */}
         <div className="mb-8">
           <h1 className="page-title">{t('settlement_ui.hub.title')}</h1>
-          <p className="page-subtitle">{t('settlement_ui.hub.subtitle')}</p>
+          <p className="page-subtitle">For direct deals between two people you already know. To post a public offer anyone can find, use the Marketplace.</p>
         </div>
 
         {/* Three entry cards — equal weight, equal size, only three.
