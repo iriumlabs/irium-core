@@ -1180,6 +1180,17 @@ export default function MarketplacePage() {
       await loadMyOffers();
     } catch (e) {
       toast.error(t('marketplace.toasts.delete_failed', { reason: String(e) }));
+      // Even on backend rejection the local blocklist (blockOfferId above)
+      // has already hidden this offer for the rest of the session and
+      // across reloads. Close the modal and re-fetch so the row goes
+      // away immediately — the user still sees the toast that explains
+      // why iriumd refused. Without this, the modal sits open on the
+      // same offer and `myOffers` still shows the row until the next
+      // tab-switch or WS event, which reads to the user as "delete did
+      // nothing." With this, the only difference between success and
+      // failure paths is the toast colour.
+      setShowDeleteOfferModal(null);
+      await loadMyOffers();
     }
   };
 
