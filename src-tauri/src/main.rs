@@ -2242,34 +2242,128 @@ async fn start_node(
     }
 }
 
-#[tauri::command]
-async fn stop_node(state: State<'_, AppState>) -> Result<bool, String> {
-    // Kill the GUI-spawned sidecar if it exists
+/// Returns true if iriumd's RPC port is currently accepting connections.
+/// Used as the alive-check for the graceful-shutdown polling loop. 200 ms
+/// connect timeout so a fully-shut-down iriumd is detected within ~one
+/// poll interval instead of blocking on the OS connect-refused TCP retry.
+fn iriumd_rpc_alive() -> bool {
+    use std::net::TcpStream;
+    use std::time::Duration;
+    match "127.0.0.1:38300".parse() {
+        Ok(addr) => TcpStream::connect_timeout(&addr, Duration::from_millis(200)).is_ok(),
+        Err(_) => false,
+    }
+}
+
+/// Sends a SIGTERM-style soft signal to all iriumd processes and polls
+/// `iriumd_rpc_alive` up to `timeout_ms` for the RPC port to go quiet.
+/// Returns true if iriumd has exited within the budget, false otherwise.
+///
+/// On Unix the SIGTERM triggers iriumd's signal handler at
+/// irium-source/src/bin/iriumd.rs:9446-9476: peers are flushed to the
+/// runtime database and the persist queue is drained (default 15 s,
+/// configurable via IRIUM_PERSIST_DRAIN_SECS). Without this graceful
+/// path a force-kill mid-write leaves the state index referencing block
+/// files that are unlinked or partial, which on next start triggers an
+/// expensive state rebuild (5-15 min) or in worse cases a full resync.
+///
+/// On Windows, iriumd has no #[cfg(windows)] signal-handler in the
+/// upstream code. `taskkill` without /F sends WM_CLOSE, which a console
+/// app without a window does not consume — the poll loop will therefore
+/// time out and the caller's force-kill fallback runs. The plumbing is
+/// in place so the moment iriumd ships a SetConsoleCtrlHandler /
+/// tokio::signal::ctrl_c handler the Windows path starts behaving
+/// gracefully too with no desktop-side change needed.
+fn try_iriumd_graceful_shutdown(timeout_ms: u64) -> bool {
+    #[cfg(target_os = "windows")]
     {
-        let mut proc_lock = state.node_process.lock().map_err(lock_err)?;
-        if let Some(child) = proc_lock.take() {
-            let _ = child.kill();
+        for name in [
+            "iriumd-x86_64-pc-windows-msvc.exe",
+            "iriumd.exe",
+        ] {
+            let _ = silent_command("taskkill")
+                .args(["/IM", name])
+                .output();
         }
     }
-    // Kill the explorer sidecar
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = silent_command("pkill")
+            .args(["-TERM", "-f", "iriumd"])
+            .output();
+    }
+
+    let start = std::time::Instant::now();
+    let deadline = std::time::Duration::from_millis(timeout_ms);
+    let poll_interval = std::time::Duration::from_millis(250);
+    while start.elapsed() < deadline {
+        if !iriumd_rpc_alive() {
+            return true;
+        }
+        std::thread::sleep(poll_interval);
+    }
+    false
+}
+
+/// Soft-shutdown iriumd, escalating to force-kill on timeout. Takes the
+/// AppState's `node_process` Arc directly so it can be invoked from both
+/// async Tauri command bodies and the synchronous .run() event closure.
+fn shutdown_iriumd_soft_then_force(
+    node_process: &Arc<Mutex<Option<CommandChild>>>,
+    timeout_ms: u64,
+) {
+    let exited = try_iriumd_graceful_shutdown(timeout_ms);
+
+    // Clear the GUI-spawned child handle. If iriumd exited cleanly the
+    // kill() below is a no-op (process already gone); if it didn't, this
+    // is the TerminateProcess escalation for the GUI-tracked child.
+    if let Ok(mut g) = node_process.lock() {
+        if let Some(child) = g.take() {
+            if !exited {
+                let _ = child.kill();
+            }
+        }
+    }
+
+    // Force-kill any externally-started iriumd that is still alive. Skipped
+    // when the graceful path already worked since taskkill /F against a
+    // missing process is harmless but spends ~100 ms on CMD spawn overhead.
+    if !exited {
+        #[cfg(target_os = "windows")]
+        {
+            let _ = silent_command("taskkill")
+                .args(["/F", "/T", "/IM", "iriumd-x86_64-pc-windows-msvc.exe"])
+                .output();
+            let _ = silent_command("taskkill")
+                .args(["/F", "/T", "/IM", "iriumd.exe"])
+                .output();
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = silent_command("pkill").args(["-9", "-f", "iriumd"]).output();
+        }
+    }
+}
+
+#[tauri::command]
+async fn stop_node(state: State<'_, AppState>) -> Result<bool, String> {
+    // Graceful iriumd shutdown first (5 s timeout) — on Unix this triggers
+    // the persist-queue drain handler; on Windows the timeout lapses and
+    // we still force-kill until iriumd ships a ctrl-c handler upstream.
+    shutdown_iriumd_soft_then_force(&state.node_process, 5000);
+
+    // Explorer sidecar has no persistent state; force-kill is fine.
     {
         let mut proc_lock = state.explorer_process.lock().map_err(lock_err)?;
         if let Some(child) = proc_lock.take() {
             let _ = child.kill();
         }
     }
-    // Also kill any externally-started iriumd process (handles nodes started outside the GUI).
-    // silent_command applies CREATE_NO_WINDOW on Windows so taskkill does not
-    // flash a CMD window per invocation — previously this loop produced four
-    // visible flashes in a row whenever the user clicked Stop Node.
+    // Also kill any externally-started explorer (handles processes started
+    // outside the GUI). silent_command applies CREATE_NO_WINDOW on Windows
+    // so taskkill does not flash a CMD window per invocation.
     #[cfg(target_os = "windows")]
     {
-        let _ = silent_command("taskkill")
-            .args(["/F", "/T", "/IM", "iriumd-x86_64-pc-windows-msvc.exe"])
-            .output();
-        let _ = silent_command("taskkill")
-            .args(["/F", "/T", "/IM", "iriumd.exe"])
-            .output();
         let _ = silent_command("taskkill")
             .args(["/F", "/T", "/IM", "irium-explorer-x86_64-pc-windows-msvc.exe"])
             .output();
@@ -2279,9 +2373,6 @@ async fn stop_node(state: State<'_, AppState>) -> Result<bool, String> {
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let _ = silent_command("pkill")
-            .args(["-9", "-f", "iriumd"])
-            .output();
         let _ = silent_command("pkill")
             .args(["-9", "-f", "irium-explorer"])
             .output();
@@ -2293,28 +2384,15 @@ async fn stop_node(state: State<'_, AppState>) -> Result<bool, String> {
 // from scratch on next start. Wallet files and bootstrap config are preserved.
 #[tauri::command]
 async fn clear_node_state(state: State<'_, AppState>) -> Result<bool, String> {
-    // Kill the node first (same logic as stop_node).
-    {
-        let mut proc_lock = state.node_process.lock().map_err(lock_err)?;
-        if let Some(child) = proc_lock.take() {
-            let _ = child.kill();
-        }
-    }
-    #[cfg(target_os = "windows")]
-    {
-        let _ = silent_command("taskkill")
-            .args(["/F", "/T", "/IM", "iriumd-x86_64-pc-windows-msvc.exe"])
-            .output();
-        let _ = silent_command("taskkill")
-            .args(["/F", "/T", "/IM", "iriumd.exe"])
-            .output();
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        let _ = silent_command("pkill").args(["-9", "-f", "iriumd"]).output();
-    }
+    // Graceful iriumd shutdown first (5 s timeout) so its persist queue
+    // gets drained on Unix and its file handles are released cleanly on
+    // Windows before the destructive remove_dir_all below.
+    shutdown_iriumd_soft_then_force(&state.node_process, 5000);
 
-    // Give the process a moment to fully exit before we delete files it may have open.
+    // Even after a graceful exit, give the OS a beat to release file
+    // handles before we touch the data dir. The wipe is destructive so a
+    // residual handle here would surface as a permission-denied error
+    // the user has to retry past.
     std::thread::sleep(std::time::Duration::from_millis(1500));
 
     let home_dir = dirs::home_dir()
@@ -2376,28 +2454,12 @@ struct ResetNodeStateResult {
 // fallback needed.
 #[tauri::command]
 async fn reset_node_state_keep_blocks(state: State<'_, AppState>) -> Result<ResetNodeStateResult, String> {
-    // Kill the node first (same pattern as clear_node_state).
-    {
-        let mut proc_lock = state.node_process.lock().map_err(lock_err)?;
-        if let Some(child) = proc_lock.take() {
-            let _ = child.kill();
-        }
-    }
-    #[cfg(target_os = "windows")]
-    {
-        let _ = silent_command("taskkill")
-            .args(["/F", "/T", "/IM", "iriumd-x86_64-pc-windows-msvc.exe"])
-            .output();
-        let _ = silent_command("taskkill")
-            .args(["/F", "/T", "/IM", "iriumd.exe"])
-            .output();
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        let _ = silent_command("pkill").args(["-9", "-f", "iriumd"]).output();
-    }
+    // Graceful iriumd shutdown first (5 s timeout). Same rationale as
+    // clear_node_state — let the persist queue drain and the OS release
+    // file handles before we rename ~/.irium/state out from under iriumd.
+    shutdown_iriumd_soft_then_force(&state.node_process, 5000);
 
-    // Give the process a moment to exit before touching files.
+    // OS handle-release cushion before the rename.
     std::thread::sleep(std::time::Duration::from_millis(1500));
 
     let home_dir = dirs::home_dir()
@@ -9035,15 +9097,20 @@ fn main() {
             // sidecars survive the Tauri process exit on Windows (they are not
             // true children of the GUI process), so NSIS cannot overwrite their
             // binaries without an explicit kill first.
+            //
+            // FIX (state-corruption-on-update): iriumd takes the graceful soft-
+            // kill path with a 5 s timeout so its persist queue drains cleanly
+            // on Unix. On Windows the timeout lapses and we fall back to the
+            // existing force-kill until iriumd ships a ctrl-c handler upstream.
+            // miner and explorer sidecars write no persistent state, so they
+            // keep the original force-kill flow.
             #[cfg(target_os = "windows")]
             if let tauri::RunEvent::Updater(
                 tauri::UpdaterEvent::Downloaded,
             ) = &_event
             {
                 let state = _app_handle.state::<AppState>();
-                if let Ok(mut g) = state.node_process.lock() {
-                    if let Some(child) = g.take() { let _ = child.kill(); }
-                }
+                shutdown_iriumd_soft_then_force(&state.node_process, 5000);
                 if let Ok(mut g) = state.miner_process.lock() {
                     if let Some(child) = g.take() { let _ = child.kill(); }
                 }
@@ -9051,7 +9118,6 @@ fn main() {
                     if let Some(child) = g.take() { let _ = child.kill(); }
                 }
                 for name in [
-                    "iriumd-x86_64-pc-windows-msvc.exe",
                     "irium-miner-x86_64-pc-windows-msvc.exe",
                     "irium-miner-gpu-x86_64-pc-windows-msvc.exe",
                     "irium-explorer-x86_64-pc-windows-msvc.exe",
