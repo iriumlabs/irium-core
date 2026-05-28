@@ -21,6 +21,7 @@ import type { FoundBlock, GpuPlatform, AddressInfo, StratumEvent } from '../lib/
 import { formatIRM } from '../lib/types';
 import NodeOfflineBanner from '../components/NodeOfflineBanner';
 import QuarantineRecoveryBanner from '../components/QuarantineRecoveryBanner';
+import GpuDevicePicker from '../components/GpuDevicePicker';
 import clsx from 'clsx';
 
 // ── Mining-address validation ─────────────────────────────────────────────────
@@ -1184,12 +1185,11 @@ function GpuMinerTab() {
     } catch (e) { toast.error(String(e)); }
   };
 
-  const toggleDevice = (idx: number) =>
-    setSelectedDeviceIdxs((prev) =>
-      prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]
-    );
-
-  const selectedPlatform = gpuPlatforms?.find((p) => p.index === selectedPlatformIdx);
+  // GpuDevicePicker owns the dropdown + checkboxes; the GpuMinerTab keeps
+  // selection state local so the user's platform/device choice survives a
+  // tab switch within this component. toggleDevice and selectedPlatform are
+  // now internal to the picker component — removed from this scope as
+  // dead code after the v1.0.63 extraction.
   const noGpuFound       = gpuPlatforms !== null && gpuPlatforms.length === 0;
   const hasPlatforms     = gpuPlatforms !== null && gpuPlatforms.length > 0;
 
@@ -1397,81 +1397,12 @@ function GpuMinerTab() {
             </a>
           </div>
         ) : (
-          <>
-            {/* ── Platform dropdown ── */}
-            <div>
-              <label className="label">{t('miner.fields.opencl_platform')}</label>
-              <div className="relative">
-                <select
-                  value={selectedPlatformIdx}
-                  onChange={(e) => setSelectedPlatformIdx(parseInt(e.target.value))}
-                  className="input appearance-none pr-8 cursor-pointer"
-                >
-                  {gpuPlatforms.map((p) => (
-                    <option key={p.index} value={p.index}>
-                      {p.index}: {p.name}{p.is_discrete ? ' ★' : ''} ({p.devices.length} device{p.devices.length !== 1 ? 's' : ''})
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--t3)' }} />
-              </div>
-              {selectedPlatform?.is_discrete && (
-                <p className="text-xs mt-1" style={{ color: '#34d399' }}>
-                  ★ Discrete GPU — auto-selected
-                </p>
-              )}
-            </div>
-
-            {/* ── Device selection ── */}
-            {selectedPlatform && selectedPlatform.devices.length > 1 ? (
-              /* Multi-GPU: checkboxes */
-              <div>
-                <label className="label">{t('miner.fields.devices_label')}</label>
-                <div className="space-y-2">
-                  {selectedPlatform.devices.map((d) => {
-                    const checked = selectedDeviceIdxs.includes(d.index);
-                    return (
-                      <label
-                        key={d.index}
-                        className="flex items-center gap-2.5 cursor-pointer rounded-lg px-3 py-2 transition-colors"
-                        style={{
-                          background: checked ? 'rgba(59,130,246,0.08)' : 'rgba(255,255,255,0.03)',
-                          border: `1px solid ${checked ? 'rgba(59,130,246,0.30)' : 'rgba(255,255,255,0.07)'}`,
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleDevice(d.index)}
-                          className="w-4 h-4 flex-shrink-0"
-                          style={{ accentColor: '#3B82F6' }}
-                        />
-                        <span className="font-mono text-xs flex-shrink-0" style={{ color: 'var(--t3)' }}>#{d.index}</span>
-                        <span className="text-sm" style={{ color: 'var(--t2)' }}>{d.name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-                <p className="text-xs mt-1.5" style={{ color: 'var(--t3)' }}>
-                  {selectedDeviceIdxs.length === 0
-                    ? 'No devices selected — miner will auto-select'
-                    : `${selectedDeviceIdxs.length} of ${selectedPlatform.devices.length} device${selectedDeviceIdxs.length > 1 ? 's' : ''} selected`}
-                </p>
-              </div>
-            ) : selectedPlatform?.devices.length === 1 ? (
-              /* Single device: just show the name */
-              <div>
-                <label className="label">{t('miner.fields.device')}</label>
-                <div
-                  className="flex items-center gap-2 rounded-lg px-3 py-2"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-                >
-                  <span className="font-mono text-xs" style={{ color: 'var(--t3)' }}>#0</span>
-                  <span className="text-sm" style={{ color: 'var(--t2)' }}>{selectedPlatform.devices[0].name}</span>
-                </div>
-              </div>
-            ) : null}
-          </>
+          <GpuDevicePicker
+            selectedPlatformIdx={selectedPlatformIdx}
+            selectedDeviceIdxs={selectedDeviceIdxs}
+            onPlatformChange={setSelectedPlatformIdx}
+            onDevicesChange={setSelectedDeviceIdxs}
+          />
         )}
 
         {/* Mining address */}
@@ -1713,12 +1644,55 @@ function StratumTab() {
   const { t } = useTranslation();
   // Status comes from the global poll, so connection state survives nav.
   const status = useStore((s) => s.stratumStatus);
+  // GPU platforms (Zustand) — shared with GpuMinerTab so detection done on
+  // either tab populates both. When non-empty the StratumTab renders the
+  // GpuDevicePicker and the backend spawns irium-miner-gpu --pool; when
+  // null/empty the picker hides and the backend falls back to the bare
+  // irium-miner (CPU) spawn path. The detection effect below kicks in if
+  // the user lands on this tab without ever visiting the GPU Miner tab.
+  const gpuPlatforms    = useStore((s) => s.gpuPlatforms);
+  const setGpuPlatforms = useStore((s) => s.setGpuPlatforms);
 
   const [connectLoading, setConnectLoading] = useState(false);
   const [poolUrl, setPoolUrl] = useState('stratum+tcp://pool.iriumlabs.org:3335');
   const [worker, setWorker] = useState('');
   const [password, setPassword] = useState('');
   const [selectedPreset, setSelectedPreset] = useState(0);
+  // OpenCL platform + device selection for pool-mode GPU mining. Kept
+  // local rather than in the store so the user can in principle pick a
+  // different card here than on the GPU Miner tab if they want.
+  const [selectedPlatformIdx, setSelectedPlatformIdx] = useState(0);
+  const [selectedDeviceIdxs, setSelectedDeviceIdxs]   = useState<number[]>([]);
+
+  // Detect OpenCL platforms on first mount if no one has done it yet,
+  // so a fresh user who lands on the pool tab first still sees the
+  // device picker without having to flip to the GPU Miner tab.
+  useEffect(() => {
+    if (gpuPlatforms === null) {
+      gpuMiner.listPlatforms()
+        .then((ps) => setGpuPlatforms(ps ?? []))
+        .catch(() => setGpuPlatforms([]));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-select the discrete GPU platform when platforms first load.
+  // Mirrors GpuMinerTab line ~1108 so the two tabs stay in sync on
+  // platform choice.
+  useEffect(() => {
+    if (!gpuPlatforms || gpuPlatforms.length === 0) return;
+    const discrete = gpuPlatforms.find((p) => p.is_discrete && p.devices.length > 0);
+    const first    = gpuPlatforms.find((p) => p.devices.length > 0);
+    const auto     = (discrete ?? first)?.index ?? 0;
+    setSelectedPlatformIdx(auto);
+  }, [gpuPlatforms]);
+
+  // Default-select all devices on the chosen platform when it changes.
+  useEffect(() => {
+    if (!gpuPlatforms) return;
+    const plat = gpuPlatforms.find((p) => p.index === selectedPlatformIdx);
+    setSelectedDeviceIdxs(plat ? plat.devices.map((d) => d.index) : []);
+  }, [selectedPlatformIdx, gpuPlatforms]);
   // FIX 4 (Mining UI): first wallet address — used by the "Use my
   // wallet" auto-fill button to derive a standard <address>.rig1
   // worker name without forcing the user to copy/paste.
@@ -1768,7 +1742,16 @@ function StratumTab() {
     if (!worker.trim()) { toast.error(t('miner.toasts.worker_required')); return; }
     setConnectLoading(true);
     try {
-      await stratum.connect(poolUrl.trim(), worker.trim(), password || 'x');
+      // Branch on whether the user has a GPU to dedicate. Undefined for
+      // both args means the backend spawns the CPU miner sidecar
+      // (irium-miner) as before. A non-empty deviceIndices switches it
+      // to irium-miner-gpu --pool ... --platform ... --devices 0,1,3
+      // — the same CLI the standalone GPU miner uses, but pointed at
+      // the pool instead of iriumd RPC.
+      const hasGpu        = (gpuPlatforms?.length ?? 0) > 0;
+      const platformSel   = hasGpu ? String(selectedPlatformIdx) : undefined;
+      const deviceIndices = hasGpu && selectedDeviceIdxs.length > 0 ? selectedDeviceIdxs : undefined;
+      await stratum.connect(poolUrl.trim(), worker.trim(), password || 'x', platformSel, deviceIndices);
       toast.success(t('miner.toasts.connecting_to_pool'));
     } catch (e) { toast.error(String(e)); }
     finally { setConnectLoading(false); }
@@ -1963,6 +1946,18 @@ function StratumTab() {
           <input value={password} onChange={e => setPassword(e.target.value)} placeholder="x" className="input" />
           <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Leave blank to use "x" (the default for most pools)</p>
         </div>
+
+        {/* GPU device picker — visible only when OpenCL platforms have been
+            detected. Hidden entirely (returns null) when no GPU exists, so
+            the user with a CPU-only machine just sees the original
+            URL+worker+password form and the backend falls back to the
+            irium-miner (CPU) sidecar. */}
+        <GpuDevicePicker
+          selectedPlatformIdx={selectedPlatformIdx}
+          selectedDeviceIdxs={selectedDeviceIdxs}
+          onPlatformChange={setSelectedPlatformIdx}
+          onDevicesChange={setSelectedDeviceIdxs}
+        />
 
         <div className="flex items-center gap-3 pt-1">
           {!status?.connected ? (

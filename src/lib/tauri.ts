@@ -409,8 +409,22 @@ export const gpuMiner = {
 
 // ── STRATUM POOL ──────────────────────────────────────────────
 export const stratum = {
-  connect: (poolUrl: string, worker: string, password: string) =>
-    safeInvoke<boolean>('stratum_connect', { poolUrl, worker, password }),
+  // v1.0.63: platformSel + deviceIndices are optional. When deviceIndices
+  // is a non-empty array the backend spawns irium-miner-gpu with
+  // --pool / --platform / --devices CLI flags. When both are omitted (or
+  // deviceIndices is empty) the backend falls back to the original
+  // irium-miner (CPU) sidecar spawn for backwards compatibility with
+  // ASIC/CPU pool users who never had a GPU detected.
+  connect: (
+    poolUrl: string,
+    worker: string,
+    password: string,
+    platformSel?: string,
+    deviceIndices?: number[],
+  ) =>
+    safeInvoke<boolean>('stratum_connect', {
+      poolUrl, worker, password, platformSel, deviceIndices,
+    }),
 
   disconnect: () =>
     safeInvoke<boolean>('stratum_disconnect'),

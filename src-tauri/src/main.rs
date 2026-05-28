@@ -6550,6 +6550,14 @@ async fn stratum_connect(
     pool_url: String,
     worker: String,
     password: String,
+    // v1.0.63: optional GPU selection. When `device_indices` is Some
+    // and non-empty, spawn the bundled `irium-miner-gpu` sidecar with
+    // `--pool --wallet --platform --devices` so the user's GPU mines
+    // through the stratum bridge. When None or empty, fall back to the
+    // original `irium-miner` (CPU) spawn path — preserves behaviour
+    // for users without OpenCL or without a GPU detected.
+    platform_sel: Option<String>,
+    device_indices: Option<Vec<u32>>,
 ) -> Result<bool, String> {
     let (rpc_url, wallet_path, data_dir_val) = {
         let miner_lock = state.miner_process.lock().map_err(lock_err)?;
@@ -6592,13 +6600,52 @@ async fn stratum_connect(
         env
     };
 
+    // v1.0.63: choose sidecar binary based on whether the caller passed
+    // a non-empty device list. The GPU branch builds the CLI args
+    // (--pool/--wallet/--platform/--devices) that irium-miner-gpu's
+    // pool-mode supports (GPU-MINER.md lines 17-20). Stratum env vars
+    // (IRIUM_STRATUM_URL/USER/PASS) are still set so the same bridge
+    // negotiation works on either binary.
+    let use_gpu = device_indices.as_ref().map_or(false, |v| !v.is_empty());
+    let gpu_args: Vec<String> = if use_gpu {
+        let dev_csv = device_indices
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|i| i.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
+        let mut args = vec![
+            "--pool".to_string(), pool_url.clone(),
+            "--wallet".to_string(), mining_addr.clone(),
+            "--devices".to_string(), dev_csv,
+        ];
+        if let Some(p) = platform_sel.as_ref().filter(|s| !s.is_empty()) {
+            args.push("--platform".to_string());
+            args.push(p.clone());
+        }
+        args
+    } else {
+        Vec::new()
+    };
+
     let env = build_env(&pool_url, &worker, &password, &mining_addr, &rpc_url);
-    let (rx, child) = Command::new_sidecar("irium-miner")
-        .map_err(|e| format!("irium-miner not found: {}", e))?
-        .envs(env)
-        .current_dir(irium_dir.clone())
-        .spawn()
-        .map_err(|e| format!("Failed to start pool miner: {}", e))?;
+    let (rx, child) = if use_gpu {
+        Command::new_sidecar("irium-miner-gpu")
+            .map_err(|e| format!("irium-miner-gpu not found: {}", e))?
+            .args(gpu_args.clone())
+            .envs(env)
+            .current_dir(irium_dir.clone())
+            .spawn()
+            .map_err(|e| format!("Failed to start pool GPU miner: {}", e))?
+    } else {
+        Command::new_sidecar("irium-miner")
+            .map_err(|e| format!("irium-miner not found: {}", e))?
+            .envs(env)
+            .current_dir(irium_dir.clone())
+            .spawn()
+            .map_err(|e| format!("Failed to start pool miner: {}", e))?
+    };
 
     // C-10 fix: reset share counters for the new pool session so a fresh
     // connect doesn't accumulate against a previous pool's stats.
@@ -6634,6 +6681,13 @@ async fn stratum_connect(
     let password_owned = password.clone();
     let mining_addr_owned = mining_addr.clone();
     let rpc_url_owned = rpc_url.clone();
+    // v1.0.63: carry the GPU branch decision + CLI args into the
+    // reconnect closure so a transient pool drop respawns the same
+    // sidecar binary the user originally connected with. Without this
+    // a GPU-mode pool drop would silently fall back to the CPU
+    // sidecar on retry — wrong hardware, surprising behaviour.
+    let use_gpu_owned = use_gpu;
+    let gpu_args_owned = gpu_args.clone();
 
     tauri::async_runtime::spawn(async move {
         // attempts: 1 = original connection, 2 = post-disconnect retry. The
@@ -6733,9 +6787,26 @@ async fn stratum_connect(
                 &pool_url_owned, &worker_owned, &password_owned,
                 &mining_addr_owned, &rpc_url_owned,
             );
-            match Command::new_sidecar("irium-miner")
-                .ok()
-                .and_then(|cmd| cmd.envs(env).current_dir(irium_dir.clone()).spawn().ok())
+            // Mirror the original spawn-branch: GPU sidecar with CLI
+            // args if the user picked one, otherwise the CPU sidecar
+            // with bare env vars. See the comment on use_gpu_owned
+            // above for the rationale.
+            let respawn = if use_gpu_owned {
+                Command::new_sidecar("irium-miner-gpu")
+                    .ok()
+                    .and_then(|cmd| {
+                        cmd.args(gpu_args_owned.clone())
+                            .envs(env)
+                            .current_dir(irium_dir.clone())
+                            .spawn()
+                            .ok()
+                    })
+            } else {
+                Command::new_sidecar("irium-miner")
+                    .ok()
+                    .and_then(|cmd| cmd.envs(env).current_dir(irium_dir.clone()).spawn().ok())
+            };
+            match respawn
             {
                 Some((new_rx, new_child)) => {
                     if let Ok(mut g) = miner_process_ref.lock() { *g = Some(new_child); }
