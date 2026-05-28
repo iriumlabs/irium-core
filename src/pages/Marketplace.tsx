@@ -31,11 +31,6 @@ function prettifyPaymentMethod(raw: string): string {
     .join(' ');
 }
 
-// "Stale" offers: open for >7 days with no taker. Surfaces a REMOVE badge
-// so the user knows it's been sitting unused. Treated as advisory only —
-// the offer stays valid until explicitly deleted or expired.
-const STALE_OFFER_AGE_SECONDS = 7 * 24 * 60 * 60;
-
 // Client-side "never show again" list for offers the user has Removed.
 // Persisted in localStorage so removing an offer survives both a page
 // reload and a feeds.sync() re-import from a remote feed. Without this,
@@ -44,11 +39,6 @@ const STALE_OFFER_AGE_SECONDS = 7 * 24 * 60 * 60;
 // that still publishes them and the offer would reappear in the UI.
 // Stored as a JSON array of string IDs.
 const BLOCKED_OFFERS_KEY = 'irium-marketplace-blocked-offer-ids';
-function isStaleOffer(o: Offer): boolean {
-  if (!o.created_at) return false;
-  const ageS = Date.now() / 1000 - o.created_at;
-  return ageS > STALE_OFFER_AGE_SECONDS && (o.status === 'open' || !o.status);
-}
 
 // ─── Animation variants ────────────────────────────────────────
 const containerVariants = {
@@ -114,9 +104,12 @@ async function openSavePicker(opts: { defaultName: string; extensions: string[];
 // Raw offer.id moves into a <details> "Technical details" disclosure at
 // the bottom — power-user info, not the headline.
 //
-// REMOVE is now an actual button (was a non-clickable <span> before).
-// Both REMOVE and the trash icon route to the same onDelete handler so
-// stale-offer cleanup works regardless of which control the user clicks.
+// Delete affordance: a single trash icon shown on every card the
+// backend will accept a removal for (status not 'taken'/'completed').
+// Always routes through the confirm modal → handleDeleteOffer, so the
+// click target is identical across fresh, stale, and expired offers.
+// Non-own taken offers swap the Take Offer button for a grey Taken
+// badge so a buyer can't try to take an offer that's already gone.
 function OfferCard({
   offer,
   onTake,
@@ -147,7 +140,6 @@ function OfferCard({
   const showRepBar = completedCount > 0 && offer.reputation?.score !== undefined;
   const showRankBadge = completedCount > 0 && offer.ranking_score !== undefined && offer.ranking_score > 0;
 
-  const stale = isStaleOffer(offer);
   const prettyMethod = prettifyPaymentMethod(offer.payment_method ?? '');
   const wantsLabel = (offer.asset_reference ?? '').trim();
 
@@ -302,32 +294,10 @@ function OfferCard({
         </details>
       </div>
 
-      {/* Right: action stack — REMOVE button (when stale/expired and
-          deletable), EXPIRED badge, Export (My Offers), Trash (My Offers),
-          Take Offer (other-people's offers). */}
+      {/* Right: action stack — Download (export), Trash (delete confirm),
+          and either Take Offer (open non-own) or a grey Taken badge
+          (taken non-own). Own offers omit the Take/Taken slot. */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        {/* Stale OR expired offer that the user can remove → clickable
-            REMOVE button. This used to be a non-clickable <span>; users
-            were clicking it expecting deletion and nothing happened. */}
-        {(stale || offer.status === 'expired') && canRemove && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete!(); }}
-            title={
-              offer.status === 'expired'
-                ? 'Delete this expired offer from your local store'
-                : 'Open for more than 7 days with no taker — remove it.'
-            }
-            className="inline-flex items-center px-2 py-1 text-[10px] font-bold rounded transition-colors cursor-pointer"
-            style={{
-              background: offer.status === 'expired' ? 'rgba(255,255,255,0.06)' : 'rgba(245,158,11,0.12)',
-              border: offer.status === 'expired' ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(245,158,11,0.45)',
-              color: offer.status === 'expired' ? 'rgba(255,255,255,0.75)' : '#fbbf24',
-              letterSpacing: '0.08em',
-            }}
-          >
-            {offer.status === 'expired' ? 'EXPIRED · REMOVE' : 'REMOVE'}
-          </button>
-        )}
         {onExport && (
           <button
             onClick={(e) => { e.stopPropagation(); onExport(); }}
@@ -338,21 +308,21 @@ function OfferCard({
           </button>
         )}
 
-        {/* Standalone trash — for active offers (open or no status) that
-            don't already have the REMOVE button above. stale/expired
-            cases share the same onDelete handler via the REMOVE button.
-            Works for ANY source (local or remote-cached) — the backend
-            deletes by offer_id, source-agnostic. */}
-        {onDelete && (!offer.status || offer.status === 'open') && !stale && (
+        {/* Single trash icon — shown on every card the backend will
+            accept a removal for. Routes through the confirm modal so
+            the click never deletes without an explicit second click.
+            Source-agnostic (local or remote-cached): the backend
+            deletes by offer_id and finds the file either way. */}
+        {canRemove && (
           <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            onClick={(e) => { e.stopPropagation(); onDelete!(); }}
             title="Remove this offer from your local cache"
             className="btn-ghost text-xs p-1.5 text-red-400 hover:text-red-300"
           >
             <Trash2 size={13} />
           </button>
         )}
-        {onDelete && offer.status === 'taken' && (
+        {onDelete && offer.status === 'taken' && isOwnOffer && (
           <button
             disabled
             onClick={(e) => e.stopPropagation()}
@@ -364,14 +334,29 @@ function OfferCard({
         )}
 
         {!isOwnOffer && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onTake(); }}
-            disabled={!isOnline}
-            title={!isOnline ? 'Node must be online to take offers' : undefined}
-            className="btn-primary text-xs py-1.5 px-4 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Take Offer
-          </button>
+          offer.status === 'taken' ? (
+            <span
+              className="inline-flex items-center px-3 py-1.5 text-[10px] font-bold rounded uppercase"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.18)',
+                color: 'rgba(255,255,255,0.50)',
+                letterSpacing: '0.10em',
+              }}
+              title="This offer has already been taken by another buyer."
+            >
+              Taken
+            </span>
+          ) : (
+            <button
+              onClick={(e) => { e.stopPropagation(); onTake(); }}
+              disabled={!isOnline}
+              title={!isOnline ? 'Node must be online to take offers' : undefined}
+              className="btn-primary text-xs py-1.5 px-4 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Take Offer
+            </button>
+          )
         )}
       </div>
     </motion.div>
@@ -2149,16 +2134,33 @@ function OfferDetailModal({
               Close
             </button>
             {/* Take Offer is hidden on the user's own offers — they
-                can't trade with themselves. */}
+                can't trade with themselves. Taken offers swap to a
+                grey Taken indicator so a buyer can't try to take
+                from this entry point either. */}
             {!isOwnOffer && (
-              <button
-                onClick={onTake}
-                disabled={!isOnline}
-                title={!isOnline ? 'Node must be online to take offers' : undefined}
-                className="btn-primary flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Take Offer
-              </button>
+              offer.status === 'taken' ? (
+                <span
+                  className="flex-1 inline-flex items-center justify-center text-xs font-bold rounded uppercase py-2 px-4"
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    color: 'rgba(255,255,255,0.50)',
+                    letterSpacing: '0.10em',
+                  }}
+                  title="This offer has already been taken by another buyer."
+                >
+                  Taken
+                </span>
+              ) : (
+                <button
+                  onClick={onTake}
+                  disabled={!isOnline}
+                  title={!isOnline ? 'Node must be online to take offers' : undefined}
+                  className="btn-primary flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Take Offer
+                </button>
+              )
             )}
           </div>
         </motion.div>
