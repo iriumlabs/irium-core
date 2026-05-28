@@ -84,28 +84,42 @@ export default function DepositFlow() {
 
   const handleCreate = async () => {
     setCreating(true);
+    let res: { agreement_id?: string } | null = null;
     try {
-      const res = await settlement.deposit({
+      res = await settlement.deposit({
         depositor: selfAddress,
         recipient: recipient.trim(),
         amount_sats: Math.round(parseFloat(amountIrm) * SATS_PER_IRM),
         deadline_hours: deadlineHours,
+        // C3 fix: surface the purpose memo to the backend so the user's
+        // free-text note actually persists with the deposit instead of
+        // being silently dropped at submission. Empty trims to undefined
+        // so the wallet still defaults to its "Deposit" label.
+        purpose: purpose.trim() || undefined,
       });
       if (!res?.agreement_id) throw new Error('No agreement id returned');
-      // Fund the HTLC so the deposit is actually locked on-chain.
-      await agreementSpend.fund(res.agreement_id, true).catch((e) => {
-        console.error('[deposit] fund failed:', e);
-        throw e;
-      });
-      setAgreementId(res.agreement_id);
-      startPolling(res.agreement_id);
-      setStep(2);
     } catch (e) {
       console.error('[deposit] create failed:', e);
       toast.error(t(mapErrorToKey(e, 'create')));
-    } finally {
       setCreating(false);
+      return;
     }
+    // S3 fix: split fund from create so a fund failure no longer surfaces
+    // as a generic create error. The agreement IS on-chain at this point;
+    // tell the user to find it on /agreements and retry funding there.
+    try {
+      await agreementSpend.fund(res.agreement_id!, true);
+    } catch (fundErr) {
+      console.error('[deposit] fund failed (agreement orphaned):', fundErr);
+      toast.error('Agreement created but funding failed. Find it in your Agreements page to retry funding.');
+      setTimeout(() => navigate('/agreements'), 3000);
+      setCreating(false);
+      return;
+    }
+    setAgreementId(res.agreement_id!);
+    startPolling(res.agreement_id!);
+    setStep(2);
+    setCreating(false);
   };
 
   const handleRelease = async () => {

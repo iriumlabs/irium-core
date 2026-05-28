@@ -107,8 +107,9 @@ export default function SafeTradeFlow() {
 
   const handleCreateAgreement = async () => {
     setSCreating(true);
+    let res: { agreement_id?: string; hash?: string } | null = null;
     try {
-      const res = await settlement.otc({
+      res = await settlement.otc({
         buyer: sBuyerAddr.trim(),
         seller: selfAddress,
         amount_sats: Math.round(parseFloat(sAmountIrm) * SATS_PER_IRM),
@@ -117,26 +118,30 @@ export default function SafeTradeFlow() {
         payment_method: sReceiving.trim(),
       });
       if (!res?.agreement_id) throw new Error('No agreement id returned');
-      // Backend funds the HTLC implicitly via agreementSpend.fund — but
-      // settlement.otc only CREATES the agreement; the seller must call
-      // fund to lock the IRM. We do that now so the deal-code share
-      // step accurately says "Funds locked".
-      await agreementSpend.fund(res.agreement_id, true).catch((e) => {
-        // If funding fails, surface it but keep the agreement — user
-        // can retry from the Agreements page.
-        console.error('[safe-trade] fund failed:', e);
-        throw e;
-      });
-      setSAgreementId(res.agreement_id);
-      if (res.hash) setSAgreementHash(res.hash);
-      startPolling(res.agreement_id);
-      setStep(3);
     } catch (e) {
       console.error('[safe-trade] create failed:', e);
       toast.error(t(mapErrorToKey(e, 'create')));
-    } finally {
       setSCreating(false);
+      return;
     }
+    // S3 fix: split create from fund so a fund failure shows the
+    // orphan-recovery toast instead of a generic create error. The
+    // agreement is on-chain at this point; user can finish funding via
+    // /agreements.
+    try {
+      await agreementSpend.fund(res.agreement_id!, true);
+    } catch (fundErr) {
+      console.error('[safe-trade] fund failed (agreement orphaned):', fundErr);
+      toast.error('Agreement created but funding failed. Find it in your Agreements page to retry funding.');
+      setTimeout(() => navigate('/agreements'), 3000);
+      setSCreating(false);
+      return;
+    }
+    setSAgreementId(res.agreement_id!);
+    if (res.hash) setSAgreementHash(res.hash);
+    startPolling(res.agreement_id!);
+    setStep(3);
+    setSCreating(false);
   };
 
   const handleConfirmReceived = async () => {
@@ -322,7 +327,11 @@ export default function SafeTradeFlow() {
   // Selling Step 4 — share deal code + wait + release.
   const renderSellingStep4 = () => {
     const plain = plainStatusFromStatusResult(status);
-    const canRelease = status?.release_eligible === true || status?.funded === true;
+    // A4 fix: previously allowed release when EITHER funded or release_eligible
+    // was true, which let the user click Release before proof was final and
+    // get a "release_not_ready" error. Both must be true now — funded gates
+    // the on-chain prerequisite, release_eligible gates policy satisfaction.
+    const canRelease = status?.release_eligible === true && status?.funded === true;
     return (
       <div className="space-y-5">
         <div className="card p-6 space-y-4">

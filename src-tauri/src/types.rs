@@ -858,6 +858,7 @@ pub struct DepositParams {
     pub recipient: String,
     pub amount_sats: u64,
     pub deadline_hours: Option<u64>,
+    pub purpose: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -51,6 +51,14 @@ export default function PayForWorkFlow() {
   const [status, setStatus] = useState<AgreementStatusResult | null>(null);
   const [releasing, setReleasing] = useState(false);
   const [refunding, setRefunding] = useState(false);
+  // B5 fix: for milestone agreements the user must pick which milestone
+  // they are completing. Defaults to 0 (the first milestone). The selector
+  // only renders when kind === 'milestone'. The backend tracks per-
+  // milestone preimages via get_milestone_secret(agreement_id, index)
+  // (lib/tauri.ts:307), so handleMarkComplete pulls the index-specific
+  // secret when releasing a milestone instead of the global agreement
+  // secret used for single-payment flows.
+  const [selectedMilestone, setSelectedMilestone] = useState(0);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -99,9 +107,9 @@ export default function PayForWorkFlow() {
   const handleCreate = async () => {
     if (!kind) return;
     setCreating(true);
+    const amountSats = Math.round(parseFloat(amountIrm) * SATS_PER_IRM);
+    let res: { agreement_id?: string; hash?: string } | null = null;
     try {
-      const amountSats = Math.round(parseFloat(amountIrm) * SATS_PER_IRM);
-      let res;
       if (kind === 'single') {
         res = await settlement.freelance({
           client: selfAddress,
@@ -124,21 +132,29 @@ export default function PayForWorkFlow() {
         });
       }
       if (!res?.agreement_id) throw new Error('No agreement id returned');
-      // Fund the HTLC so the post-creation status reflects "Locked".
-      await agreementSpend.fund(res.agreement_id, true).catch((e) => {
-        console.error('[pay-for-work] fund failed:', e);
-        throw e;
-      });
-      setAgreementId(res.agreement_id);
-      if (res.hash) setAgreementHash(res.hash);
-      startPolling(res.agreement_id);
-      setStep(3);
     } catch (e) {
       console.error('[pay-for-work] create failed:', e);
       toast.error(t(mapErrorToKey(e, 'create')));
-    } finally {
       setCreating(false);
+      return;
     }
+    // S3 fix: split fund from create so an orphan-on-fund failure surfaces
+    // a recoverable toast + auto-navigation rather than a generic create
+    // error. The agreement is already on-chain and findable on /agreements.
+    try {
+      await agreementSpend.fund(res.agreement_id!, true);
+    } catch (fundErr) {
+      console.error('[pay-for-work] fund failed (agreement orphaned):', fundErr);
+      toast.error('Agreement created but funding failed. Find it in your Agreements page to retry funding.');
+      setTimeout(() => navigate('/agreements'), 3000);
+      setCreating(false);
+      return;
+    }
+    setAgreementId(res.agreement_id!);
+    if (res.hash) setAgreementHash(res.hash);
+    startPolling(res.agreement_id!);
+    setStep(3);
+    setCreating(false);
   };
 
   const handleMarkComplete = async () => {
@@ -155,17 +171,32 @@ export default function PayForWorkFlow() {
         return;
       }
       // The client (=payer in freelance/contractor templates) attests that
-      // work was completed satisfactorily.
+      // work was completed satisfactorily. B5 fix: for milestone agreements
+      // we attach the milestone index as evidence_summary so the proof
+      // log records which milestone the attestation is for (the backend's
+      // proof handler doesn't yet have a structured milestone_index field;
+      // evidence_summary is the existing free-form field that already gets
+      // persisted at main.rs:4820).
       await proofs.createAndSubmit({
         agreementHash: hash,
         proofType: kind === 'milestone' ? 'milestone_complete' : 'delivery_confirmed',
         attestedBy: selfAddress,
         address: selfAddress,
+        evidenceSummary: kind === 'milestone'
+          ? `milestone_${selectedMilestone + 1}_complete`
+          : undefined,
       }).catch((e) => {
         console.warn('[pay-for-work] proof submit failed (continuing):', e);
       });
       try {
-        const secret = await agreements.getSecret(agreementId);
+        // B5 fix: milestone agreements use per-index preimages (see
+        // get_milestone_secret in main.rs:5060). Single-payment flows
+        // use the global agreement secret. Picking the wrong one here
+        // would either release the wrong amount or fail the on-chain
+        // hash-preimage check.
+        const secret = kind === 'milestone'
+          ? await agreements.getMilestoneSecret(agreementId, selectedMilestone)
+          : await agreements.getSecret(agreementId);
         await agreements.release(agreementId, secret, true);
         toast.success(t('settlement_ui.pay_for_work.toast_released'));
       } catch (releaseErr) {
@@ -371,6 +402,26 @@ export default function PayForWorkFlow() {
               ? t('settlement_ui.pay_for_work.status_in_progress')
               : t('settlement_ui.pay_for_work.status_pending')}
           </p>
+          {kind === 'milestone' && (
+            <div className="space-y-1 pt-1">
+              <label className="label">Which milestone?</label>
+              <select
+                value={selectedMilestone}
+                onChange={(e) => setSelectedMilestone(parseInt(e.target.value, 10))}
+                disabled={releasing || refunding}
+                className="input w-full cursor-pointer disabled:opacity-50"
+              >
+                {Array.from({ length: milestoneCount }, (_, i) => (
+                  <option key={i} value={i}>
+                    Milestone {i + 1} of {milestoneCount}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-white/45">
+                Mark Complete releases this milestone&apos;s share of the locked IRM. The contractor receives 1/{milestoneCount} of the total per milestone.
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             <button
               onClick={handleMarkComplete}
@@ -379,7 +430,9 @@ export default function PayForWorkFlow() {
               style={status?.funded && status?.status !== 'released' && status?.status !== 'refunded' ? { background: 'rgba(16,185,129,0.85)', borderColor: 'rgba(16,185,129,0.6)' } : undefined}
             >
               {releasing ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
-              {t('settlement_ui.pay_for_work.mark_complete')}
+              {kind === 'milestone'
+                ? `${t('settlement_ui.pay_for_work.mark_complete')} (milestone ${selectedMilestone + 1})`
+                : t('settlement_ui.pay_for_work.mark_complete')}
             </button>
             <button
               onClick={handleClaimRefund}

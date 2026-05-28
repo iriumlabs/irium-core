@@ -565,6 +565,7 @@ export interface DepositParams {
   recipient: string;
   amount_sats: number;
   deadline_hours?: number;
+  purpose?: string;
 }
 
 export interface MerchantDelayedParams {

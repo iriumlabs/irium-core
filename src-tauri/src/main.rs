@@ -5313,7 +5313,11 @@ async fn settlement_create_deposit(
         "--payer".to_string(), format!("addr={}", params.depositor),
         "--payee".to_string(), format!("addr={}", params.recipient),
         "--amount".to_string(), format!("{:.8}", sats_to_irm(params.amount_sats)),
-        "--purpose-reference".to_string(), "Deposit".to_string(),
+        "--purpose-reference".to_string(),
+        params.purpose.clone()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "Deposit".to_string()),
         "--refund-summary".to_string(), "Deposit refund".to_string(),
         "--secret-hash".to_string(), secret_hash,
         "--refund-timeout".to_string(), timeout.to_string(),
