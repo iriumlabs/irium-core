@@ -322,7 +322,7 @@ function OfferCard({
             <Trash2 size={13} />
           </button>
         )}
-        {onDelete && offer.status === 'taken' && (
+        {onDelete && offer.status === 'taken' && isOwnOffer && (
           <button
             disabled
             onClick={(e) => e.stopPropagation()}
