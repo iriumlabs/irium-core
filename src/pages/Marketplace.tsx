@@ -169,8 +169,24 @@ function OfferCard({
     >
       {/* Left: amount (large, prominent) + meta */}
       <div className="flex-1 min-w-0 space-y-1.5">
-        {/* Amount as headline */}
+        {/* Top row: SELL badge + amount headline + risk/rank tags. Every
+            offer in the current schema is a sell (the creator locks IRM
+            and accepts off-chain payment), so the badge is hardcoded.
+            Swap to a derived (offer as any).side when a BUY offer type
+            is introduced. */}
         <div className="flex items-baseline gap-2 flex-wrap">
+          <span
+            className="text-[10px] font-bold px-2 py-0.5 rounded uppercase"
+            style={{
+              background: 'rgba(34,197,94,0.15)',
+              border: '1px solid rgba(34,197,94,0.40)',
+              color: '#22c55e',
+              letterSpacing: '0.10em',
+            }}
+            title="Seller is offering IRM in exchange for off-chain payment"
+          >
+            SELL
+          </span>
           <span
             className="font-display font-bold text-2xl tabular-nums"
             style={{
@@ -183,9 +199,6 @@ function OfferCard({
           >
             {formatIRM(offer.amount)}
           </span>
-          {prettyMethod && (
-            <span className="text-sm text-white/65">· paid via {prettyMethod}</span>
-          )}
           {offer.risk_signal && (
             <span
               className={`badge ${riskBadge} text-[9px]`}
@@ -207,39 +220,44 @@ function OfferCard({
           )}
         </div>
 
-        {/* What the seller wants in exchange — primary trade context.
-            Only render when asset_reference is actually populated; an
-            empty line here looks broken to a normal user. */}
-        {wantsLabel && (
-          <div className="text-xs text-white/65">
-            <span className="text-white/40">In exchange for:</span> <span className="text-white">{wantsLabel}</span>
+        {/* Labeled field rows — each field gets an explicit label so the
+            card is self-describing without referring back to the help
+            page. Renders dashes for missing values rather than collapsing
+            the line, so the layout shape is constant across offers. */}
+        <div className="space-y-0.5 text-[11px]">
+          <div>
+            <span className="text-white/40">Wants in return:</span>{' '}
+            <span className="text-white/85">{wantsLabel || '—'}</span>
           </div>
-        )}
-
-        {/* Seller address (12 chars) + time-ago */}
-        {(offer.seller || offer.created_at) && (
-          <div className="flex items-center gap-2">
-            {offer.seller && (
-              <>
-                <span className="font-mono text-[10px] text-white/40">{truncateAddr(offer.seller, 5, 4)}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate('/reputation', { state: { prefillAddress: offer.seller } });
-                  }}
-                  className="text-[10px] text-irium-400 hover:text-irium-300 transition-colors"
-                >
-                  rep
-                </button>
-              </>
-            )}
-            {offer.created_at && (
-              <span className="text-[10px] text-white/30">
-                {offer.seller ? '· ' : ''}{timeAgo(offer.created_at)}
-              </span>
-            )}
+          <div>
+            <span className="text-white/40">Payment method:</span>{' '}
+            <span className="text-white/85">{prettyMethod || '—'}</span>
           </div>
-        )}
+          {(offer.seller || offer.created_at) && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-white/40">Seller:</span>
+              {offer.seller && (
+                <>
+                  <span className="font-mono text-white/70">{truncateAddr(offer.seller, 5, 4)}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/reputation', { state: { prefillAddress: offer.seller } });
+                    }}
+                    className="text-irium-400 hover:text-irium-300 transition-colors"
+                  >
+                    rep
+                  </button>
+                </>
+              )}
+              {offer.created_at && (
+                <span className="text-white/35">
+                  {offer.seller ? '· ' : ''}posted {timeAgo(offer.created_at)}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Description — free-text price note or extra detail */}
         {offer.description && (
