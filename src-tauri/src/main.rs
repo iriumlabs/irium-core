@@ -3581,16 +3581,13 @@ async fn delete_wallet_file(
         return Err(format!("Refusing to delete file that is not a wallet: {}", name));
     }
 
-    // Compare against the explicitly-active wallet path. We deliberately do
-    // NOT fall back to resolve_wallet_path() when state.wallet_path is None —
-    // None means "the user has not confirmed an active wallet yet" (fresh
-    // install, or just after the user cancelled a create-wallet flow). In
-    // that case nothing is "active" and the file is safe to delete.
-    // A non-None state.wallet_path is set by:
-    //   • set_wallet_config on app startup from persisted settings
-    //   • wallet_set_path (explicit user switch via the Manage panel, or the
-    //     Done button after a successful create)
-    //   • wallet_import_mnemonic / wallet_import_wif (implicit on import)
+    // Compare against the explicitly-active wallet path. As of v1.0.55
+    // state.wallet_path is always Some(_) — AppState::new seeds it with
+    // resolve_wallet_path() and set_wallet_config falls back to the same
+    // default when a persisted path is missing. The `if let Some` arm is
+    // kept defensively; when the active path doesn't exist on disk
+    // canonicalize().ok() returns None, so the equality check naturally
+    // fails and the deletion proceeds.
     let active_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     if let Some(active) = active_path {
         let active_canonical = std::path::PathBuf::from(&active).canonicalize().ok();
@@ -7199,15 +7196,21 @@ async fn set_wallet_config(
     data_dir: Option<String>,
 ) -> Result<bool, String> {
     // Reject a stale persisted wallet_path (file moved/deleted between runs)
-    // by falling back to None — irium-wallet then defaults to
-    // ~/.irium/wallet.json instead of failing on every command.
+    // by falling back to the resolved default. v1.0.55 fix: previously this
+    // branch set the state to None on the assumption that irium-wallet would
+    // default to ~/.irium/wallet.json on its own. The binary's fallback uses
+    // env::var("HOME") which is unset on Windows, so it resolved to a bogus
+    // "/.irium/wallet.json" (drive root) and every wallet command failed
+    // with "read wallet: ... os error 2" intermittently — whenever settings
+    // happened to carry a stale path. Resolve the path explicitly so
+    // IRIUM_WALLET_FILE always carries an absolute, OS-correct path.
     let validated_wallet_path = match wallet_path {
         Some(p) if !std::path::Path::new(&p).exists() => {
             tracing::warn!(
                 "[set_wallet_config] persisted wallet_path does not exist on disk: {} — falling back to default",
                 p
             );
-            None
+            Some(resolve_wallet_path())
         }
         other => other,
     };
