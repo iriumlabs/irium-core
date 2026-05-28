@@ -912,22 +912,32 @@ export default function MarketplacePage() {
   const [filterMaxIrm, setFilterMaxIrm] = useState('');
   const [filterPayment, setFilterPayment] = useState<string>('');
 
-  // Fetch the user's wallet addresses once — they rarely change mid-
-  // session and the My-Offers / Browse filters all key off this set.
-  // Normalize via trim() because the wallet binary sometimes serializes
-  // addresses with leading/trailing whitespace that the offer's seller
-  // field doesn't carry, which silently breaks the .has() filter.
+  // Fetch the user's wallet addresses and merge with the addresses already
+  // in the Zustand store (populated earlier in app lifecycle). Both sources
+  // feed the same Set so the Browse filter drops own offers even before the
+  // wallet.listAddresses() call returns — if the store has addresses, they
+  // are usable immediately. Normalize via trim() because the wallet binary
+  // sometimes serializes addresses with leading/trailing whitespace that
+  // the offer's seller field doesn't carry, which silently breaks .has().
   useEffect(() => {
+    const fromStore = (addresses ?? [])
+      .map((a) => (a.address ?? '').trim())
+      .filter(Boolean);
+    if (fromStore.length > 0) {
+      setMyAddresses(new Set(fromStore));
+    }
     wallet.listAddresses()
       .then((addrs) => {
-        const normalized = (addrs ?? [])
+        const fromWallet = (addrs ?? [])
           .map((a) => (a.address ?? '').trim())
           .filter(Boolean);
-        const set = new Set(normalized);
-        setMyAddresses(set);
+        // Merge store + wallet sources so a slow wallet.listAddresses
+        // result never overwrites store-derived addresses with an empty set.
+        const merged = new Set<string>([...fromStore, ...fromWallet]);
+        setMyAddresses(merged);
       })
-      .catch(() => { /* empty set → filtering is a no-op until reload */ });
-  }, []);
+      .catch(() => { /* keep store-derived set; filtering still works */ });
+  }, [addresses]);
 
   // ── Data loaders ─────────────────────────────────────────────
   // Race guard for loadOffers. Without this, the user-triggered tab-entry
@@ -1201,20 +1211,29 @@ export default function MarketplacePage() {
   };
 
   // ── Filtered offers ──────────────────────────────────────────
-  // Browse excludes the user's own offers — those belong in My Offers
+  // Browse drops the user's own offers entirely — they belong in My Offers
   // and you can't trade with yourself anyway. Compare via trim() so a
   // legacy offer whose seller carries trailing whitespace still gets
   // hidden. Then phase 8's search filter matches description /
   // payment_method / id / seller. Sort applies last.
+  //
+  // The console.debug below surfaces a counter snapshot so the filter's
+  // correctness can be verified at runtime ("3 own offers dropped" vs
+  // "0 own offers dropped"). It only runs when offerList or myAddresses
+  // change, not on every render.
   const filteredOffers = useMemo(() => {
-    return offerList
+    let ownDropped = 0;
+    const result = offerList
       // Client-side blocklist — always wins regardless of source. An
       // offer the user Removed stays hidden even if the next feeds.sync()
       // re-imported it from a remote feed.
       .filter((o) => !blockedOfferIds.has(o.id))
       .filter((o) => {
         const sellerTrim = (o.seller ?? '').trim();
-        if (sellerTrim && myAddresses.has(sellerTrim)) return false;
+        if (sellerTrim && myAddresses.has(sellerTrim)) {
+          ownDropped += 1;
+          return false;
+        }
         return true;
       })
       .filter((o) => {
@@ -1232,6 +1251,15 @@ export default function MarketplacePage() {
         if (filterSort === 'amount') return b.amount - a.amount;
         return (b.created_at ?? 0) - (a.created_at ?? 0);
       });
+    // eslint-disable-next-line no-console
+    console.debug('[marketplace] browse filter:', {
+      sourceOffers: offerList.length,
+      ownAddresses: myAddresses.size,
+      ownDropped,
+      blocklistSize: blockedOfferIds.size,
+      finalCount: result.length,
+    });
+    return result;
   }, [offerList, myAddresses, blockedOfferIds, searchQuery, filterSort]);
 
   // ── Render ───────────────────────────────────────────────────

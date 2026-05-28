@@ -9,13 +9,13 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
-import { useStore } from '../lib/store';
-import { settlement, agreements as agreementsApi, invoices, tradeStatus, reputationActions, agreementSpend, proofs } from '../lib/tauri';
-import { safeInvoke } from '../lib/invoke';
-import { useIriumEvents } from '../lib/hooks';
-import NodeOfflineBanner from '../components/NodeOfflineBanner';
-import { SATS_PER_IRM, formatIRM, truncateHash } from '../lib/types';
-import type { OtcParams, FreelanceParams, MilestoneParams, DepositParams, MerchantDelayedParams, ContractorMilestoneParams, AgreementResult, Agreement, SellerStatus, BuyerStatus, Invoice, SelfTradeCheckResult } from '../lib/types';
+import { useStore } from '../../lib/store';
+import { settlement, agreements as agreementsApi, invoices, tradeStatus, reputationActions, agreementSpend, proofs } from '../../lib/tauri';
+import { safeInvoke } from '../../lib/invoke';
+import { useIriumEvents } from '../../lib/hooks';
+import NodeOfflineBanner from '../../components/NodeOfflineBanner';
+import { SATS_PER_IRM, formatIRM, truncateHash } from '../../lib/types';
+import type { OtcParams, FreelanceParams, MilestoneParams, DepositParams, MerchantDelayedParams, ContractorMilestoneParams, AgreementResult, Agreement, SellerStatus, BuyerStatus, Invoice, SelfTradeCheckResult } from '../../lib/types';
 
 // ── Template definitions ─────────────────────────────────────────
 

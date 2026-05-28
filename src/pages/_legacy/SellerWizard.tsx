@@ -9,10 +9,10 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { save as saveDialog } from '@tauri-apps/api/dialog';
-import { offers, wallet } from '../lib/tauri';
-import { useStore } from '../lib/store';
-import type { CreateOfferParams, CreateOfferResult, AddressInfo } from '../lib/types';
-import { SATS_PER_IRM } from '../lib/types';
+import { offers, wallet } from '../../lib/tauri';
+import { useStore } from '../../lib/store';
+import type { CreateOfferParams, CreateOfferResult, AddressInfo } from '../../lib/types';
+import { SATS_PER_IRM } from '../../lib/types';
 
 // Step 0 = Choose Type, then create + share. The seller's job ends at the
 // Share step — once the buyer takes the offer an agreement is automatically

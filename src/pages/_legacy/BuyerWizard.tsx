@@ -9,9 +9,9 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { open as openDialog } from '@tauri-apps/api/dialog';
-import { offers, feeds, agreements as agreementsApi, agreementSpend } from '../lib/tauri';
-import type { Offer, AgreementStatusResult } from '../lib/types';
-import { formatIRM } from '../lib/types';
+import { offers, feeds, agreements as agreementsApi, agreementSpend } from '../../lib/tauri';
+import type { Offer, AgreementStatusResult } from '../../lib/types';
+import { formatIRM } from '../../lib/types';
 
 // Step 0 = Choose Type, then the regular find/take/fund/monitor flow. Mirrors
 // the four-card template grid in Settlement.tsx and SellerWizard.tsx so all

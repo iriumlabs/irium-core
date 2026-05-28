@@ -19,7 +19,7 @@ import GlobalAgreementNotifier from './components/GlobalAgreementNotifier';
 const Dashboard    = lazy(() => import('./pages/Dashboard'));
 const Wallet       = lazy(() => import('./pages/Wallet'));
 const SettlementHub    = lazy(() => import('./pages/settlement-ui/SettlementHub'));
-const SettlementLegacy = lazy(() => import('./pages/Settlement'));
+const SettlementLegacy = lazy(() => import('./pages/_legacy/Settlement'));
 const SafeTradeFlow    = lazy(() => import('./pages/settlement-ui/SafeTradeFlow'));
 const PayForWorkFlow   = lazy(() => import('./pages/settlement-ui/PayForWorkFlow'));
 const DepositFlow      = lazy(() => import('./pages/settlement-ui/DepositFlow'));
@@ -30,8 +30,22 @@ const Reputation   = lazy(() => import('./pages/Reputation'));
 const Miner        = lazy(() => import('./pages/Miner'));
 const Settings     = lazy(() => import('./pages/Settings'));
 const Explorer     = lazy(() => import('./pages/Explorer'));
-const SellerWizard = lazy(() => import('./pages/SellerWizard'));
-const BuyerWizard  = lazy(() => import('./pages/BuyerWizard'));
+const SellerWizard = lazy(() => import('./pages/_legacy/SellerWizard'));
+const BuyerWizard  = lazy(() => import('./pages/_legacy/BuyerWizard'));
+
+// Reads the localStorage 'settlement_legacy_ui' flag on each mount and
+// renders the legacy Settlement page or the new SettlementHub accordingly.
+// react-router unmounts/remounts the route element on navigation so the
+// localStorage read is fresh whenever the user enters /settlement. Toggling
+// the flag in Settings while already on /settlement requires a navigation
+// away and back — deliberate, to avoid wiring a storage-event listener.
+function SettlementRouteSwitch() {
+  const useLegacy = (() => {
+    try { return localStorage.getItem('settlement_legacy_ui') === 'true'; }
+    catch { return false; }
+  })();
+  return useLegacy ? <SettlementLegacy /> : <SettlementHub />;
+}
 const Logs         = lazy(() => import('./pages/Logs'));
 const Help         = lazy(() => import('./pages/Help'));
 import Onboarding, { ONBOARDING_KEY, FORCE_ONBOARDING_KEY, Splash } from './pages/Onboarding';
@@ -349,8 +363,7 @@ function AppLayout() {
                     The page lazy imports above are intentionally kept
                     so re-enabling is a one-line swap of <Navigate>
                     back to the original element. */}
-                <Route path="/settlement"            element={<SettlementHub />}    />
-                <Route path="/settlement-legacy"     element={<SettlementLegacy />} />
+                <Route path="/settlement"            element={<SettlementRouteSwitch />} />
                 <Route path="/settlement/safe-trade"   element={<SafeTradeFlow />}    />
                 <Route path="/settlement/pay-for-work" element={<PayForWorkFlow />}   />
                 <Route path="/settlement/deposit"              element={<DepositFlow />}      />

@@ -222,6 +222,20 @@ export default function Settings() {
     try { localStorage.setItem(SHOW_PEER_ADDRESSES_KEY, showPeerAddresses ? '1' : '0'); } catch { /* ignore */ }
   }, [showPeerAddresses]);
 
+  // Settlement legacy UI toggle. The new SettlementHub (with SafeTradeFlow,
+  // PayForWorkFlow, DepositFlow) is the default for /settlement. Power users
+  // who prefer the template-grid Settlement.tsx page can flip this on to
+  // swap the route. The flag is read fresh on each /settlement navigation
+  // by SettlementRouteSwitch in App.tsx, so the change takes effect the
+  // next time the user enters /settlement.
+  const SETTLEMENT_LEGACY_UI_KEY = 'settlement_legacy_ui';
+  const [showLegacySettlement, setShowLegacySettlement] = useState<boolean>(() => {
+    try { return localStorage.getItem(SETTLEMENT_LEGACY_UI_KEY) === 'true'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(SETTLEMENT_LEGACY_UI_KEY, showLegacySettlement ? 'true' : 'false'); } catch { /* ignore */ }
+  }, [showLegacySettlement]);
+
   // Track when the node first started running (this session). Drives the
   // "Detecting..." → "Inactive" timeout on the UPnP card so we don't show
   // "Inactive — outbound only" the instant the node starts (PEX takes a
@@ -1839,6 +1853,12 @@ export default function Settings() {
               >
                 {t('settings.developer_info.reset_onboarding')}
               </button>
+            </FieldRow>
+            <FieldRow
+              label="Show legacy settlement UI"
+              description="Use the original template-grid Settlement page instead of the new SafeTrade / PayForWork / Deposit flows. Takes effect on next /settlement navigation."
+            >
+              <Toggle checked={showLegacySettlement} onChange={setShowLegacySettlement} />
             </FieldRow>
           </Section>
         </motion.div>
