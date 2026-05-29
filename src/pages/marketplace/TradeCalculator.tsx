@@ -1,24 +1,158 @@
 import { useMemo, useState } from 'react';
-import { Calculator, ArrowRight } from 'lucide-react';
+import { Calculator, ArrowRight, Star, ShieldCheck } from 'lucide-react';
 import type { Offer } from '../../lib/types';
-import { SATS_PER_IRM, formatIRM } from '../../lib/types';
+import { formatIRM } from '../../lib/types';
 
 // Trade calculator — user inputs the amount of off-chain stable currency
-// they want to spend (default USDT) and the calculator picks the cheapest
-// open offer that covers that amount. Reputation is shown alongside so
-// the user can override to a better-rep seller if they prefer.
+// they want to spend (default USDT) and the calculator picks the
+// cheapest open offer and a "best reputation" alternative. Reputation
+// stars beside each card let the user override to a better-rep seller
+// if they prefer.
 //
-// We don't have a USDT/IRM oracle in irium-core, so the offer's own
-// price_note (free-form text) is the price hint. For the simple match
-// case we use offer-amount-as-IRM and assume 1:1 pricing — the seller
-// expresses the offer in IRM and the calculator just shows the IRM
-// they'd receive. A future iteration can parse price_note for explicit
-// rate hints.
+// We don't have a USDT/IRM oracle in irium-core, so the offer's
+// asset_reference (free-form, e.g. "50 USDT") is parsed and surfaced as
+// the explicit price. Offers without a parseable price are still shown
+// but the "You pay" field renders "Price not set" rather than a misleading
+// numeric estimate.
 
 export interface TradeCalculatorProps {
   offers: Offer[];
   onSelectOffer: (offer: Offer) => void;
   reputationStars: Record<string, number | null>;
+}
+
+function parsePrice(raw: string | undefined | null): { total: number; unit: string } | null {
+  if (!raw) return null;
+  const m = raw.match(/^\s*([\d]+(?:[.,]\d+)?)\s*([A-Za-z]{1,8})?\s*/);
+  if (!m) return null;
+  const total = parseFloat(m[1].replace(',', '.'));
+  if (!Number.isFinite(total) || total <= 0) return null;
+  const unit = (m[2] ?? 'USDT').toUpperCase();
+  return { total, unit };
+}
+
+function StarLine({ stars }: { stars: number | null }) {
+  if (stars == null) {
+    return (
+      <span className="text-[11px]" style={{ color: 'rgba(238,240,255,0.35)' }}>
+        no reputation yet
+      </span>
+    );
+  }
+  // Render 5-star scale with filled / hollow icons so the badge is
+  // immediately readable at a glance.
+  const cells = [1, 2, 3, 4, 5].map((i) => {
+    const filled = i <= stars;
+    return (
+      <Star
+        key={i}
+        size={11}
+        fill={filled ? 'currentColor' : 'none'}
+        strokeWidth={1.5}
+      />
+    );
+  });
+  return (
+    <span
+      className="inline-flex items-center gap-0.5"
+      style={{ color: '#fbbf24' }}
+      title={`${stars} of 5`}
+    >
+      {cells}
+    </span>
+  );
+}
+
+function OfferCard({
+  title,
+  accent,
+  offer,
+  stars,
+  onSelect,
+  ctaLabel,
+}: {
+  title: string;
+  accent: string;
+  offer: Offer;
+  stars: number | null;
+  onSelect: () => void;
+  ctaLabel: string;
+}) {
+  const price = parsePrice((offer.asset_reference as string | undefined) ?? null);
+  const verified = (stars ?? 0) >= 4;
+  return (
+    <div
+      className="p-3 rounded space-y-3"
+      style={{
+        background: `${accent}10`,
+        border: `1px solid ${accent}33`,
+      }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className="text-[10px] uppercase tracking-wide font-display font-semibold"
+          style={{ color: accent }}
+        >
+          {title}
+        </span>
+        <div className="inline-flex items-center gap-1.5">
+          <StarLine stars={stars} />
+          {verified && (
+            <span
+              className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-display font-semibold uppercase tracking-wide"
+              style={{
+                background: 'rgba(34,197,94,0.12)',
+                color: '#22c55e',
+                border: '1px solid rgba(34,197,94,0.30)',
+              }}
+              title="Seller has previously released escrow on a completed trade."
+            >
+              <ShieldCheck size={9} /> Verified
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-1.5" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
+        <div className="flex items-baseline justify-between">
+          <span className="text-[10px] uppercase tracking-wide" style={{ color: 'rgba(238,240,255,0.45)' }}>
+            You receive
+          </span>
+          <span className="text-sm tabular-nums" style={{ color: '#34d399' }}>
+            {formatIRM(offer.amount ?? 0)}
+          </span>
+        </div>
+        <div className="flex items-baseline justify-between">
+          <span className="text-[10px] uppercase tracking-wide" style={{ color: 'rgba(238,240,255,0.45)' }}>
+            You pay
+          </span>
+          <span
+            className="text-sm tabular-nums"
+            style={{ color: price ? '#eef0ff' : 'rgba(238,240,255,0.45)' }}
+          >
+            {price ? `${price.total.toLocaleString('en-US')} ${price.unit}` : 'Price not set'}
+          </span>
+        </div>
+        <div
+          className="text-[11px] flex items-center gap-2 pt-1"
+          style={{ color: 'rgba(238,240,255,0.55)' }}
+        >
+          <span title={offer.seller ?? ''}>
+            {(offer.seller ?? '').slice(0, 8)}…{(offer.seller ?? '').slice(-4)}
+          </span>
+          <span style={{ color: 'rgba(238,240,255,0.30)' }}>·</span>
+          <span>{offer.payment_method ?? '—'}</span>
+        </div>
+      </div>
+
+      <button
+        onClick={onSelect}
+        className="btn-primary w-full inline-flex items-center justify-center gap-2 text-xs"
+      >
+        {ctaLabel} <ArrowRight size={12} />
+      </button>
+    </div>
+  );
 }
 
 export default function TradeCalculator({
@@ -60,10 +194,7 @@ export default function TradeCalculator({
     return best;
   }, [openOffers, reputationStars]);
 
-  const estimatedIrm =
-    cheapest && cheapest.amount
-      ? (cheapest.amount / SATS_PER_IRM).toString()
-      : '0';
+  const userHasBudget = numericUsdt > 0;
 
   return (
     <div className="card p-4 space-y-4" style={{ border: '1px solid rgba(167,139,250,0.18)' }}>
@@ -74,6 +205,7 @@ export default function TradeCalculator({
         </h3>
       </div>
 
+      {/* You spend */}
       <div className="space-y-2">
         <label className="label" style={{ color: 'rgba(238,240,255,0.55)' }}>
           You spend
@@ -93,6 +225,10 @@ export default function TradeCalculator({
         </div>
       </div>
 
+      {/* You receive — conditional. Only shows a real IRM amount once
+          the user has entered a USDT budget. Before that, the field is
+          a clear prompt rather than a misleading "1 IRM" anchor pulled
+          from the cheapest row. */}
       <div className="space-y-2">
         <label className="label" style={{ color: 'rgba(238,240,255,0.55)' }}>
           You receive (cheapest match)
@@ -101,74 +237,48 @@ export default function TradeCalculator({
           className="px-3 py-2 rounded text-sm tabular-nums"
           style={{
             background: 'rgba(0,0,0,0.25)',
-            color: '#eef0ff',
+            color: userHasBudget && cheapest ? '#eef0ff' : 'rgba(238,240,255,0.45)',
             border: '1px solid rgba(255,255,255,0.06)',
             fontFamily: '"JetBrains Mono", monospace',
+            fontStyle: userHasBudget && cheapest ? 'normal' : 'italic',
           }}
         >
-          {cheapest ? formatIRM(cheapest.amount ?? 0) : '— no offers —'}
+          {userHasBudget
+            ? (cheapest ? formatIRM(cheapest.amount ?? 0) : '— no matching offer —')
+            : 'Enter a USDT amount above'}
         </div>
-        <p className="text-xs" style={{ color: 'rgba(238,240,255,0.35)' }}>
-          {numericUsdt > 0
-            ? `Estimated at the cheapest seller's quote. Confirm exact rate in the offer's price note before paying.`
-            : 'Enter a USDT amount to see matching offers.'}
+        <p className="text-xs" style={{ color: 'rgba(238,240,255,0.45)' }}>
+          {userHasBudget
+            ? "Estimated at the cheapest seller's quote. Confirm exact rate in the offer's price note before paying."
+            : 'Enter your USDT budget above to see how much IRM you will receive.'}
         </p>
       </div>
 
+      {/* Cheapest seller card (always visible when at least one offer
+          exists — it doubles as a market-snapshot indicator). */}
       {cheapest && (
-        <div
-          className="p-3 rounded space-y-2"
-          style={{
-            background: 'rgba(110,198,255,0.05)',
-            border: '1px solid rgba(110,198,255,0.18)',
-          }}
-        >
-          <div className="text-xs font-display font-semibold" style={{ color: 'var(--t1)' }}>
-            Cheapest seller
-          </div>
-          <div className="text-xs space-y-1" style={{ color: 'rgba(238,240,255,0.65)', fontFamily: '"JetBrains Mono", monospace' }}>
-            <div>amount: <span style={{ color: '#34d399' }}>{formatIRM(cheapest.amount ?? 0)}</span></div>
-            <div>seller: {(cheapest.seller ?? '').slice(0, 10)}…</div>
-            <div>rep: {reputationStars[cheapest.seller ?? ''] ?? '?'} ★</div>
-            <div>payment: {cheapest.payment_method ?? '—'}</div>
-          </div>
-          <button
-            onClick={() => onSelectOffer(cheapest)}
-            className="btn-primary w-full inline-flex items-center justify-center gap-2 text-xs"
-          >
-            Take this offer <ArrowRight size={12} />
-          </button>
-        </div>
+        <OfferCard
+          title="Cheapest seller"
+          accent="#6EC6FF"
+          offer={cheapest}
+          stars={reputationStars[cheapest.seller ?? ''] ?? null}
+          onSelect={() => onSelectOffer(cheapest)}
+          ctaLabel="Take this offer"
+        />
       )}
 
+      {/* Top reputation alternative — only when it differs from the
+          cheapest offer; otherwise we'd be showing the same card twice. */}
       {bestReputation && cheapest && bestReputation.offer.id !== cheapest.id && (
-        <div
-          className="p-3 rounded space-y-2"
-          style={{
-            background: 'rgba(252,211,77,0.06)',
-            border: '1px solid rgba(252,211,77,0.18)',
-          }}
-        >
-          <div className="text-xs font-display font-semibold" style={{ color: '#fbbf24' }}>
-            Top reputation alternative
-          </div>
-          <div className="text-xs space-y-1" style={{ color: 'rgba(238,240,255,0.65)', fontFamily: '"JetBrains Mono", monospace' }}>
-            <div>amount: {formatIRM(bestReputation.offer.amount ?? 0)}</div>
-            <div>seller: {(bestReputation.offer.seller ?? '').slice(0, 10)}…</div>
-            <div>rep: {bestReputation.stars} ★</div>
-          </div>
-          <button
-            onClick={() => onSelectOffer(bestReputation.offer)}
-            className="btn-secondary w-full inline-flex items-center justify-center gap-2 text-xs"
-          >
-            Take this instead <ArrowRight size={12} />
-          </button>
-        </div>
+        <OfferCard
+          title="Top reputation alternative"
+          accent="#FBBF24"
+          offer={bestReputation.offer}
+          stars={bestReputation.stars}
+          onSelect={() => onSelectOffer(bestReputation.offer)}
+          ctaLabel="Take this instead"
+        />
       )}
-
-      <div className="text-xs" style={{ color: 'rgba(238,240,255,0.35)' }}>
-        Estimated IRM if 1:1 quote: <span className="tabular-nums">{estimatedIrm}</span>
-      </div>
     </div>
   );
 }

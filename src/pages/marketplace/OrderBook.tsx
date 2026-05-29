@@ -116,10 +116,13 @@ function VerifiedBadge({ rep }: { rep: ReputationSummary | null }) {
 type SortKey = 'price_asc' | 'price_desc' | 'newest' | 'best_rep';
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'price_asc',  label: 'Price low → high' },
-  { key: 'price_desc', label: 'Price high → low' },
+  // Short labels keep the dropdown rendering at native width without
+  // truncating "Best reputation" on the platforms that don't expand the
+  // closed-state select to the longest option (most non-mac Webview2).
+  { key: 'price_asc',  label: 'Price ↑' },
+  { key: 'price_desc', label: 'Price ↓' },
   { key: 'newest',     label: 'Newest' },
-  { key: 'best_rep',   label: 'Best reputation' },
+  { key: 'best_rep',   label: 'Best Rep' },
 ];
 
 export interface OrderBookProps {
@@ -183,6 +186,14 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
       return { offer: o, parsedPrice: parsed, stars, created };
     });
     enriched.sort((a, b) => {
+      // Unpriced offers always sink to the end regardless of sort key.
+      // A "Price not set" row is information the buyer can't act on
+      // without contacting the seller — keeping them at the bottom
+      // means the actionable rows render in the visible scroll window.
+      const aHasPrice = a.parsedPrice != null;
+      const bHasPrice = b.parsedPrice != null;
+      if (aHasPrice !== bHasPrice) return aHasPrice ? -1 : 1;
+
       switch (sortKey) {
         case 'price_asc': {
           const ap = a.parsedPrice?.total ?? Number.POSITIVE_INFINITY;
@@ -237,7 +248,7 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
             className="input"
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value as SortKey)}
-            style={{ height: 28, fontSize: 12 }}
+            style={{ height: 28, fontSize: 12, minWidth: 110 }}
           >
             {SORT_OPTIONS.map((opt) => (
               <option key={opt.key} value={opt.key} style={{ background: '#0f0f23' }}>
@@ -269,7 +280,7 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
             No offers in the book yet. Click Create Order above to post the first one.
           </div>
         )}
-        {rows.map(({ offer: o, parsedPrice }) => {
+        {rows.map(({ offer: o, parsedPrice }, idx) => {
           const rep = reps[o.seller ?? ''] ?? null;
           const isSelected = o.id === selectedOfferId;
           const taken = o.status === 'taken';
@@ -277,7 +288,10 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
           const pricePerUnit = parsedPrice && amountIrm > 0
             ? (parsedPrice.total / amountIrm)
             : null;
-          const orderNumber = (o.id ?? '').slice(0, 8) || '—';
+          // Sequential display number — derived from the sorted position
+          // so the user sees ORDER #1, #2, #3 in the order they're shown
+          // rather than the opaque base58 / gossip id fragment.
+          const orderNumber = idx + 1;
           return (
             <div
               key={o.id}
@@ -317,16 +331,18 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
                 </div>
                 <div>
                   <div className="text-[10px] uppercase tracking-wide" style={{ color: 'rgba(238,240,255,0.40)' }}>Total</div>
-                  <div className="text-sm tabular-nums" style={{ color: '#34d399' }}>
-                    {parsedPrice ? `${parsedPrice.total.toLocaleString('en-US')} ${parsedPrice.unit}` : '—'}
+                  <div className="text-sm tabular-nums" style={{ color: parsedPrice ? '#34d399' : 'rgba(238,240,255,0.45)' }}>
+                    {parsedPrice
+                      ? `${parsedPrice.total.toLocaleString('en-US')} ${parsedPrice.unit}`
+                      : 'Price not set'}
                   </div>
                 </div>
                 <div>
                   <div className="text-[10px] uppercase tracking-wide" style={{ color: 'rgba(238,240,255,0.40)' }}>Per IRM</div>
-                  <div className="text-sm tabular-nums" style={{ color: 'rgba(238,240,255,0.85)' }}>
+                  <div className="text-sm tabular-nums" style={{ color: pricePerUnit != null ? 'rgba(238,240,255,0.85)' : 'rgba(238,240,255,0.45)' }}>
                     {pricePerUnit != null
                       ? `${pricePerUnit.toLocaleString('en-US', { maximumFractionDigits: 6 })} ${parsedPrice?.unit ?? ''}`.trim()
-                      : '—'}
+                      : 'Price not set'}
                   </div>
                 </div>
               </div>
