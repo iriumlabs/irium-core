@@ -798,7 +798,7 @@ function NetworkMiningOverview() {
   const [myAddresses, setMyAddresses] = useState<Set<string>>(new Set());
 
   const fetchAll = useCallback(async () => {
-    const [netR, poolMinersR, poolStatsR, cpuR, gpuR, strR] = await Promise.allSettled([
+    const [netR, poolMinersR, poolStatsR, cpuR, gpuR, strR, addrR] = await Promise.allSettled([
       tauriFetch<NetworkHashrateResp>('http://127.0.0.1:38300/rpc/network_hashrate', {
         method: 'GET',
         responseType: ResponseType.JSON,
@@ -813,6 +813,7 @@ function NetworkMiningOverview() {
       miner.status().catch(() => null),
       gpuMiner.status().catch(() => null),
       stratum.status().catch(() => null),
+      wallet.listAddresses(),
     ]);
     if (netR.status === 'fulfilled' && netR.value.ok && netR.value.data) {
       setNetwork(netR.value.data);
@@ -824,6 +825,11 @@ function NetworkMiningOverview() {
     if (cpuR.status === 'fulfilled') setCpuStatus(cpuR.value);
     if (gpuR.status === 'fulfilled') setGpuStatus(gpuR.value);
     if (strR.status === 'fulfilled') setStratumS(strR.value);
+    if (addrR.status === 'fulfilled' && addrR.value) {
+      setMyAddresses(
+        new Set((addrR.value ?? []).map((a) => (a.address ?? '').trim()).filter(Boolean)),
+      );
+    }
   }, []);
 
   useEffect(() => {
@@ -831,21 +837,6 @@ function NetworkMiningOverview() {
     const id = setInterval(fetchAll, 30_000);
     return () => clearInterval(id);
   }, [fetchAll]);
-
-  // Wallet addresses for the Panel-3 pool-mining cross-reference. Once
-  // on mount; mid-session wallet changes are rare and the next 30s
-  // refresh picks them up via the existing /miners poll without needing
-  // a re-fetch here.
-  useEffect(() => {
-    let cancelled = false;
-    wallet.listAddresses().then((list) => {
-      if (cancelled) return;
-      setMyAddresses(
-        new Set((list ?? []).map((a) => (a.address ?? '').trim()).filter(Boolean)),
-      );
-    }).catch(() => { /* empty set → Panel 3 falls back to local-only */ });
-    return () => { cancelled = true; };
-  }, []);
 
   // ── Derived values ──────────────────────────────────────────
 
