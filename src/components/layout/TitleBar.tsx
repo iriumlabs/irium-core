@@ -61,6 +61,22 @@ export default function TitleBar() {
     appWindow.close();
   };
 
+  // Publish the bar's offset as a CSS variable on <html> so the App
+  // layout container can shift its content down by exactly BAR_HEIGHT_PX
+  // while the bar is pinned (and stays at 0 when unpinned, since the
+  // bar auto-hides between hovers). Doing this via a CSS variable keeps
+  // the pinned state co-located in this component without needing to
+  // lift it into the Zustand store. The unmount cleanup resets the
+  // variable to 0 so a remount of TitleBar in unpinned state doesn't
+  // leave stale offset behind.
+  useEffect(() => {
+    const offset = pinned ? `${BAR_HEIGHT_PX}px` : '0px';
+    document.documentElement.style.setProperty('--titlebar-offset', offset);
+    return () => {
+      document.documentElement.style.setProperty('--titlebar-offset', '0px');
+    };
+  }, [pinned]);
+
   useEffect(() => {
     // When pinned, skip the mousemove listener entirely. The bar stays
     // visible via the derived `visible` value, so there's no work for
