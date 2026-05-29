@@ -1152,6 +1152,14 @@ export const rpcCall = {
   refundHtlc: (body: Record<string, unknown>) => rpcPost('/rpc/refundhtlc', body),
   inspectHtlc: (txid: string, index: number) => rpcGet('/rpc/inspecthtlc', { txid, index }),
 
+  // ── BTC SPV header relay (Phase 4 Part 1) ─
+  submitBtcHeaders: (body: {
+    headers_hex: string; broadcast?: boolean; fee_per_byte?: number;
+  }) => rpcPost('/rpc/submitbtcheaders', body),
+  getBtcRelayTip: () => rpcGet('/rpc/btcrelaytip'),
+  getBtcHeader: (params: { hash?: string; height?: number }) =>
+    rpcGet('/rpc/btcheader', params),
+
   // ── Settlement ─
   createAgreement: (agreement: unknown) => rpcPost('/rpc/createagreement', agreement),
   computeAgreementHash: (agreement: unknown) => rpcPost('/rpc/computeagreementhash', agreement),
