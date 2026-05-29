@@ -1484,7 +1484,7 @@ function PoolStatsSection() {
                       <th className="text-left py-2 pr-3 font-semibold">Worker</th>
                       <th className="text-right py-2 px-3 font-semibold">Accepted</th>
                       <th className="text-right py-2 px-3 font-semibold">Rejected</th>
-                      <th className="text-right py-2 px-3 font-semibold">Reject %</th>
+                      <th className="text-right py-2 px-3 font-semibold" title="Rolling rejection rate over the last 15 minutes. The cumulative-since-restart rate kept a worker stuck on a post-restart warmup burst even after they recovered.">Reject % (15m)</th>
                       <th className="text-right py-2 px-3 font-semibold">Hashrate (15m)</th>
                       <th className="text-right py-2 pl-3 font-semibold">Last Share</th>
                     </tr>
