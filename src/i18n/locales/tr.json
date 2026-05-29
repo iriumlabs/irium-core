@@ -2,9 +2,7 @@
   "_meta": {
     "status": "machine_translated",
     "review_needed": true,
-    "language": "Türkçe",
-    "english_name": "Turkish",
-    "direction": "ltr"
+    "language": "Türkçe"
   },
   "common": {
     "save": "Kaydetmek",
@@ -223,7 +221,10 @@
       "midnight": "Gece yarısı",
       "obsidian": "Obsidyen",
       "aurora": "Aurora",
-      "nebula": "Bulutsusu"
+      "nebula": "Bulutsusu",
+      "solar": "Güneş",
+      "ocean": "Okyanus",
+      "rose": "Gül"
     },
     "network_info": {
       "network": "Ağ",
@@ -314,7 +315,17 @@
       "clearing": "Temizleniyor…",
       "confirm_resync": "Onayla — bu yeniden senkronize edilecek!",
       "clear_resync": "Temizle ve Yeniden Eşitle",
-      "confirm_hint": "Onaylamak için tekrar tıklayın. Bloklar yeniden indirilecektir."
+      "confirm_hint": "Onaylamak için tekrar tıklayın. Bloklar yeniden indirilecektir.",
+      "reset_state_button": "node Durumunu Sıfırla (block'ları Koru)",
+      "reset_state_description": "Temizle ve Yeniden Senkronize Et'in daha hafif alternatifi. İndirilen block'ları korur ve UTXO setini yerel olarak yeniden oluşturur. İşlem imza doğrulama hataları gördüğünüzde bunu kullanın.",
+      "reset_state_confirm_title": "node Durumu Sıfırlansın mı?",
+      "reset_state_confirm_body": "Bu, durum klasörünüzü zaman damgalı bir yedeğe yeniden adlandırır ve indirilen block'ları korur. iriumd, bir sonraki başlangıçta yerel block'lardan UTXO setini yeniden oluşturacaktır — tipik olarak tam zincir yeniden senkronizasyonu için saatler yerine 5 ila 15 dakika. İşlem imza doğrulama hataları veya başka UTXO durum bozulması gördüğünüzde bunu kullanın. wallet'ınız ve agreement'larınız etkilenmez.",
+      "reset_state_proceed": "Durumu sıfırla",
+      "reset_state_resetting": "Sıfırlanıyor…",
+      "reset_state_success": "Durum sıfırlandı — yedek {{path}} konumunda",
+      "reset_state_no_backup": "Yedeklenecek mevcut durum yok — yeni durum oluşturuldu",
+      "reset_state_rebuilding": "node yeniden başlatılıyor — yerel block'lardan UTXO seti yeniden oluşturuluyor (5-15 dk)",
+      "reset_state_failed": "Sıfırlama başarısız: {{reason}}"
     },
     "developer_info": {
       "reset_onboarding": "İlk katılımı sıfırla",
@@ -743,7 +754,18 @@
       "load_error_title": "Sözleşmeler yüklenemedi",
       "empty_state": "Henüz herhangi bir sözleşme oluşturmadınız.",
       "create_first": "İlk sözleşmenizi oluşturun →",
-      "create_offer": "Teklif oluştur"
+      "create_offer": "Teklif oluştur",
+      "selling_title": "Satıyorum",
+      "selling_subtitle": "Teklif oluşturun, alıcıyla paylaşın, proof ile ödeme alın",
+      "selling_cta": "Satıcı Akışını Başlat →",
+      "buying_title": "Satın Alıyorum",
+      "buying_subtitle": "Bir teklif bulun, escrow'u fonlayın, teslimde ödemeyi serbest bırakın",
+      "buying_cta": "Alıcı Akışını Başlat →",
+      "create_direct": "agreement'ı doğrudan oluştur (gelişmiş)",
+      "how_it_works": "Nasıl çalışır",
+      "step_create": "Bir agreement oluşturun veya bulun",
+      "step_lock": "IRM'yi zincir üzerinde escrow'a kilitleyin",
+      "step_proof": "proof gönderin — fonlar otomatik olarak serbest bırakılır"
     },
     "templates": {
       "otc": "OTC Ticareti",
@@ -779,7 +801,9 @@
         "memo_merchant_placeholder": "Sipariş açıklaması...",
         "total_escrow_hours": "Toplam Emanet Penceresi (saat)",
         "party_placeholder": "Q... veya P..."
-      }
+      },
+      "step_details_short": "Ayrıntılar",
+      "step_review_confirm": "İncele ve Onayla"
     },
     "seller_dashboard": "Satıcı Kontrol Paneli",
     "buyer_dashboard": "Alıcı Kontrol Paneli",
@@ -803,6 +827,76 @@
     "review_agreement": "Sözleşmeyi İnceleyin",
     "modals": {
       "payment_invoice": "Ödeme Faturası"
+    },
+    "page_subtitle": "Irium'un proof tabanlı escrow sistemini kullanan güvensiz zincir üstü Settlement",
+    "templates_desc": {
+      "otc": "IRM'yi eşler arası satın almak veya satmak için bunu kullanın. Alıcı IRM'yi escrow'a kilitler, zincir dışı ödeme yapar ve satıcı alındığını onaylayarak fonları serbest bırakır.",
+      "freelance": "Serbest çalışma veya hizmetler için bunu kullanın. Müşteri, ödemeyi peşinen escrow'a kilitler. Yüklenici işi tamamlayıp proof gönderdiğinde fonlar serbest bırakılır.",
+      "milestone": "Aşamalara bölünmüş büyük projeler için bunu kullanın. Her kilometre taşının kendi escrow'u ve proof gereksinimi vardır. Kilometre taşları tamamlandıkça kısmi serbest bırakmalar gerçekleşir.",
+      "deposit": "İade edilebilir depozitolar veya teminat için bunu kullanın. Fonlar zincir üzerinde kilitlenir ve koşullar son tarihe kadar karşılanmazsa otomatik olarak geri döner.",
+      "merchant_delayed": "Yerleşik bekleme penceresi olan satıcı satışı. Fonlar escrow'da tutulur ve satıcı yalnızca anlaşmazlık penceresi kapandıktan sonra talep edebilir.",
+      "contractor": "Kilometre taşlarına bölünmüş yüklenici işi. Her kilometre taşının kendi escrow'u ve teslimat proof gereksinimi vardır. Fonlar aşama aşama serbest bırakılır."
+    },
+    "role_labels": {
+      "buyer": "Alıcı Adresi",
+      "seller": "Satıcı Adresi",
+      "client": "Müşteri Adresi",
+      "contractor": "Yüklenici Adresi",
+      "payer": "Borçlu Adresi",
+      "payee": "Alacaklı Adresi",
+      "depositor": "Mevduat Sahibi Adresi",
+      "recipient": "Alıcı Adresi",
+      "merchant": "Satıcı Adresi"
+    },
+    "form_errors": {
+      "address_required": "Adres gerekli",
+      "same_party": "A Tarafı ve B Tarafı aynı adres olamaz",
+      "positive_amount": "Pozitif bir tutar girin",
+      "amount_exceeds_supply": "Tutar {{max}} IRM (toplam arz) miktarını aşamaz",
+      "milestones_range": "2 ile 20 arasında",
+      "deadline_range": "Son tarih 1 ile {{max}} saat (1 yıl) arasında olmalıdır",
+      "cooldown_range": "Bekleme süresi 1 ile {{max}} saat (1 yıl) arasında olmalıdır"
+    },
+    "review_labels": {
+      "amount": "Tutar",
+      "deadline": "Son tarih",
+      "scope": "Kapsam",
+      "milestones": "Kilometre taşları",
+      "per_milestone": "Kilometre başına",
+      "cooldown_window": "Bekleme penceresi",
+      "total_escrow_window": "Toplam escrow penceresi",
+      "memo": "Not",
+      "asset_ref": "Varlık ref.",
+      "payment": "Ödeme"
+    },
+    "preview": {
+      "preview_suffix": "Önizleme",
+      "fill_hint": "Canlı önizleme görmek için formu doldurun",
+      "amount": "Tutar",
+      "sats": "Sats",
+      "fee_rate": "Ücret oranı",
+      "per_milestone": "Kilometre başına",
+      "deadline": "Son tarih",
+      "cooldown": "Bekleme süresi",
+      "total_window": "Toplam pencere",
+      "type": "Tür"
+    },
+    "dashboard": {
+      "select_seller_hint": "Satıcı istatistiklerini görmek için bir wallet adresi seçin.",
+      "select_buyer_hint": "Alıcı istatistiklerini görmek için bir wallet adresi seçin.",
+      "active_offers": "Aktif teklifler",
+      "open_agreements": "açık agreement'lar",
+      "completed": "Tamamlandı",
+      "active_purchases": "Aktif alımlar",
+      "total_received": "Toplam alınan",
+      "total_received_hint": "Satıcı olduğunuz serbest bırakılmış agreement'ların yaşam boyu hacmi (sats → IRM)",
+      "total_spent": "Toplam harcanan",
+      "total_spent_hint": "Alıcı olduğunuz serbest bırakılmış agreement'ların yaşam boyu hacmi (sats → IRM)",
+      "reputation": "İtibar",
+      "restrictions_label": "Kısıtlamalar: "
+    },
+    "errors": {
+      "generic_failure": "Bir şeyler ters gitti. node'unuzun çalıştığını kontrol edin ve tekrar deneyin."
     }
   },
   "marketplace": {
@@ -1355,6 +1449,20 @@
       "col_reject_pct": "Reject %",
       "col_hashrate": "15m H/s",
       "col_last_share": "Last share"
+    },
+    "calculator": {
+      "title": "Madencilik Hesaplayıcısı",
+      "your_hashrate": "Sizin hashrate'iniz",
+      "placeholder": "0",
+      "network_label": "Ağ",
+      "block_reward_label": "block ödülü",
+      "protocol_target": "Protokol hedefi",
+      "protocol_target_sub": "10 dakikalık block (zincir tasarım hedefi)",
+      "current_rate": "Mevcut zincir hızı",
+      "current_rate_sub": "~1 dakikalık block (şu anda gözlemlenen)",
+      "blocks_per_day_suffix": "block/gün",
+      "irm_per_day_suffix": "IRM/gün",
+      "disclaimer": "Yalnızca tahmin — gerçek kazançlar şansa, havuz ücretlerine ve zorluk değişikliklerine bağlıdır. Hesaplayıcı canlı ağ hashrate'ini kullanır, her 60 saniyede bir yenilenir."
     }
   },
   "help": {
@@ -1877,5 +1985,285 @@
     "clear_output": "Temizle",
     "input_placeholder": "Komut girin... ('help' ile listele)",
     "input_busy_placeholder": "Çalışıyor..."
+  },
+  "settlement_ui": {
+    "hub": {
+      "title": "Settlement",
+      "subtitle": "IRM'yi escrow'a kilitleyin. Onay üzerine serbest bırakın. Zaman aşımında iade edin.",
+      "safe_trade_title": "Güvenli Ticaret",
+      "safe_trade_subtitle": "IRM'yi kilitleyin, herhangi bir şey için takas edin. Her iki taraf da korunur.",
+      "pay_for_work_title": "İş için Öde",
+      "pay_for_work_subtitle": "Bir işi tek ödemeyle veya kilometre taşıyla fonlayın. İş bittiğinde para serbest bırakılır.",
+      "deposit_title": "İade Edilebilir Depozito",
+      "deposit_subtitle": "IRM'yi garanti olarak kilitleyin. Koşullar karşılanmazsa otomatik olarak geri alın.",
+      "active_title": "Aktif agreement'lar",
+      "active_empty": "Henüz aktif agreement yok. Yukarıdan birini başlatın.",
+      "active_load_error": "agreement'lar yüklenemedi — node'unuz çevrimdışı olabilir.",
+      "other_party": "Diğer taraf",
+      "amount": "Tutar",
+      "start_cta": "Başla",
+      "toast_released": "Fonlar karşı tarafa serbest bırakıldı.",
+      "toast_refunded": "İade talep edildi — fonlar wallet'ınıza dönüyor."
+    },
+    "status": {
+      "setting_up": "Kuruluyor",
+      "waiting": "Bekliyor",
+      "ready_release": "Serbest bırakmaya hazır",
+      "ready_refund": "İade için hazır",
+      "disputed": "Anlaşmazlıkta — hakem atandı",
+      "complete": "Tamamlandı",
+      "refunded": "İade edildi",
+      "expired": "Süresi doldu",
+      "unknown": "Bilinmeyen durum",
+      "checking": "Kontrol ediliyor…"
+    },
+    "actions": {
+      "release_funds": "Fonları Serbest Bırak",
+      "claim_refund": "İade Talep Et",
+      "view_dispute": "Anlaşmazlığı Görüntüle",
+      "view_details": "Ayrıntıları Görüntüle",
+      "report_problem": "Bir şeyler mi ters gitti?"
+    },
+    "amount": {
+      "over_max": "Maksimum {{max}} IRM"
+    },
+    "address": {
+      "placeholder": "Q… veya P… adresi",
+      "paste": "Panodan yapıştır",
+      "format_error": "Bu geçerli bir Irium adresi gibi görünmüyor."
+    },
+    "duration": {
+      "preset_1h": "1 saat",
+      "preset_4h": "4 saat",
+      "preset_24h": "24 saat",
+      "preset_48h": "2 gün",
+      "preset_1w": "1 hafta",
+      "custom": "Özel",
+      "custom_placeholder": "saat",
+      "hours_suffix": "saat",
+      "expires_around": "Yaklaşık {{datetime}} civarında sona erer"
+    },
+    "deal_code": {
+      "code_label": "Anlaşma kodu",
+      "paste_placeholder": "Satıcınızın size gönderdiği ticaret kodunu buraya yapıştırın…",
+      "building": "Anlaşma kodu oluşturuluyor…",
+      "copy_code": "Anlaşma Kodunu Kopyala",
+      "copy_id": "agreement ID'sini Kopyala",
+      "copied": "Panoya kopyalandı",
+      "paste": "Yapıştır",
+      "verify": "Ticareti Doğrula",
+      "imported": "Ticaret doğrulandı",
+      "import_success": "Ticaret içe aktarıldı ve doğrulandı",
+      "fallback_explainer": "Anlaşma kodu oluşturulamadı. Bunun yerine bu agreement ID'sini paylaşın — alıcınızın node'u gerisini almak için çevrimiçi olmalı."
+    },
+    "technical": {
+      "title": "Teknik Ayrıntılar",
+      "empty": "Veri yok.",
+      "copied": "Kopyalandı"
+    },
+    "errors": {
+      "generic": "Bir şeyler ters gitti — lütfen tekrar deneyin.",
+      "node_offline": "Irium node'unuz çalışmıyor. Panodan başlatın ve tekrar deneyin.",
+      "network_timeout": "İstek çok uzun sürdü. Bağlantınızı kontrol edin ve tekrar deneyin.",
+      "auth_failed": "node'unuz isteği reddetti. Ayarlar'daki RPC jetonunuzu kontrol edin.",
+      "insufficient_funds": "Bu eylem için wallet'ınızda yeterli IRM yok.",
+      "coinbase_immature": "IRM'nizin bir kısmı yakın zamandaki madencilikten geliyor ve henüz harcanamıyor. Birkaç block daha sonra tekrar deneyin.",
+      "double_spend": "Başka bir bekleyen işlem aynı fonları kullanıyor. Bir an bekleyin, sonra tekrar deneyin.",
+      "already_settled": "Bu agreement zaten kapatılmış. Mevcut durumunu görmek için yenileyin.",
+      "refund_not_ready": "Henüz iade talep edemezsiniz. Son tarihin geçmesini bekleyin.",
+      "release_not_ready": "Fonlar henüz serbest bırakılmaya hazır değil. proof onayını bekleyin.",
+      "agreement_mismatch": "Bu anlaşma kodu, node'unuzdaki agreement ile eşleşmiyor. Karşı taraftan yeniden göndermesini isteyin.",
+      "expired": "Bu ticaret zaten süresi dolmuş.",
+      "bad_secret": "Serbest bırakma anahtarı yanlış. Doğru anlaşma koduna sahip olduğunuzu kontrol edin.",
+      "bad_address": "Bu adres doğru görünmüyor. Tekrar kontrol edin ve yeniden deneyin.",
+      "bad_format": "Veri okunamadı. Bozulmuş olabilir veya başka bir uygulamadan olabilir.",
+      "fs_blocked": "Uygulama anlaşma kodunu yerel olarak kaydedemedi. Disk izinlerinizi kontrol edin.",
+      "file_missing": "Kaydedilmiş anlaşma kodu dosyası bulunamadı.",
+      "pack_not_found": "node'unuzda bu agreement bulunamadı.",
+      "unpack_signature_invalid": "Anlaşma kodu yanlış imzalanmış. Güvenmeyin — karşı taraftan yeniden göndermesini isteyin.",
+      "dispute_duplicate": "Bu agreement için zaten bir anlaşmazlık açık.",
+      "dispute_not_party": "Bu ticarette anlaşmazlık yalnızca alıcı veya satıcı tarafından başlatılabilir."
+    },
+    "safe_trade": {
+      "step1_title": "Ticaretin hangi tarafındasınız?",
+      "step1_subtitle": "Rolünüze uyan tarafı seçin.",
+      "selling_button": "IRM satıyorum",
+      "selling_subtitle": "IRM'yi escrow'a kilitliyor ve ödeme bekliyorsunuz.",
+      "buying_button": "IRM satın alıyorum",
+      "buying_subtitle": "Zincir dışı ödüyor ve IRM alıyorsunuz.",
+      "status_title": "Durum",
+      "status_initial": "Kuruluyor — fonlarınız kilitleniyor.",
+      "status_waiting_verify": "Alıcınızın ticareti doğrulaması bekleniyor.",
+      "status_waiting_payment": "Alıcı doğrulandı — zincir dışı ödemeleri bekleniyor.",
+      "status_ready_release": "Ödeme onaylandı. Şimdi fonlar alıcınıza serbest bırakılıyor.",
+      "toast_funded": "Escrow fonlandı.",
+      "toast_released": "Fonlar karşı tarafa serbest bırakıldı.",
+      "toast_release_pending": "Ödeme kaydedildi. Fonlar sonraki birkaç block onayından sonra serbest bırakılacak.",
+      "errors": {
+        "buyer_required": "Alıcının Irium adresini girin.",
+        "amount_required": "Kilitlemek istediğiniz IRM miktarını girin.",
+        "receiving_required": "Alıcınıza karşılığında ne beklediğinizi söyleyin."
+      },
+      "review": {
+        "you_lock": "Kilitliyorsunuz",
+        "buyer_sends": "Alıcı gönderecek",
+        "deadline": "Son tarih",
+        "deadline_value": "{{hours}} saat içinde ödenmezse, IRM'niz otomatik olarak geri döner.",
+        "lock_funds": "Fonları Kilitle",
+        "tx_note": "Bu, Irium blok zincirinde bir işlem oluşturacak."
+      },
+      "share": {
+        "title": "Bunu alıcınızla paylaşın",
+        "subtitle": "Kodu alıcınıza gönderin. Size zincir dışı ödeme yapmadan önce ticareti doğrulamak için kullanacaklar."
+      },
+      "selling": {
+        "step2_title": "Ticaretinizi kurun",
+        "step2_subtitle": "Alıcınızın kim olduğunu ve ne kadar kilitlediğinizi söyleyin.",
+        "step3_title": "Ticaretinizi inceleyin",
+        "step3_subtitle": "Fonları kilitlemeden önce her şeyi tekrar kontrol edin.",
+        "step4_title": "Fonlar kilitlendi — bunu alıcınızla paylaşın",
+        "step4_subtitle": "Anlaşma kodunu alıcınıza gönderin. Ödeme yapmadan önce ticareti doğrulamak için kullanacaklar.",
+        "buyer_address_label": "Alıcının Irium adresi",
+        "amount_label": "Ne kadar IRM kilitliyorsunuz?",
+        "amount_helper": "Ödemeyi aldığınızı onaylayana kadar escrow'da tutulur.",
+        "receiving_label": "Size ne gönderiyorlar?",
+        "receiving_placeholder": "örn. 200 USDT, banka havalesi, nakit",
+        "deadline_label": "Bu ticaret ne kadar süre açık kalmalı?",
+        "deadline_helper": "Bu süre içinde ödemezlerse, IRM'niz otomatik olarak geri döner.",
+        "release_button": "Ödemeyi aldım — Fonları alıcıya serbest bırak"
+      },
+      "buying": {
+        "step2_title": "Satıcınızdan gelen ticaret kodunu yapıştırın",
+        "step2_subtitle": "Satıcınız size bir kod gönderdi. Ticareti doğrulamak için aşağıya yapıştırın.",
+        "step3_title": "Bu ticaret ayrıntılarını doğrulayın",
+        "step3_subtitle": "Ayrıntıların zincir dışı anlaştığınızla eşleştiğinden emin olun.",
+        "step4_title": "Ödemenizi gönderin sonra bekleyin",
+        "step4_subtitle": "Anlaşılan ödemeyi satıcınıza gönderin. Satıcı onayladığı anda IRM'niz otomatik olarak gelecek.",
+        "review_intro": "Bu ticaret içe aktarıldı ve node'unuzda doğrulandı. Satıcının IRM'si escrow'da kilitli — zincir dışı ödemeyi gönderdiğinizde ve satıcı onayladığında alacaksınız.",
+        "seller_locks": "Satıcı kilitliyor",
+        "seller_label": "Satıcı",
+        "trade_id_label": "Ticaret ID'si",
+        "details_unavailable": "node'unuzdan ticaret ayrıntıları alınamadı. Yine de devam edebilirsiniz, ancak agreement ID'sinin satıcınızın gönderdiğiyle eşleştiğini doğrulayın.",
+        "cancel_button": "Bir şey yanlış — İptal et",
+        "confirm_button": "Bu doğru görünüyor — ödemeyi göndereceğim",
+        "status_waiting": "Satıcının ödemenin alındığını onaylaması bekleniyor.",
+        "status_releasing": "Ödeme onaylandı — IRM yolda.",
+        "status_complete": "Tamamlandı — IRM wallet'ınıza ulaştı.",
+        "view_agreements": "agreement'larda Görüntüle"
+      }
+    },
+    "pay_for_work": {
+      "step1_title": "Tek ödeme mi yoksa kilometre taşı ile mi?",
+      "step1_subtitle": "Nasıl ödeyeceğinizi seçin.",
+      "single_button": "Tek ödeme",
+      "single_subtitle": "İş bittiğinde her şeyi peşin ödeyin.",
+      "milestone_button": "Kilometre taşına göre",
+      "milestone_subtitle": "Her bölüm tamamlandıkça aşamalar halinde ödeyin.",
+      "step2_title": "Ödemeyi kurun",
+      "step2_subtitle_single": "Kime ve ne kadar ödediğinizi söyleyin.",
+      "step2_subtitle_milestone": "Toplamı, aşama sayısını ve neyin beklendiğini söyleyin.",
+      "step3_title": "İncele",
+      "step3_subtitle": "Fonları kilitlemeden önce kontrol edin.",
+      "step4_title": "Fonlar kilitlendi",
+      "step4_subtitle": "İşin teslim edilmesi bekleniyor.",
+      "contractor_label": "Kime ödüyorsunuz?",
+      "amount_label_single": "Ne kadar?",
+      "amount_label_milestone": "Kilitlenecek toplam tutar",
+      "amount_helper_milestone": "Aşağıdaki kilometre taşları arasında eşit dağıtılır.",
+      "count_label": "Kaç kilometre taşı?",
+      "per_milestone_preview": "Her kilometre taşı: {{amount}}",
+      "deadline_label": "Son tarih",
+      "deadline_helper": "İş onaylanmazsa fonların otomatik olarak iade edilmesine kadar ne kadar süre.",
+      "description_label": "Açıklama (isteğe bağlı)",
+      "description_placeholder": "Ne teslim ediliyor? (maks 200 karakter)",
+      "errors": {
+        "contractor_required": "Kime ödediğinizi girin.",
+        "amount_required": "Kilitlediğiniz IRM miktarını girin.",
+        "count_range": "2 ile 10 kilometre taşı arasında."
+      },
+      "review": {
+        "paying": "Ödeniyor",
+        "locking": "Kilitleniyor",
+        "milestones": "Kilometre taşları",
+        "milestones_value": "{{count}} kilometre taşı · her biri {{per}}",
+        "deadline": "Son tarih",
+        "deadline_value": "{{hours}} saat",
+        "scope": "Açıklama",
+        "lock_funds": "Fonları Kilitle",
+        "lock_all": "Tüm Fonları Kilitle"
+      },
+      "status_title": "Durum",
+      "status_setting_up": "Kuruluyor — fonlar kilitleniyor.",
+      "status_pending": "Zincir üstü fonlama onayı bekleniyor.",
+      "status_in_progress": "Fonlar kilitli. İşin teslim edilmesi bekleniyor.",
+      "status_can_refund": "Son tarihe ulaşıldı. İade talep edebilirsiniz.",
+      "status_complete": "Tamamlandı. Ödeme serbest bırakıldı.",
+      "mark_complete": "Tamamlandı Olarak İşaretle — Ödemeyi Serbest Bırak",
+      "claim_refund": "İade Talep Et",
+      "toast_released": "Ödeme yükleniciye serbest bırakıldı.",
+      "toast_release_pending": "Tamamlama kaydedildi. Fonlar sonraki birkaç block onayından sonra serbest bırakılacak.",
+      "toast_refunded": "İade talep edildi — fonlar wallet'ınıza dönüyor."
+    },
+    "deposit": {
+      "step1_title": "Depozitonuzu kurun",
+      "step1_subtitle": "IRM'yi garanti olarak kilitleyin. Koşullar karşılanmazsa otomatik olarak geri alın.",
+      "step2_title": "İncele",
+      "step2_subtitle": "Depozitoyu kilitlemeden önce tekrar kontrol edin.",
+      "step3_title": "Depozito kilitlendi",
+      "step3_subtitle": "Serbest bırakana kadar veya son tarih geçip geri talep edene kadar escrow'da tutulur.",
+      "recipient_label": "Koşullar karşılanırsa kim alır?",
+      "amount_label": "Depozito tutarı",
+      "purpose_label": "Amaç",
+      "purpose_placeholder": "örn. Kira depozitosu",
+      "purpose_helper": "Kayıtlarınız için bir not. Yerel olarak saklanır — karşı taraf görmeyebilir.",
+      "deadline_label": "İade son tarihi",
+      "deadline_helper": "Alıcı bu son tarihe kadar talep etmezse, geri talep edebilirsiniz.",
+      "preset_1m": "1 ay",
+      "preset_3m": "3 ay",
+      "errors": {
+        "recipient_required": "Alıcının Irium adresini girin.",
+        "amount_required": "Yatırdığınız IRM miktarını girin."
+      },
+      "review": {
+        "recipient": "Alıcı",
+        "amount": "Tutar",
+        "purpose": "Amaç",
+        "deadline": "İade son tarihi",
+        "deadline_value": "Şimdiden {{hours}} saat sonra",
+        "lock_deposit": "Depozitoyu Kilitle"
+      },
+      "status_title": "Durum",
+      "status_setting_up": "Kuruluyor — depozitonuz kilitleniyor.",
+      "status_locked": "escrow'da kilitli. Eyleminizle serbest bırakılacak veya son tarihten sonra otomatik olarak iade edilecek.",
+      "status_can_claim_back": "Son tarihe ulaşıldı. Depozitoyu geri talep edebilirsiniz.",
+      "status_released": "Alıcıya serbest bırakıldı.",
+      "status_refunded": "wallet'ınıza iade edildi.",
+      "release_button": "Alıcıya serbest bırak",
+      "claim_back_button": "Geri talep et",
+      "toast_released": "Depozito alıcıya serbest bırakıldı.",
+      "toast_refunded": "Depozito geri talep edildi — fonlar wallet'ınıza dönüyor."
+    },
+    "dispute": {
+      "step1_title": "Ne oldu?",
+      "step1_subtitle": "Sorunu kendi sözcüklerinizle açıklayın. Karşı taraf bunu görecek.",
+      "step2_title": "Anlaşmazlık kaydedildi",
+      "step2_subtitle": "Anlaşmazlığınız artık Irium blok zincirinde.",
+      "about_agreement": "Bu agreement hakkında",
+      "reason_label": "Sorunu açıklayın",
+      "reason_placeholder": "Ne yanlış gitti? Spesifik olun — karşı taraf bunu okuyacak.",
+      "evidence_label": "Kanıt ekle (dosya)",
+      "evidence_coming_soon": "Dosya ekleri gelecek bir sürümde geliyor.",
+      "submit_button": "Sorun bildir",
+      "confirm_title": "Anlaşmazlığınız zincir üzerinde kaydedildi.",
+      "confirm_body": "Karşı taraf bilgilendirildi. Bir çözüm bulmak için doğrudan iletişime geçin. Anlaşmaya varamazsanız, bir sonraki adım uygulama dışı görüşmedir — otomatik hakem çözümü gelecek bir sürümde geliyor.",
+      "next_step_note": "Anlaşmazlık açıkken, hiçbir taraf fonları serbest bırakamaz veya iade edemez. Her şeyden önce karşı tarafınızla konuşun.",
+      "back_to_hub": "Settlement'a Geri Dön",
+      "view_agreements": "agreement'ları Görüntüle",
+      "toast_submitted": "Anlaşmazlık zincir üzerinde kaydedildi.",
+      "errors": {
+        "no_agreement": "Seçili agreement yok. Hub'dan birini açın ve tekrar deneyin.",
+        "reason_required": "Lütfen neyin yanlış gittiğini açıklayın."
+      }
+    }
   }
 }

@@ -2,9 +2,7 @@
   "_meta": {
     "status": "machine_translated",
     "review_needed": true,
-    "language": "Bahasa Indonesia",
-    "english_name": "Indonesian",
-    "direction": "ltr"
+    "language": "Bahasa Indonesia"
   },
   "common": {
     "save": "Menyimpan",
@@ -223,7 +221,10 @@
       "midnight": "Tengah malam",
       "obsidian": "Obsidian",
       "aurora": "Aurora",
-      "nebula": "Nebula"
+      "nebula": "Nebula",
+      "solar": "Surya",
+      "ocean": "Laut",
+      "rose": "Mawar"
     },
     "network_info": {
       "network": "Jaringan",
@@ -314,7 +315,17 @@
       "clearing": "Membersihkan…",
       "confirm_resync": "Konfirmasi — ini akan disinkronkan ulang!",
       "clear_resync": "Hapus & Sinkronisasi Ulang",
-      "confirm_hint": "Klik lagi untuk mengonfirmasi. Blok akan diunduh ulang."
+      "confirm_hint": "Klik lagi untuk mengonfirmasi. Blok akan diunduh ulang.",
+      "reset_state_button": "Atur Ulang Status node (Pertahankan block)",
+      "reset_state_description": "Alternatif lebih ringan dari Hapus & Sinkronisasi Ulang. Mempertahankan block yang diunduh dan membangun ulang set UTXO secara lokal. Gunakan ini saat Anda melihat kegagalan verifikasi tanda tangan transaksi.",
+      "reset_state_confirm_title": "Atur Ulang Status node?",
+      "reset_state_confirm_body": "Ini mengubah nama folder status Anda menjadi cadangan bertanda waktu dan mempertahankan block yang telah diunduh. iriumd akan membangun ulang set UTXO dari block lokal pada startup berikutnya — biasanya 5 hingga 15 menit daripada berjam-jam untuk sinkronisasi ulang rantai penuh. Gunakan ini saat Anda melihat kegagalan verifikasi tanda tangan transaksi atau korupsi status UTXO lainnya. wallet dan agreement Anda tidak terpengaruh.",
+      "reset_state_proceed": "Atur ulang status",
+      "reset_state_resetting": "Mengatur ulang…",
+      "reset_state_success": "Status diatur ulang — cadangan di {{path}}",
+      "reset_state_no_backup": "Tidak ada status untuk dicadangkan — status baru dibuat",
+      "reset_state_rebuilding": "node sedang dimulai ulang — membangun ulang set UTXO dari block lokal (5-15 menit)",
+      "reset_state_failed": "Pengaturan ulang gagal: {{reason}}"
     },
     "developer_info": {
       "reset_onboarding": "Setel ulang orientasi",
@@ -743,7 +754,18 @@
       "load_error_title": "Tidak dapat memuat perjanjian",
       "empty_state": "Anda belum membuat perjanjian apa pun.",
       "create_first": "Buat perjanjian pertama Anda →",
-      "create_offer": "Buat penawaran"
+      "create_offer": "Buat penawaran",
+      "selling_title": "Saya Menjual",
+      "selling_subtitle": "Buat penawaran, bagikan dengan pembeli, terima pembayaran setelah proof",
+      "selling_cta": "Mulai Alur Penjual →",
+      "buying_title": "Saya Membeli",
+      "buying_subtitle": "Temukan penawaran, danai escrow, lepaskan pembayaran saat pengiriman",
+      "buying_cta": "Mulai Alur Pembeli →",
+      "create_direct": "Buat agreement langsung (lanjutan)",
+      "how_it_works": "Cara kerja",
+      "step_create": "Buat atau cari agreement",
+      "step_lock": "Kunci IRM di escrow on-chain",
+      "step_proof": "Kirim proof — dana dilepaskan otomatis"
     },
     "templates": {
       "otc": "Perdagangan OTC",
@@ -779,7 +801,9 @@
         "memo_merchant_placeholder": "Deskripsi pesanan...",
         "total_escrow_hours": "Total Jendela Escrow (jam)",
         "party_placeholder": "Q... atau P..."
-      }
+      },
+      "step_details_short": "Detail",
+      "step_review_confirm": "Tinjau & Konfirmasi"
     },
     "seller_dashboard": "Dasbor Penjual",
     "buyer_dashboard": "Dasbor Pembeli",
@@ -803,6 +827,76 @@
     "review_agreement": "Perjanjian Tinjauan",
     "modals": {
       "payment_invoice": "Faktur Pembayaran"
+    },
+    "page_subtitle": "Settlement on-chain tanpa kepercayaan menggunakan sistem escrow berbasis proof dari Irium",
+    "templates_desc": {
+      "otc": "Gunakan ini untuk membeli atau menjual IRM peer-to-peer. Pembeli mengunci IRM di escrow, melakukan pembayaran off-chain, dan penjual mengonfirmasi penerimaan untuk melepaskan dana.",
+      "freelance": "Gunakan ini untuk pekerjaan lepas atau layanan. Klien mengunci pembayaran di escrow di muka. Dana dilepaskan ketika kontraktor menyelesaikan pekerjaan dan mengirimkan proof.",
+      "milestone": "Gunakan ini untuk proyek besar yang dibagi menjadi tahapan. Setiap tonggak memiliki escrow dan persyaratan proof sendiri. Pelepasan parsial terjadi saat tonggak selesai.",
+      "deposit": "Gunakan ini untuk deposit yang dapat dikembalikan atau jaminan. Dana dikunci on-chain dan otomatis dikembalikan jika kondisi tidak terpenuhi sebelum tenggat waktu.",
+      "merchant_delayed": "Penjualan pedagang dengan jendela pendinginan bawaan. Dana ditahan di escrow dan pedagang hanya dapat mengklaim setelah jendela sengketa ditutup.",
+      "contractor": "Pekerjaan kontraktor dibagi menjadi tonggak. Setiap tonggak memiliki escrow sendiri dan persyaratan proof pengiriman. Dana dilepaskan tahap demi tahap."
+    },
+    "role_labels": {
+      "buyer": "Alamat Pembeli",
+      "seller": "Alamat Penjual",
+      "client": "Alamat Klien",
+      "contractor": "Alamat Kontraktor",
+      "payer": "Alamat Pembayar",
+      "payee": "Alamat Penerima Pembayaran",
+      "depositor": "Alamat Penyetor",
+      "recipient": "Alamat Penerima",
+      "merchant": "Alamat Pedagang"
+    },
+    "form_errors": {
+      "address_required": "Alamat diperlukan",
+      "same_party": "Pihak A dan Pihak B tidak boleh memiliki alamat yang sama",
+      "positive_amount": "Masukkan jumlah positif",
+      "amount_exceeds_supply": "Jumlah tidak boleh melebihi {{max}} IRM (total pasokan)",
+      "milestones_range": "Antara 2 dan 20",
+      "deadline_range": "Tenggat waktu harus antara 1 dan {{max}} jam (1 tahun)",
+      "cooldown_range": "Periode pendinginan harus antara 1 dan {{max}} jam (1 tahun)"
+    },
+    "review_labels": {
+      "amount": "Jumlah",
+      "deadline": "Tenggat waktu",
+      "scope": "Cakupan",
+      "milestones": "Tonggak",
+      "per_milestone": "Per tonggak",
+      "cooldown_window": "Jendela pendinginan",
+      "total_escrow_window": "Jendela escrow total",
+      "memo": "Catatan",
+      "asset_ref": "Ref. aset",
+      "payment": "Pembayaran"
+    },
+    "preview": {
+      "preview_suffix": "Pratinjau",
+      "fill_hint": "Isi formulir untuk melihat pratinjau langsung",
+      "amount": "Jumlah",
+      "sats": "Sats",
+      "fee_rate": "Tarif biaya",
+      "per_milestone": "Per tonggak",
+      "deadline": "Tenggat waktu",
+      "cooldown": "Pendinginan",
+      "total_window": "Jendela total",
+      "type": "Tipe"
+    },
+    "dashboard": {
+      "select_seller_hint": "Pilih alamat wallet untuk melihat statistik penjual.",
+      "select_buyer_hint": "Pilih alamat wallet untuk melihat statistik pembeli.",
+      "active_offers": "Penawaran aktif",
+      "open_agreements": "agreement terbuka",
+      "completed": "Selesai",
+      "active_purchases": "Pembelian aktif",
+      "total_received": "Total diterima",
+      "total_received_hint": "Volume seumur hidup dari agreement yang dirilis di mana Anda adalah penjual (sats → IRM)",
+      "total_spent": "Total dibelanjakan",
+      "total_spent_hint": "Volume seumur hidup dari agreement yang dirilis di mana Anda adalah pembeli (sats → IRM)",
+      "reputation": "Reputasi",
+      "restrictions_label": "Pembatasan: "
+    },
+    "errors": {
+      "generic_failure": "Terjadi kesalahan. Periksa apakah node Anda berjalan dan coba lagi."
     }
   },
   "marketplace": {
@@ -1355,6 +1449,20 @@
       "col_reject_pct": "Reject %",
       "col_hashrate": "15m H/s",
       "col_last_share": "Last share"
+    },
+    "calculator": {
+      "title": "Kalkulator Penambangan",
+      "your_hashrate": "Hashrate Anda",
+      "placeholder": "0",
+      "network_label": "Jaringan",
+      "block_reward_label": "Hadiah block",
+      "protocol_target": "Target protokol",
+      "protocol_target_sub": "block 10 menit (target desain rantai)",
+      "current_rate": "Tingkat rantai saat ini",
+      "current_rate_sub": "~block 1 menit (saat ini diamati)",
+      "blocks_per_day_suffix": "block/hari",
+      "irm_per_day_suffix": "IRM/hari",
+      "disclaimer": "Hanya perkiraan — pendapatan sebenarnya bergantung pada keberuntungan, biaya pool, dan perubahan kesulitan. Kalkulator menggunakan hashrate jaringan langsung, diperbarui setiap 60 detik."
     }
   },
   "help": {
@@ -1877,5 +1985,285 @@
     "clear_output": "Hapus",
     "input_placeholder": "Ketik perintah... ('help' untuk daftar)",
     "input_busy_placeholder": "Menjalankan..."
+  },
+  "settlement_ui": {
+    "hub": {
+      "title": "Settlement",
+      "subtitle": "Kunci IRM di escrow. Lepaskan saat konfirmasi. Pengembalian saat waktu habis.",
+      "safe_trade_title": "Perdagangan Aman",
+      "safe_trade_subtitle": "Kunci IRM, tukar dengan apa saja. Kedua sisi terlindungi.",
+      "pay_for_work_title": "Bayar Pekerjaan",
+      "pay_for_work_subtitle": "Danai pekerjaan dengan satu pembayaran atau per tonggak. Uang dilepaskan saat pekerjaan selesai.",
+      "deposit_title": "Deposit yang dapat dikembalikan",
+      "deposit_subtitle": "Kunci IRM sebagai jaminan. Dapatkan kembali otomatis jika kondisi tidak terpenuhi.",
+      "active_title": "agreement Aktif",
+      "active_empty": "Belum ada agreement aktif. Mulai satu di atas.",
+      "active_load_error": "Tidak dapat memuat agreement — node Anda mungkin offline.",
+      "other_party": "Pihak lain",
+      "amount": "Jumlah",
+      "start_cta": "Mulai",
+      "toast_released": "Dana dilepaskan ke pihak lain.",
+      "toast_refunded": "Pengembalian dana diklaim — dana kembali ke wallet Anda."
+    },
+    "status": {
+      "setting_up": "Sedang diatur",
+      "waiting": "Menunggu",
+      "ready_release": "Siap dilepaskan",
+      "ready_refund": "Siap untuk pengembalian dana",
+      "disputed": "Disengketakan — arbiter ditugaskan",
+      "complete": "Selesai",
+      "refunded": "Dikembalikan",
+      "expired": "Kedaluwarsa",
+      "unknown": "Status tidak diketahui",
+      "checking": "Memeriksa…"
+    },
+    "actions": {
+      "release_funds": "Lepaskan Dana",
+      "claim_refund": "Klaim Pengembalian Dana",
+      "view_dispute": "Lihat Sengketa",
+      "view_details": "Lihat Detail",
+      "report_problem": "Ada yang salah?"
+    },
+    "amount": {
+      "over_max": "Maksimum adalah {{max}} IRM"
+    },
+    "address": {
+      "placeholder": "Alamat Q… atau P…",
+      "paste": "Tempel dari clipboard",
+      "format_error": "Ini tidak terlihat seperti alamat Irium yang valid."
+    },
+    "duration": {
+      "preset_1h": "1 jam",
+      "preset_4h": "4 jam",
+      "preset_24h": "24 jam",
+      "preset_48h": "2 hari",
+      "preset_1w": "1 minggu",
+      "custom": "Kustom",
+      "custom_placeholder": "jam",
+      "hours_suffix": "jam",
+      "expires_around": "Kedaluwarsa sekitar {{datetime}}"
+    },
+    "deal_code": {
+      "code_label": "Kode kesepakatan",
+      "paste_placeholder": "Tempel kode perdagangan yang dikirim penjual Anda di sini…",
+      "building": "Membangun kode kesepakatan…",
+      "copy_code": "Salin Kode Kesepakatan",
+      "copy_id": "Salin ID agreement",
+      "copied": "Disalin ke clipboard",
+      "paste": "Tempel",
+      "verify": "Verifikasi Perdagangan",
+      "imported": "Perdagangan diverifikasi",
+      "import_success": "Perdagangan diimpor dan diverifikasi",
+      "fallback_explainer": "Tidak dapat membangun kode kesepakatan. Bagikan ID agreement ini sebagai gantinya — node pembeli Anda perlu online untuk mengambil sisanya."
+    },
+    "technical": {
+      "title": "Detail Teknis",
+      "empty": "Tidak ada data tersedia.",
+      "copied": "Disalin"
+    },
+    "errors": {
+      "generic": "Terjadi kesalahan — silakan coba lagi.",
+      "node_offline": "node Irium Anda tidak berjalan. Mulai dari Dasbor lalu coba lagi.",
+      "network_timeout": "Permintaan memakan waktu terlalu lama. Periksa koneksi Anda dan coba lagi.",
+      "auth_failed": "node Anda menolak permintaan. Periksa token RPC Anda di Pengaturan.",
+      "insufficient_funds": "IRM di wallet Anda tidak cukup untuk tindakan ini.",
+      "coinbase_immature": "Sebagian IRM Anda berasal dari penambangan baru-baru ini dan belum dapat dibelanjakan. Coba lagi setelah beberapa block lagi.",
+      "double_spend": "Transaksi tertunda lain menggunakan dana yang sama. Tunggu sebentar lalu coba lagi.",
+      "already_settled": "agreement ini sudah diselesaikan. Refresh untuk melihat statusnya saat ini.",
+      "refund_not_ready": "Anda belum dapat mengklaim pengembalian dana. Tunggu sampai tenggat waktu berlalu.",
+      "release_not_ready": "Dana belum siap dilepaskan. Tunggu konfirmasi proof.",
+      "agreement_mismatch": "Kode kesepakatan ini tidak cocok dengan agreement di node Anda. Minta pihak lain untuk mengirim ulang.",
+      "expired": "Perdagangan ini sudah kedaluwarsa.",
+      "bad_secret": "Kunci pelepasan salah. Pastikan Anda memiliki kode kesepakatan yang benar.",
+      "bad_address": "Alamat itu tampaknya tidak benar. Periksa ulang dan coba lagi.",
+      "bad_format": "Data tidak dapat dibaca. Mungkin rusak atau dari aplikasi lain.",
+      "fs_blocked": "Aplikasi tidak dapat menyimpan kode kesepakatan secara lokal. Periksa izin disk Anda.",
+      "file_missing": "Tidak dapat menemukan file kode kesepakatan yang disimpan.",
+      "pack_not_found": "Kami tidak dapat menemukan agreement ini di node Anda.",
+      "unpack_signature_invalid": "Kode kesepakatan ditandatangani dengan salah. Jangan dipercaya — minta pihak lain mengirim ulang.",
+      "dispute_duplicate": "Sengketa sudah terbuka untuk agreement ini.",
+      "dispute_not_party": "Hanya pembeli atau penjual yang dapat mengajukan sengketa pada perdagangan ini."
+    },
+    "safe_trade": {
+      "step1_title": "Di sisi mana perdagangan Anda?",
+      "step1_subtitle": "Pilih sisi yang sesuai dengan peran Anda.",
+      "selling_button": "Saya menjual IRM",
+      "selling_subtitle": "Anda mengunci IRM di escrow dan menunggu pembayaran.",
+      "buying_button": "Saya membeli IRM",
+      "buying_subtitle": "Anda membayar off-chain dan menerima IRM.",
+      "status_title": "Status",
+      "status_initial": "Sedang diatur — dana Anda sedang dikunci.",
+      "status_waiting_verify": "Menunggu pembeli Anda memverifikasi perdagangan.",
+      "status_waiting_payment": "Pembeli diverifikasi — menunggu pembayaran off-chain mereka.",
+      "status_ready_release": "Pembayaran dikonfirmasi. Melepaskan dana ke pembeli Anda sekarang.",
+      "toast_funded": "Escrow didanai.",
+      "toast_released": "Dana dilepaskan ke pihak lain.",
+      "toast_release_pending": "Pembayaran dicatat. Dana akan dilepaskan setelah konfirmasi beberapa block berikutnya.",
+      "errors": {
+        "buyer_required": "Masukkan alamat Irium pembeli.",
+        "amount_required": "Masukkan berapa IRM yang ingin Anda kunci.",
+        "receiving_required": "Beri tahu pembeli Anda apa yang Anda harapkan sebagai imbalan."
+      },
+      "review": {
+        "you_lock": "Anda mengunci",
+        "buyer_sends": "Pembeli akan mengirim",
+        "deadline": "Tenggat waktu",
+        "deadline_value": "Jika tidak dibayar dalam {{hours}} jam, IRM Anda kembali otomatis.",
+        "lock_funds": "Kunci Dana",
+        "tx_note": "Ini akan membuat transaksi di blockchain Irium."
+      },
+      "share": {
+        "title": "Bagikan ini dengan pembeli Anda",
+        "subtitle": "Kirim kode ke pembeli Anda. Mereka akan menggunakannya untuk memverifikasi perdagangan sebelum membayar Anda off-chain."
+      },
+      "selling": {
+        "step2_title": "Atur perdagangan Anda",
+        "step2_subtitle": "Beri tahu kami siapa pembeli Anda dan berapa yang Anda kunci.",
+        "step3_title": "Tinjau perdagangan Anda",
+        "step3_subtitle": "Periksa semuanya sebelum mengunci dana.",
+        "step4_title": "Dana terkunci — bagikan ini dengan pembeli Anda",
+        "step4_subtitle": "Kirim kode kesepakatan ke pembeli Anda. Mereka akan menggunakannya untuk memverifikasi perdagangan sebelum membayar Anda.",
+        "buyer_address_label": "Alamat Irium pembeli",
+        "amount_label": "Berapa IRM yang Anda kunci?",
+        "amount_helper": "Ditahan di escrow sampai Anda mengonfirmasi telah menerima pembayaran.",
+        "receiving_label": "Apa yang mereka kirim kepada Anda?",
+        "receiving_placeholder": "mis. 200 USDT, transfer bank, tunai",
+        "deadline_label": "Berapa lama perdagangan ini harus tetap terbuka?",
+        "deadline_helper": "Jika mereka tidak membayar dalam waktu ini, IRM Anda kembali otomatis.",
+        "release_button": "Saya menerima pembayaran — Lepaskan dana ke pembeli"
+      },
+      "buying": {
+        "step2_title": "Tempel kode perdagangan dari penjual Anda",
+        "step2_subtitle": "Penjual Anda mengirim kode. Tempel di bawah untuk memverifikasi perdagangan.",
+        "step3_title": "Verifikasi detail perdagangan ini",
+        "step3_subtitle": "Pastikan detailnya cocok dengan apa yang Anda sepakati off-chain.",
+        "step4_title": "Kirim pembayaran Anda lalu tunggu",
+        "step4_subtitle": "Kirim pembayaran yang disepakati ke penjual Anda. IRM Anda akan tiba otomatis setelah mereka mengonfirmasi.",
+        "review_intro": "Perdagangan ini telah diimpor dan diverifikasi di node Anda. IRM penjual dikunci di escrow — Anda akan menerimanya ketika Anda telah mengirim pembayaran off-chain dan penjual mengonfirmasi.",
+        "seller_locks": "Penjual mengunci",
+        "seller_label": "Penjual",
+        "trade_id_label": "ID Perdagangan",
+        "details_unavailable": "Tidak dapat mengambil detail perdagangan dari node Anda. Anda masih dapat melanjutkan, tetapi verifikasi bahwa ID agreement cocok dengan yang dikirim penjual Anda.",
+        "cancel_button": "Ada yang salah — Batalkan",
+        "confirm_button": "Ini terlihat benar — saya akan mengirim pembayaran",
+        "status_waiting": "Menunggu penjual mengonfirmasi pembayaran diterima.",
+        "status_releasing": "Pembayaran dikonfirmasi — IRM dalam perjalanan.",
+        "status_complete": "Selesai — IRM telah tiba di wallet Anda.",
+        "view_agreements": "Lihat di Agreement"
+      }
+    },
+    "pay_for_work": {
+      "step1_title": "Pembayaran tunggal atau per tonggak?",
+      "step1_subtitle": "Pilih cara Anda membayar.",
+      "single_button": "Pembayaran tunggal",
+      "single_subtitle": "Bayar semuanya di muka saat pekerjaan selesai.",
+      "milestone_button": "Per tonggak",
+      "milestone_subtitle": "Bayar bertahap saat setiap bagian selesai.",
+      "step2_title": "Atur pembayaran",
+      "step2_subtitle_single": "Beri tahu kami siapa yang Anda bayar dan berapa.",
+      "step2_subtitle_milestone": "Beri tahu kami totalnya, jumlah tahap, dan apa yang diharapkan.",
+      "step3_title": "Tinjau",
+      "step3_subtitle": "Periksa kembali sebelum mengunci dana.",
+      "step4_title": "Dana terkunci",
+      "step4_subtitle": "Menunggu pekerjaan dikirim.",
+      "contractor_label": "Siapa yang Anda bayar?",
+      "amount_label_single": "Berapa?",
+      "amount_label_milestone": "Jumlah total untuk dikunci",
+      "amount_helper_milestone": "Dibagi rata di antara tonggak di bawah.",
+      "count_label": "Berapa banyak tonggak?",
+      "per_milestone_preview": "Setiap tonggak: {{amount}}",
+      "deadline_label": "Tenggat waktu",
+      "deadline_helper": "Berapa lama hingga dana dikembalikan otomatis jika pekerjaan tidak dikonfirmasi.",
+      "description_label": "Deskripsi (opsional)",
+      "description_placeholder": "Apa yang akan dikirim? (maks 200 karakter)",
+      "errors": {
+        "contractor_required": "Masukkan siapa yang Anda bayar.",
+        "amount_required": "Masukkan berapa IRM yang Anda kunci.",
+        "count_range": "Antara 2 dan 10 tonggak."
+      },
+      "review": {
+        "paying": "Membayar",
+        "locking": "Mengunci",
+        "milestones": "Tonggak",
+        "milestones_value": "{{count}} tonggak · {{per}} masing-masing",
+        "deadline": "Tenggat waktu",
+        "deadline_value": "{{hours}} jam",
+        "scope": "Deskripsi",
+        "lock_funds": "Kunci Dana",
+        "lock_all": "Kunci Semua Dana"
+      },
+      "status_title": "Status",
+      "status_setting_up": "Sedang diatur — dana sedang dikunci.",
+      "status_pending": "Menunggu konfirmasi pendanaan on-chain.",
+      "status_in_progress": "Dana terkunci. Menunggu pekerjaan dikirim.",
+      "status_can_refund": "Tenggat waktu tercapai. Anda dapat mengklaim pengembalian dana.",
+      "status_complete": "Selesai. Pembayaran telah dilepaskan.",
+      "mark_complete": "Tandai Selesai — Lepaskan Pembayaran",
+      "claim_refund": "Klaim Pengembalian Dana",
+      "toast_released": "Pembayaran dilepaskan ke kontraktor.",
+      "toast_release_pending": "Penyelesaian dicatat. Dana akan dilepaskan setelah konfirmasi beberapa block berikutnya.",
+      "toast_refunded": "Pengembalian dana diklaim — dana kembali ke wallet Anda."
+    },
+    "deposit": {
+      "step1_title": "Atur deposit Anda",
+      "step1_subtitle": "Kunci IRM sebagai jaminan. Dapatkan kembali otomatis jika kondisi tidak terpenuhi.",
+      "step2_title": "Tinjau",
+      "step2_subtitle": "Periksa kembali sebelum mengunci deposit.",
+      "step3_title": "Deposit terkunci",
+      "step3_subtitle": "Ditahan di escrow sampai Anda melepaskannya, atau sampai tenggat waktu berlalu dan Anda mengklaimnya kembali.",
+      "recipient_label": "Siapa yang menerimanya jika kondisi terpenuhi?",
+      "amount_label": "Jumlah deposit",
+      "purpose_label": "Tujuan",
+      "purpose_placeholder": "mis. Jaminan sewa",
+      "purpose_helper": "Catatan untuk arsip Anda. Disimpan secara lokal — pihak lain mungkin tidak melihatnya.",
+      "deadline_label": "Tenggat waktu pengembalian",
+      "deadline_helper": "Jika penerima tidak mengkliamnya sebelum tenggat waktu ini, Anda dapat mengklaimnya kembali.",
+      "preset_1m": "1 bulan",
+      "preset_3m": "3 bulan",
+      "errors": {
+        "recipient_required": "Masukkan alamat Irium penerima.",
+        "amount_required": "Masukkan berapa IRM yang Anda depositkan."
+      },
+      "review": {
+        "recipient": "Penerima",
+        "amount": "Jumlah",
+        "purpose": "Tujuan",
+        "deadline": "Tenggat waktu pengembalian",
+        "deadline_value": "{{hours}} jam dari sekarang",
+        "lock_deposit": "Kunci Deposit"
+      },
+      "status_title": "Status",
+      "status_setting_up": "Sedang diatur — deposit Anda sedang dikunci.",
+      "status_locked": "Terkunci di escrow. Akan dilepaskan dengan tindakan Anda, atau pengembalian otomatis setelah tenggat waktu.",
+      "status_can_claim_back": "Tenggat waktu tercapai. Anda dapat mengklaim deposit kembali.",
+      "status_released": "Dilepaskan ke penerima.",
+      "status_refunded": "Dikembalikan ke wallet Anda.",
+      "release_button": "Lepaskan ke penerima",
+      "claim_back_button": "Klaim kembali",
+      "toast_released": "Deposit dilepaskan ke penerima.",
+      "toast_refunded": "Deposit diklaim kembali — dana kembali ke wallet Anda."
+    },
+    "dispute": {
+      "step1_title": "Apa yang terjadi?",
+      "step1_subtitle": "Jelaskan masalah dengan kata-kata Anda sendiri. Pihak lain akan melihatnya.",
+      "step2_title": "Sengketa dicatat",
+      "step2_subtitle": "Sengketa Anda sekarang ada di blockchain Irium.",
+      "about_agreement": "Tentang agreement ini",
+      "reason_label": "Jelaskan masalahnya",
+      "reason_placeholder": "Apa yang salah? Bersikaplah spesifik — pihak lain akan membaca ini.",
+      "evidence_label": "Tambahkan bukti (file)",
+      "evidence_coming_soon": "Lampiran file akan hadir di rilis mendatang.",
+      "submit_button": "Laporkan masalah",
+      "confirm_title": "Sengketa Anda telah dicatat on-chain.",
+      "confirm_body": "Pihak lain telah diberi tahu. Hubungi mereka langsung untuk menyelesaikan masalah. Jika Anda tidak dapat mencapai kesepakatan, langkah selanjutnya adalah percakapan di luar aplikasi — penyelesaian arbiter otomatis akan hadir di rilis mendatang.",
+      "next_step_note": "Selama sengketa terbuka, tidak ada pihak yang dapat melepaskan atau mengembalikan dana. Bicaralah dengan rekan Anda sebelum yang lainnya.",
+      "back_to_hub": "Kembali ke Settlement",
+      "view_agreements": "Lihat Agreement",
+      "toast_submitted": "Sengketa dicatat on-chain.",
+      "errors": {
+        "no_agreement": "Tidak ada agreement yang dipilih. Buka satu dari hub dan coba lagi.",
+        "reason_required": "Harap jelaskan apa yang salah."
+      }
+    }
   }
 }
