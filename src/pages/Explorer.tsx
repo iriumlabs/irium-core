@@ -848,9 +848,22 @@ function NetworkMiningOverview() {
   // session_status; prefer 'active' rows so a stale leftover row (idle
   // > 10 min, zero hashrate, same base address as an active row) is
   // already filtered before it could distort the total.
-  const poolHashrate = poolRows.length > 0
+  const poolHashrateRaw = poolRows.length > 0
     ? poolRows.reduce((sum, m) => sum + (m.hashrate_15m ?? 0), 0)
     : null;
+  // Sanity cap: the proxy estimates per-worker hashrate from
+  // accepted-share counts × current_diff over a rolling window. Vardiff
+  // drift, transient bursts, or stale window samples can produce sums
+  // that exceed the actual network hashrate — which is physically
+  // impossible (the pool is a subset of the network). When the raw sum
+  // exceeds the network value, clamp the displayed pool hashrate to the
+  // network value and flag the panel so the user knows it's a clamped
+  // estimate, not a measured value.
+  const poolHashrateCapped = (poolHashrateRaw != null && networkHashrate != null && poolHashrateRaw > networkHashrate)
+    ? networkHashrate
+    : poolHashrateRaw;
+  const poolHashrateClamped = poolHashrateRaw != null && networkHashrate != null && poolHashrateRaw > networkHashrate;
+  const poolHashrate = poolHashrateCapped;
   // Active miner count: rows that submitted a share in the last 10 min
   // AND have a non-zero rolling hashrate. The proxy's session_status
   // field already encodes this; we count session_status==='active' if
@@ -1026,6 +1039,7 @@ function NetworkMiningOverview() {
             <PoolStatsTile
               label="Pool Hashrate"
               value={poolHashrate != null ? formatHashrate(poolHashrate) : '—'}
+              sub={poolHashrateClamped ? 'estimate' : undefined}
               accent="#a78bfa"
             />
             <PoolStatsTile
