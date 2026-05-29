@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Wallet, ShieldCheck, ShoppingBag,
-  FileText, Star, Cpu, Settings, Globe, Terminal, HelpCircle,
+  FileText, Star, Cpu, Settings, Globe, Terminal, TerminalSquare, HelpCircle,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useStore } from '../../lib/store';
@@ -22,6 +22,7 @@ const NAV = [
   { to: '/agreements',  icon: FileText,        labelKey: 'nav.agreements'  },
   { to: '/reputation',  icon: Star,            labelKey: 'nav.reputation'  },
   { to: '/miner',       icon: Cpu,             labelKey: 'nav.miner'       },
+  { to: '/terminal',    icon: TerminalSquare,  labelKey: 'nav.terminal'    },
   { to: '/logs',        icon: Terminal,        labelKey: 'nav.logs'        },
 ] as const;
 

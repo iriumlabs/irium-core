@@ -50,7 +50,8 @@
     "reputation": "Ruf",
     "settings": "Einstellungen",
     "logs": "Protokolle",
-    "help": "Helfen"
+    "help": "Helfen",
+    "terminal": "Terminal"
   },
   "topbar": {
     "block_height": "Blockhöhe",
@@ -1845,5 +1846,12 @@
     "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
     "agreement_timeout": "Agreement {{hash}} timed out — refund available",
     "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
+  },
+  "terminal": {
+    "page_title": "Terminal",
+    "page_subtitle": "Eingeschränkter Befehlsausführer. Nur freigegebene Wallet- und RPC-Befehle.",
+    "clear_output": "Leeren",
+    "input_placeholder": "Befehl eingeben... ('help' für Liste)",
+    "input_busy_placeholder": "Wird ausgeführt..."
   }
 }

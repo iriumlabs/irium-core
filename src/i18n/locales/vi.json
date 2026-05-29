@@ -50,7 +50,8 @@
     "reputation": "Danh tiếng",
     "settings": "Cài đặt",
     "logs": "Nhật ký",
-    "help": "Giúp đỡ"
+    "help": "Giúp đỡ",
+    "terminal": "Cửa sổ dòng lệnh"
   },
   "topbar": {
     "block_height": "Chiều cao khối",
@@ -1845,5 +1846,12 @@
     "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
     "agreement_timeout": "Agreement {{hash}} timed out — refund available",
     "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
+  },
+  "terminal": {
+    "page_title": "Cửa sổ dòng lệnh",
+    "page_subtitle": "Trình chạy lệnh hạn chế. Chỉ các lệnh ví và RPC trong danh sách cho phép.",
+    "clear_output": "Xóa",
+    "input_placeholder": "Nhập lệnh... ('help' để xem danh sách)",
+    "input_busy_placeholder": "Đang chạy..."
   }
 }

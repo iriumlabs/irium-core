@@ -50,7 +50,8 @@
     "reputation": "प्रतिष्ठा",
     "settings": "सेटिंग्स",
     "logs": "लॉग्स",
-    "help": "मदद"
+    "help": "मदद",
+    "terminal": "टर्मिनल"
   },
   "topbar": {
     "block_height": "ब्लॉक की ऊंचाई",
@@ -1845,5 +1846,12 @@
     "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
     "agreement_timeout": "Agreement {{hash}} timed out — refund available",
     "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
+  },
+  "terminal": {
+    "page_title": "टर्मिनल",
+    "page_subtitle": "प्रतिबंधित कमांड रनर। केवल अनुमत वॉलेट और RPC कमांड।",
+    "clear_output": "साफ़ करें",
+    "input_placeholder": "कमांड दर्ज करें... ('help' से सूची देखें)",
+    "input_busy_placeholder": "चल रहा है..."
   }
 }

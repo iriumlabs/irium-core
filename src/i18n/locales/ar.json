@@ -50,7 +50,8 @@
     "reputation": "سمعة",
     "settings": "إعدادات",
     "logs": "سجلات",
-    "help": "يساعد"
+    "help": "يساعد",
+    "terminal": "المحطة الطرفية"
   },
   "topbar": {
     "block_height": "ارتفاع الكتلة",
@@ -1845,5 +1846,12 @@
     "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
     "agreement_timeout": "Agreement {{hash}} timed out — refund available",
     "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
+  },
+  "terminal": {
+    "page_title": "المحطة الطرفية",
+    "page_subtitle": "مشغل أوامر مقيد. أوامر المحفظة وRPC المسموح بها فقط.",
+    "clear_output": "مسح",
+    "input_placeholder": "أدخل أمراً... ('help' للقائمة)",
+    "input_busy_placeholder": "قيد التشغيل..."
   }
 }

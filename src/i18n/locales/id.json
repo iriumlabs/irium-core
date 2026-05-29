@@ -50,7 +50,8 @@
     "reputation": "Reputasi",
     "settings": "Pengaturan",
     "logs": "Log",
-    "help": "Membantu"
+    "help": "Membantu",
+    "terminal": "Terminal"
   },
   "topbar": {
     "block_height": "Tinggi blok",
@@ -1845,5 +1846,12 @@
     "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
     "agreement_timeout": "Agreement {{hash}} timed out — refund available",
     "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
+  },
+  "terminal": {
+    "page_title": "Terminal",
+    "page_subtitle": "Pelari perintah terbatas. Hanya perintah dompet dan RPC yang diizinkan.",
+    "clear_output": "Hapus",
+    "input_placeholder": "Ketik perintah... ('help' untuk daftar)",
+    "input_busy_placeholder": "Menjalankan..."
   }
 }

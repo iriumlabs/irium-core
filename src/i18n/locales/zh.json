@@ -50,7 +50,8 @@
     "reputation": "名声",
     "settings": "设置",
     "logs": "日志",
-    "help": "帮助"
+    "help": "帮助",
+    "terminal": "终端"
   },
   "topbar": {
     "block_height": "块高度",
@@ -1845,5 +1846,12 @@
     "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
     "agreement_timeout": "Agreement {{hash}} timed out — refund available",
     "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
+  },
+  "terminal": {
+    "page_title": "终端",
+    "page_subtitle": "受限命令运行器。仅允许白名单中的钱包和 RPC 命令。",
+    "clear_output": "清除",
+    "input_placeholder": "输入命令...（'help' 查看列表）",
+    "input_busy_placeholder": "运行中..."
   }
 }

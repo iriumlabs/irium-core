@@ -50,7 +50,8 @@
     "reputation": "Reputazione",
     "settings": "Impostazioni",
     "logs": "Registri",
-    "help": "Aiuto"
+    "help": "Aiuto",
+    "terminal": "Terminale"
   },
   "topbar": {
     "block_height": "Altezza del blocco",
@@ -1845,5 +1846,12 @@
     "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
     "agreement_timeout": "Agreement {{hash}} timed out — refund available",
     "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
+  },
+  "terminal": {
+    "page_title": "Terminale",
+    "page_subtitle": "Esecutore di comandi limitato. Solo comandi wallet e RPC autorizzati.",
+    "clear_output": "Cancella",
+    "input_placeholder": "Digita un comando... ('help' per elencare)",
+    "input_busy_placeholder": "In esecuzione..."
   }
 }

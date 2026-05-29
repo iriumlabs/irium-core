@@ -50,7 +50,8 @@
     "reputation": "評判",
     "settings": "設定",
     "logs": "ログ",
-    "help": "ヘルプ"
+    "help": "ヘルプ",
+    "terminal": "ターミナル"
   },
   "topbar": {
     "block_height": "ブロックの高さ",
@@ -1845,5 +1846,12 @@
     "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
     "agreement_timeout": "Agreement {{hash}} timed out — refund available",
     "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
+  },
+  "terminal": {
+    "page_title": "ターミナル",
+    "page_subtitle": "制限付きコマンドランナー。許可されたウォレットおよびRPCコマンドのみ。",
+    "clear_output": "クリア",
+    "input_placeholder": "コマンドを入力... ('help'で一覧)",
+    "input_busy_placeholder": "実行中..."
   }
 }

@@ -50,7 +50,8 @@
     "reputation": "평판",
     "settings": "설정",
     "logs": "로그",
-    "help": "돕다"
+    "help": "돕다",
+    "terminal": "터미널"
   },
   "topbar": {
     "block_height": "블록 높이",
@@ -1845,5 +1846,12 @@
     "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
     "agreement_timeout": "Agreement {{hash}} timed out — refund available",
     "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
+  },
+  "terminal": {
+    "page_title": "터미널",
+    "page_subtitle": "제한된 명령 실행기. 허용된 지갑 및 RPC 명령만 사용 가능합니다.",
+    "clear_output": "지우기",
+    "input_placeholder": "명령어 입력... ('help'로 목록 보기)",
+    "input_busy_placeholder": "실행 중..."
   }
 }

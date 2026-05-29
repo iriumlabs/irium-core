@@ -50,7 +50,8 @@
     "reputation": "İtibar",
     "settings": "Ayarlar",
     "logs": "Günlükler",
-    "help": "Yardım"
+    "help": "Yardım",
+    "terminal": "Terminal"
   },
   "topbar": {
     "block_height": "Blok yüksekliği",
@@ -1845,5 +1846,12 @@
     "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
     "agreement_timeout": "Agreement {{hash}} timed out — refund available",
     "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
+  },
+  "terminal": {
+    "page_title": "Terminal",
+    "page_subtitle": "Kısıtlı komut çalıştırıcı. Yalnızca izin verilen cüzdan ve RPC komutları.",
+    "clear_output": "Temizle",
+    "input_placeholder": "Komut girin... ('help' ile listele)",
+    "input_busy_placeholder": "Çalışıyor..."
   }
 }

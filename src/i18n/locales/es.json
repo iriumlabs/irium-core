@@ -50,7 +50,8 @@
     "reputation": "Reputación",
     "settings": "Ajustes",
     "logs": "Registros",
-    "help": "Ayuda"
+    "help": "Ayuda",
+    "terminal": "Terminal"
   },
   "topbar": {
     "block_height": "Altura del bloque",
@@ -1845,5 +1846,12 @@
     "agreement_satisfied": "Agreement {{hash}} satisfied — funds can be released",
     "agreement_timeout": "Agreement {{hash}} timed out — refund available",
     "agreement_proof_reorged": "Proof for agreement {{hash}} was reorged — re-submit may be needed"
+  },
+  "terminal": {
+    "page_title": "Terminal",
+    "page_subtitle": "Ejecutor de comandos restringido. Solo comandos de billetera y RPC permitidos.",
+    "clear_output": "Limpiar",
+    "input_placeholder": "Escribe un comando... ('help' para listar)",
+    "input_busy_placeholder": "Ejecutando..."
   }
 }

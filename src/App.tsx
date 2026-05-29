@@ -29,6 +29,7 @@ const Agreements   = lazy(() => import('./pages/Agreements'));
 const Reputation   = lazy(() => import('./pages/Reputation'));
 const Miner        = lazy(() => import('./pages/Miner'));
 const Settings     = lazy(() => import('./pages/Settings'));
+const Terminal     = lazy(() => import('./pages/Terminal'));
 const Explorer     = lazy(() => import('./pages/Explorer'));
 const SellerWizard = lazy(() => import('./pages/_legacy/SellerWizard'));
 const BuyerWizard  = lazy(() => import('./pages/_legacy/BuyerWizard'));
@@ -433,6 +434,7 @@ function AppLayout() {
                 <Route path="/agreements/:id" element={<Agreements />} />
                 <Route path="/reputation"     element={<Reputation />} />
                 <Route path="/miner"       element={<Miner />}       />
+                <Route path="/terminal"    element={<Terminal />}    />
                 <Route path="/settings"    element={<Settings />}    />
                 <Route path="/logs"        element={<Logs />}        />
                 <Route path="/settlement/seller-wizard" element={<SellerWizard />} />
