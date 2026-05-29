@@ -2,9 +2,7 @@
   "_meta": {
     "status": "machine_translated",
     "review_needed": true,
-    "language": "Español",
-    "english_name": "Spanish",
-    "direction": "ltr"
+    "language": "Español"
   },
   "common": {
     "save": "Ahorrar",
@@ -223,7 +221,10 @@
       "midnight": "Medianoche",
       "obsidian": "Obsidiana",
       "aurora": "Aurora",
-      "nebula": "Nebulosa"
+      "nebula": "Nebulosa",
+      "solar": "Solar",
+      "ocean": "Océano",
+      "rose": "Rosa"
     },
     "network_info": {
       "network": "Red",
@@ -314,7 +315,17 @@
       "clearing": "Claro…",
       "confirm_resync": "Confirme: ¡esto se resincronizará!",
       "clear_resync": "Borrar y resincronizar",
-      "confirm_hint": "Haga clic nuevamente para confirmar. Los bloques se volverán a descargar."
+      "confirm_hint": "Haga clic nuevamente para confirmar. Los bloques se volverán a descargar.",
+      "reset_state_button": "Restablecer estado del node (mantener block)",
+      "reset_state_description": "Alternativa más ligera a Borrar y Resincronizar. Mantiene los block descargados y reconstruye el conjunto UTXO localmente. Úsalo cuando veas fallos de verificación de firma de transacciones.",
+      "reset_state_confirm_title": "¿Restablecer estado del node?",
+      "reset_state_confirm_body": "Esto renombra tu carpeta de estado a una copia de seguridad con marca de tiempo y mantiene los block descargados. iriumd reconstruirá el conjunto UTXO desde block locales en el próximo inicio — normalmente 5 a 15 minutos en lugar de horas para una resincronización completa de la cadena. Úsalo cuando veas fallos de verificación de firma de transacciones u otra corrupción del estado UTXO. Tu wallet y agreement no se ven afectados.",
+      "reset_state_proceed": "Restablecer estado",
+      "reset_state_resetting": "Restableciendo…",
+      "reset_state_success": "Estado restablecido — copia de seguridad en {{path}}",
+      "reset_state_no_backup": "No hay estado existente para respaldar — se creó estado nuevo",
+      "reset_state_rebuilding": "node reiniciando — reconstruyendo conjunto UTXO desde block locales (5-15 min)",
+      "reset_state_failed": "Restablecimiento fallido: {{reason}}"
     },
     "developer_info": {
       "reset_onboarding": "Restablecer incorporación",
@@ -743,7 +754,18 @@
       "load_error_title": "No se pudieron cargar los acuerdos",
       "empty_state": "Aún no has creado ningún acuerdo.",
       "create_first": "Crea tu primer acuerdo →",
-      "create_offer": "Crear oferta"
+      "create_offer": "Crear oferta",
+      "selling_title": "Estoy vendiendo",
+      "selling_subtitle": "Crea una oferta, compártela con el comprador, recibe el pago al presentar proof",
+      "selling_cta": "Iniciar flujo de vendedor →",
+      "buying_title": "Estoy comprando",
+      "buying_subtitle": "Encuentra una oferta, financia el escrow, libera el pago al recibir",
+      "buying_cta": "Iniciar flujo de comprador →",
+      "create_direct": "Crear agreement directamente (avanzado)",
+      "how_it_works": "Cómo funciona",
+      "step_create": "Crea o encuentra un agreement",
+      "step_lock": "Bloquea IRM en escrow on-chain",
+      "step_proof": "Envía proof — los fondos se liberan automáticamente"
     },
     "templates": {
       "otc": "Comercio OTC",
@@ -779,7 +801,9 @@
         "memo_merchant_placeholder": "Descripción del pedido...",
         "total_escrow_hours": "Ventana total de depósito en garantía (horas)",
         "party_placeholder": "P... o P..."
-      }
+      },
+      "step_details_short": "Detalles",
+      "step_review_confirm": "Revisar y confirmar"
     },
     "seller_dashboard": "Panel de vendedor",
     "buyer_dashboard": "Panel de Comprador",
@@ -803,6 +827,76 @@
     "review_agreement": "Acuerdo de revisión",
     "modals": {
       "payment_invoice": "Factura de pago"
+    },
+    "page_subtitle": "Settlement on-chain sin confianza usando el sistema de escrow basado en proof de Irium",
+    "templates_desc": {
+      "otc": "Usa esto para comprar o vender IRM peer-to-peer. El comprador bloquea IRM en escrow, hace un pago off-chain, y el vendedor confirma la recepción para liberar fondos.",
+      "freelance": "Usa esto para trabajos freelance o servicios. El cliente bloquea el pago en escrow por adelantado. Los fondos se liberan cuando el contratista completa el trabajo y envía proof.",
+      "milestone": "Usa esto para proyectos grandes divididos en etapas. Cada hito tiene su propio escrow y requisito de proof. Las liberaciones parciales ocurren a medida que se completan los hitos.",
+      "deposit": "Usa esto para depósitos reembolsables o garantías. Los fondos se bloquean on-chain y se devuelven automáticamente si las condiciones no se cumplen antes del plazo.",
+      "merchant_delayed": "Venta comercial con ventana de enfriamiento integrada. Los fondos se mantienen en escrow y el comerciante puede reclamar solo después de que se cierre la ventana de disputa.",
+      "contractor": "Trabajo de contratista dividido en hitos. Cada hito tiene su propio escrow y requisito de proof de entrega. Los fondos se liberan etapa por etapa."
+    },
+    "role_labels": {
+      "buyer": "Dirección del comprador",
+      "seller": "Dirección del vendedor",
+      "client": "Dirección del cliente",
+      "contractor": "Dirección del contratista",
+      "payer": "Dirección del pagador",
+      "payee": "Dirección del beneficiario",
+      "depositor": "Dirección del depositante",
+      "recipient": "Dirección del destinatario",
+      "merchant": "Dirección del comerciante"
+    },
+    "form_errors": {
+      "address_required": "Se requiere dirección",
+      "same_party": "La parte A y la parte B no pueden ser la misma dirección",
+      "positive_amount": "Introduce un importe positivo",
+      "amount_exceeds_supply": "El importe no puede exceder {{max}} IRM (suministro total)",
+      "milestones_range": "Entre 2 y 20",
+      "deadline_range": "El plazo debe estar entre 1 y {{max}} horas (1 año)",
+      "cooldown_range": "El periodo de enfriamiento debe estar entre 1 y {{max}} horas (1 año)"
+    },
+    "review_labels": {
+      "amount": "Importe",
+      "deadline": "Plazo",
+      "scope": "Alcance",
+      "milestones": "Hitos",
+      "per_milestone": "Por hito",
+      "cooldown_window": "Ventana de enfriamiento",
+      "total_escrow_window": "Ventana total de escrow",
+      "memo": "Nota",
+      "asset_ref": "Ref. del activo",
+      "payment": "Pago"
+    },
+    "preview": {
+      "preview_suffix": "Vista previa",
+      "fill_hint": "Rellena el formulario para ver una vista previa en vivo",
+      "amount": "Importe",
+      "sats": "Sats",
+      "fee_rate": "Tasa de comisión",
+      "per_milestone": "Por hito",
+      "deadline": "Plazo",
+      "cooldown": "Enfriamiento",
+      "total_window": "Ventana total",
+      "type": "Tipo"
+    },
+    "dashboard": {
+      "select_seller_hint": "Selecciona una dirección de wallet para ver las estadísticas del vendedor.",
+      "select_buyer_hint": "Selecciona una dirección de wallet para ver las estadísticas del comprador.",
+      "active_offers": "Ofertas activas",
+      "open_agreements": "agreement abiertos",
+      "completed": "Completadas",
+      "active_purchases": "Compras activas",
+      "total_received": "Total recibido",
+      "total_received_hint": "Volumen de por vida de agreement liberados donde fuiste vendedor (sats → IRM)",
+      "total_spent": "Total gastado",
+      "total_spent_hint": "Volumen de por vida de agreement liberados donde fuiste comprador (sats → IRM)",
+      "reputation": "Reputación",
+      "restrictions_label": "Restricciones: "
+    },
+    "errors": {
+      "generic_failure": "Algo salió mal. Verifica que tu node esté en ejecución e inténtalo de nuevo."
     }
   },
   "marketplace": {
@@ -1355,6 +1449,20 @@
       "col_reject_pct": "Reject %",
       "col_hashrate": "15m H/s",
       "col_last_share": "Last share"
+    },
+    "calculator": {
+      "title": "Calculadora de Minería",
+      "your_hashrate": "Tu hashrate",
+      "placeholder": "0",
+      "network_label": "Red",
+      "block_reward_label": "Recompensa de block",
+      "protocol_target": "Objetivo del protocolo",
+      "protocol_target_sub": "block de 10 min (objetivo de diseño de la cadena)",
+      "current_rate": "Tasa actual de la cadena",
+      "current_rate_sub": "~1-min block (observado actualmente)",
+      "blocks_per_day_suffix": "block/día",
+      "irm_per_day_suffix": "IRM/día",
+      "disclaimer": "Solo estimaciones — las ganancias reales dependen de la suerte, las comisiones del pool y los cambios de dificultad. La calculadora usa el hashrate de red en vivo, actualizado cada 60 s."
     }
   },
   "help": {
@@ -1877,5 +1985,285 @@
     "clear_output": "Limpiar",
     "input_placeholder": "Escribe un comando... ('help' para listar)",
     "input_busy_placeholder": "Ejecutando..."
+  },
+  "settlement_ui": {
+    "hub": {
+      "title": "Settlement",
+      "subtitle": "Bloquea IRM en escrow. Libera al confirmar. Reembolso por tiempo de espera.",
+      "safe_trade_title": "Operación segura",
+      "safe_trade_subtitle": "Bloquea IRM, intercambia por cualquier cosa. Ambas partes protegidas.",
+      "pay_for_work_title": "Pagar trabajo",
+      "pay_for_work_subtitle": "Financia un trabajo con un pago o por hito. El dinero se libera cuando el trabajo está listo.",
+      "deposit_title": "Depósito reembolsable",
+      "deposit_subtitle": "Bloquea IRM como garantía. Recupéralo automáticamente si no se cumplen las condiciones.",
+      "active_title": "agreement activos",
+      "active_empty": "Aún no hay agreement activos. Inicia uno arriba.",
+      "active_load_error": "No se pudieron cargar los agreement — tu node podría estar fuera de línea.",
+      "other_party": "Otra parte",
+      "amount": "Importe",
+      "start_cta": "Iniciar",
+      "toast_released": "Fondos liberados a la otra parte.",
+      "toast_refunded": "Reembolso reclamado — los fondos vuelven a tu wallet."
+    },
+    "status": {
+      "setting_up": "Configurando",
+      "waiting": "Esperando",
+      "ready_release": "Listo para liberar",
+      "ready_refund": "Listo para reembolso",
+      "disputed": "Disputado — árbitro asignado",
+      "complete": "Completo",
+      "refunded": "Reembolsado",
+      "expired": "Expirado",
+      "unknown": "Estado desconocido",
+      "checking": "Verificando…"
+    },
+    "actions": {
+      "release_funds": "Liberar fondos",
+      "claim_refund": "Reclamar reembolso",
+      "view_dispute": "Ver disputa",
+      "view_details": "Ver detalles",
+      "report_problem": "¿Algo salió mal?"
+    },
+    "amount": {
+      "over_max": "El máximo es {{max}} IRM"
+    },
+    "address": {
+      "placeholder": "Dirección Q… o P…",
+      "paste": "Pegar desde portapapeles",
+      "format_error": "Esto no parece una dirección de Irium válida."
+    },
+    "duration": {
+      "preset_1h": "1 hora",
+      "preset_4h": "4 horas",
+      "preset_24h": "24 horas",
+      "preset_48h": "2 días",
+      "preset_1w": "1 semana",
+      "custom": "Personalizado",
+      "custom_placeholder": "horas",
+      "hours_suffix": "horas",
+      "expires_around": "Expira alrededor de {{datetime}}"
+    },
+    "deal_code": {
+      "code_label": "Código de trato",
+      "paste_placeholder": "Pega aquí el código de trato que te envió tu vendedor…",
+      "building": "Generando código de trato…",
+      "copy_code": "Copiar código de trato",
+      "copy_id": "Copiar ID de agreement",
+      "copied": "Copiado al portapapeles",
+      "paste": "Pegar",
+      "verify": "Verificar trato",
+      "imported": "Trato verificado",
+      "import_success": "Trato importado y verificado",
+      "fallback_explainer": "No se pudo generar un código de trato. Comparte este ID de agreement en su lugar — el node de tu comprador necesita estar en línea para obtener el resto."
+    },
+    "technical": {
+      "title": "Detalles técnicos",
+      "empty": "No hay datos disponibles.",
+      "copied": "Copiado"
+    },
+    "errors": {
+      "generic": "Algo salió mal — inténtalo de nuevo.",
+      "node_offline": "Tu node Irium no está en ejecución. Inícialo desde el Panel e inténtalo de nuevo.",
+      "network_timeout": "La solicitud tardó demasiado. Verifica tu conexión e inténtalo de nuevo.",
+      "auth_failed": "Tu node rechazó la solicitud. Verifica tu token RPC en Configuración.",
+      "insufficient_funds": "No hay suficiente IRM en tu wallet para esta acción.",
+      "coinbase_immature": "Parte de tu IRM viene de minería reciente y aún no se puede gastar. Inténtalo después de unos block más.",
+      "double_spend": "Otra transacción pendiente está usando los mismos fondos. Espera un momento e inténtalo de nuevo.",
+      "already_settled": "Este agreement ya está liquidado. Actualiza para ver su estado actual.",
+      "refund_not_ready": "Aún no puedes reclamar un reembolso. Espera a que pase el plazo.",
+      "release_not_ready": "Los fondos aún no están listos para liberarse. Espera la confirmación del proof.",
+      "agreement_mismatch": "Este código de trato no coincide con el agreement en tu node. Pide a la otra parte que lo reenvíe.",
+      "expired": "Esta operación ya ha expirado.",
+      "bad_secret": "La clave de liberación es incorrecta. Verifica que tengas el código de trato correcto.",
+      "bad_address": "Esa dirección no parece correcta. Verifícala e inténtalo de nuevo.",
+      "bad_format": "No se pudieron leer los datos. Pueden estar dañados o ser de otra app.",
+      "fs_blocked": "La app no pudo guardar el código de trato localmente. Verifica los permisos del disco.",
+      "file_missing": "No se encontró el archivo de código de trato guardado.",
+      "pack_not_found": "No se pudo encontrar este agreement en tu node.",
+      "unpack_signature_invalid": "El código de trato está mal firmado. No confíes en él — pide a la otra parte que lo reenvíe.",
+      "dispute_duplicate": "Ya hay una disputa abierta para este agreement.",
+      "dispute_not_party": "Solo el comprador o vendedor puede abrir una disputa en esta operación."
+    },
+    "safe_trade": {
+      "step1_title": "¿En qué lado de la operación estás?",
+      "step1_subtitle": "Elige el lado que coincide con tu rol.",
+      "selling_button": "Vendo IRM",
+      "selling_subtitle": "Estás bloqueando IRM en escrow y esperando pago.",
+      "buying_button": "Compro IRM",
+      "buying_subtitle": "Estás pagando off-chain y recibiendo IRM.",
+      "status_title": "Estado",
+      "status_initial": "Configurando — tus fondos se están bloqueando.",
+      "status_waiting_verify": "Esperando a que tu comprador verifique la operación.",
+      "status_waiting_payment": "Comprador verificado — esperando su pago off-chain.",
+      "status_ready_release": "Pago confirmado. Liberando fondos a tu comprador ahora.",
+      "toast_funded": "Escrow financiado.",
+      "toast_released": "Fondos liberados a la otra parte.",
+      "toast_release_pending": "Pago registrado. Los fondos se liberarán tras las próximas confirmaciones de block.",
+      "errors": {
+        "buyer_required": "Introduce la dirección Irium del comprador.",
+        "amount_required": "Introduce cuánto IRM quieres bloquear.",
+        "receiving_required": "Indícale a tu comprador qué esperas a cambio."
+      },
+      "review": {
+        "you_lock": "Estás bloqueando",
+        "buyer_sends": "El comprador enviará",
+        "deadline": "Plazo",
+        "deadline_value": "Si no se paga en {{hours}} horas, tu IRM se devuelve automáticamente.",
+        "lock_funds": "Bloquear fondos",
+        "tx_note": "Esto creará una transacción en la blockchain de Irium."
+      },
+      "share": {
+        "title": "Comparte esto con tu comprador",
+        "subtitle": "Envía el código a tu comprador. Lo usará para verificar la operación antes de pagarte off-chain."
+      },
+      "selling": {
+        "step2_title": "Configura tu operación",
+        "step2_subtitle": "Indícanos quién es tu comprador y cuánto estás bloqueando.",
+        "step3_title": "Revisa tu operación",
+        "step3_subtitle": "Revisa todo antes de bloquear los fondos.",
+        "step4_title": "Fondos bloqueados — comparte esto con tu comprador",
+        "step4_subtitle": "Envía el código de trato a tu comprador. Lo usará para verificar la operación antes de pagarte.",
+        "buyer_address_label": "Dirección Irium del comprador",
+        "amount_label": "¿Cuánto IRM estás bloqueando?",
+        "amount_helper": "Retenido en escrow hasta que confirmes que recibiste el pago.",
+        "receiving_label": "¿Qué te están enviando?",
+        "receiving_placeholder": "p. ej. 200 USDT, transferencia bancaria, efectivo",
+        "deadline_label": "¿Cuánto debe permanecer abierta esta operación?",
+        "deadline_helper": "Si no pagan dentro de este tiempo, tu IRM se devuelve automáticamente.",
+        "release_button": "He recibido el pago — liberar fondos al comprador"
+      },
+      "buying": {
+        "step2_title": "Pega el código de operación de tu vendedor",
+        "step2_subtitle": "Tu vendedor te envió un código. Pégalo abajo para verificar la operación.",
+        "step3_title": "Verifica estos detalles de la operación",
+        "step3_subtitle": "Asegúrate de que los detalles coinciden con lo que acordasteis off-chain.",
+        "step4_title": "Envía tu pago y espera",
+        "step4_subtitle": "Envía el pago acordado a tu vendedor. Tu IRM llegará automáticamente cuando lo confirme.",
+        "review_intro": "Esta operación se ha importado y verificado en tu node. El IRM del vendedor está bloqueado en escrow — lo recibirás cuando hayas enviado el pago off-chain y el vendedor confirme.",
+        "seller_locks": "El vendedor está bloqueando",
+        "seller_label": "Vendedor",
+        "trade_id_label": "ID de la operación",
+        "details_unavailable": "No se pudieron obtener los detalles de la operación desde tu node. Aun así puedes continuar, pero verifica que el ID de agreement coincida con el que te envió tu vendedor.",
+        "cancel_button": "Algo no va bien — Cancelar",
+        "confirm_button": "Esto está bien — enviaré el pago",
+        "status_waiting": "Esperando a que el vendedor confirme el pago recibido.",
+        "status_releasing": "Pago confirmado — el IRM está en camino.",
+        "status_complete": "Completo — el IRM ha llegado a tu wallet.",
+        "view_agreements": "Ver en agreement"
+      }
+    },
+    "pay_for_work": {
+      "step1_title": "¿Pago único o por hito?",
+      "step1_subtitle": "Elige cómo pagarás.",
+      "single_button": "Pago único",
+      "single_subtitle": "Paga todo por adelantado cuando el trabajo está listo.",
+      "milestone_button": "Por hito",
+      "milestone_subtitle": "Paga por etapas a medida que se completa cada parte.",
+      "step2_title": "Configura el pago",
+      "step2_subtitle_single": "Indícanos a quién pagas y cuánto.",
+      "step2_subtitle_milestone": "Indícanos el total, el número de etapas y lo que se espera.",
+      "step3_title": "Revisar",
+      "step3_subtitle": "Revisa antes de bloquear los fondos.",
+      "step4_title": "Fondos bloqueados",
+      "step4_subtitle": "Esperando a que se entregue el trabajo.",
+      "contractor_label": "¿A quién pagas?",
+      "amount_label_single": "¿Cuánto?",
+      "amount_label_milestone": "Importe total a bloquear",
+      "amount_helper_milestone": "Dividido equitativamente entre los hitos siguientes.",
+      "count_label": "¿Cuántos hitos?",
+      "per_milestone_preview": "Cada hito: {{amount}}",
+      "deadline_label": "Plazo",
+      "deadline_helper": "Cuánto tiempo hasta que los fondos se reembolsen automáticamente si el trabajo no se confirma.",
+      "description_label": "Descripción (opcional)",
+      "description_placeholder": "¿Qué se entrega? (máx. 200 caracteres)",
+      "errors": {
+        "contractor_required": "Introduce a quién pagas.",
+        "amount_required": "Introduce cuánto IRM estás bloqueando.",
+        "count_range": "Entre 2 y 10 hitos."
+      },
+      "review": {
+        "paying": "Pagando",
+        "locking": "Bloqueando",
+        "milestones": "Hitos",
+        "milestones_value": "{{count}} hitos · {{per}} cada uno",
+        "deadline": "Plazo",
+        "deadline_value": "{{hours}} horas",
+        "scope": "Descripción",
+        "lock_funds": "Bloquear fondos",
+        "lock_all": "Bloquear todos los fondos"
+      },
+      "status_title": "Estado",
+      "status_setting_up": "Configurando — los fondos se están bloqueando.",
+      "status_pending": "Esperando confirmación de financiación on-chain.",
+      "status_in_progress": "Fondos bloqueados. Esperando a que se entregue el trabajo.",
+      "status_can_refund": "Plazo alcanzado. Puedes reclamar un reembolso.",
+      "status_complete": "Completo. El pago ha sido liberado.",
+      "mark_complete": "Marcar como completo — liberar pago",
+      "claim_refund": "Reclamar reembolso",
+      "toast_released": "Pago liberado al contratista.",
+      "toast_release_pending": "Finalización registrada. Los fondos se liberarán tras las próximas confirmaciones de block.",
+      "toast_refunded": "Reembolso reclamado — los fondos vuelven a tu wallet."
+    },
+    "deposit": {
+      "step1_title": "Configura tu depósito",
+      "step1_subtitle": "Bloquea IRM como garantía. Recupéralo automáticamente si no se cumplen las condiciones.",
+      "step2_title": "Revisar",
+      "step2_subtitle": "Revisa todo antes de bloquear el depósito.",
+      "step3_title": "Depósito bloqueado",
+      "step3_subtitle": "En escrow hasta que lo liberes, o hasta que pase el plazo y lo recuperes.",
+      "recipient_label": "¿Quién la recibe si se cumplen las condiciones?",
+      "amount_label": "Importe del depósito",
+      "purpose_label": "Propósito",
+      "purpose_placeholder": "p. ej. Fianza de alquiler",
+      "purpose_helper": "Una nota para tus registros. Guardada localmente — la otra parte podría no verla.",
+      "deadline_label": "Plazo de devolución",
+      "deadline_helper": "Si el destinatario no lo reclama antes de este plazo, puedes recuperarlo.",
+      "preset_1m": "1 mes",
+      "preset_3m": "3 meses",
+      "errors": {
+        "recipient_required": "Introduce la dirección Irium del destinatario.",
+        "amount_required": "Introduce cuánto IRM estás depositando."
+      },
+      "review": {
+        "recipient": "Destinatario",
+        "amount": "Importe",
+        "purpose": "Propósito",
+        "deadline": "Plazo de devolución",
+        "deadline_value": "{{hours}} horas desde ahora",
+        "lock_deposit": "Bloquear depósito"
+      },
+      "status_title": "Estado",
+      "status_setting_up": "Configurando — tu depósito se está bloqueando.",
+      "status_locked": "Bloqueado en escrow. Se liberará por tu acción, o reembolso automático tras el plazo.",
+      "status_can_claim_back": "Plazo alcanzado. Puedes recuperar el depósito.",
+      "status_released": "Liberado al destinatario.",
+      "status_refunded": "Reembolsado a tu wallet.",
+      "release_button": "Liberar al destinatario",
+      "claim_back_button": "Recuperar",
+      "toast_released": "Depósito liberado al destinatario.",
+      "toast_refunded": "Depósito recuperado — los fondos vuelven a tu wallet."
+    },
+    "dispute": {
+      "step1_title": "¿Qué pasó?",
+      "step1_subtitle": "Describe el problema con tus palabras. La otra parte lo verá.",
+      "step2_title": "Disputa registrada",
+      "step2_subtitle": "Tu disputa está ahora en la blockchain de Irium.",
+      "about_agreement": "Sobre este agreement",
+      "reason_label": "Describe el problema",
+      "reason_placeholder": "¿Qué salió mal? Sé específico — la otra parte lo leerá.",
+      "evidence_label": "Añadir evidencia (archivo)",
+      "evidence_coming_soon": "Los adjuntos de archivos llegarán en una versión futura.",
+      "submit_button": "Reportar problema",
+      "confirm_title": "Tu disputa se ha registrado on-chain.",
+      "confirm_body": "La otra parte ha sido notificada. Contáctala directamente para resolverlo. Si no podéis llegar a un acuerdo, el siguiente paso es una conversación fuera de la app — la resolución automatizada por árbitro llegará en una versión futura.",
+      "next_step_note": "Mientras la disputa esté abierta, ninguna parte puede liberar ni reembolsar los fondos. Habla con tu contraparte antes que nada.",
+      "back_to_hub": "Volver a Settlement",
+      "view_agreements": "Ver agreement",
+      "toast_submitted": "Disputa registrada on-chain.",
+      "errors": {
+        "no_agreement": "Ningún agreement seleccionado. Abre uno desde el hub e inténtalo de nuevo.",
+        "reason_required": "Describe qué salió mal."
+      }
+    }
   }
 }

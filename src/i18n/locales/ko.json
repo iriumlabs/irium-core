@@ -2,9 +2,7 @@
   "_meta": {
     "status": "machine_translated",
     "review_needed": true,
-    "language": "한국어",
-    "english_name": "Korean",
-    "direction": "ltr"
+    "language": "한국어"
   },
   "common": {
     "save": "구하다",
@@ -223,7 +221,10 @@
       "midnight": "자정",
       "obsidian": "흑요석",
       "aurora": "오로라",
-      "nebula": "성운"
+      "nebula": "성운",
+      "solar": "솔라",
+      "ocean": "오션",
+      "rose": "로즈"
     },
     "network_info": {
       "network": "회로망",
@@ -314,7 +315,17 @@
       "clearing": "청산…",
       "confirm_resync": "확인하세요. 다시 동기화됩니다!",
       "clear_resync": "지우기 및 재동기화",
-      "confirm_hint": "확인하려면 다시 클릭하세요. 블록이 다시 다운로드됩니다."
+      "confirm_hint": "확인하려면 다시 클릭하세요. 블록이 다시 다운로드됩니다.",
+      "reset_state_button": "node 상태 초기화 (block 유지)",
+      "reset_state_description": "지우고 재동기화의 가벼운 대안. 다운로드된 block을 유지하고 UTXO 세트를 로컬에서 재구축합니다. 거래 서명 실패가 보일 때 사용하세요.",
+      "reset_state_confirm_title": "node 상태를 초기화할까요?",
+      "reset_state_confirm_body": "상태 폴더를 시간 표시 백업으로 이름을 바꾸고 다운로드된 block은 유지합니다. iriumd는 다음 시작 시 로컬 block에서 UTXO 세트를 다시 만듭니다 — 보통 5~15분이며, 전체 체인 재동기화의 몇 시간이 아닙니다. 거래 서명 실패나 다른 UTXO 상태 손상이 보일 때 사용하세요. wallet과 agreement에는 영향이 없습니다.",
+      "reset_state_proceed": "상태 초기화",
+      "reset_state_resetting": "초기화 중…",
+      "reset_state_success": "상태가 초기화되었습니다 — 백업: {{path}}",
+      "reset_state_no_backup": "백업할 기존 상태가 없습니다 — 새 상태가 생성되었습니다",
+      "reset_state_rebuilding": "node 재시작 중 — 로컬 block에서 UTXO 세트 재구축 (5~15분)",
+      "reset_state_failed": "초기화 실패: {{reason}}"
     },
     "developer_info": {
       "reset_onboarding": "온보딩 재설정",
@@ -743,7 +754,18 @@
       "load_error_title": "계약을 로드할 수 없습니다.",
       "empty_state": "아직 계약을 작성하지 않았습니다.",
       "create_first": "첫 번째 계약서 작성 →",
-      "create_offer": "제안 만들기"
+      "create_offer": "제안 만들기",
+      "selling_title": "판매 중",
+      "selling_subtitle": "오퍼 생성, 구매자와 공유, proof로 결제 수신",
+      "selling_cta": "판매자 흐름 시작 →",
+      "buying_title": "구매 중",
+      "buying_subtitle": "오퍼를 찾고 escrow에 자금을 넣고 배송 시 지불 해제",
+      "buying_cta": "구매자 흐름 시작 →",
+      "create_direct": "agreement 직접 생성 (고급)",
+      "how_it_works": "작동 방식",
+      "step_create": "agreement 생성 또는 찾기",
+      "step_lock": "on-chain에서 IRM을 escrow에 잠금",
+      "step_proof": "proof 제출 — 자금이 자동으로 해제됨"
     },
     "templates": {
       "otc": "장외거래",
@@ -779,7 +801,9 @@
         "memo_merchant_placeholder": "주문 설명...",
         "total_escrow_hours": "총 에스크로 기간(시간)",
         "party_placeholder": "Q... 또는 P..."
-      }
+      },
+      "step_details_short": "세부 정보",
+      "step_review_confirm": "검토 및 확인"
     },
     "seller_dashboard": "판매자 대시보드",
     "buyer_dashboard": "구매자 대시보드",
@@ -803,6 +827,76 @@
     "review_agreement": "계약 검토",
     "modals": {
       "payment_invoice": "지불 송장"
+    },
+    "page_subtitle": "Irium의 proof 기반 escrow 시스템을 사용한 신뢰 없는 on-chain Settlement",
+    "templates_desc": {
+      "otc": "IRM을 peer-to-peer로 매매하는 데 사용합니다. 구매자가 IRM을 escrow에 잠그고 off-chain 지불을 하면 판매자가 수령을 확인해 자금을 해제합니다.",
+      "freelance": "프리랜서 작업 또는 서비스에 사용합니다. 고객이 미리 escrow에 지불을 잠급니다. 도급업자가 작업을 완료하고 proof를 제출하면 자금이 해제됩니다.",
+      "milestone": "단계로 나눈 대형 프로젝트에 사용합니다. 각 마일스톤은 자체 escrow와 proof 요구가 있습니다. 마일스톤이 완료될 때마다 부분 해제됩니다.",
+      "deposit": "환불 가능한 예치금 또는 담보에 사용합니다. 자금이 on-chain에 잠기고 마감 전 조건이 충족되지 않으면 자동으로 반환됩니다.",
+      "merchant_delayed": "쿨다운 윈도우가 내장된 상인 판매. 자금이 escrow에 보관되고 상인은 분쟁 윈도우가 닫힌 후에만 청구할 수 있습니다.",
+      "contractor": "도급 작업을 마일스톤으로 나눕니다. 각 마일스톤은 자체 escrow와 납품 proof 요구가 있습니다. 자금이 단계별로 해제됩니다."
+    },
+    "role_labels": {
+      "buyer": "구매자 주소",
+      "seller": "판매자 주소",
+      "client": "고객 주소",
+      "contractor": "도급업자 주소",
+      "payer": "지불인 주소",
+      "payee": "수취인 주소",
+      "depositor": "예치자 주소",
+      "recipient": "수신자 주소",
+      "merchant": "상인 주소"
+    },
+    "form_errors": {
+      "address_required": "주소가 필요합니다",
+      "same_party": "A측과 B측이 같은 주소일 수 없습니다",
+      "positive_amount": "양수 금액을 입력하세요",
+      "amount_exceeds_supply": "금액은 {{max}} IRM (총공급량)을 초과할 수 없습니다",
+      "milestones_range": "2에서 20 사이",
+      "deadline_range": "마감은 1시간에서 {{max}}시간 (1년) 사이여야 합니다",
+      "cooldown_range": "쿨다운은 1시간에서 {{max}}시간 (1년) 사이여야 합니다"
+    },
+    "review_labels": {
+      "amount": "금액",
+      "deadline": "마감",
+      "scope": "범위",
+      "milestones": "마일스톤",
+      "per_milestone": "마일스톤당",
+      "cooldown_window": "쿨다운 윈도우",
+      "total_escrow_window": "총 escrow 윈도우",
+      "memo": "메모",
+      "asset_ref": "자산 참조",
+      "payment": "지불"
+    },
+    "preview": {
+      "preview_suffix": "미리보기",
+      "fill_hint": "라이브 미리보기를 보려면 양식을 채우세요",
+      "amount": "금액",
+      "sats": "Sats",
+      "fee_rate": "수수료율",
+      "per_milestone": "마일스톤당",
+      "deadline": "마감",
+      "cooldown": "쿨다운",
+      "total_window": "총 윈도우",
+      "type": "유형"
+    },
+    "dashboard": {
+      "select_seller_hint": "판매자 통계를 보려면 wallet 주소를 선택하세요.",
+      "select_buyer_hint": "구매자 통계를 보려면 wallet 주소를 선택하세요.",
+      "active_offers": "활성 오퍼",
+      "open_agreements": "진행 중 agreement",
+      "completed": "완료됨",
+      "active_purchases": "활성 구매",
+      "total_received": "수신 총액",
+      "total_received_hint": "당신이 판매자였던 해제된 agreement의 누적 거래량 (sats → IRM)",
+      "total_spent": "지출 총액",
+      "total_spent_hint": "당신이 구매자였던 해제된 agreement의 누적 거래량 (sats → IRM)",
+      "reputation": "평판",
+      "restrictions_label": "제한: "
+    },
+    "errors": {
+      "generic_failure": "문제가 발생했습니다. node가 실행 중인지 확인하고 다시 시도하세요."
     }
   },
   "marketplace": {
@@ -1355,6 +1449,20 @@
       "col_reject_pct": "Reject %",
       "col_hashrate": "15m H/s",
       "col_last_share": "Last share"
+    },
+    "calculator": {
+      "title": "마이닝 계산기",
+      "your_hashrate": "내 해시레이트",
+      "placeholder": "0",
+      "network_label": "네트워크",
+      "block_reward_label": "block 보상",
+      "protocol_target": "프로토콜 목표",
+      "protocol_target_sub": "10분 block (체인 설계 목표)",
+      "current_rate": "현재 체인 속도",
+      "current_rate_sub": "약 1분 block (현재 관측)",
+      "blocks_per_day_suffix": "block/일",
+      "irm_per_day_suffix": "IRM/일",
+      "disclaimer": "추정치일 뿐 — 실제 수익은 운, 풀 수수료, 난이도 변화에 따라 달라집니다. 계산기는 실시간 네트워크 해시레이트를 사용하며 60초마다 갱신됩니다."
     }
   },
   "help": {
@@ -1877,5 +1985,285 @@
     "clear_output": "지우기",
     "input_placeholder": "명령어 입력... ('help'로 목록 보기)",
     "input_busy_placeholder": "실행 중..."
+  },
+  "settlement_ui": {
+    "hub": {
+      "title": "Settlement",
+      "subtitle": "IRM을 escrow에 잠금. 확인 시 해제. 시간 초과 시 환불.",
+      "safe_trade_title": "안전한 거래",
+      "safe_trade_subtitle": "IRM을 잠그고 무엇이든 교환. 양쪽 모두 보호됩니다.",
+      "pay_for_work_title": "작업 지불",
+      "pay_for_work_subtitle": "한 번의 지불 또는 마일스톤별로 작업에 자금을 댑니다. 작업이 완료되면 돈이 해제됩니다.",
+      "deposit_title": "환불 가능한 예치금",
+      "deposit_subtitle": "IRM을 보증으로 잠급니다. 조건이 충족되지 않으면 자동으로 되찾습니다.",
+      "active_title": "활성 agreement",
+      "active_empty": "아직 활성 agreement가 없습니다. 위에서 시작하세요.",
+      "active_load_error": "agreement를 불러올 수 없습니다 — node가 오프라인일 수 있습니다.",
+      "other_party": "상대방",
+      "amount": "금액",
+      "start_cta": "시작",
+      "toast_released": "자금이 상대방에게 해제되었습니다.",
+      "toast_refunded": "환불을 청구했습니다 — 자금이 wallet으로 돌아갑니다."
+    },
+    "status": {
+      "setting_up": "설정 중",
+      "waiting": "대기 중",
+      "ready_release": "해제 준비됨",
+      "ready_refund": "환불 준비됨",
+      "disputed": "분쟁 — 중재자 배정됨",
+      "complete": "완료",
+      "refunded": "환불됨",
+      "expired": "만료됨",
+      "unknown": "상태 알 수 없음",
+      "checking": "확인 중…"
+    },
+    "actions": {
+      "release_funds": "자금 해제",
+      "claim_refund": "환불 청구",
+      "view_dispute": "분쟁 보기",
+      "view_details": "세부 정보 보기",
+      "report_problem": "문제가 있나요?"
+    },
+    "amount": {
+      "over_max": "최대값은 {{max}} IRM입니다"
+    },
+    "address": {
+      "placeholder": "Q… 또는 P… 주소",
+      "paste": "클립보드에서 붙여넣기",
+      "format_error": "유효한 Irium 주소처럼 보이지 않습니다."
+    },
+    "duration": {
+      "preset_1h": "1시간",
+      "preset_4h": "4시간",
+      "preset_24h": "24시간",
+      "preset_48h": "2일",
+      "preset_1w": "1주",
+      "custom": "사용자 정의",
+      "custom_placeholder": "시간",
+      "hours_suffix": "시간",
+      "expires_around": "{{datetime}} 경 만료"
+    },
+    "deal_code": {
+      "code_label": "거래 코드",
+      "paste_placeholder": "판매자가 보낸 거래 코드를 여기에 붙여넣으세요…",
+      "building": "거래 코드 생성 중…",
+      "copy_code": "거래 코드 복사",
+      "copy_id": "agreement ID 복사",
+      "copied": "클립보드에 복사됨",
+      "paste": "붙여넣기",
+      "verify": "거래 검증",
+      "imported": "거래가 검증되었습니다",
+      "import_success": "거래를 가져와 검증했습니다",
+      "fallback_explainer": "거래 코드를 생성할 수 없습니다. 대신 이 agreement ID를 공유하세요 — 구매자의 node가 온라인이어야 나머지를 가져옵니다."
+    },
+    "technical": {
+      "title": "기술 세부 정보",
+      "empty": "사용할 수 있는 데이터가 없습니다.",
+      "copied": "복사됨"
+    },
+    "errors": {
+      "generic": "문제가 발생했습니다 — 다시 시도하세요.",
+      "node_offline": "Irium node가 실행되고 있지 않습니다. 대시보드에서 시작하고 다시 시도하세요.",
+      "network_timeout": "요청에 시간이 너무 오래 걸렸습니다. 연결을 확인하고 다시 시도하세요.",
+      "auth_failed": "node가 요청을 거부했습니다. 설정에서 RPC 토큰을 확인하세요.",
+      "insufficient_funds": "이 작업에 wallet의 IRM이 부족합니다.",
+      "coinbase_immature": "IRM의 일부가 최근 마이닝에서 와서 아직 쓸 수 없습니다. 몇 개의 block 후 다시 시도하세요.",
+      "double_spend": "다른 대기 중 거래가 같은 자금을 사용하고 있습니다. 잠시 기다렸다가 다시 시도하세요.",
+      "already_settled": "이 agreement는 이미 정산되었습니다. 새로고침해 현재 상태를 보세요.",
+      "refund_not_ready": "아직 환불을 청구할 수 없습니다. 마감이 지날 때까지 기다리세요.",
+      "release_not_ready": "자금이 아직 해제 준비가 되지 않았습니다. proof 확정을 기다리세요.",
+      "agreement_mismatch": "이 거래 코드는 node의 agreement와 일치하지 않습니다. 상대방에게 다시 보내달라고 하세요.",
+      "expired": "이 거래는 이미 만료되었습니다.",
+      "bad_secret": "해제 키가 잘못되었습니다. 올바른 거래 코드를 가지고 있는지 확인하세요.",
+      "bad_address": "그 주소는 올바르지 않은 것 같습니다. 다시 확인하고 시도하세요.",
+      "bad_format": "데이터를 읽을 수 없습니다. 손상되었거나 다른 앱에서 온 것일 수 있습니다.",
+      "fs_blocked": "앱이 거래 코드를 로컬로 저장할 수 없습니다. 디스크 권한을 확인하세요.",
+      "file_missing": "저장된 거래 코드 파일을 찾을 수 없습니다.",
+      "pack_not_found": "node에서 이 agreement를 찾을 수 없습니다.",
+      "unpack_signature_invalid": "거래 코드 서명이 잘못되었습니다. 신뢰하지 마세요 — 상대방에게 다시 보내달라고 하세요.",
+      "dispute_duplicate": "이 agreement에 이미 분쟁이 열려 있습니다.",
+      "dispute_not_party": "이 거래에 분쟁을 제기할 수 있는 사람은 구매자 또는 판매자뿐입니다."
+    },
+    "safe_trade": {
+      "step1_title": "거래의 어느 쪽인가요?",
+      "step1_subtitle": "당신의 역할에 맞는 쪽을 선택하세요.",
+      "selling_button": "IRM 판매",
+      "selling_subtitle": "IRM을 escrow에 잠그고 지불을 기다립니다.",
+      "buying_button": "IRM 구매",
+      "buying_subtitle": "off-chain으로 지불하고 IRM을 받습니다.",
+      "status_title": "상태",
+      "status_initial": "설정 중 — 자금이 잠기고 있습니다.",
+      "status_waiting_verify": "구매자가 거래를 검증하기를 기다리는 중.",
+      "status_waiting_payment": "구매자 검증됨 — off-chain 지불을 기다리는 중.",
+      "status_ready_release": "지불 확인됨. 구매자에게 자금을 해제하는 중.",
+      "toast_funded": "Escrow에 자금을 댔습니다.",
+      "toast_released": "자금이 상대방에게 해제되었습니다.",
+      "toast_release_pending": "지불을 기록했습니다. 다음 몇 개의 block 확인 후 자금이 해제됩니다.",
+      "errors": {
+        "buyer_required": "구매자의 Irium 주소를 입력하세요.",
+        "amount_required": "잠그려는 IRM 금액을 입력하세요.",
+        "receiving_required": "그 대가로 무엇을 기대하는지 구매자에게 알려주세요."
+      },
+      "review": {
+        "you_lock": "당신이 잠금",
+        "buyer_sends": "구매자가 보낼 것",
+        "deadline": "마감",
+        "deadline_value": "{{hours}}시간 내에 지불하지 않으면 IRM이 자동으로 돌아옵니다.",
+        "lock_funds": "자금 잠금",
+        "tx_note": "이는 Irium 블록체인에 거래를 생성합니다."
+      },
+      "share": {
+        "title": "구매자와 공유",
+        "subtitle": "코드를 구매자에게 보내세요. 그들은 off-chain 지불 전에 거래를 검증하는 데 사용합니다."
+      },
+      "selling": {
+        "step2_title": "거래 설정",
+        "step2_subtitle": "구매자가 누구이고 얼마를 잠그는지 알려주세요.",
+        "step3_title": "거래 검토",
+        "step3_subtitle": "자금을 잠그기 전에 모든 것을 다시 확인하세요.",
+        "step4_title": "자금이 잠겼습니다 — 구매자와 공유",
+        "step4_subtitle": "거래 코드를 구매자에게 보내세요. 그들은 지불 전에 거래를 검증하는 데 사용합니다.",
+        "buyer_address_label": "구매자의 Irium 주소",
+        "amount_label": "얼마나 IRM을 잠그나요?",
+        "amount_helper": "지불 수령을 확인할 때까지 escrow에 보관됩니다.",
+        "receiving_label": "그들이 무엇을 보내나요?",
+        "receiving_placeholder": "예: 200 USDT, 은행 송금, 현금",
+        "deadline_label": "이 거래를 얼마나 오래 열어두시겠습니까?",
+        "deadline_helper": "이 시간 안에 지불하지 않으면 IRM이 자동으로 돌아옵니다.",
+        "release_button": "지불 받음 — 구매자에게 자금 해제"
+      },
+      "buying": {
+        "step2_title": "판매자의 거래 코드 붙여넣기",
+        "step2_subtitle": "판매자가 코드를 보냈습니다. 아래에 붙여넣고 거래를 검증하세요.",
+        "step3_title": "이 거래 세부 정보 검증",
+        "step3_subtitle": "세부 사항이 off-chain에서 합의한 내용과 일치하는지 확인하세요.",
+        "step4_title": "지불을 보내고 기다리세요",
+        "step4_subtitle": "합의한 지불을 판매자에게 보내세요. 판매자가 확인하면 IRM이 자동으로 도착합니다.",
+        "review_intro": "이 거래는 node에서 가져와 검증되었습니다. 판매자의 IRM이 escrow에 잠겨 있습니다 — off-chain 지불을 보내고 판매자가 확인하면 받습니다.",
+        "seller_locks": "판매자가 잠그는 중",
+        "seller_label": "판매자",
+        "trade_id_label": "거래 ID",
+        "details_unavailable": "node에서 거래 세부 정보를 가져올 수 없습니다. 계속할 수 있지만 agreement ID가 판매자가 보낸 것과 일치하는지 확인하세요.",
+        "cancel_button": "뭔가 잘못됨 — 취소",
+        "confirm_button": "맞아 보임 — 지불을 보낼게요",
+        "status_waiting": "판매자의 지불 수령 확인을 기다리는 중.",
+        "status_releasing": "지불 확인됨 — IRM이 오고 있습니다.",
+        "status_complete": "완료 — IRM이 wallet에 도착했습니다.",
+        "view_agreements": "agreement에서 보기"
+      }
+    },
+    "pay_for_work": {
+      "step1_title": "단일 지불 또는 마일스톤별?",
+      "step1_subtitle": "지불 방법을 선택하세요.",
+      "single_button": "단일 지불",
+      "single_subtitle": "작업이 완료되면 모두 선지급.",
+      "milestone_button": "마일스톤별",
+      "milestone_subtitle": "각 부분이 완료될 때마다 단계별로 지불합니다.",
+      "step2_title": "지불 설정",
+      "step2_subtitle_single": "누구에게 얼마를 지불하는지 알려주세요.",
+      "step2_subtitle_milestone": "총액, 단계 수, 예상되는 내용을 알려주세요.",
+      "step3_title": "검토",
+      "step3_subtitle": "자금을 잠그기 전에 다시 확인하세요.",
+      "step4_title": "자금이 잠겼습니다",
+      "step4_subtitle": "작업 납품을 기다리는 중.",
+      "contractor_label": "누구에게 지불하나요?",
+      "amount_label_single": "얼마?",
+      "amount_label_milestone": "잠글 총 금액",
+      "amount_helper_milestone": "아래 마일스톤에 균등 배분.",
+      "count_label": "몇 개의 마일스톤?",
+      "per_milestone_preview": "각 마일스톤: {{amount}}",
+      "deadline_label": "마감",
+      "deadline_helper": "작업이 확인되지 않으면 자금이 자동 환불되기까지의 시간.",
+      "description_label": "설명 (선택)",
+      "description_placeholder": "무엇이 납품됩니까? (최대 200자)",
+      "errors": {
+        "contractor_required": "누구에게 지불하는지 입력하세요.",
+        "amount_required": "잠그는 IRM 금액을 입력하세요.",
+        "count_range": "2에서 10 마일스톤 사이."
+      },
+      "review": {
+        "paying": "지불 중",
+        "locking": "잠금 중",
+        "milestones": "마일스톤",
+        "milestones_value": "{{count}} 마일스톤 · 각 {{per}}",
+        "deadline": "마감",
+        "deadline_value": "{{hours}}시간",
+        "scope": "설명",
+        "lock_funds": "자금 잠금",
+        "lock_all": "모든 자금 잠금"
+      },
+      "status_title": "상태",
+      "status_setting_up": "설정 중 — 자금이 잠기고 있습니다.",
+      "status_pending": "on-chain 자금 확정 대기 중.",
+      "status_in_progress": "자금 잠김. 작업 납품을 기다리는 중.",
+      "status_can_refund": "마감 도달. 환불을 청구할 수 있습니다.",
+      "status_complete": "완료. 지불이 해제되었습니다.",
+      "mark_complete": "완료로 표시 — 지불 해제",
+      "claim_refund": "환불 청구",
+      "toast_released": "지불이 도급업자에게 해제되었습니다.",
+      "toast_release_pending": "완료를 기록했습니다. 다음 몇 개의 block 확인 후 자금이 해제됩니다.",
+      "toast_refunded": "환불을 청구했습니다 — 자금이 wallet으로 돌아갑니다."
+    },
+    "deposit": {
+      "step1_title": "예치금 설정",
+      "step1_subtitle": "IRM을 보증으로 잠급니다. 조건이 충족되지 않으면 자동으로 되찾습니다.",
+      "step2_title": "검토",
+      "step2_subtitle": "예치금을 잠그기 전에 다시 확인하세요.",
+      "step3_title": "예치금이 잠겼습니다",
+      "step3_subtitle": "해제하거나 마감이 지나 되찾을 때까지 escrow에 보관됩니다.",
+      "recipient_label": "조건이 충족되면 누가 받습니까?",
+      "amount_label": "예치 금액",
+      "purpose_label": "목적",
+      "purpose_placeholder": "예: 임대 보증금",
+      "purpose_helper": "기록용 메모. 로컬 저장만 — 상대방은 보지 못할 수 있습니다.",
+      "deadline_label": "반환 마감",
+      "deadline_helper": "수신자가 이 마감까지 청구하지 않으면 되찾을 수 있습니다.",
+      "preset_1m": "1개월",
+      "preset_3m": "3개월",
+      "errors": {
+        "recipient_required": "수신자의 Irium 주소를 입력하세요.",
+        "amount_required": "예치하는 IRM 금액을 입력하세요."
+      },
+      "review": {
+        "recipient": "수신자",
+        "amount": "금액",
+        "purpose": "목적",
+        "deadline": "반환 마감",
+        "deadline_value": "지금부터 {{hours}}시간",
+        "lock_deposit": "예치금 잠금"
+      },
+      "status_title": "상태",
+      "status_setting_up": "설정 중 — 예치금이 잠기고 있습니다.",
+      "status_locked": "escrow에 잠김. 작업으로 해제하거나 마감 후 자동 환불됩니다.",
+      "status_can_claim_back": "마감 도달. 예치금을 되찾을 수 있습니다.",
+      "status_released": "수신자에게 해제되었습니다.",
+      "status_refunded": "wallet에 환불되었습니다.",
+      "release_button": "수신자에게 해제",
+      "claim_back_button": "되찾기",
+      "toast_released": "예치금이 수신자에게 해제되었습니다.",
+      "toast_refunded": "예치금을 되찾았습니다 — 자금이 wallet으로 돌아갑니다."
+    },
+    "dispute": {
+      "step1_title": "무슨 일이 있었나요?",
+      "step1_subtitle": "문제를 자신의 말로 설명하세요. 상대방이 봅니다.",
+      "step2_title": "분쟁이 기록되었습니다",
+      "step2_subtitle": "분쟁이 이제 Irium 블록체인에 있습니다.",
+      "about_agreement": "이 agreement 정보",
+      "reason_label": "문제 설명",
+      "reason_placeholder": "무엇이 잘못되었나요? 구체적으로 — 상대방이 읽습니다.",
+      "evidence_label": "증거 추가 (파일)",
+      "evidence_coming_soon": "파일 첨부는 향후 릴리스에서 제공됩니다.",
+      "submit_button": "문제 보고",
+      "confirm_title": "분쟁이 on-chain에 기록되었습니다.",
+      "confirm_body": "상대방에게 알림이 갔습니다. 직접 연락해 해결책을 찾으세요. 합의가 안 되면 다음 단계는 앱 외부 대화입니다 — 자동 중재자 해결은 향후 릴리스에서 제공됩니다.",
+      "next_step_note": "분쟁이 열려 있는 동안 어느 쪽도 자금을 해제하거나 환불할 수 없습니다. 무엇보다 먼저 상대방과 이야기하세요.",
+      "back_to_hub": "Settlement로 돌아가기",
+      "view_agreements": "agreement 보기",
+      "toast_submitted": "분쟁이 on-chain에 기록되었습니다.",
+      "errors": {
+        "no_agreement": "agreement가 선택되지 않았습니다. 허브에서 열고 다시 시도하세요.",
+        "reason_required": "무엇이 잘못되었는지 설명하세요."
+      }
+    }
   }
 }

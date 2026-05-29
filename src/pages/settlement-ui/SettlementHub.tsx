@@ -80,10 +80,26 @@ export default function SettlementHub() {
       className="h-full overflow-y-auto scroll-visible"
     >
       <div className="w-full px-8 py-6 max-w-5xl mx-auto">
-        {/* Header — single-purpose page title + one-line subtitle. */}
-        <div className="mb-8">
-          <h1 className="page-title">{t('settlement_ui.hub.title')}</h1>
-          <p className="page-subtitle">For direct deals between two people you already know. To post a public offer anyone can find, use the Marketplace.</p>
+        {/* Header — single-purpose page title + one-line subtitle.
+            "Back to Marketplace" link added so users who landed here via
+            the Marketplace page's "Advanced flows" link have an obvious
+            way back to the price-sorted order book. The new Marketplace
+            redesign positions this page as the lower-level / power-user
+            entry; most casual P2P trades happen on the order book. */}
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="page-title">{t('settlement_ui.hub.title')}</h1>
+            <p className="page-subtitle">For direct deals between two people you already know. To post a public offer anyone can find, use the Marketplace.</p>
+          </div>
+          <a
+            href="/marketplace"
+            onClick={(e) => { e.preventDefault(); navigate('/marketplace'); }}
+            className="text-xs inline-flex items-center gap-1.5 mt-1"
+            style={{ color: 'rgba(110,198,255,0.85)', whiteSpace: 'nowrap' }}
+            title="Browse the public order book and take an open offer."
+          >
+            ← Back to Marketplace
+          </a>
         </div>
 
         {/* Three entry cards — equal weight, equal size, only three.

@@ -1684,7 +1684,7 @@
     },
     "solo_pool": {
       "title": "Solo Pool",
-      "subtitle": "Direct-payout mining on port 3336. Coinbase pays the worker 99% and pool fee 1% at block-find time.",
+      "subtitle": "Coinbase pays the full block reward directly to the block finder. Zero fees.",
       "connect_here": "Connect with your own Irium address as the worker name",
       "fee_label": "Pool fee {{fee}}%",
       "connect_help": "Paste this URL into your ASIC firmware. Use your Irium address as the worker username (Q-prefix) and any password.",
@@ -2220,7 +2220,9 @@
     "dismiss": "Dismiss"
   },
   "titlebar": {
-    "miner_active_confirm": "Mining is active. The miner will continue running in the background.\n\nClick OK to minimize to tray, or Cancel to keep the window open and stop mining first if you want to quit completely."
+    "miner_active_confirm": "Mining is active. The miner will continue running in the background.\n\nClick OK to minimize to tray, or Cancel to keep the window open and stop mining first if you want to quit completely.",
+    "pin_tooltip": "Pin title bar (stay visible)",
+    "unpin_tooltip": "Unpin title bar (auto-hide)"
   },
   "sidebar": {
     "live": "Live",
