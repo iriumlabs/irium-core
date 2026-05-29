@@ -652,3 +652,557 @@ export const rpc = {
   testRemoteConnection: (rpcUrl: string, rpcToken?: string) =>
     safeInvoke<boolean>('test_remote_connection', { rpcUrl, rpcToken }),
 };
+
+// ── SOLO STRATUM BRIDGE ───────────────────────────────────────
+// Manages a long-running irium-miner --solo-stratum sidecar so an ASIC
+// can submit work directly to the user's iriumd. Distinct from the
+// CPU/GPU miner_process slot, so the user can run both at once.
+export interface SoloStratumStatusResult {
+  running: boolean;
+  listen_addr: string | null;
+}
+export const soloStratum = {
+  start: (listen?: string) =>
+    safeInvoke<string>('start_solo_stratum', { listen }),
+  stop: () =>
+    safeInvoke<boolean>('stop_solo_stratum'),
+  status: () =>
+    safeInvoke<SoloStratumStatusResult>('solo_stratum_status'),
+};
+
+// ── GENERIC IRIUM-WALLET CLI ──────────────────────────────────
+// Thin wrappers over the wallet_cli_run Tauri command — one per
+// irium-wallet subcommand documented in docs/WALLET-CLI.md. The backend
+// shells out to the bundled irium-wallet sidecar and returns parsed
+// JSON when stdout is JSON, otherwise the raw stdout wrapped as a JSON
+// string. Pass `includeRpc: true` for subcommands that hit iriumd
+// (balance, history, send, agreement-*, offer-*, etc) so the active
+// rpc_url is appended as --rpc. Subcommands that don't accept --rpc
+// (init, new-address, qr, address-to-pkh, etc) call with rpc=false.
+const cliInvoke = (subcommand: string, args: string[] = [], includeRpc = false) =>
+  safeInvoke<unknown>('wallet_cli_run', { subcommand, args, includeRpc });
+
+const flag = (name: string, value: string | number | undefined | null): string[] =>
+  value === undefined || value === null || value === '' ? [] : [`--${name}`, String(value)];
+
+const boolFlag = (name: string, present: boolean | undefined): string[] =>
+  present ? [`--${name}`] : [];
+
+export const walletCli = {
+  // Direct passthrough — call any wallet subcommand with custom args.
+  runCmd: (subcommand: string, args?: string[], includeRpc?: boolean) =>
+    cliInvoke(subcommand, args ?? [], includeRpc ?? false),
+
+  // ── Wallet setup & keys ─
+  init: (seedHex?: string) => cliInvoke('init', flag('seed', seedHex)),
+  createWallet: (bip32?: boolean) => cliInvoke('create-wallet', boolFlag('bip32', bip32)),
+  newAddress: () => cliInvoke('new-address'),
+  listAddresses: () => cliInvoke('list-addresses'),
+  importMnemonic: (words: string) => cliInvoke('import-mnemonic', words.trim().split(/\s+/)),
+  exportMnemonic: (force?: boolean) => cliInvoke('export-mnemonic', boolFlag('force', force)),
+  importWif: (wif: string) => cliInvoke('import-wif', [wif]),
+  exportWif: (address: string, outPath: string) =>
+    cliInvoke('export-wif', [address, ...flag('out', outPath)]),
+  importSeed: (hex: string, force?: boolean) =>
+    cliInvoke('import-seed', [hex, ...boolFlag('force', force)]),
+  exportSeed: (outPath: string) => cliInvoke('export-seed', flag('out', outPath)),
+  backup: (outPath?: string) => cliInvoke('backup', flag('out', outPath)),
+  restoreBackup: (file: string, force?: boolean) =>
+    cliInvoke('restore-backup', [file, ...boolFlag('force', force)]),
+  addressToPkh: (address: string) => cliInvoke('address-to-pkh', [address]),
+  qr: (address: string) => cliInvoke('qr', [address]),
+  watch: (autoRelease?: boolean) => cliInvoke('watch', boolFlag('auto-release', autoRelease), true),
+
+  // ── Chain queries (need iriumd) ─
+  balance: (address: string) => cliInvoke('balance', [address], true),
+  listUnspent: (address: string) => cliInvoke('list-unspent', [address], true),
+  history: (address: string) => cliInvoke('history', [address], true),
+  estimateFee: () => cliInvoke('estimate-fee', [], true),
+
+  // ── Sending ─
+  send: (from: string, to: string, amountIrm: string | number, feeIrm?: string | number, coinSelect?: 'smallest' | 'largest') =>
+    cliInvoke('send', [
+      from, to, String(amountIrm),
+      ...flag('fee', feeIrm),
+      ...flag('coin-select', coinSelect),
+    ], true),
+
+  // ── Offer lifecycle ─
+  offerCreate: (params: {
+    seller: string; amount: string | number; paymentMethod: string;
+    timeout: number; priceNote?: string; paymentInstructions?: string; offerId?: string;
+  }) => cliInvoke('offer-create', [
+    ...flag('seller', params.seller),
+    ...flag('amount', String(params.amount)),
+    ...flag('payment-method', params.paymentMethod),
+    ...flag('timeout', params.timeout),
+    ...flag('price-note', params.priceNote),
+    ...flag('payment-instructions', params.paymentInstructions),
+    ...flag('offer-id', params.offerId),
+  ]),
+  offerList: (params?: {
+    status?: 'open' | 'taken' | 'settled';
+    source?: 'local' | 'imported' | 'remote' | 'all';
+    seller?: string;
+    payment?: string;
+    minAmount?: string | number;
+    maxAmount?: string | number;
+    sort?: 'score' | 'newest' | 'amount' | 'seller';
+    limit?: number;
+    summary?: boolean;
+    json?: boolean;
+  }) => cliInvoke('offer-list', [
+    ...flag('status', params?.status),
+    ...flag('source', params?.source),
+    ...flag('seller', params?.seller),
+    ...flag('payment', params?.payment),
+    ...flag('min-amount', params?.minAmount),
+    ...flag('max-amount', params?.maxAmount),
+    ...flag('sort', params?.sort),
+    ...flag('limit', params?.limit),
+    ...boolFlag('summary', params?.summary),
+    ...boolFlag('json', params?.json),
+  ]),
+  offerShow: (offerId: string) => cliInvoke('offer-show', flag('offer', offerId)),
+  offerTake: (offerId: string, buyer: string) =>
+    cliInvoke('offer-take', [...flag('offer', offerId), ...flag('buyer', buyer)], true),
+  offerExport: (offerId: string, outPath: string) =>
+    cliInvoke('offer-export', [...flag('offer', offerId), ...flag('out', outPath)]),
+  offerImport: (file: string) => cliInvoke('offer-import', flag('file', file)),
+  offerFetch: (url: string) => cliInvoke('offer-fetch', flag('url', url)),
+  offerFeedFetch: (url: string) => cliInvoke('offer-feed-fetch', flag('url', url)),
+  offerFeedSync: (json?: boolean) => cliInvoke('offer-feed-sync', boolFlag('json', json)),
+  offerFeedExport: (outPath?: string, limit?: number) =>
+    cliInvoke('offer-feed-export', [...flag('out', outPath), ...flag('limit', limit)]),
+  offerFeedPrune: (olderThanDays?: number, dryRun?: boolean, json?: boolean) =>
+    cliInvoke('offer-feed-prune', [
+      ...flag('older-than-days', olderThanDays),
+      ...boolFlag('dry-run', dryRun),
+      ...boolFlag('json', json),
+    ]),
+  offerFeedDiscover: () => cliInvoke('offer-feed-discover'),
+  marketplaceSync: () => cliInvoke('marketplace-sync', [], true),
+
+  // ── Feed registry ─
+  feedAdd: (url: string) => cliInvoke('feed-add', [url]),
+  feedRemove: (url: string) => cliInvoke('feed-remove', [url]),
+  feedList: () => cliInvoke('feed-list'),
+  feedBootstrap: () => cliInvoke('feed-bootstrap'),
+
+  // ── Reputation ─
+  reputationShow: (who: string, json?: boolean) =>
+    cliInvoke('reputation-show', [who, ...boolFlag('json', json)]),
+  reputationRecordOutcome: (seller: string, outcome: 'satisfied' | 'failed' | 'disputed' | 'timeout') =>
+    cliInvoke('reputation-record-outcome', [...flag('seller', seller), ...flag('outcome', outcome)]),
+  reputationExport: (outPath?: string) => cliInvoke('reputation-export', flag('out', outPath)),
+  reputationImport: (file: string) => cliInvoke('reputation-import', [file]),
+  reputationSelfTradeCheck: (seller: string) =>
+    cliInvoke('reputation-self-trade-check', flag('seller', seller)),
+
+  // ── Agreement creation (low-level templates) ─
+  agreementCreateSimpleSettlement: (args: string[]) =>
+    cliInvoke('agreement-create-simple-settlement', args),
+  agreementCreateOtc: (args: string[]) => cliInvoke('agreement-create-otc', args),
+  agreementCreateDeposit: (args: string[]) => cliInvoke('agreement-create-deposit', args),
+  agreementCreateMilestone: (args: string[]) => cliInvoke('agreement-create-milestone', args),
+  agreementCreateFromTemplate: (templateId: string, extra: string[] = []) =>
+    cliInvoke('agreement-create-from-template', [...flag('template', templateId), ...extra]),
+  templateList: () => cliInvoke('template-list'),
+  templateShow: (id: string) => cliInvoke('template-show', [id]),
+  agreementTemplate: (subArgs: string[]) => cliInvoke('agreement-template', subArgs),
+  flowOtcDemo: () => cliInvoke('flow-otc-demo', [], true),
+
+  // ── Agreement operations ─
+  agreementFund: (ref: string, broadcast?: boolean) =>
+    cliInvoke('agreement-fund', [ref, ...boolFlag('broadcast', broadcast)], true),
+  agreementStatus: (ref: string) => cliInvoke('agreement-status', [ref], true),
+  agreementTimeline: (ref: string) => cliInvoke('agreement-timeline', [ref], true),
+  agreementRelease: (ref: string, secret?: string, broadcast?: boolean) =>
+    cliInvoke('agreement-release', [
+      ref,
+      ...flag('secret', secret),
+      ...boolFlag('broadcast', broadcast),
+    ], true),
+  agreementRefund: (ref: string, broadcast?: boolean) =>
+    cliInvoke('agreement-refund', [ref, ...boolFlag('broadcast', broadcast)], true),
+  agreementReleaseEligibility: (ref: string) =>
+    cliInvoke('agreement-release-eligibility', [ref], true),
+  agreementRefundEligibility: (ref: string) =>
+    cliInvoke('agreement-refund-eligibility', [ref], true),
+  agreementMilestones: (ref: string) => cliInvoke('agreement-milestones', [ref], true),
+  agreementHash: (ref: string) => cliInvoke('agreement-hash', [ref]),
+  agreementInspect: (ref: string) => cliInvoke('agreement-inspect', [ref]),
+  agreementList: () => cliInvoke('agreement-list'),
+  agreementSave: (ref: string, label?: string) =>
+    cliInvoke('agreement-save', [ref, ...flag('label', label)]),
+  agreementLoad: (ref: string) => cliInvoke('agreement-load', [ref]),
+  agreementExport: (ref: string, outPath?: string) =>
+    cliInvoke('agreement-export', [ref, ...flag('out', outPath)]),
+  agreementImport: (file: string) => cliInvoke('agreement-import', [file]),
+  agreementStorePrivate: (file: string) => cliInvoke('agreement-store-private', [file]),
+  agreementLocalStoreList: () => cliInvoke('agreement-local-store-list'),
+  agreementFundingLegs: (ref: string) => cliInvoke('agreement-funding-legs', [ref], true),
+  agreementAudit: (ref: string) => cliInvoke('agreement-audit', [ref], true),
+  agreementAuditExport: (ref: string, outPath?: string) =>
+    cliInvoke('agreement-audit-export', [ref, ...flag('out', outPath)], true),
+  agreementStatement: (ref: string) => cliInvoke('agreement-statement', [ref], true),
+  agreementStatementExport: (ref: string, format?: 'text' | 'html' | 'json', outPath?: string) =>
+    cliInvoke('agreement-statement-export', [
+      ref,
+      ...flag('format', format),
+      ...flag('out', outPath),
+    ]),
+  agreementReceipt: (ref: string, format?: 'html' | 'json', outPath?: string) =>
+    cliInvoke('agreement-receipt', [ref, ...flag('format', format), ...flag('out', outPath)]),
+  agreementVerifyArtifacts: (ref: string) => cliInvoke('agreement-verify-artifacts', [ref]),
+  agreementExportReceipt: (ref: string, outPath?: string) =>
+    cliInvoke('agreement-export-receipt', [ref, ...flag('out', outPath)], true),
+  agreementFlagNonResponse: (ref: string) => cliInvoke('agreement-flag-non-response', [ref]),
+
+  // ── Proof operations ─
+  agreementProofCreate: (params: {
+    agreementHash: string; proofType: string; attestedBy: string; address: string;
+    evidenceSummary?: string; evidenceHash?: string; outPath?: string;
+  }) => cliInvoke('agreement-proof-create', [
+    ...flag('agreement-hash', params.agreementHash),
+    ...flag('proof-type', params.proofType),
+    ...flag('attested-by', params.attestedBy),
+    ...flag('address', params.address),
+    ...flag('evidence-summary', params.evidenceSummary),
+    ...flag('evidence-hash', params.evidenceHash),
+    ...flag('out', params.outPath),
+  ]),
+  agreementProofSubmit: (proof: string) =>
+    cliInvoke('agreement-proof-submit', flag('proof', proof), true),
+  agreementProofList: (agreementHash?: string) =>
+    cliInvoke('agreement-proof-list', flag('agreement-hash', agreementHash), true),
+  agreementProofGet: (proofId: string) =>
+    cliInvoke('agreement-proof-get', flag('proof-id', proofId), true),
+  proofSign: (proof: string, key: string) =>
+    cliInvoke('proof-sign', [...flag('proof', proof), ...flag('key', key)]),
+  proofSubmitJson: (proof: string) =>
+    cliInvoke('proof-submit-json', flag('proof', proof), true),
+  proofTemplateList: () => cliInvoke('proof-template-list'),
+  proofTemplateCreate: (template: string, outPath: string) =>
+    cliInvoke('proof-template-create', [...flag('template', template), ...flag('out', outPath)]),
+
+  // ── Policy operations ─
+  policyBuildOtc: (params: {
+    policyId: string; agreementHash: string; attestor: string; releaseProofType: string;
+  }) => cliInvoke('policy-build-otc', [
+    ...flag('policy-id', params.policyId),
+    ...flag('agreement-hash', params.agreementHash),
+    ...flag('attestor', params.attestor),
+    ...flag('release-proof-type', params.releaseProofType),
+  ]),
+  agreementPolicySet: (policy: string) =>
+    cliInvoke('agreement-policy-set', flag('policy', policy), true),
+  agreementPolicyGet: (agreementHash: string) =>
+    cliInvoke('agreement-policy-get', flag('agreement-hash', agreementHash), true),
+  agreementPolicyEvaluate: (agreementRef: string) =>
+    cliInvoke('agreement-policy-evaluate', flag('agreement', agreementRef), true),
+  agreementPolicyList: (activeOnly?: boolean) =>
+    cliInvoke('agreement-policy-list', boolFlag('active-only', activeOnly), true),
+
+  // ── Signing & bundles ─
+  agreementSign: (agreement: string, signer: string) =>
+    cliInvoke('agreement-sign', [...flag('agreement', agreement), ...flag('signer', signer)]),
+  agreementVerifySignature: (agreement: string, signature: string) =>
+    cliInvoke('agreement-verify-signature', [
+      ...flag('agreement', agreement),
+      ...flag('signature', signature),
+    ]),
+  agreementSignatureInspect: (file: string) => cliInvoke('agreement-signature-inspect', [file]),
+  agreementBundleCreate: (ref: string, outPath: string) =>
+    cliInvoke('agreement-bundle-create', [ref, ...flag('out', outPath)]),
+  agreementBundleInspect: (ref: string) => cliInvoke('agreement-bundle-inspect', [ref]),
+  agreementBundleVerify: (ref: string) => cliInvoke('agreement-bundle-verify', [ref]),
+  agreementBundleSign: (bundle: string, signer: string) =>
+    cliInvoke('agreement-bundle-sign', [...flag('bundle', bundle), ...flag('signer', signer)]),
+  agreementBundlePack: (ref: string, outPath?: string) =>
+    cliInvoke('agreement-bundle-pack', [ref, ...flag('out', outPath)]),
+  agreementBundleUnpack: (file: string, json?: boolean) =>
+    cliInvoke('agreement-bundle-unpack', [file, ...boolFlag('json', json)], true),
+  agreementBundleVerifySignatures: (file: string) =>
+    cliInvoke('agreement-bundle-verify-signatures', [file]),
+
+  // ── Agreement pack / unpack ─
+  agreementPack: (agreement: string, outPath: string, json?: boolean) =>
+    cliInvoke('agreement-pack', [
+      ...flag('agreement', agreement),
+      ...flag('out', outPath),
+      ...boolFlag('json', json),
+    ], true),
+  agreementUnpack: (file: string, json?: boolean) =>
+    cliInvoke('agreement-unpack', [...flag('file', file), ...boolFlag('json', json)], true),
+
+  // ── Share packages ─
+  agreementSharePackage: (outPath: string) =>
+    cliInvoke('agreement-share-package', flag('out', outPath)),
+  agreementSharePackageInspect: (file: string) =>
+    cliInvoke('agreement-share-package-inspect', [file]),
+  agreementSharePackageVerify: (file: string) =>
+    cliInvoke('agreement-share-package-verify', [file], true),
+  agreementSharePackageImport: (file: string) =>
+    cliInvoke('agreement-share-package-import', [file], true),
+  agreementSharePackageList: () => cliInvoke('agreement-share-package-list'),
+  agreementSharePackageShow: (ref: string) => cliInvoke('agreement-share-package-show', [ref]),
+  agreementSharePackageArchive: (ref: string) => cliInvoke('agreement-share-package-archive', [ref]),
+  agreementSharePackagePrune: (olderThanDays?: number, dryRun?: boolean) =>
+    cliInvoke('agreement-share-package-prune', [
+      ...flag('older-than-days', olderThanDays),
+      ...boolFlag('dry-run', dryRun),
+    ]),
+  agreementSharePackageRemove: (ref: string) => cliInvoke('agreement-share-package-remove', [ref]),
+
+  // ── Private agreement exchange ─
+  agreementShare: (agreementHash: string, recipientPubkey: string, outPath?: string) =>
+    cliInvoke('agreement-share', [agreementHash, recipientPubkey, ...flag('out', outPath)]),
+  agreementDecrypt: (file: string, walletPath?: string, storePrivate?: boolean, json?: boolean) =>
+    cliInvoke('agreement-decrypt', [
+      file,
+      ...flag('wallet', walletPath),
+      ...boolFlag('store-private', storePrivate),
+      ...boolFlag('json', json),
+    ]),
+
+  // ── OTC shortcuts ─
+  otcCreate: (params: {
+    seller: string; buyer: string; amount: string | number;
+    asset: string; paymentMethod: string; timeout: number;
+  }) => cliInvoke('otc-create', [
+    ...flag('seller', params.seller),
+    ...flag('buyer', params.buyer),
+    ...flag('amount', String(params.amount)),
+    ...flag('asset', params.asset),
+    ...flag('payment-method', params.paymentMethod),
+    ...flag('timeout', params.timeout),
+  ]),
+  otcAttest: (agreement: string, message: string, address: string) =>
+    cliInvoke('otc-attest', [
+      ...flag('agreement', agreement),
+      ...flag('message', message),
+      ...flag('address', address),
+    ]),
+  otcSettle: (agreement: string) => cliInvoke('otc-settle', flag('agreement', agreement), true),
+  otcStatus: (agreement: string) => cliInvoke('otc-status', flag('agreement', agreement), true),
+
+  // ── Per-milestone operations ─
+  agreementMilestoneFund: (ref: string, milestone: string) =>
+    cliInvoke('agreement-milestone-fund', [ref, ...flag('milestone', milestone)], true),
+  agreementMilestoneRelease: (ref: string, milestone: string, secret: string) =>
+    cliInvoke('agreement-milestone-release', [
+      ref,
+      ...flag('milestone', milestone),
+      ...flag('secret', secret),
+    ], true),
+
+  // ── Seller / buyer status ─
+  sellerStatus: (address?: string) =>
+    cliInvoke('seller-status', flag('address', address), true),
+  buyerStatus: (address?: string) =>
+    cliInvoke('buyer-status', flag('address', address), true),
+
+  // ── Attestor commands ─
+  attestorList: (json?: boolean) => cliInvoke('attestor-list', boolFlag('json', json), true),
+  attestorRegister: (bond: string | number, from: string) =>
+    cliInvoke('attestor-register', [...flag('bond', bond), ...flag('from', from)], true),
+  attestorBondStatus: (address?: string, json?: boolean) =>
+    cliInvoke('attestor-bond-status', [...flag('address', address), ...boolFlag('json', json)], true),
+  attestorSlash: (attestor: string, proof1: string, proof2: string, agreement: string) =>
+    cliInvoke('attestor-slash', [
+      ...flag('attestor', attestor),
+      ...flag('proof1', proof1),
+      ...flag('proof2', proof2),
+      ...flag('agreement', agreement),
+    ], true),
+  attestorWithdrawBond: (from: string) =>
+    cliInvoke('attestor-withdraw-bond', flag('from', from), true),
+
+  // ── Dispute & resolver commands ─
+  agreementDisputeRaise: (params: {
+    agreement: string; raisingParty: string; reason: string; evidenceFile: string; key: string;
+  }) => cliInvoke('agreement-dispute-raise', [
+    ...flag('agreement', params.agreement),
+    ...flag('raising-party', params.raisingParty),
+    ...flag('reason', params.reason),
+    ...flag('evidence-file', params.evidenceFile),
+    ...flag('key', params.key),
+  ], true),
+  agreementDisputeRespond: (params: {
+    agreement: string; submitterParty: string; evidenceFile: string;
+    evidenceType: string; message: string; key: string;
+  }) => cliInvoke('agreement-dispute-respond', [
+    ...flag('agreement', params.agreement),
+    ...flag('submitter-party', params.submitterParty),
+    ...flag('evidence-file', params.evidenceFile),
+    ...flag('evidence-type', params.evidenceType),
+    ...flag('message', params.message),
+    ...flag('key', params.key),
+  ], true),
+  agreementDisputeResolve: (params: {
+    agreement: string; outcome: 'release' | 'refund';
+    resolverRole: 'primary' | 'fallback'; message: string; key: string;
+  }) => cliInvoke('agreement-dispute-resolve', [
+    ...flag('agreement', params.agreement),
+    ...flag('outcome', params.outcome),
+    ...flag('resolver-role', params.resolverRole),
+    ...flag('message', params.message),
+    ...flag('key', params.key),
+  ], true),
+  agreementDisputeReresolve: (params: {
+    agreement: string; newResolver: string; newFallback: string; keyA: string; keyB: string;
+  }) => cliInvoke('agreement-dispute-reresolve', [
+    ...flag('agreement', params.agreement),
+    ...flag('new-resolver', params.newResolver),
+    ...flag('new-fallback', params.newFallback),
+    ...flag('key-a', params.keyA),
+    ...flag('key-b', params.keyB),
+  ], true),
+  agreementDisputeShow: (agreement: string, json?: boolean) =>
+    cliInvoke('agreement-dispute-show', [...flag('agreement', agreement), ...boolFlag('json', json)], true),
+  agreementDisputeList: () => cliInvoke('agreement-dispute-list', [], true),
+  resolverRegister: (params: {
+    displayName: string; bio?: string; feeBps?: number; key: string;
+  }) => cliInvoke('resolver-register', [
+    ...flag('display-name', params.displayName),
+    ...flag('bio', params.bio),
+    ...flag('fee-bps', params.feeBps),
+    ...flag('key', params.key),
+  ], true),
+  resolverList: (limit?: number, cursor?: string) =>
+    cliInvoke('resolver-list', [...flag('limit', limit), ...flag('cursor', cursor)], true),
+
+  // ── Invoices ─
+  invoiceGenerate: (agreement: string, outPath?: string) =>
+    cliInvoke('invoice-generate', [...flag('agreement', agreement), ...flag('out', outPath)]),
+  invoiceImport: (file: string) => cliInvoke('invoice-import', [file]),
+};
+
+// ── GENERIC IRIUMD RPC ────────────────────────────────────────
+// Thin wrappers over rpc_proxy that target each documented HTTP
+// endpoint in docs/API.md. The backend forwards method/path/query/body
+// to the active rpc_url with the active bearer token. Returns parsed
+// JSON (or raw text wrapped as a JSON string).
+const rpcGet = (path: string, query?: Record<string, string | number | undefined>) => {
+  const q: Record<string, string> = {};
+  for (const [k, v] of Object.entries(query ?? {})) {
+    if (v !== undefined && v !== null && v !== '') q[k] = String(v);
+  }
+  return safeInvoke<unknown>('rpc_proxy', { method: 'GET', path, query: q });
+};
+const rpcPost = (path: string, body?: unknown) =>
+  safeInvoke<unknown>('rpc_proxy', { method: 'POST', path, body: body ?? null });
+
+export const rpcCall = {
+  // Generic passthroughs.
+  get: rpcGet,
+  post: rpcPost,
+
+  // ── Node status & health ─
+  status: () => rpcGet('/status'),
+  peers: () => rpcGet('/peers'),
+  networkStatus: () => rpcGet('/network-status'),
+  metrics: () => rpcGet('/metrics'),
+  addSeed: (addr: string) => rpcPost('/admin/add-seed', { addr }),
+
+  // ── Chain queries ─
+  balance: (address: string) => rpcGet('/rpc/balance', { address }),
+  utxos: (address: string) => rpcGet('/rpc/utxos', { address }),
+  utxo: (txid: string, index: number) => rpcGet('/rpc/utxo', { txid, index }),
+  history: (address: string) => rpcGet('/rpc/history', { address }),
+  tx: (txid: string) => rpcGet('/rpc/tx', { txid }),
+  block: (height: number) => rpcGet('/rpc/block', { height }),
+  blockByHash: (hash: string) => rpcGet('/rpc/block_by_hash', { hash }),
+  blocks: (from: number, count: number) => rpcGet('/rpc/blocks', { from, count }),
+  richlist: (limit?: number) => rpcGet('/rpc/richlist', { limit }),
+  feeEstimate: () => rpcGet('/rpc/fee_estimate'),
+
+  // ── Mining ─
+  networkHashrate: () => rpcGet('/rpc/network_hashrate'),
+  miningMetrics: () => rpcGet('/rpc/mining_metrics'),
+  getBlockTemplate: () => rpcGet('/rpc/getblocktemplate'),
+  submitBlock: (blockHex: string) => rpcPost('/rpc/submit_block', { block_hex: blockHex }),
+
+  // ── Transactions ─
+  submitTx: (txHex: string) => rpcPost('/rpc/submit_tx', { tx_hex: txHex }),
+
+  // ── Marketplace ─
+  offersFeed: () => rpcGet('/offers/feed'),
+  broadcastOfferTake: (offerId: string, takerAddress: string, agreementHash: string) =>
+    rpcPost('/rpc/broadcast_offer_take', {
+      offer_id: offerId, taker_address: takerAddress, agreement_hash: agreementHash,
+    }),
+
+  // ── Explorer ─
+  explorerAgreements: (page?: number, limit?: number) =>
+    rpcGet('/explorer/agreements', { page, limit }),
+  explorerAgreement: (hash: string) => rpcGet(`/explorer/agreement/${hash}`),
+  explorerProofs: (agreementHash?: string, page?: number, limit?: number) =>
+    rpcGet('/explorer/proofs', { agreement_hash: agreementHash, page, limit }),
+  explorerReputation: (pubkey: string) => rpcGet(`/explorer/reputation/${pubkey}`),
+  explorerStats: () => rpcGet('/explorer/stats'),
+
+  // ── HTLC ─
+  createHtlc: (body: {
+    secret_hash: string; recipient_address: string; refund_address: string; timeout_height: number;
+  }) => rpcPost('/rpc/createhtlc', body),
+  decodeHtlc: (scriptHex: string) => rpcPost('/rpc/decodehtlc', { script_hex: scriptHex }),
+  claimHtlc: (body: Record<string, unknown>) => rpcPost('/rpc/claimhtlc', body),
+  refundHtlc: (body: Record<string, unknown>) => rpcPost('/rpc/refundhtlc', body),
+  inspectHtlc: (txid: string, index: number) => rpcGet('/rpc/inspecthtlc', { txid, index }),
+
+  // ── Settlement ─
+  createAgreement: (agreement: unknown) => rpcPost('/rpc/createagreement', agreement),
+  computeAgreementHash: (agreement: unknown) => rpcPost('/rpc/computeagreementhash', agreement),
+  inspectAgreement: (agreement: unknown) => rpcPost('/rpc/inspectagreement', agreement),
+  fundAgreement: (body: Record<string, unknown>) => rpcPost('/rpc/fundagreement', body),
+  agreementStatus: (agreement: unknown) => rpcPost('/rpc/agreementstatus', { agreement }),
+  agreementTimeline: (agreement: unknown) => rpcPost('/rpc/agreementtimeline', { agreement }),
+  agreementAudit: (agreement: unknown) => rpcPost('/rpc/agreementaudit', { agreement }),
+  agreementReleaseEligibility: (body: Record<string, unknown>) =>
+    rpcPost('/rpc/agreementreleaseeligibility', body),
+  agreementRefundEligibility: (body: Record<string, unknown>) =>
+    rpcPost('/rpc/agreementrefundeligibility', body),
+  buildAgreementRelease: (body: Record<string, unknown>) =>
+    rpcPost('/rpc/buildagreementrelease', body),
+  buildAgreementRefund: (body: Record<string, unknown>) =>
+    rpcPost('/rpc/buildagreementrefund', body),
+  buildSettlementTx: (body: Record<string, unknown>) =>
+    rpcPost('/rpc/buildsettlementtx', body),
+  buildOtcTemplate: (body: Record<string, unknown>) =>
+    rpcPost('/rpc/buildotctemplate', body),
+  checkPolicy: (body: Record<string, unknown>) => rpcPost('/rpc/checkpolicy', body),
+  agreementFundingLegs: (body: Record<string, unknown>) =>
+    rpcPost('/rpc/agreementfundinglegs', body),
+  agreementReceipt: (agreementHash: string) =>
+    rpcGet('/rpc/agreementreceipt', { agreement_hash: agreementHash }),
+  reputationByAddress: (address: string) => rpcGet(`/rpc/reputation/${address}`),
+  listProofs: (agreementHash: string) =>
+    rpcPost('/rpc/listproofs', { agreement_hash: agreementHash }),
+  getProof: (proofId: string) => rpcPost('/rpc/getproof', { proof_id: proofId }),
+  storePolicy: (policy: unknown) => rpcPost('/rpc/storepolicy', policy),
+  getPolicy: (agreementHash: string) =>
+    rpcPost('/rpc/getpolicy', { agreement_hash: agreementHash }),
+  evaluatePolicy: (body: Record<string, unknown>) => rpcPost('/rpc/evaluatepolicy', body),
+  listAgreementTxs: (body: Record<string, unknown>) => rpcPost('/rpc/listagreementtxs', body),
+  agreementMilestones: (body: Record<string, unknown>) =>
+    rpcPost('/rpc/agreementmilestones', body),
+  verifyAgreementLink: (body: Record<string, unknown>) =>
+    rpcPost('/rpc/verifyagreementlink', body),
+  submitProof: (proof: unknown) => rpcPost('/rpc/submitproof', proof),
+
+  // ── Wallet HTTP endpoints (mirror irium-wallet CLI; rarely used
+  //     directly from the GUI, exposed for completeness) ─
+  walletCreate: (body?: unknown) => rpcPost('/wallet/create', body),
+  walletUnlock: (passphrase: string) => rpcPost('/wallet/unlock', { passphrase }),
+  walletLock: () => rpcPost('/wallet/lock'),
+  walletAddresses: () => rpcGet('/wallet/addresses'),
+  walletReceive: () => rpcGet('/wallet/receive'),
+  walletNewAddress: () => rpcPost('/wallet/new_address'),
+  walletExportWif: (address: string) => rpcGet('/wallet/export_wif', { address }),
+  walletImportWif: (wif: string) => rpcPost('/wallet/import_wif', { wif }),
+  walletExportSeed: () => rpcGet('/wallet/export_seed'),
+  walletImportSeed: (seedHex: string) => rpcPost('/wallet/import_seed', { seed_hex: seedHex }),
+  walletSendHttp: (body: Record<string, unknown>) => rpcPost('/wallet/send', body),
+};

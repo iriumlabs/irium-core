@@ -1167,3 +1167,17 @@ pub struct DiagnosticsResult {
     pub passed: u32,
     pub total: u32,
 }
+
+// ============================================================
+// SOLO STRATUM
+// ============================================================
+
+// Status snapshot for the solo Stratum bridge (irium-miner --solo-stratum).
+// `running` flips true while the bundled sidecar is alive; `listen_addr`
+// records the host:port the sidecar bound so the GUI can render the
+// ASIC connection string verbatim.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SoloStratumStatus {
+    pub running: bool,
+    pub listen_addr: Option<String>,
+}
