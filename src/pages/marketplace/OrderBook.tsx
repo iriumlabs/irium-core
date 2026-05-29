@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Star, Loader2, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Plus, Star, Loader2, ShieldCheck, ArrowRight, Activity, AlertCircle } from 'lucide-react';
 import { offers, reputation } from '../../lib/tauri';
 import type { Offer } from '../../lib/types';
 import { formatIRM, timeAgo } from '../../lib/types';
@@ -138,6 +138,10 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
   const [sortKey, setSortKey] = useState<SortKey>('price_asc');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Wall-clock timestamp of the last successful /offer-list response.
+  // Surfaced in the network-stats bar so the user can see at a glance
+  // whether the panel is fresh or hung on a stale poll.
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -148,6 +152,7 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
         const list = await offers.list({ sort: 'amount' });
         if (cancelled) return;
         setAllOffers(list ?? []);
+        setLastUpdated(Math.floor(Date.now() / 1000));
         setError(null);
         const sellers = Array.from(new Set((list ?? []).map((o) => o.seller).filter(Boolean) as string[]));
         for (const addr of sellers) {
@@ -223,14 +228,9 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
     <div className="card p-4 space-y-3" style={{ border: '1px solid rgba(110,198,255,0.12)' }}>
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
-        <div>
-          <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>
-            Order Book
-          </h3>
-          <p className="text-xs mt-0.5" style={{ color: 'rgba(238,240,255,0.45)' }}>
-            {rows.length} offers
-          </p>
-        </div>
+        <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>
+          Order Book
+        </h3>
         <button
           onClick={onCreateOrder}
           className="btn-primary inline-flex items-center gap-1.5 text-xs px-3 py-1.5"
@@ -238,6 +238,27 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
         >
           <Plus size={12} /> Create Order
         </button>
+      </div>
+
+      {/* Network stats bar (Fix 5) — total offers count + last-updated
+          timestamp. Refreshed by the same /offer-list poll that powers
+          the rows below. */}
+      <div
+        className="flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded"
+        style={{
+          background: 'rgba(110,198,255,0.05)',
+          border: '1px solid rgba(110,198,255,0.12)',
+          color: 'rgba(238,240,255,0.55)',
+          fontFamily: '"JetBrains Mono", monospace',
+        }}
+      >
+        <span className="inline-flex items-center gap-1.5">
+          <Activity size={11} style={{ color: '#6EC6FF' }} />
+          {rows.length} offer{rows.length === 1 ? '' : 's'} in book
+        </span>
+        <span>
+          {lastUpdated ? `Updated ${timeAgo(lastUpdated)}` : 'Refreshing…'}
+        </span>
       </div>
 
       {/* Sort + filter controls */}
@@ -292,13 +313,22 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
           // so the user sees ORDER #1, #2, #3 in the order they're shown
           // rather than the opaque base58 / gossip id fragment.
           const orderNumber = idx + 1;
+          // Fix 3 — open offers get a strong green left-border accent so
+          // the row is visually delimited as "actionable". Taken rows
+          // keep the same structure but with a muted left border so the
+          // group reads as inactive without losing visual rhythm.
+          const accentColor = taken ? 'rgba(255,255,255,0.18)' : '#22c55e';
           return (
             <div
               key={o.id}
-              className="p-3 rounded space-y-2 transition-colors"
+              className="rounded transition-colors"
               style={{
                 background: isSelected ? 'rgba(110,198,255,0.10)' : 'rgba(255,255,255,0.02)',
-                border: '1px solid ' + (isSelected ? 'rgba(110,198,255,0.30)' : 'rgba(255,255,255,0.06)'),
+                borderTop: '1px solid ' + (isSelected ? 'rgba(110,198,255,0.30)' : 'rgba(255,255,255,0.06)'),
+                borderRight: '1px solid ' + (isSelected ? 'rgba(110,198,255,0.30)' : 'rgba(255,255,255,0.06)'),
+                borderBottom: '1px solid ' + (isSelected ? 'rgba(110,198,255,0.30)' : 'rgba(255,255,255,0.06)'),
+                borderLeft: `3px solid ${accentColor}`,
+                padding: 14,
                 opacity: taken ? 0.55 : 1,
               }}
               onMouseEnter={(e) => {
@@ -308,11 +338,18 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
                 e.currentTarget.style.background = isSelected ? 'rgba(110,198,255,0.10)' : 'rgba(255,255,255,0.02)';
               }}
             >
-              {/* Row 1 — order number + badges */}
-              <div className="flex items-center justify-between gap-2">
+              {/* Row 1 — Order # as a prominent header + badges */}
+              <div
+                className="flex items-center justify-between gap-2 pb-2 mb-3"
+                style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+              >
                 <span
-                  className="text-[10px] tracking-wide"
-                  style={{ color: 'rgba(238,240,255,0.45)', fontFamily: '"JetBrains Mono", monospace' }}
+                  className="font-display font-bold uppercase tracking-wide"
+                  style={{
+                    color: taken ? 'rgba(238,240,255,0.50)' : '#eef0ff',
+                    fontSize: 13,
+                    letterSpacing: '0.06em',
+                  }}
                   title={o.id ?? ''}
                 >
                   ORDER #{orderNumber}
@@ -323,32 +360,51 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
                 </div>
               </div>
 
-              {/* Row 2 — IRM amount + total price + per-unit price */}
+              {/* Row 2 — IRM amount + total price + per-unit price.
+                  When the offer has no parseable price, the Total +
+                  Per IRM cells collapse into a single span-2 amber
+                  "Contact seller for price" badge (Fix 2). */}
               <div className="grid grid-cols-3 gap-2" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
                 <div>
                   <div className="text-[10px] uppercase tracking-wide" style={{ color: 'rgba(238,240,255,0.40)' }}>IRM</div>
                   <div className="text-sm tabular-nums" style={{ color: '#eef0ff' }}>{formatIRM(o.amount ?? 0)}</div>
                 </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wide" style={{ color: 'rgba(238,240,255,0.40)' }}>Total</div>
-                  <div className="text-sm tabular-nums" style={{ color: parsedPrice ? '#34d399' : 'rgba(238,240,255,0.45)' }}>
-                    {parsedPrice
-                      ? `${parsedPrice.total.toLocaleString('en-US')} ${parsedPrice.unit}`
-                      : 'Price not set'}
+                {parsedPrice ? (
+                  <>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide" style={{ color: 'rgba(238,240,255,0.40)' }}>Total</div>
+                      <div className="text-sm tabular-nums" style={{ color: '#34d399' }}>
+                        {parsedPrice.total.toLocaleString('en-US')} {parsedPrice.unit}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide" style={{ color: 'rgba(238,240,255,0.40)' }}>Per IRM</div>
+                      <div className="text-sm tabular-nums" style={{ color: pricePerUnit != null ? 'rgba(238,240,255,0.85)' : 'rgba(238,240,255,0.45)' }}>
+                        {pricePerUnit != null
+                          ? `${pricePerUnit.toLocaleString('en-US', { maximumFractionDigits: 6 })} ${parsedPrice.unit}`
+                          : '—'}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div
+                    className="col-span-2 inline-flex items-center gap-1.5 px-2 py-1.5 rounded text-[11px] self-end"
+                    style={{
+                      background: 'rgba(252,211,77,0.08)',
+                      color: '#fbbf24',
+                      border: '1px solid rgba(252,211,77,0.20)',
+                      fontFamily: '"Space Grotesk", sans-serif',
+                    }}
+                    title="The seller did not include a quoted price. Use the payment method below to ask them directly."
+                  >
+                    <AlertCircle size={11} />
+                    Contact seller for price
                   </div>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wide" style={{ color: 'rgba(238,240,255,0.40)' }}>Per IRM</div>
-                  <div className="text-sm tabular-nums" style={{ color: pricePerUnit != null ? 'rgba(238,240,255,0.85)' : 'rgba(238,240,255,0.45)' }}>
-                    {pricePerUnit != null
-                      ? `${pricePerUnit.toLocaleString('en-US', { maximumFractionDigits: 6 })} ${parsedPrice?.unit ?? ''}`.trim()
-                      : 'Price not set'}
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Row 3 — seller + payment + created + action */}
-              <div className="flex items-center justify-between gap-2 text-[11px]" style={{ color: 'rgba(238,240,255,0.65)' }}>
+              <div className="flex items-center justify-between gap-2 text-[11px] mt-3 pt-2" style={{ color: 'rgba(238,240,255,0.65)', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span title={o.seller ?? ''} style={{ fontFamily: '"JetBrains Mono", monospace' }}>
                     {(o.seller ?? '').slice(0, 8)}…{(o.seller ?? '').slice(-4)}

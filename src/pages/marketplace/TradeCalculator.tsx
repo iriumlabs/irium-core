@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Calculator, ArrowRight, Star, ShieldCheck } from 'lucide-react';
+import { Calculator, ArrowRight, Star, ShieldCheck, Info } from 'lucide-react';
 import type { Offer } from '../../lib/types';
 import { formatIRM } from '../../lib/types';
 
@@ -196,6 +196,21 @@ export default function TradeCalculator({
 
   const userHasBudget = numericUsdt > 0;
 
+  // Fix 1 / Fix 6 — detect whether ANY visible offer has a parseable
+  // quote. If none do, the entire "cheapest seller / top reputation"
+  // section would otherwise render two cards both labelled "Price not
+  // set" — visually identical to a real price, just wrong. Instead we
+  // surface a single informational notice explaining the situation.
+  const cheapestPrice = parsePrice((cheapest?.asset_reference as string | undefined) ?? null);
+  const bestRepPrice = parsePrice(
+    (bestReputation?.offer.asset_reference as string | undefined) ?? null,
+  );
+  const anyPricedOffer = useMemo(
+    () => openOffers.some((o) => parsePrice((o.asset_reference as string | undefined) ?? null) != null),
+    [openOffers],
+  );
+  const showNoPricesNotice = openOffers.length > 0 && !anyPricedOffer;
+
   return (
     <div className="card p-4 space-y-4" style={{ border: '1px solid rgba(167,139,250,0.18)' }}>
       <div className="flex items-center gap-2">
@@ -205,9 +220,19 @@ export default function TradeCalculator({
         </h3>
       </div>
 
-      {/* You spend */}
+      {/* You spend — Fix 4: prominent label + large input.
+          The USDT budget is the primary affordance of this panel,
+          so the label is sized up to heading weight and the input is
+          tall enough that the figure dominates the panel visually. */}
       <div className="space-y-2">
-        <label className="label" style={{ color: 'rgba(238,240,255,0.55)' }}>
+        <label
+          className="font-display font-bold uppercase block"
+          style={{
+            color: '#eef0ff',
+            fontSize: 13,
+            letterSpacing: '0.08em',
+          }}
+        >
           You spend
         </label>
         <div className="flex items-center gap-2">
@@ -217,30 +242,54 @@ export default function TradeCalculator({
             onChange={(e) => setUsdtAmount(e.target.value)}
             placeholder="100"
             inputMode="decimal"
+            style={{
+              fontSize: 22,
+              padding: '12px 14px',
+              fontFamily: '"JetBrains Mono", monospace',
+              fontWeight: 600,
+            }}
           />
-          <span className="text-xs px-2 py-1 rounded" style={{
-            background: 'rgba(238,240,255,0.06)',
-            color: 'rgba(238,240,255,0.65)',
-          }}>USDT</span>
+          <span
+            className="rounded font-display font-semibold"
+            style={{
+              background: 'rgba(238,240,255,0.06)',
+              color: '#eef0ff',
+              padding: '12px 14px',
+              fontSize: 14,
+            }}
+          >
+            USDT
+          </span>
         </div>
       </div>
 
       {/* You receive — conditional. Only shows a real IRM amount once
           the user has entered a USDT budget. Before that, the field is
           a clear prompt rather than a misleading "1 IRM" anchor pulled
-          from the cheapest row. */}
+          from the cheapest row. Fix 4 — bumped label + display size to
+          match the YOU SPEND hierarchy. */}
       <div className="space-y-2">
-        <label className="label" style={{ color: 'rgba(238,240,255,0.55)' }}>
+        <label
+          className="font-display font-bold uppercase block"
+          style={{
+            color: '#eef0ff',
+            fontSize: 13,
+            letterSpacing: '0.08em',
+          }}
+        >
           You receive (cheapest match)
         </label>
         <div
-          className="px-3 py-2 rounded text-sm tabular-nums"
+          className="px-3 rounded tabular-nums"
           style={{
             background: 'rgba(0,0,0,0.25)',
-            color: userHasBudget && cheapest ? '#eef0ff' : 'rgba(238,240,255,0.45)',
+            color: userHasBudget && cheapest ? '#34d399' : 'rgba(238,240,255,0.45)',
             border: '1px solid rgba(255,255,255,0.06)',
             fontFamily: '"JetBrains Mono", monospace',
             fontStyle: userHasBudget && cheapest ? 'normal' : 'italic',
+            fontSize: userHasBudget && cheapest ? 20 : 14,
+            fontWeight: userHasBudget && cheapest ? 600 : 400,
+            padding: '12px 14px',
           }}
         >
           {userHasBudget
@@ -254,9 +303,31 @@ export default function TradeCalculator({
         </p>
       </div>
 
-      {/* Cheapest seller card (always visible when at least one offer
-          exists — it doubles as a market-snapshot indicator). */}
-      {cheapest && (
+      {/* Fix 1 — when there are offers but none have prices, surface a
+          single informational notice instead of two "Price not set"
+          OfferCards. This explains to the user what they're seeing and
+          steers them to the payment-method contact path. */}
+      {showNoPricesNotice && (
+        <div
+          className="p-3 rounded inline-flex items-start gap-2"
+          style={{
+            background: 'rgba(252,211,77,0.08)',
+            border: '1px solid rgba(252,211,77,0.25)',
+          }}
+        >
+          <Info size={14} style={{ color: '#fbbf24', flexShrink: 0, marginTop: 1 }} />
+          <div className="text-xs" style={{ color: 'rgba(238,240,255,0.78)', lineHeight: 1.5 }}>
+            The current offers do not have prices set. Contact sellers directly via the
+            payment method shown.
+          </div>
+        </div>
+      )}
+
+      {/* Cheapest seller card — Fix 6: only visible when there is a
+          valid parseable price AND the user has entered a USDT amount.
+          Before either is true we show no offer card at all (the
+          notice above + the "You receive" field carry the UI). */}
+      {cheapest && cheapestPrice && userHasBudget && (
         <OfferCard
           title="Cheapest seller"
           accent="#6EC6FF"
@@ -267,9 +338,10 @@ export default function TradeCalculator({
         />
       )}
 
-      {/* Top reputation alternative — only when it differs from the
-          cheapest offer; otherwise we'd be showing the same card twice. */}
-      {bestReputation && cheapest && bestReputation.offer.id !== cheapest.id && (
+      {/* Top reputation alternative — same gating as the cheapest
+          card (Fix 6) plus the existing "don't duplicate the cheapest"
+          rule. */}
+      {bestReputation && cheapest && bestReputation.offer.id !== cheapest.id && bestRepPrice && userHasBudget && (
         <OfferCard
           title="Top reputation alternative"
           accent="#FBBF24"
