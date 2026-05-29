@@ -2,9 +2,7 @@
   "_meta": {
     "status": "machine_translated",
     "review_needed": true,
-    "language": "日本語",
-    "english_name": "Japanese",
-    "direction": "ltr"
+    "language": "日本語"
   },
   "common": {
     "save": "保存",
@@ -223,7 +221,10 @@
       "midnight": "夜中",
       "obsidian": "黒曜石",
       "aurora": "オーロラ",
-      "nebula": "星雲"
+      "nebula": "星雲",
+      "solar": "ソーラー",
+      "ocean": "オーシャン",
+      "rose": "ローズ"
     },
     "network_info": {
       "network": "ネットワーク",
@@ -314,7 +315,17 @@
       "clearing": "クリア中…",
       "confirm_resync": "確認します — これにより再同期されます。",
       "clear_resync": "クリアと再同期",
-      "confirm_hint": "もう一度クリックして確認します。ブロックは再ダウンロードされます。"
+      "confirm_hint": "もう一度クリックして確認します。ブロックは再ダウンロードされます。",
+      "reset_state_button": "node状態をリセット(block保持)",
+      "reset_state_description": "「クリアと再同期」の軽量代替案。ダウンロード済みblockを保持し、UTXOセットをローカルで再構築します。トランザクション署名失敗が発生したときに使用してください。",
+      "reset_state_confirm_title": "node状態をリセットしますか?",
+      "reset_state_confirm_body": "状態フォルダーをタイムスタンプ付きバックアップに名前変更し、ダウンロード済みblockを保持します。iriumdは次回起動時にローカルblockからUTXOセットを再構築します — 通常5〜15分で、フルチェーン再同期の数時間ではありません。トランザクション署名失敗やその他のUTXO状態破損が発生したときに使用してください。walletとagreementには影響しません。",
+      "reset_state_proceed": "状態をリセット",
+      "reset_state_resetting": "リセット中…",
+      "reset_state_success": "状態をリセットしました — バックアップ先 {{path}}",
+      "reset_state_no_backup": "バックアップする既存の状態がありません — 新しい状態を作成しました",
+      "reset_state_rebuilding": "node再起動中 — ローカルblockからUTXOセットを再構築中(5〜15分)",
+      "reset_state_failed": "リセットに失敗しました: {{reason}}"
     },
     "developer_info": {
       "reset_onboarding": "オンボーディングをリセットする",
@@ -743,7 +754,18 @@
       "load_error_title": "契約書を読み込めませんでした",
       "empty_state": "まだ契約書を作成していません。",
       "create_first": "最初の契約書を作成する →",
-      "create_offer": "オファーの作成"
+      "create_offer": "オファーの作成",
+      "selling_title": "販売中",
+      "selling_subtitle": "オファーを作成し、買い手と共有、proof で支払いを受領",
+      "selling_cta": "売り手フローを開始 →",
+      "buying_title": "購入中",
+      "buying_subtitle": "オファーを見つけ、escrowに入金し、配達時に支払いを解放",
+      "buying_cta": "買い手フローを開始 →",
+      "create_direct": "agreementを直接作成(上級者向け)",
+      "how_it_works": "仕組み",
+      "step_create": "agreementを作成または検索",
+      "step_lock": "オンチェーンでIRMをescrowにロック",
+      "step_proof": "proof を送信 — 資金が自動的に解放されます"
     },
     "templates": {
       "otc": "OTC取引",
@@ -779,7 +801,9 @@
         "memo_merchant_placeholder": "注文の説明...",
         "total_escrow_hours": "合計エスクロー ウィンドウ (時間)",
         "party_placeholder": "Q...またはP..."
-      }
+      },
+      "step_details_short": "詳細",
+      "step_review_confirm": "確認と承認"
     },
     "seller_dashboard": "販売者ダッシュボード",
     "buyer_dashboard": "バイヤーダッシュボード",
@@ -803,6 +827,76 @@
     "review_agreement": "契約書を確認する",
     "modals": {
       "payment_invoice": "支払い請求書"
+    },
+    "page_subtitle": "Iriumのproof ベース escrow システムによる信頼不要のオンチェーンSettlement",
+    "templates_desc": {
+      "otc": "IRMをピアツーピアで売買するために使用します。買い手がIRMをescrowにロックし、オフチェーン支払いを行い、売り手が受領を確認して資金を解放します。",
+      "freelance": "フリーランス作業またはサービスに使用します。クライアントは事前にescrowに支払いをロックします。請負業者が作業を完了しproofを送信すると資金が解放されます。",
+      "milestone": "段階に分割された大規模プロジェクトに使用します。各マイルストーンには独自のescrowとproof要件があります。マイルストーンが完了するたびに部分的に解放されます。",
+      "deposit": "返金可能な預け金または担保に使用します。資金はオンチェーンにロックされ、条件が期限までに満たされない場合は自動的に返却されます。",
+      "merchant_delayed": "クールダウンウィンドウ内蔵の商人販売。資金はescrowに保持され、商人は紛争ウィンドウが閉じた後にのみ請求できます。",
+      "contractor": "請負業者の作業をマイルストーンに分割します。各マイルストーンには独自のescrowと納品proof要件があります。資金は段階的に解放されます。"
+    },
+    "role_labels": {
+      "buyer": "買い手アドレス",
+      "seller": "売り手アドレス",
+      "client": "クライアントアドレス",
+      "contractor": "請負業者アドレス",
+      "payer": "支払人アドレス",
+      "payee": "受取人アドレス",
+      "depositor": "預け入れ者アドレス",
+      "recipient": "受取人アドレス",
+      "merchant": "商人アドレス"
+    },
+    "form_errors": {
+      "address_required": "アドレスが必要です",
+      "same_party": "当事者Aと当事者Bは同じアドレスにできません",
+      "positive_amount": "正の金額を入力してください",
+      "amount_exceeds_supply": "金額は {{max}} IRM(総供給量)を超えることはできません",
+      "milestones_range": "2から20の間",
+      "deadline_range": "期限は1から{{max}}時間(1年)の間でなければなりません",
+      "cooldown_range": "クールダウンは1から{{max}}時間(1年)の間でなければなりません"
+    },
+    "review_labels": {
+      "amount": "金額",
+      "deadline": "期限",
+      "scope": "範囲",
+      "milestones": "マイルストーン",
+      "per_milestone": "マイルストーンごと",
+      "cooldown_window": "クールダウンウィンドウ",
+      "total_escrow_window": "合計escrowウィンドウ",
+      "memo": "メモ",
+      "asset_ref": "資産参照",
+      "payment": "支払い"
+    },
+    "preview": {
+      "preview_suffix": "プレビュー",
+      "fill_hint": "フォームに記入してライブプレビューを表示",
+      "amount": "金額",
+      "sats": "Sats",
+      "fee_rate": "手数料率",
+      "per_milestone": "マイルストーンごと",
+      "deadline": "期限",
+      "cooldown": "クールダウン",
+      "total_window": "合計ウィンドウ",
+      "type": "種類"
+    },
+    "dashboard": {
+      "select_seller_hint": "wallet アドレスを選択して売り手の統計を表示します。",
+      "select_buyer_hint": "wallet アドレスを選択して買い手の統計を表示します。",
+      "active_offers": "アクティブなオファー",
+      "open_agreements": "未決のagreement",
+      "completed": "完了",
+      "active_purchases": "アクティブな購入",
+      "total_received": "受取総額",
+      "total_received_hint": "あなたが売り手だった解放済みagreementの総量 (sats → IRM)",
+      "total_spent": "支出総額",
+      "total_spent_hint": "あなたが買い手だった解放済みagreementの総量 (sats → IRM)",
+      "reputation": "評価",
+      "restrictions_label": "制限: "
+    },
+    "errors": {
+      "generic_failure": "問題が発生しました。nodeが実行中か確認して再試行してください。"
     }
   },
   "marketplace": {
@@ -1355,6 +1449,20 @@
       "col_reject_pct": "Reject %",
       "col_hashrate": "15m H/s",
       "col_last_share": "Last share"
+    },
+    "calculator": {
+      "title": "マイニング計算機",
+      "your_hashrate": "あなたのハッシュレート",
+      "placeholder": "0",
+      "network_label": "ネットワーク",
+      "block_reward_label": "block報酬",
+      "protocol_target": "プロトコル目標",
+      "protocol_target_sub": "10分block(チェーン設計目標)",
+      "current_rate": "現在のチェーンレート",
+      "current_rate_sub": "約1分block(現在の観測値)",
+      "blocks_per_day_suffix": "block/日",
+      "irm_per_day_suffix": "IRM/日",
+      "disclaimer": "推定値のみ — 実際の収益は運、プール手数料、難易度の変化に依存します。計算機はリアルタイムのネットワークハッシュレートを使用し、60秒ごとに更新されます。"
     }
   },
   "help": {
@@ -1877,5 +1985,285 @@
     "clear_output": "クリア",
     "input_placeholder": "コマンドを入力... ('help'で一覧)",
     "input_busy_placeholder": "実行中..."
+  },
+  "settlement_ui": {
+    "hub": {
+      "title": "Settlement",
+      "subtitle": "IRMをescrowにロック。確認で解放。タイムアウトで返金。",
+      "safe_trade_title": "安全な取引",
+      "safe_trade_subtitle": "IRMをロックして何にでも交換。両側を保護。",
+      "pay_for_work_title": "作業に支払う",
+      "pay_for_work_subtitle": "1回の支払いまたはマイルストーンで作業に資金を提供します。作業完了時にお金が解放されます。",
+      "deposit_title": "返金可能な預け金",
+      "deposit_subtitle": "IRMを保証としてロックします。条件が満たされなければ自動的に返却されます。",
+      "active_title": "アクティブなagreement",
+      "active_empty": "まだアクティブなagreementはありません。上から開始してください。",
+      "active_load_error": "agreementを読み込めませんでした — nodeがオフラインかもしれません。",
+      "other_party": "相手",
+      "amount": "金額",
+      "start_cta": "開始",
+      "toast_released": "資金が相手に解放されました。",
+      "toast_refunded": "返金を請求しました — 資金がwalletに戻ります。"
+    },
+    "status": {
+      "setting_up": "セットアップ中",
+      "waiting": "待機中",
+      "ready_release": "解放可能",
+      "ready_refund": "返金可能",
+      "disputed": "紛争中 — 仲裁者が割り当てられました",
+      "complete": "完了",
+      "refunded": "返金済み",
+      "expired": "期限切れ",
+      "unknown": "不明な状態",
+      "checking": "確認中…"
+    },
+    "actions": {
+      "release_funds": "資金を解放",
+      "claim_refund": "返金を請求",
+      "view_dispute": "紛争を表示",
+      "view_details": "詳細を表示",
+      "report_problem": "問題が発生しましたか?"
+    },
+    "amount": {
+      "over_max": "上限は {{max}} IRMです"
+    },
+    "address": {
+      "placeholder": "Q… または P… アドレス",
+      "paste": "クリップボードから貼り付け",
+      "format_error": "有効なIriumアドレスではないようです。"
+    },
+    "duration": {
+      "preset_1h": "1時間",
+      "preset_4h": "4時間",
+      "preset_24h": "24時間",
+      "preset_48h": "2日",
+      "preset_1w": "1週間",
+      "custom": "カスタム",
+      "custom_placeholder": "時間",
+      "hours_suffix": "時間",
+      "expires_around": "{{datetime}} 頃に期限切れ"
+    },
+    "deal_code": {
+      "code_label": "取引コード",
+      "paste_placeholder": "売り手が送った取引コードをここに貼り付けてください…",
+      "building": "取引コードを生成中…",
+      "copy_code": "取引コードをコピー",
+      "copy_id": "agreement IDをコピー",
+      "copied": "クリップボードにコピーしました",
+      "paste": "貼り付け",
+      "verify": "取引を検証",
+      "imported": "取引が検証されました",
+      "import_success": "取引をインポートし検証しました",
+      "fallback_explainer": "取引コードを生成できませんでした。代わりにこのagreement IDを共有してください — 買い手のnodeがオンラインで残りを取得する必要があります。"
+    },
+    "technical": {
+      "title": "技術的な詳細",
+      "empty": "データはありません。",
+      "copied": "コピーしました"
+    },
+    "errors": {
+      "generic": "問題が発生しました — 再試行してください。",
+      "node_offline": "Irium nodeが実行されていません。ダッシュボードから起動して再試行してください。",
+      "network_timeout": "リクエストに時間がかかりすぎました。接続を確認して再試行してください。",
+      "auth_failed": "nodeがリクエストを拒否しました。設定でRPCトークンを確認してください。",
+      "insufficient_funds": "この操作にはwalletのIRMが足りません。",
+      "coinbase_immature": "IRMの一部は最近のマイニングからのもので、まだ使用できません。さらに数block後に再試行してください。",
+      "double_spend": "他の保留中のトランザクションが同じ資金を使っています。少し待ってから再試行してください。",
+      "already_settled": "このagreementはすでに決済済みです。更新して現在の状態を確認してください。",
+      "refund_not_ready": "まだ返金を請求できません。期限が過ぎるのを待ってください。",
+      "release_not_ready": "資金はまだ解放できません。proof の確定を待ってください。",
+      "agreement_mismatch": "この取引コードはnode上のagreementと一致しません。相手に再送してもらってください。",
+      "expired": "この取引はすでに期限切れです。",
+      "bad_secret": "解放キーが間違っています。正しい取引コードを持っているか確認してください。",
+      "bad_address": "そのアドレスは正しくないようです。もう一度確認して再試行してください。",
+      "bad_format": "データを読み取れませんでした。破損しているか、他のアプリからのものかもしれません。",
+      "fs_blocked": "アプリが取引コードをローカルに保存できませんでした。ディスクの権限を確認してください。",
+      "file_missing": "保存された取引コードファイルが見つかりませんでした。",
+      "pack_not_found": "このagreementがあなたのnodeで見つかりませんでした。",
+      "unpack_signature_invalid": "取引コードの署名が間違っています。信頼しないでください — 相手に再送してもらってください。",
+      "dispute_duplicate": "このagreementにはすでに紛争が開いています。",
+      "dispute_not_party": "この取引について紛争を起こせるのは買い手または売り手のみです。"
+    },
+    "safe_trade": {
+      "step1_title": "取引のどちら側ですか?",
+      "step1_subtitle": "あなたの役割に合う側を選びます。",
+      "selling_button": "IRMを売る",
+      "selling_subtitle": "IRMをescrowにロックして支払いを待ちます。",
+      "buying_button": "IRMを買う",
+      "buying_subtitle": "オフチェーンで支払い、IRMを受け取ります。",
+      "status_title": "状態",
+      "status_initial": "セットアップ中 — 資金をロックしています。",
+      "status_waiting_verify": "買い手が取引を検証するのを待っています。",
+      "status_waiting_payment": "買い手が確認 — オフチェーン支払いを待っています。",
+      "status_ready_release": "支払いが確認されました。買い手に資金を解放中。",
+      "toast_funded": "Escrowに入金しました。",
+      "toast_released": "資金が相手に解放されました。",
+      "toast_release_pending": "支払いを記録しました。次のいくつかのblock確認後に資金が解放されます。",
+      "errors": {
+        "buyer_required": "買い手のIriumアドレスを入力してください。",
+        "amount_required": "ロックするIRMの金額を入力してください。",
+        "receiving_required": "見返りに何を期待するかを買い手に伝えてください。"
+      },
+      "review": {
+        "you_lock": "あなたがロック",
+        "buyer_sends": "買い手が送信",
+        "deadline": "期限",
+        "deadline_value": "{{hours}} 時間以内に支払いがなければ、IRMは自動的に返却されます。",
+        "lock_funds": "資金をロック",
+        "tx_note": "これによりIriumブロックチェーンにトランザクションが作成されます。"
+      },
+      "share": {
+        "title": "買い手と共有",
+        "subtitle": "コードを買い手に送ります。買い手はオフチェーン支払いの前に取引の検証に使います。"
+      },
+      "selling": {
+        "step2_title": "取引をセットアップ",
+        "step2_subtitle": "買い手とロックする金額を教えてください。",
+        "step3_title": "取引を確認",
+        "step3_subtitle": "資金をロックする前にすべてを再確認します。",
+        "step4_title": "資金をロックしました — 買い手と共有",
+        "step4_subtitle": "取引コードを買い手に送ります。買い手は支払う前に取引の検証に使います。",
+        "buyer_address_label": "買い手のIriumアドレス",
+        "amount_label": "いくつのIRMをロックしますか?",
+        "amount_helper": "支払い受領を確認するまでescrowに保持されます。",
+        "receiving_label": "彼らはあなたに何を送りますか?",
+        "receiving_placeholder": "例: 200 USDT、銀行振込、現金",
+        "deadline_label": "この取引はどのくらい開いておきますか?",
+        "deadline_helper": "この時間内に支払われなければ、IRMは自動的に返却されます。",
+        "release_button": "支払いを受領しました — 買い手に資金を解放"
+      },
+      "buying": {
+        "step2_title": "売り手の取引コードを貼り付け",
+        "step2_subtitle": "売り手がコードを送ってきました。下に貼り付けて取引を検証します。",
+        "step3_title": "取引詳細を検証",
+        "step3_subtitle": "詳細がオフチェーンで合意した内容と一致するか確認します。",
+        "step4_title": "支払いを送って待つ",
+        "step4_subtitle": "合意した支払いを売り手に送ります。売り手が確認するとIRMが自動的に届きます。",
+        "review_intro": "この取引はインポートされnodeで検証されました。売り手のIRMはescrowにロックされています — オフチェーン支払いを送り売り手が確認すると受け取れます。",
+        "seller_locks": "売り手がロック中",
+        "seller_label": "売り手",
+        "trade_id_label": "取引ID",
+        "details_unavailable": "nodeから取引詳細を取得できませんでした。続行できますが、agreement IDが売り手から送られたものと一致するか確認してください。",
+        "cancel_button": "問題あり — キャンセル",
+        "confirm_button": "問題なさそう — 支払いを送信します",
+        "status_waiting": "売り手が支払い受領を確認するのを待っています。",
+        "status_releasing": "支払いが確認されました — IRMが送信中です。",
+        "status_complete": "完了 — IRMがwalletに到着しました。",
+        "view_agreements": "agreementで表示"
+      }
+    },
+    "pay_for_work": {
+      "step1_title": "一括支払い、それともマイルストーン別?",
+      "step1_subtitle": "支払い方法を選びます。",
+      "single_button": "一括支払い",
+      "single_subtitle": "作業完了時に全額前払い。",
+      "milestone_button": "マイルストーン別",
+      "milestone_subtitle": "各部分が完了するたびに段階的に支払い。",
+      "step2_title": "支払いをセットアップ",
+      "step2_subtitle_single": "誰にいくら支払うかを教えてください。",
+      "step2_subtitle_milestone": "合計、段階数、期待される内容を教えてください。",
+      "step3_title": "確認",
+      "step3_subtitle": "資金をロックする前にもう一度確認します。",
+      "step4_title": "資金をロックしました",
+      "step4_subtitle": "作業の納品を待っています。",
+      "contractor_label": "誰に支払いますか?",
+      "amount_label_single": "いくら?",
+      "amount_label_milestone": "ロックする合計金額",
+      "amount_helper_milestone": "下のマイルストーンに均等に分割。",
+      "count_label": "いくつのマイルストーン?",
+      "per_milestone_preview": "各マイルストーン: {{amount}}",
+      "deadline_label": "期限",
+      "deadline_helper": "作業が確認されない場合に資金が自動返金されるまでの時間。",
+      "description_label": "説明(任意)",
+      "description_placeholder": "何を納品しますか?(最大200文字)",
+      "errors": {
+        "contractor_required": "誰に支払うかを入力してください。",
+        "amount_required": "ロックするIRMの金額を入力してください。",
+        "count_range": "2から10のマイルストーンの間。"
+      },
+      "review": {
+        "paying": "支払い中",
+        "locking": "ロック中",
+        "milestones": "マイルストーン",
+        "milestones_value": "{{count}} マイルストーン · 各 {{per}}",
+        "deadline": "期限",
+        "deadline_value": "{{hours}} 時間",
+        "scope": "説明",
+        "lock_funds": "資金をロック",
+        "lock_all": "すべての資金をロック"
+      },
+      "status_title": "状態",
+      "status_setting_up": "セットアップ中 — 資金をロックしています。",
+      "status_pending": "オンチェーンでの資金確定を待っています。",
+      "status_in_progress": "資金ロック済み。作業の納品を待っています。",
+      "status_can_refund": "期限に到達しました。返金を請求できます。",
+      "status_complete": "完了。支払いが解放されました。",
+      "mark_complete": "完了としてマーク — 支払いを解放",
+      "claim_refund": "返金を請求",
+      "toast_released": "支払いが請負業者に解放されました。",
+      "toast_release_pending": "完了を記録しました。次のいくつかのblock確認後に資金が解放されます。",
+      "toast_refunded": "返金を請求しました — 資金がwalletに戻ります。"
+    },
+    "deposit": {
+      "step1_title": "預け金をセットアップ",
+      "step1_subtitle": "IRMを保証としてロックします。条件が満たされなければ自動的に返却されます。",
+      "step2_title": "確認",
+      "step2_subtitle": "預け金をロックする前にもう一度確認します。",
+      "step3_title": "預け金をロックしました",
+      "step3_subtitle": "解放するか、期限が過ぎて返却請求するまでescrowに保持されます。",
+      "recipient_label": "条件が満たされた場合、誰が受け取りますか?",
+      "amount_label": "預け金額",
+      "purpose_label": "目的",
+      "purpose_placeholder": "例: 賃貸保証金",
+      "purpose_helper": "記録用のメモ。ローカル保存のみ — 相手には表示されない可能性があります。",
+      "deadline_label": "返却期限",
+      "deadline_helper": "受取人がこの期限までに請求しなければ、あなたが返却を請求できます。",
+      "preset_1m": "1か月",
+      "preset_3m": "3か月",
+      "errors": {
+        "recipient_required": "受取人のIriumアドレスを入力してください。",
+        "amount_required": "預け入れるIRMの金額を入力してください。"
+      },
+      "review": {
+        "recipient": "受取人",
+        "amount": "金額",
+        "purpose": "目的",
+        "deadline": "返却期限",
+        "deadline_value": "今から {{hours}} 時間",
+        "lock_deposit": "預け金をロック"
+      },
+      "status_title": "状態",
+      "status_setting_up": "セットアップ中 — 預け金をロックしています。",
+      "status_locked": "escrowにロック済み。あなたの操作で解放、または期限後に自動返金されます。",
+      "status_can_claim_back": "期限に到達しました。預け金を返却請求できます。",
+      "status_released": "受取人に解放されました。",
+      "status_refunded": "wallet に返金されました。",
+      "release_button": "受取人に解放",
+      "claim_back_button": "返却を請求",
+      "toast_released": "預け金を受取人に解放しました。",
+      "toast_refunded": "預け金の返却を請求しました — 資金がwalletに戻ります。"
+    },
+    "dispute": {
+      "step1_title": "何が起きましたか?",
+      "step1_subtitle": "問題を自分の言葉で記述してください。相手にも表示されます。",
+      "step2_title": "紛争が記録されました",
+      "step2_subtitle": "紛争はIriumブロックチェーンに記録されました。",
+      "about_agreement": "このagreementについて",
+      "reason_label": "問題を記述",
+      "reason_placeholder": "何が問題でしたか?具体的に — 相手が読みます。",
+      "evidence_label": "証拠を追加(ファイル)",
+      "evidence_coming_soon": "ファイル添付は今後のリリースで提供予定です。",
+      "submit_button": "問題を報告",
+      "confirm_title": "紛争がオンチェーンに記録されました。",
+      "confirm_body": "相手に通知されました。直接連絡を取って解決策を検討してください。合意できない場合の次のステップはアプリ外での会話です — 自動仲裁者解決は今後のリリースで提供予定です。",
+      "next_step_note": "紛争が開いている間、どちらも資金を解放または返金できません。何よりもまず相手と話してください。",
+      "back_to_hub": "Settlementに戻る",
+      "view_agreements": "agreementを表示",
+      "toast_submitted": "紛争がオンチェーンに記録されました。",
+      "errors": {
+        "no_agreement": "agreementが選択されていません。ハブから開いて再試行してください。",
+        "reason_required": "何が問題かを記述してください。"
+      }
+    }
   }
 }

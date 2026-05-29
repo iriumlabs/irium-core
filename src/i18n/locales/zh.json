@@ -2,9 +2,7 @@
   "_meta": {
     "status": "machine_translated",
     "review_needed": true,
-    "language": "中文",
-    "english_name": "Chinese (Simplified)",
-    "direction": "ltr"
+    "language": "中文"
   },
   "common": {
     "save": "节省",
@@ -223,7 +221,10 @@
       "midnight": "午夜",
       "obsidian": "黑曜石",
       "aurora": "极光",
-      "nebula": "星云"
+      "nebula": "星云",
+      "solar": "太阳",
+      "ocean": "海洋",
+      "rose": "玫瑰"
     },
     "network_info": {
       "network": "网络",
@@ -314,7 +315,17 @@
       "clearing": "清算…",
       "confirm_resync": "确认 - 这将重新同步！",
       "clear_resync": "清除并重新同步",
-      "confirm_hint": "再次点击确认。块将被重新下载。"
+      "confirm_hint": "再次点击确认。块将被重新下载。",
+      "reset_state_button": "重置node状态(保留block)",
+      "reset_state_description": "清除和重新同步的轻量替代方案。保留已下载的block并在本地重建 UTXO 集。当您看到交易签名失败时使用此功能。",
+      "reset_state_confirm_title": "重置node状态?",
+      "reset_state_confirm_body": "这将把您的状态文件夹重命名为带时间戳的备份,并保留您已下载的block。iriumd 下次启动时将从本地block重建 UTXO 集 — 通常需要 5 到 15 分钟,而完整链重新同步需要数小时。当您看到交易签名失败或其他 UTXO 状态损坏时使用此功能。您的wallet和agreement不受影响。",
+      "reset_state_proceed": "重置状态",
+      "reset_state_resetting": "正在重置…",
+      "reset_state_success": "状态已重置 — 备份位于 {{path}}",
+      "reset_state_no_backup": "没有现有状态需要备份 — 已创建全新状态",
+      "reset_state_rebuilding": "node重启中 — 正在从本地block重建 UTXO 集 (5-15 分钟)",
+      "reset_state_failed": "重置失败: {{reason}}"
     },
     "developer_info": {
       "reset_onboarding": "重置入职",
@@ -743,7 +754,18 @@
       "load_error_title": "无法加载协议",
       "empty_state": "您尚未创建任何协议。",
       "create_first": "创建您的第一份协议 →",
-      "create_offer": "创建报价"
+      "create_offer": "创建报价",
+      "selling_title": "我要卖出",
+      "selling_subtitle": "创建报价、与买家分享、凭proof收款",
+      "selling_cta": "开始卖家流程 →",
+      "buying_title": "我要买入",
+      "buying_subtitle": "找到报价、为escrow注资、交付后释放付款",
+      "buying_cta": "开始买家流程 →",
+      "create_direct": "直接创建agreement(高级)",
+      "how_it_works": "工作原理",
+      "step_create": "创建或查找agreement",
+      "step_lock": "在链上将 IRM 锁定到escrow中",
+      "step_proof": "提交proof — 资金自动释放"
     },
     "templates": {
       "otc": "场外交易",
@@ -779,7 +801,9 @@
         "memo_merchant_placeholder": "订单说明...",
         "total_escrow_hours": "总托管窗口（小时）",
         "party_placeholder": "问...或P..."
-      }
+      },
+      "step_details_short": "详情",
+      "step_review_confirm": "审核并确认"
     },
     "seller_dashboard": "卖家仪表板",
     "buyer_dashboard": "买家仪表板",
@@ -803,6 +827,76 @@
     "review_agreement": "审查协议",
     "modals": {
       "payment_invoice": "付款发票"
+    },
+    "page_subtitle": "使用 Irium 基于proof的escrow系统进行无信任的链上Settlement",
+    "templates_desc": {
+      "otc": "用于点对点买卖 IRM。买家将 IRM 锁定到escrow中,进行链下付款,卖家确认收款以释放资金。",
+      "freelance": "用于自由职业工作或服务。客户预先将付款锁定到escrow中。承包商完成工作并提交proof后,资金即释放。",
+      "milestone": "用于分阶段的大型项目。每个里程碑都有自己的escrow和proof要求。里程碑完成后部分释放。",
+      "deposit": "用于可退还的押金或抵押品。资金在链上锁定,如果在截止时间前不满足条件,将自动返回。",
+      "merchant_delayed": "带有内置冷却窗口的商家销售。资金在escrow中持有,商家只能在争议窗口关闭后才能领取。",
+      "contractor": "承包商工作分为多个里程碑。每个里程碑都有自己的escrow和交付proof要求。资金按阶段逐步释放。"
+    },
+    "role_labels": {
+      "buyer": "买家地址",
+      "seller": "卖家地址",
+      "client": "客户地址",
+      "contractor": "承包商地址",
+      "payer": "付款人地址",
+      "payee": "收款人地址",
+      "depositor": "存款人地址",
+      "recipient": "接收人地址",
+      "merchant": "商家地址"
+    },
+    "form_errors": {
+      "address_required": "需要地址",
+      "same_party": "甲方和乙方不能是同一地址",
+      "positive_amount": "请输入正数金额",
+      "amount_exceeds_supply": "金额不能超过 {{max}} IRM(总供应量)",
+      "milestones_range": "在 2 到 20 之间",
+      "deadline_range": "截止时间必须在 1 到 {{max}} 小时之间(1 年)",
+      "cooldown_range": "冷却期必须在 1 到 {{max}} 小时之间(1 年)"
+    },
+    "review_labels": {
+      "amount": "金额",
+      "deadline": "截止时间",
+      "scope": "范围",
+      "milestones": "里程碑",
+      "per_milestone": "每个里程碑",
+      "cooldown_window": "冷却窗口",
+      "total_escrow_window": "总escrow窗口",
+      "memo": "备注",
+      "asset_ref": "资产参考",
+      "payment": "付款"
+    },
+    "preview": {
+      "preview_suffix": "预览",
+      "fill_hint": "填写表单以查看实时预览",
+      "amount": "金额",
+      "sats": "Sats",
+      "fee_rate": "费率",
+      "per_milestone": "每个里程碑",
+      "deadline": "截止时间",
+      "cooldown": "冷却期",
+      "total_window": "总窗口",
+      "type": "类型"
+    },
+    "dashboard": {
+      "select_seller_hint": "选择一个wallet地址以查看卖家统计信息。",
+      "select_buyer_hint": "选择一个wallet地址以查看买家统计信息。",
+      "active_offers": "活跃报价",
+      "open_agreements": "未结agreement",
+      "completed": "已完成",
+      "active_purchases": "活跃购买",
+      "total_received": "总收到",
+      "total_received_hint": "您作为卖家已释放agreement的终身交易量 (sats → IRM)",
+      "total_spent": "总支出",
+      "total_spent_hint": "您作为买家已释放agreement的终身交易量 (sats → IRM)",
+      "reputation": "信誉",
+      "restrictions_label": "限制: "
+    },
+    "errors": {
+      "generic_failure": "出现错误。请检查您的node是否正在运行,然后重试。"
     }
   },
   "marketplace": {
@@ -1355,6 +1449,20 @@
       "col_reject_pct": "Reject %",
       "col_hashrate": "15m H/s",
       "col_last_share": "Last share"
+    },
+    "calculator": {
+      "title": "挖矿计算器",
+      "your_hashrate": "您的算力",
+      "placeholder": "0",
+      "network_label": "网络",
+      "block_reward_label": "block奖励",
+      "protocol_target": "协议目标",
+      "protocol_target_sub": "10分钟block(链设计目标)",
+      "current_rate": "当前链速率",
+      "current_rate_sub": "~1分钟block(当前观察)",
+      "blocks_per_day_suffix": "block/天",
+      "irm_per_day_suffix": "IRM/天",
+      "disclaimer": "仅供估算 — 实际收益取决于运气、矿池费用和难度变化。计算器使用实时网络算力,每60秒刷新一次。"
     }
   },
   "help": {
@@ -1877,5 +1985,285 @@
     "clear_output": "清除",
     "input_placeholder": "输入命令...（'help' 查看列表）",
     "input_busy_placeholder": "运行中..."
+  },
+  "settlement_ui": {
+    "hub": {
+      "title": "Settlement",
+      "subtitle": "在escrow中锁定 IRM。确认后释放。超时后退款。",
+      "safe_trade_title": "安全交易",
+      "safe_trade_subtitle": "锁定 IRM,交换任何东西。双方都受保护。",
+      "pay_for_work_title": "为工作付款",
+      "pay_for_work_subtitle": "通过一次性付款或按里程碑为工作付款。工作完成后资金释放。",
+      "deposit_title": "可退还押金",
+      "deposit_subtitle": "将 IRM 作为保证金锁定。如果条件未满足,将自动取回。",
+      "active_title": "活跃 agreement",
+      "active_empty": "暂无活跃的 agreement。在上方开始一个。",
+      "active_load_error": "无法加载 agreement — 您的node可能已离线。",
+      "other_party": "对方",
+      "amount": "金额",
+      "start_cta": "开始",
+      "toast_released": "资金已释放给对方。",
+      "toast_refunded": "退款已申请 — 资金正在返回您的wallet。"
+    },
+    "status": {
+      "setting_up": "设置中",
+      "waiting": "等待中",
+      "ready_release": "准备释放",
+      "ready_refund": "准备退款",
+      "disputed": "有争议 — 已分配仲裁员",
+      "complete": "已完成",
+      "refunded": "已退款",
+      "expired": "已过期",
+      "unknown": "状态未知",
+      "checking": "检查中…"
+    },
+    "actions": {
+      "release_funds": "释放资金",
+      "claim_refund": "申请退款",
+      "view_dispute": "查看争议",
+      "view_details": "查看详情",
+      "report_problem": "出现问题?"
+    },
+    "amount": {
+      "over_max": "最大值为 {{max}} IRM"
+    },
+    "address": {
+      "placeholder": "Q… 或 P… 地址",
+      "paste": "从剪贴板粘贴",
+      "format_error": "这似乎不是有效的 Irium 地址。"
+    },
+    "duration": {
+      "preset_1h": "1 小时",
+      "preset_4h": "4 小时",
+      "preset_24h": "24 小时",
+      "preset_48h": "2 天",
+      "preset_1w": "1 周",
+      "custom": "自定义",
+      "custom_placeholder": "小时",
+      "hours_suffix": "小时",
+      "expires_around": "大约在 {{datetime}} 过期"
+    },
+    "deal_code": {
+      "code_label": "交易代码",
+      "paste_placeholder": "在此处粘贴您的卖家发送的交易代码…",
+      "building": "正在构建交易代码…",
+      "copy_code": "复制交易代码",
+      "copy_id": "复制 agreement ID",
+      "copied": "已复制到剪贴板",
+      "paste": "粘贴",
+      "verify": "验证交易",
+      "imported": "交易已验证",
+      "import_success": "交易已导入并验证",
+      "fallback_explainer": "无法构建交易代码。请改用此 agreement ID — 您的买家node需要在线才能获取其余信息。"
+    },
+    "technical": {
+      "title": "技术详情",
+      "empty": "无可用数据。",
+      "copied": "已复制"
+    },
+    "errors": {
+      "generic": "出现错误 — 请重试。",
+      "node_offline": "您的 Irium node未运行。从仪表板启动它,然后重试。",
+      "network_timeout": "请求耗时过长。请检查您的连接并重试。",
+      "auth_failed": "您的node拒绝了请求。请在设置中检查您的 RPC 令牌。",
+      "insufficient_funds": "您的wallet中没有足够的 IRM 来执行此操作。",
+      "coinbase_immature": "您的部分 IRM 来自最近的挖矿,尚不可消费。请在再过几个block后重试。",
+      "double_spend": "另一笔待处理交易正在使用相同资金。请稍等片刻,然后重试。",
+      "already_settled": "此 agreement 已结算。刷新以查看其当前状态。",
+      "refund_not_ready": "您尚不能申请退款。请等待截止时间过去。",
+      "release_not_ready": "资金尚未准备好释放。请等待proof确认。",
+      "agreement_mismatch": "此交易代码与您node上的 agreement 不匹配。请要求对方重新发送。",
+      "expired": "此交易已过期。",
+      "bad_secret": "释放密钥错误。请检查您是否有正确的交易代码。",
+      "bad_address": "该地址似乎不正确。请再次检查并重试。",
+      "bad_format": "无法读取数据。它可能已损坏或来自其他应用。",
+      "fs_blocked": "应用无法在本地保存交易代码。请检查您的磁盘权限。",
+      "file_missing": "找不到已保存的交易代码文件。",
+      "pack_not_found": "我们在您的node上找不到此 agreement。",
+      "unpack_signature_invalid": "交易代码签名错误。不要信任 — 请要求对方重新发送。",
+      "dispute_duplicate": "此 agreement 已存在争议。",
+      "dispute_not_party": "只有买家或卖家才能对此交易发起争议。"
+    },
+    "safe_trade": {
+      "step1_title": "您在交易中是哪一方?",
+      "step1_subtitle": "选择与您角色匹配的一方。",
+      "selling_button": "我要卖 IRM",
+      "selling_subtitle": "您正在将 IRM 锁定到escrow中并等待付款。",
+      "buying_button": "我要买 IRM",
+      "buying_subtitle": "您正在链下付款并接收 IRM。",
+      "status_title": "状态",
+      "status_initial": "设置中 — 您的资金正在被锁定。",
+      "status_waiting_verify": "等待您的买家验证交易。",
+      "status_waiting_payment": "买家已验证 — 等待他们的链下付款。",
+      "status_ready_release": "付款已确认。现在将资金释放给您的买家。",
+      "toast_funded": "Escrow 已注资。",
+      "toast_released": "资金已释放给对方。",
+      "toast_release_pending": "付款已记录。接下来几个block确认后资金将释放。",
+      "errors": {
+        "buyer_required": "请输入买家的 Irium 地址。",
+        "amount_required": "请输入您要锁定的 IRM 金额。",
+        "receiving_required": "告诉您的买家您期望什么作为回报。"
+      },
+      "review": {
+        "you_lock": "您正在锁定",
+        "buyer_sends": "买家将发送",
+        "deadline": "截止时间",
+        "deadline_value": "如果在 {{hours}} 小时内未付款,您的 IRM 将自动返还。",
+        "lock_funds": "锁定资金",
+        "tx_note": "这将在 Irium 区块链上创建一笔交易。"
+      },
+      "share": {
+        "title": "与您的买家分享此内容",
+        "subtitle": "将代码发送给您的买家。他们将使用它在向您链下付款前验证交易。"
+      },
+      "selling": {
+        "step2_title": "设置您的交易",
+        "step2_subtitle": "告诉我们您的买家是谁以及您要锁定多少。",
+        "step3_title": "审核您的交易",
+        "step3_subtitle": "锁定资金前请再次确认所有内容。",
+        "step4_title": "资金已锁定 — 与您的买家分享此内容",
+        "step4_subtitle": "将交易代码发送给您的买家。他们将使用它在付款前验证交易。",
+        "buyer_address_label": "买家的 Irium 地址",
+        "amount_label": "您正在锁定多少 IRM?",
+        "amount_helper": "在escrow中持有,直到您确认已收到付款。",
+        "receiving_label": "他们将发送给您什么?",
+        "receiving_placeholder": "例如:200 USDT、银行转账、现金",
+        "deadline_label": "此交易应保持开放多长时间?",
+        "deadline_helper": "如果他们在此时间内未付款,您的 IRM 将自动返还。",
+        "release_button": "我已收到付款 — 将资金释放给买家"
+      },
+      "buying": {
+        "step2_title": "粘贴卖家发送的交易代码",
+        "step2_subtitle": "您的卖家向您发送了代码。在下方粘贴以验证交易。",
+        "step3_title": "验证这些交易详情",
+        "step3_subtitle": "请确保详情与您链下达成的一致。",
+        "step4_title": "发送您的付款然后等待",
+        "step4_subtitle": "向您的卖家发送约定的付款。一旦他们确认,您的 IRM 将自动到达。",
+        "review_intro": "此交易已导入并在您的node上验证。卖家的 IRM 已锁定在escrow中 — 当您发送链下付款且卖家确认后,您将收到它。",
+        "seller_locks": "卖家正在锁定",
+        "seller_label": "卖家",
+        "trade_id_label": "交易 ID",
+        "details_unavailable": "无法从您的node获取交易详情。您仍可继续,但请确认 agreement ID 与卖家发送给您的一致。",
+        "cancel_button": "有问题 — 取消",
+        "confirm_button": "看起来没问题 — 我将发送付款",
+        "status_waiting": "等待卖家确认已收到付款。",
+        "status_releasing": "付款已确认 — IRM 正在发送中。",
+        "status_complete": "已完成 — IRM 已到达您的wallet。",
+        "view_agreements": "在 agreement 中查看"
+      }
+    },
+    "pay_for_work": {
+      "step1_title": "单次付款还是按里程碑?",
+      "step1_subtitle": "选择您的付款方式。",
+      "single_button": "单次付款",
+      "single_subtitle": "工作完成时一次性预付全部。",
+      "milestone_button": "按里程碑",
+      "milestone_subtitle": "按阶段在每部分完成时付款。",
+      "step2_title": "设置付款",
+      "step2_subtitle_single": "告诉我们您要付款给谁以及金额。",
+      "step2_subtitle_milestone": "告诉我们总额、阶段数量以及预期内容。",
+      "step3_title": "审核",
+      "step3_subtitle": "锁定资金前请再次确认。",
+      "step4_title": "资金已锁定",
+      "step4_subtitle": "等待工作交付。",
+      "contractor_label": "您要付款给谁?",
+      "amount_label_single": "多少?",
+      "amount_label_milestone": "要锁定的总金额",
+      "amount_helper_milestone": "在下方的各个里程碑之间平均分配。",
+      "count_label": "多少个里程碑?",
+      "per_milestone_preview": "每个里程碑:{{amount}}",
+      "deadline_label": "截止时间",
+      "deadline_helper": "工作未确认前资金自动退款的时长。",
+      "description_label": "描述(可选)",
+      "description_placeholder": "交付的是什么?(最多 200 个字符)",
+      "errors": {
+        "contractor_required": "请输入您要付款的对象。",
+        "amount_required": "请输入您要锁定的 IRM 金额。",
+        "count_range": "2 到 10 个里程碑之间。"
+      },
+      "review": {
+        "paying": "支付中",
+        "locking": "锁定中",
+        "milestones": "里程碑",
+        "milestones_value": "{{count}} 个里程碑 · 每个 {{per}}",
+        "deadline": "截止时间",
+        "deadline_value": "{{hours}} 小时",
+        "scope": "描述",
+        "lock_funds": "锁定资金",
+        "lock_all": "锁定全部资金"
+      },
+      "status_title": "状态",
+      "status_setting_up": "设置中 — 资金正在被锁定。",
+      "status_pending": "等待资金在链上确认。",
+      "status_in_progress": "资金已锁定。等待工作交付。",
+      "status_can_refund": "已达截止时间。您可以申请退款。",
+      "status_complete": "已完成。付款已释放。",
+      "mark_complete": "标记为完成 — 释放付款",
+      "claim_refund": "申请退款",
+      "toast_released": "付款已释放给承包商。",
+      "toast_release_pending": "完成已记录。接下来几个block确认后资金将释放。",
+      "toast_refunded": "退款已申请 — 资金正在返回您的wallet。"
+    },
+    "deposit": {
+      "step1_title": "设置您的押金",
+      "step1_subtitle": "将 IRM 作为保证金锁定。如果条件未满足,将自动取回。",
+      "step2_title": "审核",
+      "step2_subtitle": "锁定押金前请再次确认。",
+      "step3_title": "押金已锁定",
+      "step3_subtitle": "在escrow中持有,直到您释放,或截止时间过后您取回为止。",
+      "recipient_label": "如果满足条件,谁来接收?",
+      "amount_label": "存款金额",
+      "purpose_label": "用途",
+      "purpose_placeholder": "例如:租赁押金",
+      "purpose_helper": "用于您的记录的备注。仅本地存储 — 对方可能看不到此内容。",
+      "deadline_label": "返还截止时间",
+      "deadline_helper": "如果接收人在此截止时间前未领取,您可以将其取回。",
+      "preset_1m": "1 个月",
+      "preset_3m": "3 个月",
+      "errors": {
+        "recipient_required": "请输入接收人的 Irium 地址。",
+        "amount_required": "请输入您存入的 IRM 金额。"
+      },
+      "review": {
+        "recipient": "接收人",
+        "amount": "金额",
+        "purpose": "用途",
+        "deadline": "返还截止时间",
+        "deadline_value": "从现在起 {{hours}} 小时",
+        "lock_deposit": "锁定押金"
+      },
+      "status_title": "状态",
+      "status_setting_up": "设置中 — 您的押金正在被锁定。",
+      "status_locked": "已锁定在escrow中。将根据您的操作释放,或在截止时间后自动退款。",
+      "status_can_claim_back": "已达截止时间。您可以取回押金。",
+      "status_released": "已释放给接收人。",
+      "status_refunded": "已退款到您的wallet。",
+      "release_button": "释放给接收人",
+      "claim_back_button": "取回",
+      "toast_released": "押金已释放给接收人。",
+      "toast_refunded": "押金已取回 — 资金正在返回您的wallet。"
+    },
+    "dispute": {
+      "step1_title": "发生了什么?",
+      "step1_subtitle": "用您自己的话描述问题。对方将看到此内容。",
+      "step2_title": "争议已记录",
+      "step2_subtitle": "您的争议现在已在 Irium 区块链上。",
+      "about_agreement": "关于此agreement",
+      "reason_label": "描述问题",
+      "reason_placeholder": "出了什么问题?请具体描述 — 对方会阅读这些内容。",
+      "evidence_label": "添加证据(文件)",
+      "evidence_coming_soon": "文件附件将在未来版本中推出。",
+      "submit_button": "报告问题",
+      "confirm_title": "您的争议已记录到链上。",
+      "confirm_body": "对方已收到通知。请直接与他们联系以达成解决方案。如果无法达成协议,下一步是 app 外对话 — 自动裁决解决将在未来版本中推出。",
+      "next_step_note": "争议未解决期间,任何一方都不能释放或退还资金。在做任何事情之前,请先与您的对方沟通。",
+      "back_to_hub": "返回 Settlement",
+      "view_agreements": "查看 agreement",
+      "toast_submitted": "争议已记录到链上。",
+      "errors": {
+        "no_agreement": "未选择 agreement。请从中心打开一个并重试。",
+        "reason_required": "请描述发生了什么问题。"
+      }
+    }
   }
 }

@@ -172,6 +172,24 @@ interface AppStore {
   agreementListCache: import('./types').Agreement[] | null;
   agreementListFetchedAt: number | null;
   setAgreementListCache: (list: import('./types').Agreement[]) => void;
+
+  // Marketplace OTC redesign view-state slice. Lives in the store so a
+  // route change to /agreements or /settlement-hub and back restores
+  // the user's selected offer / calculator amount / take-modal step —
+  // the order book + calculator are pure derived state from offers.list,
+  // so only the UI selection actually needs to be persisted here.
+  marketplaceView: {
+    selectedOfferId: string | null;
+    calculatorUsdt: string;
+    takeModalOfferId: string | null;
+    activeTradeAgreementId: string | null;
+    tradePaymentSent: boolean;
+  };
+  setMarketplaceSelectedOffer: (offerId: string | null) => void;
+  setMarketplaceCalculatorUsdt: (usdt: string) => void;
+  setMarketplaceTakeModalOffer: (offerId: string | null) => void;
+  setMarketplaceActiveTrade: (agreementId: string | null) => void;
+  setMarketplaceTradePaymentSent: (sent: boolean) => void;
 }
 
 interface ErrorEntry {
@@ -491,6 +509,32 @@ export const useStore = create<AppStore>((set) => ({
   agreementListFetchedAt: null,
   setAgreementListCache: (list) =>
     set({ agreementListCache: list, agreementListFetchedAt: Date.now() }),
+
+  marketplaceView: {
+    selectedOfferId: null,
+    calculatorUsdt: '',
+    takeModalOfferId: null,
+    activeTradeAgreementId: null,
+    tradePaymentSent: false,
+  },
+  setMarketplaceSelectedOffer: (selectedOfferId) =>
+    set((state) => ({ marketplaceView: { ...state.marketplaceView, selectedOfferId } })),
+  setMarketplaceCalculatorUsdt: (calculatorUsdt) =>
+    set((state) => ({ marketplaceView: { ...state.marketplaceView, calculatorUsdt } })),
+  setMarketplaceTakeModalOffer: (takeModalOfferId) =>
+    set((state) => ({ marketplaceView: { ...state.marketplaceView, takeModalOfferId } })),
+  setMarketplaceActiveTrade: (activeTradeAgreementId) =>
+    set((state) => ({
+      marketplaceView: {
+        ...state.marketplaceView,
+        activeTradeAgreementId,
+        // Resetting active trade also clears the payment-sent flag so
+        // the next trade starts from a clean tracker.
+        tradePaymentSent: activeTradeAgreementId == null ? false : state.marketplaceView.tradePaymentSent,
+      },
+    })),
+  setMarketplaceTradePaymentSent: (tradePaymentSent) =>
+    set((state) => ({ marketplaceView: { ...state.marketplaceView, tradePaymentSent } })),
 }));
 
 const SETTINGS_KEY = "irium_core_settings";

@@ -627,7 +627,12 @@ function shortAddr(a: string): string {
 // rolling window warms up (< 2 min of samples).
 interface MinerRow {
   worker: string;
-  profile: 'asic' | 'cpu_gpu';
+  // 'solo' was added when the stats-proxy patch merged the solo-stratum
+  // profile into the unified /miners and /stats endpoints (a previously
+  // separate /solo-miners route). The desktop's mining-overview panel
+  // cross-references myAddresses against this list to surface pool-mining
+  // hashrate even when the local CPU/GPU sidecar is idle.
+  profile: 'asic' | 'cpu_gpu' | 'solo';
   accepted: number;
   rejected: number;
   reject_rate_pct: number | null;
@@ -772,6 +777,13 @@ function NetworkMiningOverview() {
   const [cpuStatus, setCpuStatus] = useState<MinerStatus | null>(null);
   const [gpuStatus, setGpuStatus] = useState<GpuMinerStatus | null>(null);
   const [stratumS, setStratumS] = useState<StratumStatus | null>(null);
+  // Wallet addresses fetched once on mount. Cross-referenced against the
+  // /miners proxy below to surface pool-mining state in Panel 3 even when
+  // the local CPU/GPU miner is idle (the user might be mining via an
+  // ASIC on the official pool, a SoloStratum bridge, or the cpu_gpu pool
+  // profile from a different host). Empty set → no cross-reference,
+  // Panel 3 falls back to the legacy local-miner-only behaviour.
+  const [myAddresses, setMyAddresses] = useState<Set<string>>(new Set());
 
   const fetchAll = useCallback(async () => {
     const [netR, poolMinersR, poolStatsR, cpuR, gpuR, strR] = await Promise.allSettled([
@@ -807,6 +819,21 @@ function NetworkMiningOverview() {
     const id = setInterval(fetchAll, 30_000);
     return () => clearInterval(id);
   }, [fetchAll]);
+
+  // Wallet addresses for the Panel-3 pool-mining cross-reference. Once
+  // on mount; mid-session wallet changes are rare and the next 30s
+  // refresh picks them up via the existing /miners poll without needing
+  // a re-fetch here.
+  useEffect(() => {
+    let cancelled = false;
+    wallet.listAddresses().then((list) => {
+      if (cancelled) return;
+      setMyAddresses(
+        new Set((list ?? []).map((a) => (a.address ?? '').trim()).filter(Boolean)),
+      );
+    }).catch(() => { /* empty set → Panel 3 falls back to local-only */ });
+    return () => { cancelled = true; };
+  }, []);
 
   // ── Derived values ──────────────────────────────────────────
 
@@ -855,21 +882,87 @@ function NetworkMiningOverview() {
   // Panel 3: local mining state.
   const cpuRunning = cpuStatus?.running === true;
   const gpuRunning = gpuStatus?.running === true;
-  const isMining = cpuRunning || gpuRunning;
+  const localMining = cpuRunning || gpuRunning;
   // Hashrate fields on both miner-status structs are in kH/s; convert to
   // H/s for the shared formatter. Sum across CPU + GPU when both run.
-  const yourHashrateHps = (
+  const localHashrateHps = (
     (cpuRunning ? (cpuStatus?.hashrate_khs ?? 0) : 0) +
     (gpuRunning ? (gpuStatus?.hashrate_khs ?? 0) : 0)
   ) * 1000;
-  // Solo vs pool: stratum.connected is the authoritative bit. When the
-  // user starts mining via the Miner page's "Pool" button the desktop
-  // wires the miner up to the stratum client, and stratum.status()
-  // reports connected=true. Direct Mine-Solo path keeps stratum
-  // disconnected, so isMining + !stratum.connected = Solo.
+  // Solo vs pool for the LOCAL miner: stratum.connected is the
+  // authoritative bit. When the user starts mining via the Miner page's
+  // "Pool" button the desktop wires the miner up to the stratum client,
+  // and stratum.status() reports connected=true. Direct Mine-Solo path
+  // keeps stratum disconnected, so localMining + !stratum.connected =
+  // Solo.
   const stratumConnected = stratumS?.connected === true;
-  const yourMode = !isMining ? '—' : (stratumConnected ? 'Pool' : 'Solo');
-  const yourBlocksFound = (cpuStatus?.blocks_found ?? 0) + (gpuStatus?.blocks_found ?? 0);
+  const localBlocksFound = (cpuStatus?.blocks_found ?? 0) + (gpuStatus?.blocks_found ?? 0);
+
+  // Pool-side cross-reference: rows on the /miners feed whose worker
+  // name's base address is in the user's wallet. Profile distinguishes
+  // ASIC (port 3333), cpu_gpu (3335), and solo (3336) — the same data
+  // the stats-proxy patch already routes through /miners. We compute:
+  //
+  //   - aggregate hashrate across all of the user's pool rows
+  //   - aggregate accepted shares
+  //   - most-recent share timestamp (smallest last_share_ago_seconds)
+  //   - dominant mode (Pool vs Solo) based on which profile has the
+  //     larger hashrate; ties prefer the profile with more accepted
+  //     shares so a single high-hashrate row in solo doesn't mask a
+  //     larger sustained ASIC presence on the official pool
+  type ExtRow = MinerRow & { profile: 'asic' | 'cpu_gpu' | 'solo'; session_status?: 'active' | 'stale' };
+  const myPoolRows: ExtRow[] = (poolMiners ?? [])
+    .filter((m) => {
+      const baseAddr = (m.worker.split('.')[0] ?? '').trim();
+      return baseAddr.length > 0 && myAddresses.has(baseAddr);
+    })
+    .map((m) => m as unknown as ExtRow);
+  const myPoolHashrateHps = myPoolRows.reduce(
+    (sum, m) => sum + (m.hashrate_15m ?? 0),
+    0,
+  );
+  const myPoolAccepted = myPoolRows.reduce((sum, m) => sum + (m.accepted ?? 0), 0);
+  const myPoolLastShareSecs = myPoolRows.reduce<number | null>((min, m) => {
+    if (m.last_share_ago_seconds == null) return min;
+    if (min == null) return m.last_share_ago_seconds;
+    return Math.min(min, m.last_share_ago_seconds);
+  }, null);
+  const myPoolMode: 'Pool' | 'Solo' | null = (() => {
+    if (myPoolRows.length === 0) return null;
+    let soloHr = 0;
+    let poolHr = 0;
+    let soloAcc = 0;
+    let poolAcc = 0;
+    for (const m of myPoolRows) {
+      const hr = m.hashrate_15m ?? 0;
+      const acc = m.accepted ?? 0;
+      if (m.profile === 'solo') {
+        soloHr += hr;
+        soloAcc += acc;
+      } else {
+        poolHr += hr;
+        poolAcc += acc;
+      }
+    }
+    if (poolHr > soloHr) return 'Pool';
+    if (soloHr > poolHr) return 'Solo';
+    return poolAcc >= soloAcc ? 'Pool' : 'Solo';
+  })();
+
+  // Combined "Your Mining" surface. The user is mining if either the
+  // local CPU/GPU miner is alive OR their address appears in any pool
+  // row that's actually accepted shares. Hashrate is the union sum;
+  // mode prefers the local stratum bit (because that's the most
+  // immediate, real-time signal) and falls back to the pool cross-
+  // reference when the user is exclusively pool-mining.
+  const isMining = localMining || myPoolRows.length > 0;
+  const yourHashrateHps = localHashrateHps + myPoolHashrateHps;
+  const yourMode = !isMining
+    ? '—'
+    : localMining
+      ? (stratumConnected ? 'Pool' : 'Solo')
+      : (myPoolMode ?? '—');
+  const yourBlocksFound = localBlocksFound;
 
   // ── Render ──────────────────────────────────────────────────
 
@@ -955,30 +1048,54 @@ function NetworkMiningOverview() {
           </div>
         </div>
 
-        {/* Panel 3 — Your Mining */}
+        {/* Panel 3 — Your Mining. Surfaces both LOCAL miner state (CPU
+            / GPU sidecars on this host) AND POOL miner state derived
+            from cross-referencing the user's wallet addresses against
+            the /miners feed. A user mining via an ASIC on the official
+            pool would previously show as "not mining" here even though
+            their hashrate was clearly attributable on the public stats
+            page; the pool cross-reference fixes that. */}
         <div className="p-4 space-y-3" style={panelStyle}>
           <h3 style={panelTitleStyle}>Your Mining</h3>
           <div className="grid grid-cols-2 gap-2">
             <PoolStatsTile
               label="Your Hashrate"
-              value={isMining && yourHashrateHps > 0 ? formatHashrate(yourHashrateHps) : (isMining ? 'collecting…' : '—')}
+              value={isMining && yourHashrateHps > 0
+                ? formatHashrate(yourHashrateHps)
+                : (isMining ? 'collecting…' : '—')}
+              sub={myPoolRows.length > 0 && !localMining
+                ? `${myPoolRows.length} pool worker${myPoolRows.length === 1 ? '' : 's'}`
+                : undefined}
               accent="#34d399"
             />
             <PoolStatsTile
               label="Mode"
               value={yourMode}
-              sub={isMining ? (stratumConnected ? 'connected via stratum' : 'direct to local node') : 'not mining'}
+              sub={!isMining
+                ? 'not mining'
+                : localMining
+                  ? (stratumConnected ? 'connected via stratum' : 'direct to local node')
+                  : (myPoolMode === 'Pool'
+                    ? 'on pool.iriumlabs.org'
+                    : 'on solo-stratum bridge')}
               accent="#34d399"
             />
             <PoolStatsTile
-              label="Active Miners"
-              value={`${cpuRunning ? 'CPU ' : ''}${gpuRunning ? 'GPU ' : ''}`.trim() || 'none'}
+              label="Accepted Shares"
+              value={myPoolRows.length > 0
+                ? myPoolAccepted.toLocaleString('en-US')
+                : (localMining
+                  ? `${cpuRunning ? 'CPU ' : ''}${gpuRunning ? 'GPU ' : ''}`.trim()
+                  : 'none')}
+              sub={myPoolRows.length > 0 ? 'pool, lifetime' : undefined}
               accent="#34d399"
             />
             <PoolStatsTile
-              label="Blocks You Found"
-              value={yourBlocksFound.toLocaleString('en-US')}
-              sub="this session"
+              label={myPoolRows.length > 0 ? 'Last Share' : 'Blocks You Found'}
+              value={myPoolRows.length > 0
+                ? formatAgoPlainEnglish(myPoolLastShareSecs)
+                : yourBlocksFound.toLocaleString('en-US')}
+              sub={myPoolRows.length > 0 ? 'from pool worker' : 'this session'}
               accent="#34d399"
             />
           </div>
