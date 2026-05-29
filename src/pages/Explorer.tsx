@@ -1209,19 +1209,62 @@ function PoolStatsSection() {
     return () => { cancelled = true; };
   }, []);
 
-  // Sort: wallet-owned workers first (pinned to top), then by 15-min
-  // hashrate desc, then by accepted-share count desc. Tie-breakers
-  // matter — a healthy miner with zero recent hashrate (just connected)
-  // shouldn't be ordered ahead of one that's been producing all day.
+  // Merge + sort. /miners emits one row per (worker, profile) pair —
+  // a wallet connected to multiple stratums (e.g. ASIC 3333 + port-443
+  // multiplex + solo 3336) gets a row each, and even on the same port
+  // multiple rigs under the same address (worker name = "<addr>.<rig>")
+  // produce separate rows. Aggregating the table view by summing all
+  // those rows double-counts the wallet's true contribution and was
+  // producing pool totals that exceeded the network hashrate — an
+  // impossible result.
+  //
+  // Merge rule (per user spec): group rows by wallet base address (the
+  // part before "."). For each group: SUM accepted, SUM rejected, take
+  // MAX hashrate_15m ("use the higher hashrate" — avoids inflating
+  // when the same physical rig is observed on multiple ports), take
+  // MAX reject_rate_pct (most conservative for ops visibility), take
+  // MIN last_share_ago_seconds (most-recent activity wins). Sort the
+  // merged groups: wallet-owned first, then by hashrate desc, then by
+  // accepted desc.
   const sortedMiners = useMemo(() => {
-    return [...miners].sort((a, b) => {
-      const aMine = myAddresses.has((a.worker.split('.')[0] ?? '').trim());
-      const bMine = myAddresses.has((b.worker.split('.')[0] ?? '').trim());
+    type Merged = MinerRow;
+    const byBase = new Map<string, Merged>();
+    for (const m of miners) {
+      const base = (m.worker.split('.')[0] ?? '').trim();
+      if (!base) continue;
+      const existing = byBase.get(base);
+      if (!existing) {
+        byBase.set(base, {
+          worker: base,
+          profile: m.profile,
+          accepted: m.accepted ?? 0,
+          rejected: m.rejected ?? 0,
+          reject_rate_pct: m.reject_rate_pct,
+          hashrate_15m: m.hashrate_15m,
+          last_share_ago_seconds: m.last_share_ago_seconds,
+        });
+        continue;
+      }
+      existing.accepted = (existing.accepted ?? 0) + (m.accepted ?? 0);
+      existing.rejected = (existing.rejected ?? 0) + (m.rejected ?? 0);
+      const eHr = existing.hashrate_15m ?? -1;
+      const mHr = m.hashrate_15m ?? -1;
+      if (mHr > eHr) existing.hashrate_15m = m.hashrate_15m;
+      const eRr = existing.reject_rate_pct ?? -1;
+      const mRr = m.reject_rate_pct ?? -1;
+      if (mRr > eRr) existing.reject_rate_pct = m.reject_rate_pct;
+      const eLs = existing.last_share_ago_seconds ?? Number.POSITIVE_INFINITY;
+      const mLs = m.last_share_ago_seconds ?? Number.POSITIVE_INFINITY;
+      if (mLs < eLs) existing.last_share_ago_seconds = m.last_share_ago_seconds;
+    }
+    return Array.from(byBase.values()).sort((a, b) => {
+      const aMine = myAddresses.has(a.worker);
+      const bMine = myAddresses.has(b.worker);
       if (aMine !== bMine) return aMine ? -1 : 1;
       const aHr = a.hashrate_15m ?? 0;
       const bHr = b.hashrate_15m ?? 0;
       if (aHr !== bHr) return bHr - aHr;
-      return b.accepted - a.accepted;
+      return (b.accepted ?? 0) - (a.accepted ?? 0);
     });
   }, [miners, myAddresses]);
 
