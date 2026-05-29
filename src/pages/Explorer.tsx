@@ -1522,16 +1522,15 @@ function PoolStatsSection() {
 // Direct loopback fetch is not used because end users running this
 // desktop app are not the pool operator and cannot reach 3338.
 //
-// Solo mode coinbase pays the connecting worker directly: 99% of the
-// 50 IRM block reward (= 49.5 IRM) to the worker's pkh + 1% (= 0.5 IRM)
-// to the pool wallet. The connection-info card surfaces the stratum URL
-// with a copy button so non-CLI users can paste it into their ASIC
-// firmware without manual typo risk.
+// Solo mode coinbase pays the connecting worker directly: the entire
+// 50 IRM block reward goes to the worker's pkh (no pool fee). The
+// connection-info card surfaces the stratum URL with a copy button so
+// non-CLI users can paste it into their ASIC firmware without manual
+// typo risk.
 interface SoloStats {
   pool: string;
   url: string;
   solo_port: number;
-  fee_bps: number;
   active_miners: number;
   tcp_sessions: number;
   accepted_shares: number;
@@ -1597,7 +1596,6 @@ function SoloPoolPanel() {
   const connectionUrl = stats
     ? `stratum+tcp://${stats.url}:${stats.solo_port}`
     : 'stratum+tcp://pool.iriumlabs.org:3336';
-  const feePct = stats ? (stats.fee_bps / 100).toFixed(2) : '1.00';
 
   return (
     <div className="space-y-4">
@@ -1637,9 +1635,6 @@ function SoloPoolPanel() {
         <div className="flex items-center justify-between mb-2">
           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(167,139,250,0.85)', fontFamily: '"Space Grotesk", sans-serif' }}>
             {t('explorer.solo_pool.connect_here')}
-          </span>
-          <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.45)' }}>
-            {t('explorer.solo_pool.fee_label', { fee: feePct })}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -1683,12 +1678,6 @@ function SoloPoolPanel() {
               label={t('explorer.solo_pool.hashrate')}
               value={formatSoloHashrate(stats.hashrate_estimate_hps)}
               accent="#6ec6ff"
-            />
-            <PoolStatsTile
-              label={t('explorer.solo_pool.pool_fee')}
-              value={`${feePct}%`}
-              sub={t('explorer.solo_pool.fee_sub')}
-              accent="#fbbf24"
             />
           </div>
 
