@@ -14,7 +14,7 @@ import toast from 'react-hot-toast';
 import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { platform as osPlatform } from '@tauri-apps/api/os';
-import { miner, gpuMiner, stratum, wallet } from '../lib/tauri';
+import { miner, gpuMiner, stratum, wallet, soloStratum } from '../lib/tauri';
 import { useStore } from '../lib/store';
 import type { LucideIcon } from 'lucide-react';
 import type { FoundBlock, GpuPlatform, AddressInfo, StratumEvent } from '../lib/types';
@@ -2028,12 +2028,172 @@ function StratumTab() {
   );
 }
 
+// ── SOLO STRATUM TAB ─────────────────────────────────────────
+// Bridge that lets an ASIC submit work directly to the user's local
+// iriumd via `irium-miner --solo-stratum`. Distinct from the regular
+// CPU/GPU miner_process slot, so it can coexist with either. The card
+// surfaces start/stop and the connection string the user types into
+// the ASIC's pool config.
+const DEFAULT_SOLO_LISTEN = '0.0.0.0:3333';
+
+function SoloStratumTab() {
+  const [listen, setListen] = useState(DEFAULT_SOLO_LISTEN);
+  const [status, setStatus] = useState<{ running: boolean; listen_addr: string | null } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = async () => {
+    try {
+      const s = await soloStratum.status();
+      setStatus(s);
+    } catch { /* preview / non-tauri */ }
+  };
+
+  useEffect(() => {
+    refresh();
+    const id = setInterval(refresh, 3000);
+    return () => clearInterval(id);
+  }, []);
+
+  const handleStart = async () => {
+    setLoading(true);
+    try {
+      const used = await soloStratum.start(listen.trim() || DEFAULT_SOLO_LISTEN);
+      toast.success(`Solo Stratum listening on ${used}`);
+      await refresh();
+    } catch (e) {
+      toast.error(typeof e === 'string' ? e : 'Failed to start solo Stratum');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStop = async () => {
+    setLoading(true);
+    try {
+      await soloStratum.stop();
+      toast.success('Solo Stratum stopped');
+      await refresh();
+    } catch (e) {
+      toast.error(typeof e === 'string' ? e : 'Failed to stop solo Stratum');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const running = status?.running ?? false;
+  const activeListen = status?.listen_addr ?? null;
+  // ASIC pool URL — prefer the active bound port; fall back to the input.
+  // The host portion ("0.0.0.0") only matters for binding; on the ASIC
+  // side the user types their LAN IP or VPS IP. We surface "<your-host>"
+  // verbatim so the operator knows to substitute.
+  const port = (activeListen ?? listen).split(':').pop() ?? '3333';
+  const asicUrl = `stratum+tcp://<your-host>:${port}`;
+
+  return (
+    <div className="card p-5 space-y-5" style={{ border: '1px solid rgba(110,198,255,0.12)' }}>
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>
+            Solo Stratum Bridge
+          </h3>
+          <p className="text-xs mt-1" style={{ color: 'rgba(238,240,255,0.45)' }}>
+            Run an ASIC against your own iriumd. No pool fee, no pool dependency.
+          </p>
+        </div>
+        <div
+          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-display font-semibold"
+          style={running ? {
+            background: 'rgba(34,197,94,0.15)', color: '#22c55e',
+            border: '1px solid rgba(34,197,94,0.25)',
+          } : {
+            background: 'rgba(255,255,255,0.04)', color: 'rgba(238,240,255,0.45)',
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          {running ? <Wifi size={12} /> : <WifiOff size={12} />}
+          {running ? 'Listening' : 'Stopped'}
+        </div>
+      </div>
+
+      <div>
+        <label className="label">Listen address</label>
+        <input
+          className="input w-full"
+          value={listen}
+          onChange={(e) => setListen(e.target.value)}
+          disabled={running || loading}
+          placeholder={DEFAULT_SOLO_LISTEN}
+        />
+        <p className="text-xs mt-1" style={{ color: 'rgba(238,240,255,0.35)' }}>
+          Default <code>{DEFAULT_SOLO_LISTEN}</code> binds every interface so the ASIC on your LAN can reach it.
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2">
+        {running ? (
+          <button onClick={handleStop} disabled={loading} className="btn-secondary flex items-center gap-2">
+            <Square size={14} /> Stop
+          </button>
+        ) : (
+          <button onClick={handleStart} disabled={loading} className="btn-primary flex items-center gap-2">
+            <Play size={14} /> Start
+          </button>
+        )}
+        <button onClick={refresh} disabled={loading} className="btn-secondary flex items-center gap-2">
+          <RefreshCw size={14} /> Refresh
+        </button>
+      </div>
+
+      <div
+        className="p-4 rounded-lg space-y-3"
+        style={{
+          background: 'rgba(110,198,255,0.05)',
+          border: '1px solid rgba(110,198,255,0.18)',
+        }}
+      >
+        <div className="text-xs font-display font-semibold" style={{ color: 'var(--t1)' }}>
+          ASIC connection string
+        </div>
+        <div className="flex items-center gap-2">
+          <code
+            className="flex-1 px-3 py-2 rounded text-xs"
+            style={{
+              fontFamily: '"JetBrains Mono", monospace',
+              background: 'rgba(0,0,0,0.35)',
+              color: '#eef0ff',
+              border: '1px solid rgba(255,255,255,0.06)',
+            }}
+          >
+            {asicUrl}
+          </code>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(asicUrl).catch(() => undefined);
+              toast.success('Copied');
+            }}
+            className="btn-secondary px-3 py-2"
+            title="Copy"
+          >
+            <Copy size={13} />
+          </button>
+        </div>
+        <ul className="text-xs space-y-1" style={{ color: 'rgba(238,240,255,0.55)' }}>
+          <li>• Replace <code>&lt;your-host&gt;</code> with your machine's LAN IP (or VPS IP).</li>
+          <li>• Worker username: your Q-address followed by <code>.worker1</code>. Password: any string.</li>
+          <li>• Bridge serves <code>/rpc/getblocktemplate</code> &amp; <code>/rpc/submit_block</code> on your local iriumd.</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 // ── PAGE ──────────────────────────────────────────────────────
 
 const TABS = [
-  { key: 'cpu',     label: 'CPU Miner',   icon: Cpu     },
-  { key: 'gpu',     label: 'GPU Miner',   icon: Monitor },
-  { key: 'stratum', label: 'Pool / Stratum', icon: Server  },
+  { key: 'cpu',     label: 'CPU Miner',       icon: Cpu     },
+  { key: 'gpu',     label: 'GPU Miner',       icon: Monitor },
+  { key: 'stratum', label: 'Pool / Stratum',  icon: Server  },
+  { key: 'solo',    label: 'Solo Stratum',    icon: Wifi    },
 ] as const;
 
 type TabKey = typeof TABS[number]['key'];
@@ -2263,6 +2423,7 @@ export default function Miner() {
           {activeTab === 'cpu'     && <CpuMinerTab />}
           {activeTab === 'gpu'     && <GpuMinerTab />}
           {activeTab === 'stratum' && <StratumTab />}
+          {activeTab === 'solo'    && <SoloStratumTab />}
         </motion.div>
       </AnimatePresence>
       </div>

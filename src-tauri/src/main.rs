@@ -135,6 +135,11 @@ struct AppState {
     // "remote" → skip sidecar spawn, talk to whatever rpc_url points
     // at. Hydrated from settings JSON on save/load; default "local".
     node_mode: Arc<Mutex<String>>,
+    // Solo Stratum bridge — distinct from miner_process so the user can
+    // run an ASIC-bridge listener (--solo-stratum) while also running a
+    // local CPU/GPU miner. listen address recorded for status display.
+    solo_stratum_process: Arc<Mutex<Option<CommandChild>>>,
+    solo_stratum_listen: Arc<Mutex<Option<String>>>,
 }
 
 #[derive(Clone)]
@@ -184,6 +189,8 @@ impl AppState {
             pending_txs: Arc::new(Mutex::new(HashMap::new())),
             rpc_token_override: Arc::new(Mutex::new(None)),
             node_mode: Arc::new(Mutex::new("local".to_string())),
+            solo_stratum_process: Arc::new(Mutex::new(None)),
+            solo_stratum_listen: Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -8834,6 +8841,201 @@ async fn get_node_logs(state: State<'_, AppState>, lines: Option<usize>) -> Resu
 }
 
 // ============================================================
+// SOLO STRATUM BRIDGE
+// ============================================================
+//
+// Spawns / supervises `irium-miner --solo-stratum --solo-stratum-listen
+// <addr>` as a separate sidecar from the regular CPU/GPU miner. Lets the
+// user run an ASIC-pointing Stratum endpoint backed by their own iriumd
+// without giving up the local-miner slot. Process handle lives in
+// state.solo_stratum_process; the listen string in state.solo_stratum_listen
+// drives the GUI's connection-string display.
+
+const DEFAULT_SOLO_STRATUM_LISTEN: &str = "0.0.0.0:3333";
+
+#[tauri::command]
+async fn start_solo_stratum(
+    state: State<'_, AppState>,
+    listen: Option<String>,
+) -> Result<String, String> {
+    let listen_addr = listen
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| DEFAULT_SOLO_STRATUM_LISTEN.to_string());
+
+    {
+        let guard = state.solo_stratum_process.lock().map_err(lock_err)?;
+        if guard.is_some() {
+            return Err("Solo Stratum is already running".to_string());
+        }
+    }
+
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let home_dir = dirs::home_dir().unwrap_or_default();
+    let irium_dir = home_dir.join(".irium");
+
+    let mut env_vars: HashMap<String, String> = HashMap::new();
+    env_vars.insert("IRIUM_NODE_RPC".to_string(), rpc_url.clone());
+    env_vars.insert("IRIUM_RPC_URL".to_string(), rpc_url);
+    env_vars.insert(
+        "IRIUM_RPC_TOKEN".to_string(),
+        snapshot_gui_rpc_bearer(&state.rpc_token_override).unwrap_or_default(),
+    );
+    let wallet_path_snapshot = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir_snapshot = state.data_dir.lock().map_err(lock_err)?.clone();
+    if let Ok(addr) = get_first_wallet_address(wallet_path_snapshot, data_dir_snapshot).await {
+        env_vars.insert("IRIUM_MINER_ADDRESS".to_string(), addr);
+    }
+
+    let args: Vec<String> = vec![
+        "--solo-stratum".to_string(),
+        "--solo-stratum-listen".to_string(),
+        listen_addr.clone(),
+    ];
+
+    let cmd = Command::new_sidecar("irium-miner")
+        .map_err(|e| format!("irium-miner not found: {}", e))?
+        .envs(env_vars)
+        .args(&args)
+        .current_dir(irium_dir);
+
+    let (mut rx, child) = cmd
+        .spawn()
+        .map_err(|e| format!("Failed to start solo stratum: {}", e))?;
+
+    let process_for_cleanup = Arc::clone(&state.solo_stratum_process);
+    let listen_for_cleanup = Arc::clone(&state.solo_stratum_listen);
+
+    tauri::async_runtime::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            match event {
+                CommandEvent::Stdout(l) => tracing::info!("[solo-stratum] {}", l),
+                CommandEvent::Stderr(l) => tracing::warn!("[solo-stratum stderr] {}", l),
+                CommandEvent::Terminated(_) => {
+                    if let Ok(mut g) = process_for_cleanup.lock() { *g = None; }
+                    if let Ok(mut g) = listen_for_cleanup.lock() { *g = None; }
+                    break;
+                }
+                _ => break,
+            }
+        }
+    });
+
+    *state.solo_stratum_process.lock().map_err(lock_err)? = Some(child);
+    *state.solo_stratum_listen.lock().map_err(lock_err)? = Some(listen_addr.clone());
+
+    Ok(listen_addr)
+}
+
+#[tauri::command]
+async fn stop_solo_stratum(state: State<'_, AppState>) -> Result<bool, String> {
+    let mut guard = state.solo_stratum_process.lock().map_err(lock_err)?;
+    if let Some(child) = guard.take() {
+        child.kill().map_err(|e| e.to_string())?;
+        drop(guard);
+        *state.solo_stratum_listen.lock().map_err(lock_err)? = None;
+        return Ok(true);
+    }
+    Ok(false)
+}
+
+#[tauri::command]
+async fn solo_stratum_status(state: State<'_, AppState>) -> Result<SoloStratumStatus, String> {
+    let running = state.solo_stratum_process.lock().map_err(lock_err)?.is_some();
+    let listen_addr = state.solo_stratum_listen.lock().map_err(lock_err)?.clone();
+    Ok(SoloStratumStatus { running, listen_addr })
+}
+
+// ============================================================
+// GENERIC WALLET CLI + RPC PROXIES
+// ============================================================
+//
+// `wallet_cli_run` shells out to `irium-wallet <subcommand> [args...]`
+// and returns the parsed JSON (or the raw stdout wrapped as a JSON
+// string). `rpc_proxy` issues an HTTP request to iriumd at the active
+// rpc_url with the active bearer token, returning parsed JSON (or raw
+// text). Together they back every documented wallet-CLI subcommand and
+// iriumd RPC endpoint from the corresponding tauri.ts namespaces —
+// extras can be added later without touching the backend.
+
+#[tauri::command]
+async fn wallet_cli_run(
+    state: State<'_, AppState>,
+    subcommand: String,
+    args: Option<Vec<String>>,
+    include_rpc: Option<bool>,
+) -> Result<serde_json::Value, String> {
+    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+
+    let mut full_args = vec![subcommand];
+    if let Some(a) = args {
+        full_args.extend(a);
+    }
+
+    let stdout = if include_rpc.unwrap_or(false) {
+        run_wallet_cmd_with_rpc(full_args, wallet_path, data_dir, rpc_url).await?
+    } else {
+        run_wallet_cmd(full_args, wallet_path, data_dir).await?
+    };
+
+    match serde_json::from_str::<serde_json::Value>(stdout.trim()) {
+        Ok(v) => Ok(v),
+        Err(_) => Ok(serde_json::Value::String(stdout)),
+    }
+}
+
+#[tauri::command]
+async fn rpc_proxy(
+    state: State<'_, AppState>,
+    method: String,
+    path: String,
+    query: Option<HashMap<String, String>>,
+    body: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let bearer = snapshot_gui_rpc_bearer(&state.rpc_token_override);
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(15))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let url = format!(
+        "{}{}",
+        rpc_url.trim_end_matches('/'),
+        if path.starts_with('/') { path.clone() } else { format!("/{}", path) }
+    );
+
+    let reqwest_method = reqwest::Method::from_bytes(method.to_uppercase().as_bytes())
+        .map_err(|e| format!("invalid method {}: {}", method, e))?;
+
+    let mut req = client.request(reqwest_method, &url);
+    if let Some(q) = &query {
+        req = req.query(q);
+    }
+    if let Some(b) = body {
+        req = req.json(&b);
+    }
+    if let Some(t) = bearer {
+        if !t.is_empty() {
+            req = req.bearer_auth(t);
+        }
+    }
+
+    let resp = req.send().await.map_err(|e| e.to_string())?;
+    let status = resp.status();
+    let text = resp.text().await.unwrap_or_default();
+    if !status.is_success() {
+        return Err(format!("{} {}: {}", status.as_u16(), status.canonical_reason().unwrap_or(""), text));
+    }
+    match serde_json::from_str::<serde_json::Value>(&text) {
+        Ok(v) => Ok(v),
+        Err(_) => Ok(serde_json::Value::String(text)),
+    }
+}
+
+// ============================================================
 // WEBSOCKET → TAURI EVENT BRIDGE
 // ============================================================
 // Subscribes to iriumd's /ws endpoint, listens for agreement.* and offer.*
@@ -9198,6 +9400,15 @@ fn main() {
             agreement_decrypt,
             // Logs
             get_node_logs,
+            // Solo Stratum bridge
+            start_solo_stratum,
+            stop_solo_stratum,
+            solo_stratum_status,
+            // Generic wallet CLI + RPC proxies (back every documented
+            // irium-wallet subcommand and iriumd RPC endpoint exposed by
+            // the tauri.ts walletCli and rpcCall namespaces).
+            wallet_cli_run,
+            rpc_proxy,
         ])
         .build(tauri::generate_context!())
         .expect("error while running Irium Core")
@@ -9225,6 +9436,9 @@ fn main() {
                     if let Some(child) = g.take() { let _ = child.kill(); }
                 }
                 if let Ok(mut g) = state.explorer_process.lock() {
+                    if let Some(child) = g.take() { let _ = child.kill(); }
+                }
+                if let Ok(mut g) = state.solo_stratum_process.lock() {
                     if let Some(child) = g.take() { let _ = child.kill(); }
                 }
                 for name in [
