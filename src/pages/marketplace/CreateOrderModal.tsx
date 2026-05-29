@@ -1,16 +1,15 @@
-import { useState } from 'react';
-import { X, Loader2, Check } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { X, Loader2, Check, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { offers } from '../../lib/tauri';
 import type { CreateOfferParams } from '../../lib/types';
 
-// Inline create-offer form. Lets a user post a sell offer directly from
-// the Marketplace without bouncing to Settlement Hub / Advanced flows.
-// Required fields: IRM amount + payment method. Everything else is
-// optional and falls through to the wallet sidecar's defaults
-// (auto-generated offer_id, seller address resolved from the active
-// wallet, no instructions, no timeout override). On success the parent
-// closes the modal and the next /offer-list poll picks up the new row.
+// Inline create-offer form. The user post a sell offer with the minimum
+// information a buyer needs to decide whether to take it: how much IRM,
+// the per-unit USDT rate, the payment rail, and the seller's payment
+// details. Everything technical (timeout block height, offer expiry,
+// asset_reference shape, etc.) is handled by the wallet sidecar's
+// defaults.
 
 export interface CreateOrderModalProps {
   sellerAddress: string;
@@ -18,43 +17,74 @@ export interface CreateOrderModalProps {
   onCreated: () => void;
 }
 
+const PAYMENT_OPTIONS: { value: string; label: string }[] = [
+  { value: 'bank-transfer', label: 'Bank transfer' },
+  { value: 'paypal',        label: 'PayPal' },
+  { value: 'usdt-trc20',    label: 'USDT (TRC-20)' },
+  { value: 'usdt-erc20',    label: 'USDT (ERC-20)' },
+  { value: 'sepa',          label: 'SEPA' },
+  { value: 'cash',          label: 'Cash' },
+  { value: 'other',         label: 'Other' },
+];
+
 export default function CreateOrderModal({ sellerAddress, onClose, onCreated }: CreateOrderModalProps) {
+  // Marketplace Fix 3 — exactly four fields. Anything else gets resolved
+  // by the wallet sidecar's defaults (offer id, seller address from the
+  // active wallet, default expiry).
   const [amountIrm, setAmountIrm] = useState('');
-  const [priceUsdt, setPriceUsdt] = useState('');
+  const [pricePerIrmUsdt, setPricePerIrmUsdt] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('bank-transfer');
-  const [paymentInstructions, setPaymentInstructions] = useState('');
-  const [timeoutBlocks, setTimeoutBlocks] = useState('');
+  const [paymentDetails, setPaymentDetails] = useState('');
   const [busy, setBusy] = useState(false);
 
+  const numericAmount = useMemo(() => {
+    const n = Number(amountIrm);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  }, [amountIrm]);
+  const numericPrice = useMemo(() => {
+    const n = Number(pricePerIrmUsdt);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  }, [pricePerIrmUsdt]);
+  // Total = amount × per-unit. Shown to the seller as a live preview so
+  // they can sanity-check the math before posting.
+  const totalUsdt = numericAmount * numericPrice;
+
   const handleCreate = async () => {
-    const irm = Number(amountIrm);
-    if (!Number.isFinite(irm) || irm <= 0) {
+    if (numericAmount <= 0) {
       toast.error('Enter a positive IRM amount');
+      return;
+    }
+    if (numericPrice <= 0) {
+      // The OrderBook now strict-filters offers without a parseable
+      // price, so refusing here keeps the seller from posting an offer
+      // that will never appear in the book.
+      toast.error('Enter a positive USDT price per IRM');
       return;
     }
     if (!paymentMethod.trim()) {
       toast.error('Select a payment method');
       return;
     }
+    if (!paymentDetails.trim()) {
+      toast.error('Enter your payment details so the buyer knows how to pay');
+      return;
+    }
     setBusy(true);
     try {
-      // asset_reference describes what the seller wants in return —
-      // surfaced as "Price" in the OrderBook card. We persist it as the
-      // free-text description so a buyer-side viewer can render it
-      // verbatim (offer.create maps description → asset_reference on
-      // the wallet sidecar side).
-      const descriptionBits: string[] = [];
-      if (priceUsdt && Number(priceUsdt) > 0) descriptionBits.push(`${priceUsdt} USDT`);
+      // asset_reference carries the TOTAL the seller wants in return.
+      // The OrderBook parses this regex-style ("N USDT") and divides by
+      // the IRM amount to recover the per-unit rate. We post the total
+      // (not the per-unit) so the wire format stays compatible with the
+      // existing parser and any other client that consumes the offer.
       const params: CreateOfferParams = {
-        amount_sats: Math.round(irm * 1e8),
+        amount_sats: Math.round(numericAmount * 1e8),
         payment_method: paymentMethod.trim(),
-        payment_instructions: paymentInstructions.trim() || undefined,
-        timeout_blocks: timeoutBlocks ? parseInt(timeoutBlocks, 10) || undefined : undefined,
+        payment_instructions: paymentDetails.trim(),
         seller_address: sellerAddress || undefined,
-        description: descriptionBits.length > 0 ? descriptionBits.join(' · ') : undefined,
+        description: `${totalUsdt} USDT`,
       };
       await offers.create(params);
-      toast.success('Offer posted to the order book');
+      toast.success('Offer posted. IRM will lock the moment a buyer commits.');
       onCreated();
       onClose();
     } catch (e) {
@@ -84,12 +114,23 @@ export default function CreateOrderModal({ sellerAddress, onClose, onCreated }: 
           </button>
         </div>
 
-        <div className="text-xs" style={{ color: 'rgba(238,240,255,0.55)' }}>
-          Your IRM will be locked in escrow when a buyer takes the offer. You'll receive the
-          off-chain payment from the buyer, then confirm to release the IRM.
+        <div
+          className="p-3 rounded inline-flex items-start gap-2"
+          style={{
+            background: 'rgba(34,197,94,0.08)',
+            border: '1px solid rgba(34,197,94,0.22)',
+          }}
+        >
+          <Lock size={13} style={{ color: '#22c55e', flexShrink: 0, marginTop: 2 }} />
+          <div className="text-xs" style={{ color: 'rgba(238,240,255,0.78)', lineHeight: 1.5 }}>
+            Your IRM is locked the moment a buyer commits. You then receive the buyer's
+            off-chain payment and click <span style={{ color: '#22c55e' }}>Confirm received</span> to
+            release. Or open a dispute if they don't pay.
+          </div>
         </div>
 
         <div className="space-y-3">
+          {/* 1 — Amount of IRM to sell */}
           <div className="space-y-1">
             <label className="label" style={{ color: 'rgba(238,240,255,0.55)' }}>
               Amount of IRM to sell
@@ -110,29 +151,36 @@ export default function CreateOrderModal({ sellerAddress, onClose, onCreated }: 
             </div>
           </div>
 
+          {/* 2 — Price per IRM in USDT */}
           <div className="space-y-1">
             <label className="label" style={{ color: 'rgba(238,240,255,0.55)' }}>
-              Price you want (USDT, optional)
+              Price per IRM in USDT
             </label>
             <div className="flex items-center gap-2">
               <input
                 className="input flex-1"
-                value={priceUsdt}
-                onChange={(e) => setPriceUsdt(e.target.value)}
-                placeholder="50"
+                value={pricePerIrmUsdt}
+                onChange={(e) => setPricePerIrmUsdt(e.target.value)}
+                placeholder="0.50"
                 inputMode="decimal"
                 disabled={busy}
               />
               <span className="text-xs px-2 py-1 rounded" style={{
                 background: 'rgba(238,240,255,0.06)',
                 color: 'rgba(238,240,255,0.65)',
-              }}>USDT</span>
+              }}>USDT / IRM</span>
             </div>
-            <p className="text-xs" style={{ color: 'rgba(238,240,255,0.35)' }}>
-              Total off-chain payment you'll request from the buyer.
-            </p>
+            {totalUsdt > 0 && (
+              <p className="text-xs" style={{ color: 'rgba(238,240,255,0.55)' }}>
+                Buyer pays a total of{' '}
+                <span style={{ color: '#34d399', fontFamily: '"JetBrains Mono", monospace' }}>
+                  {totalUsdt.toLocaleString('en-US', { maximumFractionDigits: 4 })} USDT
+                </span>
+              </p>
+            )}
           </div>
 
+          {/* 3 — Payment method */}
           <div className="space-y-1">
             <label className="label" style={{ color: 'rgba(238,240,255,0.55)' }}>
               Payment method
@@ -143,44 +191,29 @@ export default function CreateOrderModal({ sellerAddress, onClose, onCreated }: 
               onChange={(e) => setPaymentMethod(e.target.value)}
               disabled={busy}
             >
-              <option value="bank-transfer" style={{ background: '#0f0f23' }}>Bank transfer</option>
-              <option value="paypal" style={{ background: '#0f0f23' }}>PayPal</option>
-              <option value="usdt-trc20" style={{ background: '#0f0f23' }}>USDT (TRC-20)</option>
-              <option value="usdt-erc20" style={{ background: '#0f0f23' }}>USDT (ERC-20)</option>
-              <option value="sepa" style={{ background: '#0f0f23' }}>SEPA</option>
-              <option value="cash" style={{ background: '#0f0f23' }}>Cash</option>
-              <option value="other" style={{ background: '#0f0f23' }}>Other</option>
+              {PAYMENT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value} style={{ background: '#0f0f23' }}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </div>
 
+          {/* 4 — Your payment details */}
           <div className="space-y-1">
             <label className="label" style={{ color: 'rgba(238,240,255,0.55)' }}>
-              Payment instructions for the buyer (optional)
+              Your payment details
             </label>
             <textarea
               className="input w-full"
               rows={3}
-              value={paymentInstructions}
-              onChange={(e) => setPaymentInstructions(e.target.value)}
-              placeholder="e.g. IBAN DE89 ... or PayPal: seller@example.com"
+              value={paymentDetails}
+              onChange={(e) => setPaymentDetails(e.target.value)}
+              placeholder="e.g. IBAN DE89 3704 0044 0532 0130 00 or PayPal: seller@example.com"
               disabled={busy}
             />
-          </div>
-
-          <div className="space-y-1">
-            <label className="label" style={{ color: 'rgba(238,240,255,0.55)' }}>
-              Offer expiry (blocks, optional)
-            </label>
-            <input
-              className="input w-full"
-              value={timeoutBlocks}
-              onChange={(e) => setTimeoutBlocks(e.target.value)}
-              placeholder="e.g. 25000"
-              inputMode="numeric"
-              disabled={busy}
-            />
-            <p className="text-xs" style={{ color: 'rgba(238,240,255,0.35)' }}>
-              Block height at which this offer auto-expires. Leave blank to use the wallet default.
+            <p className="text-xs" style={{ color: 'rgba(238,240,255,0.45)' }}>
+              The buyer sees these details after they take the offer.
             </p>
           </div>
         </div>

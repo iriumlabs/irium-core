@@ -11,6 +11,8 @@ import TradeCalculator from './marketplace/TradeCalculator';
 import TakeOfferModal from './marketplace/TakeOfferModal';
 import EscrowProgress from './marketplace/EscrowProgress';
 import CreateOrderModal from './marketplace/CreateOrderModal';
+import SellerTradeReview from './marketplace/SellerTradeReview';
+import ResolverPicker from './marketplace/ResolverPicker';
 
 type MyTradesTab = 'active' | 'completed' | 'all';
 
@@ -112,6 +114,10 @@ export default function MarketplacePage() {
   // My Trades tab filter (Fix 5). Defaults to active so the user lands
   // on the rows that actually need attention.
   const [myTradesTab, setMyTradesTab] = useState<MyTradesTab>('active');
+  // Resolver-picker modal state. Set to a non-null Agreement when the
+  // seller-side dispute action fires; the modal then displays the
+  // agreement's nominated resolvers + the public registry.
+  const [resolverPickerAgreement, setResolverPickerAgreement] = useState<Agreement | null>(null);
 
   const view = useStore((s) => s.marketplaceView);
   const setMarketplaceSelectedOffer = useStore((s) => s.setMarketplaceSelectedOffer);
@@ -249,7 +255,10 @@ export default function MarketplacePage() {
             selectedOfferId={view.selectedOfferId}
           />
 
-          {/* MIDDLE — Trade calculator + active trade tracker */}
+          {/* MIDDLE — Trade calculator + active trade tracker + seller
+              verify-and-release inbox. The SellerTradeReview pane
+              renders its own empty state when the user has no incoming
+              trades, so unconditional mounting is safe. */}
           <div className="space-y-3">
             <TradeCalculator
               offers={offerList}
@@ -262,6 +271,17 @@ export default function MarketplacePage() {
                 paymentSent={view.tradePaymentSent}
               />
             )}
+            <SellerTradeReview
+              sellingTrades={myTrades.filter((t) => t.side === 'selling')}
+              onDisputeOpened={(agreementId) => {
+                const agr = myTrades.find(({ agreement }) => {
+                  const id = (agreement as unknown as { agreement_id?: string; id?: string }).agreement_id
+                    ?? (agreement as unknown as { id?: string }).id ?? '';
+                  return id === agreementId;
+                })?.agreement ?? null;
+                setResolverPickerAgreement(agr);
+              }}
+            />
           </div>
 
           {/* RIGHT — My Trades */}
@@ -361,6 +381,13 @@ export default function MarketplacePage() {
             buyerAddress={activeWalletAddr}
             onClose={() => setMarketplaceTakeModalOffer(null)}
             onTaken={handleTaken}
+          />
+        )}
+
+        {resolverPickerAgreement && (
+          <ResolverPicker
+            agreement={resolverPickerAgreement}
+            onClose={() => setResolverPickerAgreement(null)}
           />
         )}
       </div>

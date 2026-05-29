@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Star, Loader2, ShieldCheck, ArrowRight, Activity, AlertCircle } from 'lucide-react';
+import { Plus, Star, Loader2, ShieldCheck, ArrowRight, Activity, Lock, CreditCard } from 'lucide-react';
 import { offers, reputation } from '../../lib/tauri';
 import type { Offer } from '../../lib/types';
 import { formatIRM, timeAgo } from '../../lib/types';
@@ -175,30 +175,38 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
     };
   }, []);
 
+  // Total offer counters — surfaced in the stats bar so the user can see
+  // when offers were silently filtered out. `totalVisible` is the number
+  // of rows after the strict "complete offer" filter below; `totalRaw`
+  // is the number of offers the node returned. The gap is offers that
+  // failed the Marketplace Fix 1 quality bar.
+  const [totalRaw, setTotalRaw] = useState(0);
+
   const rows = useMemo(() => {
     const filtered = allOffers.filter((o) => {
       if (showTaken) return o.status === 'open' || o.status === 'taken';
       return o.status === 'open';
     });
-    // Client-side sort. We base price ordering on the parsed
-    // asset_reference total — offers without a parseable price sink to
-    // the end of the list under price sorts but stay sorted by IRM
-    // amount among themselves so the UI stays predictable.
+    // Marketplace Fix 1 — strict offer-quality filter. An offer is only
+    // shown when it has all four pieces a buyer actually needs to take a
+    // decision: a real IRM amount, a parseable price (per the same regex
+    // we use to sort), a payment method, and a non-empty seller. Test
+    // offers that surfaced with `Price not set` previously fail the
+    // parsePrice check and disappear. The pre-filter count is captured
+    // so the stats bar can disclose what was filtered.
     const enriched = filtered.map((o) => {
       const parsed = parsePrice((o.asset_reference as string | undefined) ?? null);
       const stars = reps[o.seller ?? '']?.stars ?? 0;
       const created = (o.created_at ?? 0) as number;
       return { offer: o, parsedPrice: parsed, stars, created };
+    }).filter(({ offer, parsedPrice }) => {
+      if (parsedPrice == null) return false;
+      if (!offer.amount || offer.amount <= 0) return false;
+      if (!offer.payment_method || !offer.payment_method.trim()) return false;
+      if (!offer.seller || !offer.seller.trim()) return false;
+      return true;
     });
     enriched.sort((a, b) => {
-      // Unpriced offers always sink to the end regardless of sort key.
-      // A "Price not set" row is information the buyer can't act on
-      // without contacting the seller — keeping them at the bottom
-      // means the actionable rows render in the visible scroll window.
-      const aHasPrice = a.parsedPrice != null;
-      const bHasPrice = b.parsedPrice != null;
-      if (aHasPrice !== bHasPrice) return aHasPrice ? -1 : 1;
-
       switch (sortKey) {
         case 'price_asc': {
           const ap = a.parsedPrice?.total ?? Number.POSITIVE_INFINITY;
@@ -224,6 +232,13 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
     return enriched;
   }, [allOffers, reps, showTaken, sortKey]);
 
+  // Keep the raw-count state in sync with the latest poll result so the
+  // stats bar can disclose how many offers were filtered out.
+  useEffect(() => {
+    setTotalRaw(allOffers.filter((o) => showTaken ? (o.status === 'open' || o.status === 'taken') : o.status === 'open').length);
+  }, [allOffers, showTaken]);
+  const filteredCount = Math.max(0, totalRaw - rows.length);
+
   return (
     <div className="card p-4 space-y-3" style={{ border: '1px solid rgba(110,198,255,0.12)' }}>
       {/* Header */}
@@ -240,9 +255,10 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
         </button>
       </div>
 
-      {/* Network stats bar (Fix 5) — total offers count + last-updated
-          timestamp. Refreshed by the same /offer-list poll that powers
-          the rows below. */}
+      {/* Network stats bar — total visible offers + filtered count +
+          last-updated. Disclosing the filtered count keeps users from
+          wondering whether the book is broken when a known-bad test
+          offer disappears post-Fix-1. */}
       <div
         className="flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded"
         style={{
@@ -255,6 +271,11 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
         <span className="inline-flex items-center gap-1.5">
           <Activity size={11} style={{ color: '#6EC6FF' }} />
           {rows.length} offer{rows.length === 1 ? '' : 's'} in book
+          {filteredCount > 0 && (
+            <span title={`${filteredCount} offer${filteredCount === 1 ? '' : 's'} hidden because they had no quoted price`} style={{ color: 'rgba(238,240,255,0.35)' }}>
+              · {filteredCount} hidden
+            </span>
+          )}
         </span>
         <span>
           {lastUpdated ? `Updated ${timeAgo(lastUpdated)}` : 'Refreshing…'}
@@ -306,17 +327,18 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
           const isSelected = o.id === selectedOfferId;
           const taken = o.status === 'taken';
           const amountIrm = (o.amount ?? 0) / 1e8;
+          // Fix 1's enriched filter guarantees parsedPrice is non-null
+          // here. Compute price-per-IRM directly — no nullable arm.
           const pricePerUnit = parsedPrice && amountIrm > 0
             ? (parsedPrice.total / amountIrm)
-            : null;
-          // Sequential display number — derived from the sorted position
-          // so the user sees ORDER #1, #2, #3 in the order they're shown
-          // rather than the opaque base58 / gossip id fragment.
+            : 0;
           const orderNumber = idx + 1;
-          // Fix 3 — open offers get a strong green left-border accent so
-          // the row is visually delimited as "actionable". Taken rows
-          // keep the same structure but with a muted left border so the
-          // group reads as inactive without losing visual rhythm.
+          // Marketplace Fix 2 — BTCC-style card layout. The IRM amount
+          // is the lead figure (the thing a buyer wants to scan first).
+          // Order number sits as a small chip in the top-left, badges
+          // top-right. Price block sits under the IRM amount, payment
+          // method becomes a proper chip, and the bottom row carries
+          // the seller-id + age + Escrow Protected status + Take CTA.
           const accentColor = taken ? 'rgba(255,255,255,0.18)' : '#22c55e';
           return (
             <div
@@ -328,7 +350,7 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
                 borderRight: '1px solid ' + (isSelected ? 'rgba(110,198,255,0.30)' : 'rgba(255,255,255,0.06)'),
                 borderBottom: '1px solid ' + (isSelected ? 'rgba(110,198,255,0.30)' : 'rgba(255,255,255,0.06)'),
                 borderLeft: `3px solid ${accentColor}`,
-                padding: 14,
+                padding: 16,
                 opacity: taken ? 0.55 : 1,
               }}
               onMouseEnter={(e) => {
@@ -338,16 +360,16 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
                 e.currentTarget.style.background = isSelected ? 'rgba(110,198,255,0.10)' : 'rgba(255,255,255,0.02)';
               }}
             >
-              {/* Row 1 — Order # as a prominent header + badges */}
-              <div
-                className="flex items-center justify-between gap-2 pb-2 mb-3"
-                style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-              >
+              {/* Row 1 — Order-number chip on the left, reputation +
+                  verified badges on the right. */}
+              <div className="flex items-center justify-between gap-2 mb-3">
                 <span
-                  className="font-display font-bold uppercase tracking-wide"
+                  className="inline-flex items-center px-2 py-0.5 rounded font-display font-bold tracking-wide"
                   style={{
-                    color: taken ? 'rgba(238,240,255,0.50)' : '#eef0ff',
-                    fontSize: 13,
+                    color: taken ? 'rgba(238,240,255,0.50)' : '#6EC6FF',
+                    background: 'rgba(110,198,255,0.10)',
+                    border: '1px solid rgba(110,198,255,0.25)',
+                    fontSize: 11,
                     letterSpacing: '0.06em',
                   }}
                   title={o.id ?? ''}
@@ -360,58 +382,76 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
                 </div>
               </div>
 
-              {/* Row 2 — IRM amount + total price + per-unit price.
-                  When the offer has no parseable price, the Total +
-                  Per IRM cells collapse into a single span-2 amber
-                  "Contact seller for price" badge (Fix 2). */}
-              <div className="grid grid-cols-3 gap-2" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wide" style={{ color: 'rgba(238,240,255,0.40)' }}>IRM</div>
-                  <div className="text-sm tabular-nums" style={{ color: '#eef0ff' }}>{formatIRM(o.amount ?? 0)}</div>
+              {/* Row 2 — large prominent IRM amount + price subtitle.
+                  Mirrors the BTCC OTC order-card hierarchy: lead amount
+                  in a 24px monospace headline, with the total + per-unit
+                  price as a single muted subtitle below. */}
+              <div className="mb-3" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
+                <div
+                  className="tabular-nums"
+                  style={{
+                    color: '#eef0ff',
+                    fontSize: 26,
+                    fontWeight: 700,
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {formatIRM(o.amount ?? 0)}
                 </div>
-                {parsedPrice ? (
-                  <>
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wide" style={{ color: 'rgba(238,240,255,0.40)' }}>Total</div>
-                      <div className="text-sm tabular-nums" style={{ color: '#34d399' }}>
-                        {parsedPrice.total.toLocaleString('en-US')} {parsedPrice.unit}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wide" style={{ color: 'rgba(238,240,255,0.40)' }}>Per IRM</div>
-                      <div className="text-sm tabular-nums" style={{ color: pricePerUnit != null ? 'rgba(238,240,255,0.85)' : 'rgba(238,240,255,0.45)' }}>
-                        {pricePerUnit != null
-                          ? `${pricePerUnit.toLocaleString('en-US', { maximumFractionDigits: 6 })} ${parsedPrice.unit}`
-                          : '—'}
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div
-                    className="col-span-2 inline-flex items-center gap-1.5 px-2 py-1.5 rounded text-[11px] self-end"
-                    style={{
-                      background: 'rgba(252,211,77,0.08)',
-                      color: '#fbbf24',
-                      border: '1px solid rgba(252,211,77,0.20)',
-                      fontFamily: '"Space Grotesk", sans-serif',
-                    }}
-                    title="The seller did not include a quoted price. Use the payment method below to ask them directly."
-                  >
-                    <AlertCircle size={11} />
-                    Contact seller for price
-                  </div>
-                )}
+                <div
+                  className="tabular-nums mt-1"
+                  style={{ color: '#34d399', fontSize: 13 }}
+                >
+                  {parsedPrice!.total.toLocaleString('en-US')} {parsedPrice!.unit}
+                  <span style={{ color: 'rgba(238,240,255,0.35)' }}> · </span>
+                  <span style={{ color: 'rgba(238,240,255,0.65)' }}>
+                    {pricePerUnit.toLocaleString('en-US', { maximumFractionDigits: 6 })} {parsedPrice!.unit}/IRM
+                  </span>
+                </div>
               </div>
 
-              {/* Row 3 — seller + payment + created + action */}
-              <div className="flex items-center justify-between gap-2 text-[11px] mt-3 pt-2" style={{ color: 'rgba(238,240,255,0.65)', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+              {/* Row 3 — payment method chip + Escrow Protected badge.
+                  Both are status signals, so they share a row above the
+                  identity/age/CTA row to keep the card scannable. */}
+              <div className="flex items-center gap-2 flex-wrap mb-3">
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px]"
+                  style={{
+                    background: 'rgba(167,139,250,0.10)',
+                    color: '#A78BFA',
+                    border: '1px solid rgba(167,139,250,0.25)',
+                  }}
+                  title={`Payment method: ${o.payment_method}`}
+                >
+                  <CreditCard size={10} />
+                  {o.payment_method}
+                </span>
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-display font-semibold"
+                  style={{
+                    background: 'rgba(34,197,94,0.10)',
+                    color: '#22c55e',
+                    border: '1px solid rgba(34,197,94,0.28)',
+                  }}
+                  title="Your funds are protected. IRM is locked the moment a buyer commits, and only releases when both sides confirm or a resolver decides."
+                >
+                  <Lock size={10} />
+                  Escrow Protected
+                </span>
+              </div>
+
+              {/* Row 4 — identity + age on the left, Take CTA on the
+                  right. Address shortened to 8…4 to keep the row from
+                  wrapping under the action button on narrow viewports. */}
+              <div
+                className="flex items-center justify-between gap-2 text-[11px] pt-2"
+                style={{ color: 'rgba(238,240,255,0.65)', borderTop: '1px solid rgba(255,255,255,0.04)' }}
+              >
                 <div className="flex items-center gap-2 flex-wrap">
                   <span title={o.seller ?? ''} style={{ fontFamily: '"JetBrains Mono", monospace' }}>
                     {(o.seller ?? '').slice(0, 8)}…{(o.seller ?? '').slice(-4)}
                   </span>
-                  <span style={{ color: 'rgba(238,240,255,0.35)' }}>·</span>
-                  <span>{o.payment_method ?? 'unknown'}</span>
-                  <span style={{ color: 'rgba(238,240,255,0.35)' }}>·</span>
+                  <span style={{ color: 'rgba(238,240,255,0.30)' }}>·</span>
                   <span title={o.created_at ? new Date(o.created_at * 1000).toISOString() : ''}>
                     {o.created_at ? timeAgo(o.created_at) : 'just now'}
                   </span>
@@ -420,16 +460,16 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
                   type="button"
                   onClick={() => !taken && onTakeOffer(o)}
                   disabled={taken}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px]"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-[12px] font-display font-semibold"
                   style={{
-                    color: taken ? 'rgba(238,240,255,0.35)' : '#34d399',
+                    color: taken ? 'rgba(238,240,255,0.35)' : '#22c55e',
                     background: taken ? 'transparent' : 'rgba(34,197,94,0.12)',
-                    border: '1px solid ' + (taken ? 'rgba(255,255,255,0.08)' : 'rgba(34,197,94,0.25)'),
+                    border: '1px solid ' + (taken ? 'rgba(255,255,255,0.08)' : 'rgba(34,197,94,0.30)'),
                     cursor: taken ? 'default' : 'pointer',
                   }}
                 >
-                  {taken ? 'taken' : 'Take'}
-                  {!taken && <ArrowRight size={11} />}
+                  {taken ? 'Taken' : 'Take Offer'}
+                  {!taken && <ArrowRight size={12} />}
                 </button>
               </div>
             </div>

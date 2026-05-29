@@ -1,24 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Check, Circle, ChevronDown, ChevronUp, ExternalLink, Loader2 } from 'lucide-react';
-import { agreementSpend, agreements } from '../../lib/tauri';
+import { Check, Loader2, Lock, Send, CheckCircle2, Trophy } from 'lucide-react';
+import { agreementSpend } from '../../lib/tauri';
 
-// 4-step pill tracker for an active trade. Polls agreementSpend.status()
-// every 5s and maps lifecycle states to step positions:
+// Plain-language 4-step tracker for an active trade. Polls
+// agreementSpend.status() every 5s and maps lifecycle states to a
+// jargon-free progression the user can read at a glance:
 //
-//   1. Offer Created       — lifecycle.state in {draft, proposed}
-//   2. Escrow Funded       — lifecycle.state == 'funded'
-//   3. Payment Sent        — user has clicked "I sent payment" (parent
-//                            page passes paymentSent=true; we don't
-//                            persist this on-chain since the payment
-//                            itself is off-chain)
-//   4. Trade Complete      — lifecycle.state == 'released'
+//   1. Locked        - seller's IRM is held in escrow (lifecycle == funded)
+//   2. Payment Sent  - buyer has reported they paid off-chain
+//                      (paymentSent prop set by the parent take flow)
+//   3. Confirmed     - seller has confirmed and released (partially_released)
+//   4. Complete      - the trade settled, IRM is with the buyer (released)
 //
-// Anything ending in {refunded, expired, cancelled, disputed_*}
-// surfaces as a single banner so the buyer knows the path forward.
-//
-// The Details expander reveals the hex agreement_hash, the funding
-// txid, and a "View on Agreements page" link. Hidden by default to
-// keep the new marketplace UX free of jargon.
+// Terminal failure states (refunded / expired / cancelled / disputed_*)
+// surface as a single banner so the user can find the path forward in
+// the Agreements page.
 
 const POLL_INTERVAL_MS = 5_000;
 
@@ -53,9 +49,8 @@ function stepFor(life: Lifecycle, paymentSent: boolean): { step: 1 | 2 | 3 | 4; 
   switch (life) {
     case 'draft':
     case 'proposed':
-      return { step: 1, terminal: false, failed: false };
     case 'funded':
-      return { step: paymentSent ? 3 : 2, terminal: false, failed: false };
+      return { step: paymentSent ? 2 : 1, terminal: false, failed: false };
     case 'partially_released':
       return { step: 3, terminal: false, failed: false };
     case 'released':
@@ -70,12 +65,41 @@ function stepFor(life: Lifecycle, paymentSent: boolean): { step: 1 | 2 | 3 | 4; 
   }
 }
 
-const STEP_LABELS = ['Offer Created', 'Escrow Funded', 'Payment Sent', 'Trade Complete'];
+const STEPS: { label: string; Icon: typeof Lock }[] = [
+  { label: 'Locked',       Icon: Lock },
+  { label: 'Payment Sent', Icon: Send },
+  { label: 'Confirmed',    Icon: CheckCircle2 },
+  { label: 'Complete',     Icon: Trophy },
+];
+
+// Plain-language human-readable status for the banner under the tracker.
+function statusSentence(life: Lifecycle, paymentSent: boolean): string {
+  switch (life) {
+    case 'draft':
+    case 'proposed':
+    case 'funded':
+      return paymentSent
+        ? 'Waiting for the seller to confirm your payment and release the IRM.'
+        : 'Your funds are protected. Send the off-chain payment and report it from the take screen.';
+    case 'partially_released':
+      return 'The seller has confirmed payment and started the release.';
+    case 'released':
+      return 'The trade is complete. The IRM has been delivered to the buyer.';
+    case 'refunded':
+      return 'The trade was refunded to the seller.';
+    case 'expired':
+      return 'The trade expired without releasing. The IRM is returned to the seller.';
+    case 'cancelled':
+      return 'The trade was cancelled.';
+    case 'disputed_metadata_only':
+      return 'A dispute has been opened. A resolver will decide who receives the IRM.';
+    default:
+      return 'Status pending. The node has not yet reported this trade.';
+  }
+}
 
 export default function EscrowProgress({ agreementId, paymentSent }: EscrowProgressProps) {
   const [status, setStatus] = useState<AgreementStatusShape | null>(null);
-  const [expanded, setExpanded] = useState(false);
-  const [busyRefund, setBusyRefund] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -108,17 +132,14 @@ export default function EscrowProgress({ agreementId, paymentSent }: EscrowProgr
         <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>
           Trade progress
         </h3>
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="inline-flex items-center gap-1 text-xs"
-          style={{ color: 'rgba(238,240,255,0.55)' }}
-        >
-          Details {expanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-        </button>
       </div>
 
+      {/* Four-step pill tracker. Each step gets its own icon: Lock for
+          "Locked", Send for "Payment Sent", CheckCircle2 for "Confirmed",
+          Trophy for "Complete". Done steps turn green, the active step
+          spins a Loader2 icon, future steps stay muted. */}
       <div className="flex items-center gap-2">
-        {STEP_LABELS.map((label, idx) => {
+        {STEPS.map((spec, idx) => {
           const i = (idx + 1) as 1 | 2 | 3 | 4;
           const done = i < step || (terminal && !failed);
           const active = i === step && !terminal;
@@ -130,108 +151,44 @@ export default function EscrowProgress({ agreementId, paymentSent }: EscrowProgr
             : active
             ? '#A78BFA'
             : 'rgba(238,240,255,0.25)';
+          const StepIcon = spec.Icon;
           return (
-            <div key={label} className="flex-1 flex flex-col items-center gap-1">
+            <div key={spec.label} className="flex-1 flex flex-col items-center gap-1">
               <div
-                className="w-7 h-7 rounded-full flex items-center justify-center"
+                className="w-8 h-8 rounded-full flex items-center justify-center"
                 style={{
                   border: `2px solid ${color}`,
                   color,
                   background: done || active ? 'rgba(0,0,0,0.25)' : 'transparent',
                 }}
               >
-                {done ? <Check size={12} /> : active ? <Loader2 size={12} className="animate-spin" /> : <Circle size={8} />}
+                {done ? <Check size={13} /> : active ? <Loader2 size={13} className="animate-spin" /> : <StepIcon size={12} />}
               </div>
-              <span className="text-xs" style={{ color, textAlign: 'center' }}>
-                {label}
+              <span className="text-[11px] font-display font-semibold" style={{ color, textAlign: 'center' }}>
+                {spec.label}
               </span>
             </div>
           );
         })}
       </div>
 
-      {failed && (
-        <div
-          className="p-2 rounded text-xs"
-          style={{
-            background: 'rgba(252,211,77,0.10)',
-            color: '#fbbf24',
-            border: '1px solid rgba(252,211,77,0.25)',
-          }}
-        >
-          State: <code>{life}</code>. The trade did not complete. Use the Agreements page to act on this.
-        </div>
-      )}
+      {/* Plain-language status banner — describes where the trade is in
+          the user's mental model rather than the chain's lifecycle. */}
+      <div
+        className="px-3 py-2 rounded text-xs"
+        style={{
+          background: failed ? 'rgba(252,211,77,0.10)' : 'rgba(0,0,0,0.20)',
+          border: `1px solid ${failed ? 'rgba(252,211,77,0.25)' : 'rgba(255,255,255,0.06)'}`,
+          color: failed ? '#fbbf24' : 'rgba(238,240,255,0.72)',
+          lineHeight: 1.5,
+        }}
+      >
+        {statusSentence(life, paymentSent)}
+      </div>
 
       {error && (
         <div className="text-xs" style={{ color: '#fbbf24' }}>
           {error}
-        </div>
-      )}
-
-      {expanded && (
-        <div
-          className="p-3 rounded text-xs space-y-1"
-          style={{
-            background: 'rgba(0,0,0,0.25)',
-            border: '1px solid rgba(255,255,255,0.06)',
-            color: 'rgba(238,240,255,0.65)',
-            fontFamily: '"JetBrains Mono", monospace',
-          }}
-        >
-          <div>agreement_id: {agreementId}</div>
-          <div>agreement_hash: {status?.agreement_hash ?? '—'}</div>
-          <div>funding_txid: {status?.lifecycle?.funding?.txid ?? '—'}</div>
-          <div>lifecycle: {life}</div>
-          <div>
-            <a
-              href={`/agreements?id=${agreementId}`}
-              className="inline-flex items-center gap-1"
-              style={{ color: '#6EC6FF', textDecoration: 'underline' }}
-            >
-              Open in Agreements <ExternalLink size={10} />
-            </a>
-          </div>
-          {!terminal && (
-            <button
-              onClick={async () => {
-                setBusyRefund(true);
-                try {
-                  const r = await agreementSpend.refundEligibility(agreementId);
-                  // eslint-disable-next-line no-alert
-                  window.alert(
-                    `Refund eligibility:\n${JSON.stringify(r, null, 2)}`,
-                  );
-                } catch (e) {
-                  // eslint-disable-next-line no-alert
-                  window.alert(e instanceof Error ? e.message : String(e));
-                } finally {
-                  setBusyRefund(false);
-                }
-              }}
-              disabled={busyRefund}
-              className="btn-secondary text-xs"
-            >
-              {busyRefund ? <Loader2 size={11} className="animate-spin" /> : 'Check refund eligibility'}
-            </button>
-          )}
-          {terminal && !failed && (
-            <button
-              onClick={async () => {
-                try {
-                  await agreements.audit(agreementId);
-                  // eslint-disable-next-line no-alert
-                  window.alert('Audit fetched — see browser devtools console for the full record.');
-                } catch (e) {
-                  // eslint-disable-next-line no-alert
-                  window.alert(e instanceof Error ? e.message : String(e));
-                }
-              }}
-              className="btn-secondary text-xs"
-            >
-              Fetch audit record
-            </button>
-          )}
         </div>
       )}
     </div>
