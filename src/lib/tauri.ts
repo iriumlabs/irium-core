@@ -1182,6 +1182,39 @@ export const rpcCall = {
   inspectBtcSwap: (txid: string, vout: number) =>
     rpcGet('/rpc/inspectbtcswap', { txid, vout }),
 
+  // ── SwapOrder book (Phase 4 Part 3) ─
+  postSwapOrder: (body: {
+    direction: 'sell_irm' | 'buy_irm';
+    irm_amount: string; btc_amount_sats: number;
+    maker_iriumd_address: string; maker_btc_address: string;
+    confirmations_required: number; expiry_blocks_from_now: number;
+    expected_hash_hex?: string;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/postswaporder', body),
+  listSwapOrders: (params?: {
+    direction?: 'sell_irm' | 'buy_irm' | 'both';
+    min_irm?: number; max_irm?: number;
+    min_btc?: number; max_btc?: number;
+    limit?: number; offset?: number;
+    sort?: 'price_asc' | 'price_desc' | 'recent';
+  }) => rpcGet('/rpc/listswaporders', params ?? {}),
+  getSwapOrder: (txid: string, vout: number) =>
+    rpcGet('/rpc/getswaporder', { txid, vout }),
+  cancelSwapOrder: (body: {
+    order_txid: string; order_vout: number; destination_address: string;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/cancelswaporder', body),
+  fillSwapOrder: (body: {
+    order_txid: string; order_vout: number;
+    taker_iriumd_address: string; taker_btc_address?: string;
+    timeout_blocks_from_now: number;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/fillswaporder', body),
+  sweepExpiredOrder: (body: {
+    order_txid: string; order_vout: number;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/sweepexpiredorder', body),
+
   // ── Settlement ─
   createAgreement: (agreement: unknown) => rpcPost('/rpc/createagreement', agreement),
   computeAgreementHash: (agreement: unknown) => rpcPost('/rpc/computeagreementhash', agreement),
