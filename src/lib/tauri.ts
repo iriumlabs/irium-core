@@ -1160,6 +1160,28 @@ export const rpcCall = {
   getBtcHeader: (params: { hash?: string; height?: number }) =>
     rpcGet('/rpc/btcheader', params),
 
+  // ── HtlcBtcSwap (Phase 4 Part 2) ─
+  createBtcSwap: (body: {
+    irm_amount: string; btc_amount_sats: number;
+    btc_recipient_address: string;
+    recipient_address: string; refund_address: string;
+    confirmations_required: number; timeout_height: number;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/createbtcswap', body),
+  claimBtcSwap: (body: {
+    funding_txid: string; vout: number;
+    destination_address: string;
+    btc_block_hash: string; btc_tx_hex: string;
+    btc_merkle_branch_hex: string[]; btc_merkle_index: number;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/claimbtcswap', body),
+  refundBtcSwap: (body: {
+    funding_txid: string; vout: number; destination_address: string;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/refundbtcswap', body),
+  inspectBtcSwap: (txid: string, vout: number) =>
+    rpcGet('/rpc/inspectbtcswap', { txid, vout }),
+
   // ── Settlement ─
   createAgreement: (agreement: unknown) => rpcPost('/rpc/createagreement', agreement),
   computeAgreementHash: (agreement: unknown) => rpcPost('/rpc/computeagreementhash', agreement),
