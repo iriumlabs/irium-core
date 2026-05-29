@@ -639,6 +639,14 @@ interface MinerRow {
   profile: 'asic' | 'cpu_gpu' | 'solo' | 'port443';
   accepted: number;
   rejected: number;
+  // Rolling deltas over the proxy's 15-min window. Distinct from
+  // accepted/rejected (which are cumulative since the stratum's last
+  // restart) so the GUI can show recent activity without the historical
+  // warmup-burst tail dominating. Null during warmup, after a counter
+  // rollback, or when the proxy's deque hasn't surfaced delta data yet
+  // (pre-upgrade 2-tuple entries).
+  accepted_15m?: number | null;
+  rejected_15m?: number | null;
   reject_rate_pct: number | null;
   hashrate_15m: number | null;
   last_share_ago_seconds: number | null;
@@ -1245,6 +1253,8 @@ function PoolStatsSection() {
           profile: m.profile,
           accepted: m.accepted ?? 0,
           rejected: m.rejected ?? 0,
+          accepted_15m: m.accepted_15m ?? null,
+          rejected_15m: m.rejected_15m ?? null,
           reject_rate_pct: m.reject_rate_pct,
           hashrate_15m: m.hashrate_15m,
           last_share_ago_seconds: m.last_share_ago_seconds,
@@ -1253,6 +1263,17 @@ function PoolStatsSection() {
       }
       existing.accepted = (existing.accepted ?? 0) + (m.accepted ?? 0);
       existing.rejected = (existing.rejected ?? 0) + (m.rejected ?? 0);
+      // Sum rolling deltas across the merged group so the "Rejected
+      // (15m)" column shows the wallet's full recent-window picture,
+      // not just one connection's slice. Nulls treated as 0 for
+      // accumulation but the sum stays null if NO row had data
+      // (preserves "warmup" semantics in the UI).
+      if (m.accepted_15m != null) {
+        existing.accepted_15m = (existing.accepted_15m ?? 0) + m.accepted_15m;
+      }
+      if (m.rejected_15m != null) {
+        existing.rejected_15m = (existing.rejected_15m ?? 0) + m.rejected_15m;
+      }
       const eHr = existing.hashrate_15m ?? -1;
       const mHr = m.hashrate_15m ?? -1;
       if (mHr > eHr) existing.hashrate_15m = m.hashrate_15m;
@@ -1532,7 +1553,7 @@ function PoolStatsSection() {
                     <tr style={{ color: 'rgba(255,255,255,0.40)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: '"Space Grotesk", sans-serif' }}>
                       <th className="text-left py-2 pr-3 font-semibold">Worker</th>
                       <th className="text-right py-2 px-3 font-semibold">Accepted</th>
-                      <th className="text-right py-2 px-3 font-semibold">Rejected</th>
+                      <th className="text-right py-2 px-3 font-semibold" title="Rejected shares in the last 15 minutes only. The cumulative count (since stratum restart) kept a worker showing a stale warmup-burst total even after they recovered.">Rejected (15m)</th>
                       <th className="text-right py-2 px-3 font-semibold" title="Rolling rejection rate over the last 15 minutes. The cumulative-since-restart rate kept a worker stuck on a post-restart warmup burst even after they recovered.">Reject % (15m)</th>
                       <th className="text-right py-2 px-3 font-semibold">Hashrate (15m)</th>
                       <th className="text-right py-2 pl-3 font-semibold">Last Share</th>
@@ -1587,8 +1608,8 @@ function PoolStatsSection() {
                           <td className="py-2 px-3 text-right font-mono" style={{ color: '#34d399' }}>
                             {m.accepted.toLocaleString('en-US')}
                           </td>
-                          <td className="py-2 px-3 text-right font-mono" style={{ color: m.rejected > 0 ? '#fda4af' : 'rgba(255,255,255,0.30)' }}>
-                            {m.rejected.toLocaleString('en-US')}
+                          <td className="py-2 px-3 text-right font-mono" style={{ color: (m.rejected_15m ?? 0) > 0 ? '#fda4af' : 'rgba(255,255,255,0.30)' }}>
+                            {(m.rejected_15m ?? 0).toLocaleString('en-US')}
                           </td>
                           <td className="py-2 px-3 text-right font-mono" style={{ color: rejectColor }}>
                             {m.reject_rate_pct == null ? '—' : `${m.reject_rate_pct.toFixed(1)}%`}
