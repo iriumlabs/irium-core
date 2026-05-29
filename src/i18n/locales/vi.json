@@ -2,9 +2,7 @@
   "_meta": {
     "status": "machine_translated",
     "review_needed": true,
-    "language": "Tiếng Việt",
-    "english_name": "Vietnamese",
-    "direction": "ltr"
+    "language": "Tiếng Việt"
   },
   "common": {
     "save": "Cứu",
@@ -223,7 +221,10 @@
       "midnight": "Nửa đêm",
       "obsidian": "Obsidian",
       "aurora": "cực quang",
-      "nebula": "Tinh vân"
+      "nebula": "Tinh vân",
+      "solar": "Mặt trời",
+      "ocean": "Đại dương",
+      "rose": "Hồng"
     },
     "network_info": {
       "network": "Mạng",
@@ -314,7 +315,17 @@
       "clearing": "Đang xóa…",
       "confirm_resync": "Xác nhận - thao tác này sẽ đồng bộ lại!",
       "clear_resync": "Xóa & đồng bộ lại",
-      "confirm_hint": "Bấm vào lần nữa để xác nhận. Các khối sẽ được tải xuống lại."
+      "confirm_hint": "Bấm vào lần nữa để xác nhận. Các khối sẽ được tải xuống lại.",
+      "reset_state_button": "Đặt lại trạng thái node (giữ block)",
+      "reset_state_description": "Phương án nhẹ hơn so với Xóa và đồng bộ lại. Giữ các block đã tải xuống và xây dựng lại tập UTXO cục bộ. Sử dụng khi bạn thấy lỗi xác minh chữ ký giao dịch.",
+      "reset_state_confirm_title": "Đặt lại trạng thái node?",
+      "reset_state_confirm_body": "Việc này đổi tên thư mục trạng thái của bạn thành bản sao lưu có dấu thời gian và giữ các block đã tải xuống. iriumd sẽ xây dựng lại tập UTXO từ block cục bộ vào lần khởi động tiếp theo — thường là 5 đến 15 phút thay vì hàng giờ cho đồng bộ chuỗi đầy đủ. Sử dụng khi bạn thấy lỗi xác minh chữ ký giao dịch hoặc hỏng trạng thái UTXO khác. wallet và agreement của bạn không bị ảnh hưởng.",
+      "reset_state_proceed": "Đặt lại trạng thái",
+      "reset_state_resetting": "Đang đặt lại…",
+      "reset_state_success": "Trạng thái đã đặt lại — bản sao lưu tại {{path}}",
+      "reset_state_no_backup": "Không có trạng thái hiện có để sao lưu — đã tạo trạng thái mới",
+      "reset_state_rebuilding": "node đang khởi động lại — xây dựng lại tập UTXO từ block cục bộ (5-15 phút)",
+      "reset_state_failed": "Đặt lại thất bại: {{reason}}"
     },
     "developer_info": {
       "reset_onboarding": "Đặt lại quá trình làm quen",
@@ -743,7 +754,18 @@
       "load_error_title": "Không thể tải thỏa thuận",
       "empty_state": "Bạn chưa tạo bất kỳ thỏa thuận nào.",
       "create_first": "Tạo thỏa thuận đầu tiên của bạn →",
-      "create_offer": "Tạo ưu đãi"
+      "create_offer": "Tạo ưu đãi",
+      "selling_title": "Tôi đang bán",
+      "selling_subtitle": "Tạo một ưu đãi, chia sẻ với người mua, nhận thanh toán khi có proof",
+      "selling_cta": "Bắt đầu Quy trình Người bán →",
+      "buying_title": "Tôi đang mua",
+      "buying_subtitle": "Tìm một ưu đãi, nạp tiền vào escrow, giải phóng thanh toán khi giao hàng",
+      "buying_cta": "Bắt đầu Quy trình Người mua →",
+      "create_direct": "Tạo agreement trực tiếp (nâng cao)",
+      "how_it_works": "Cách thức hoạt động",
+      "step_create": "Tạo hoặc tìm một agreement",
+      "step_lock": "Khóa IRM vào escrow trên chuỗi",
+      "step_proof": "Gửi proof — tiền tự động giải phóng"
     },
     "templates": {
       "otc": "Giao dịch OTC",
@@ -779,7 +801,9 @@
         "memo_merchant_placeholder": "Mô tả đơn hàng...",
         "total_escrow_hours": "Tổng thời hạn ký quỹ (giờ)",
         "party_placeholder": "Q... hoặc P..."
-      }
+      },
+      "step_details_short": "Chi tiết",
+      "step_review_confirm": "Xem lại và xác nhận"
     },
     "seller_dashboard": "Trang tổng quan người bán",
     "buyer_dashboard": "Trang tổng quan người mua",
@@ -803,6 +827,76 @@
     "review_agreement": "Xem xét thỏa thuận",
     "modals": {
       "payment_invoice": "Hóa đơn thanh toán"
+    },
+    "page_subtitle": "Settlement on-chain không cần tin cậy sử dụng hệ thống escrow dựa trên proof của Irium",
+    "templates_desc": {
+      "otc": "Sử dụng để mua hoặc bán IRM ngang hàng. Người mua khóa IRM trong escrow, thực hiện thanh toán off-chain, và người bán xác nhận đã nhận để giải phóng tiền.",
+      "freelance": "Sử dụng cho công việc tự do hoặc dịch vụ. Khách hàng khóa thanh toán trong escrow trước. Tiền được giải phóng khi nhà thầu hoàn thành công việc và gửi proof.",
+      "milestone": "Sử dụng cho các dự án lớn chia thành giai đoạn. Mỗi mốc có escrow và yêu cầu proof riêng. Giải phóng một phần khi các mốc hoàn thành.",
+      "deposit": "Sử dụng cho tiền đặt cọc hoàn lại hoặc tài sản thế chấp. Tiền bị khóa on-chain và tự động trả lại nếu các điều kiện không được đáp ứng trước thời hạn.",
+      "merchant_delayed": "Bán hàng thương nhân có sẵn cửa sổ hạ nhiệt. Tiền được giữ trong escrow và thương nhân chỉ có thể yêu cầu sau khi cửa sổ tranh chấp đóng.",
+      "contractor": "Công việc nhà thầu chia thành các mốc. Mỗi mốc có escrow riêng và yêu cầu proof giao hàng. Tiền được giải phóng theo từng giai đoạn."
+    },
+    "role_labels": {
+      "buyer": "Địa chỉ người mua",
+      "seller": "Địa chỉ người bán",
+      "client": "Địa chỉ khách hàng",
+      "contractor": "Địa chỉ nhà thầu",
+      "payer": "Địa chỉ người trả tiền",
+      "payee": "Địa chỉ người nhận tiền",
+      "depositor": "Địa chỉ người gửi tiền",
+      "recipient": "Địa chỉ người nhận",
+      "merchant": "Địa chỉ thương nhân"
+    },
+    "form_errors": {
+      "address_required": "Cần địa chỉ",
+      "same_party": "Bên A và Bên B không thể là cùng một địa chỉ",
+      "positive_amount": "Nhập số tiền dương",
+      "amount_exceeds_supply": "Số tiền không thể vượt quá {{max}} IRM (tổng cung)",
+      "milestones_range": "Từ 2 đến 20",
+      "deadline_range": "Thời hạn phải nằm trong khoảng 1 đến {{max}} giờ (1 năm)",
+      "cooldown_range": "Thời gian hạ nhiệt phải nằm trong khoảng 1 đến {{max}} giờ (1 năm)"
+    },
+    "review_labels": {
+      "amount": "Số tiền",
+      "deadline": "Thời hạn",
+      "scope": "Phạm vi",
+      "milestones": "Mốc",
+      "per_milestone": "Mỗi mốc",
+      "cooldown_window": "Cửa sổ hạ nhiệt",
+      "total_escrow_window": "Tổng cửa sổ escrow",
+      "memo": "Ghi chú",
+      "asset_ref": "Tham chiếu tài sản",
+      "payment": "Thanh toán"
+    },
+    "preview": {
+      "preview_suffix": "Xem trước",
+      "fill_hint": "Điền vào biểu mẫu để xem bản xem trước trực tiếp",
+      "amount": "Số tiền",
+      "sats": "Sats",
+      "fee_rate": "Mức phí",
+      "per_milestone": "Mỗi mốc",
+      "deadline": "Thời hạn",
+      "cooldown": "Hạ nhiệt",
+      "total_window": "Tổng cửa sổ",
+      "type": "Loại"
+    },
+    "dashboard": {
+      "select_seller_hint": "Chọn địa chỉ wallet để xem thống kê người bán.",
+      "select_buyer_hint": "Chọn địa chỉ wallet để xem thống kê người mua.",
+      "active_offers": "Ưu đãi đang hoạt động",
+      "open_agreements": "agreement đang mở",
+      "completed": "Hoàn thành",
+      "active_purchases": "Giao dịch mua đang hoạt động",
+      "total_received": "Tổng đã nhận",
+      "total_received_hint": "Khối lượng trọn đời của agreement đã giải phóng nơi bạn là người bán (sats → IRM)",
+      "total_spent": "Tổng đã chi",
+      "total_spent_hint": "Khối lượng trọn đời của agreement đã giải phóng nơi bạn là người mua (sats → IRM)",
+      "reputation": "Danh tiếng",
+      "restrictions_label": "Hạn chế: "
+    },
+    "errors": {
+      "generic_failure": "Đã xảy ra lỗi. Kiểm tra node của bạn có đang chạy và thử lại."
     }
   },
   "marketplace": {
@@ -1355,6 +1449,20 @@
       "col_reject_pct": "Reject %",
       "col_hashrate": "15m H/s",
       "col_last_share": "Last share"
+    },
+    "calculator": {
+      "title": "Máy tính Đào",
+      "your_hashrate": "Hashrate của bạn",
+      "placeholder": "0",
+      "network_label": "Mạng",
+      "block_reward_label": "Phần thưởng block",
+      "protocol_target": "Mục tiêu giao thức",
+      "protocol_target_sub": "block 10 phút (mục tiêu thiết kế chuỗi)",
+      "current_rate": "Tốc độ chuỗi hiện tại",
+      "current_rate_sub": "~block 1 phút (quan sát hiện tại)",
+      "blocks_per_day_suffix": "block/ngày",
+      "irm_per_day_suffix": "IRM/ngày",
+      "disclaimer": "Chỉ ước tính — thu nhập thực tế phụ thuộc vào may mắn, phí pool và thay đổi độ khó. Máy tính sử dụng hashrate mạng trực tiếp, làm mới mỗi 60 giây."
     }
   },
   "help": {
@@ -1877,5 +1985,285 @@
     "clear_output": "Xóa",
     "input_placeholder": "Nhập lệnh... ('help' để xem danh sách)",
     "input_busy_placeholder": "Đang chạy..."
+  },
+  "settlement_ui": {
+    "hub": {
+      "title": "Settlement",
+      "subtitle": "Khóa IRM trong escrow. Giải phóng khi xác nhận. Hoàn tiền khi hết thời gian.",
+      "safe_trade_title": "Giao dịch An toàn",
+      "safe_trade_subtitle": "Khóa IRM, đổi lấy bất cứ thứ gì. Cả hai bên đều được bảo vệ.",
+      "pay_for_work_title": "Thanh toán cho công việc",
+      "pay_for_work_subtitle": "Tài trợ một công việc với một khoản thanh toán hoặc theo mốc. Tiền giải phóng khi công việc hoàn thành.",
+      "deposit_title": "Tiền đặt cọc hoàn lại",
+      "deposit_subtitle": "Khóa IRM làm bảo đảm. Tự động lấy lại nếu các điều kiện không được đáp ứng.",
+      "active_title": "agreement đang hoạt động",
+      "active_empty": "Chưa có agreement đang hoạt động. Bắt đầu một ở trên.",
+      "active_load_error": "Không thể tải agreement — node của bạn có thể đang ngoại tuyến.",
+      "other_party": "Bên kia",
+      "amount": "Số tiền",
+      "start_cta": "Bắt đầu",
+      "toast_released": "Đã giải phóng tiền cho bên kia.",
+      "toast_refunded": "Đã yêu cầu hoàn tiền — tiền đang trở lại wallet của bạn."
+    },
+    "status": {
+      "setting_up": "Đang thiết lập",
+      "waiting": "Đang chờ",
+      "ready_release": "Sẵn sàng giải phóng",
+      "ready_refund": "Sẵn sàng hoàn tiền",
+      "disputed": "Tranh chấp — đã chỉ định trọng tài",
+      "complete": "Hoàn thành",
+      "refunded": "Đã hoàn tiền",
+      "expired": "Hết hạn",
+      "unknown": "Trạng thái không xác định",
+      "checking": "Đang kiểm tra…"
+    },
+    "actions": {
+      "release_funds": "Giải phóng tiền",
+      "claim_refund": "Yêu cầu hoàn tiền",
+      "view_dispute": "Xem tranh chấp",
+      "view_details": "Xem chi tiết",
+      "report_problem": "Có vấn đề gì?"
+    },
+    "amount": {
+      "over_max": "Tối đa là {{max}} IRM"
+    },
+    "address": {
+      "placeholder": "Địa chỉ Q… hoặc P…",
+      "paste": "Dán từ bộ nhớ tạm",
+      "format_error": "Đây không giống địa chỉ Irium hợp lệ."
+    },
+    "duration": {
+      "preset_1h": "1 giờ",
+      "preset_4h": "4 giờ",
+      "preset_24h": "24 giờ",
+      "preset_48h": "2 ngày",
+      "preset_1w": "1 tuần",
+      "custom": "Tùy chỉnh",
+      "custom_placeholder": "giờ",
+      "hours_suffix": "giờ",
+      "expires_around": "Hết hạn khoảng {{datetime}}"
+    },
+    "deal_code": {
+      "code_label": "Mã giao dịch",
+      "paste_placeholder": "Dán mã giao dịch người bán đã gửi vào đây…",
+      "building": "Đang tạo mã giao dịch…",
+      "copy_code": "Sao chép mã giao dịch",
+      "copy_id": "Sao chép ID agreement",
+      "copied": "Đã sao chép vào bộ nhớ tạm",
+      "paste": "Dán",
+      "verify": "Xác minh giao dịch",
+      "imported": "Đã xác minh giao dịch",
+      "import_success": "Đã nhập và xác minh giao dịch",
+      "fallback_explainer": "Không thể tạo mã giao dịch. Hãy chia sẻ ID agreement này thay thế — node của người mua cần trực tuyến để lấy phần còn lại."
+    },
+    "technical": {
+      "title": "Chi tiết kỹ thuật",
+      "empty": "Không có dữ liệu.",
+      "copied": "Đã sao chép"
+    },
+    "errors": {
+      "generic": "Đã xảy ra lỗi — vui lòng thử lại.",
+      "node_offline": "node Irium của bạn không chạy. Khởi động từ Bảng điều khiển rồi thử lại.",
+      "network_timeout": "Yêu cầu mất quá nhiều thời gian. Kiểm tra kết nối và thử lại.",
+      "auth_failed": "node của bạn từ chối yêu cầu. Kiểm tra mã thông báo RPC trong Cài đặt.",
+      "insufficient_funds": "Không đủ IRM trong wallet của bạn cho thao tác này.",
+      "coinbase_immature": "Một số IRM của bạn đến từ đào gần đây và chưa thể chi tiêu. Thử lại sau vài block.",
+      "double_spend": "Giao dịch chờ khác đang dùng cùng số tiền. Chờ một lát rồi thử lại.",
+      "already_settled": "agreement này đã được thanh toán. Làm mới để xem trạng thái hiện tại.",
+      "refund_not_ready": "Bạn chưa thể yêu cầu hoàn tiền. Đợi đến khi thời hạn qua.",
+      "release_not_ready": "Tiền chưa sẵn sàng để giải phóng. Đợi xác nhận proof.",
+      "agreement_mismatch": "Mã giao dịch này không khớp với agreement trên node của bạn. Yêu cầu bên kia gửi lại.",
+      "expired": "Giao dịch này đã hết hạn.",
+      "bad_secret": "Khóa giải phóng sai. Kiểm tra xem bạn có mã giao dịch đúng không.",
+      "bad_address": "Địa chỉ đó trông không đúng. Kiểm tra lại và thử lại.",
+      "bad_format": "Không thể đọc dữ liệu. Có thể bị hỏng hoặc từ ứng dụng khác.",
+      "fs_blocked": "Ứng dụng không thể lưu mã giao dịch cục bộ. Kiểm tra quyền truy cập đĩa.",
+      "file_missing": "Không tìm thấy tệp mã giao dịch đã lưu.",
+      "pack_not_found": "Chúng tôi không thể tìm thấy agreement này trên node của bạn.",
+      "unpack_signature_invalid": "Mã giao dịch được ký sai. Đừng tin — yêu cầu bên kia gửi lại.",
+      "dispute_duplicate": "Tranh chấp đã mở cho agreement này.",
+      "dispute_not_party": "Chỉ người mua hoặc người bán có thể nêu tranh chấp trên giao dịch này."
+    },
+    "safe_trade": {
+      "step1_title": "Bạn ở bên nào của giao dịch?",
+      "step1_subtitle": "Chọn bên phù hợp với vai trò của bạn.",
+      "selling_button": "Tôi bán IRM",
+      "selling_subtitle": "Bạn khóa IRM trong escrow và chờ thanh toán.",
+      "buying_button": "Tôi mua IRM",
+      "buying_subtitle": "Bạn thanh toán off-chain và nhận IRM.",
+      "status_title": "Trạng thái",
+      "status_initial": "Đang thiết lập — tiền của bạn đang được khóa.",
+      "status_waiting_verify": "Đang chờ người mua xác minh giao dịch.",
+      "status_waiting_payment": "Người mua đã xác minh — chờ thanh toán off-chain của họ.",
+      "status_ready_release": "Đã xác nhận thanh toán. Đang giải phóng tiền cho người mua.",
+      "toast_funded": "Đã tài trợ Escrow.",
+      "toast_released": "Đã giải phóng tiền cho bên kia.",
+      "toast_release_pending": "Đã ghi lại thanh toán. Tiền sẽ giải phóng sau khi xác nhận vài block tiếp theo.",
+      "errors": {
+        "buyer_required": "Nhập địa chỉ Irium của người mua.",
+        "amount_required": "Nhập số IRM bạn muốn khóa.",
+        "receiving_required": "Cho người mua biết bạn mong đợi gì đáp lại."
+      },
+      "review": {
+        "you_lock": "Bạn đang khóa",
+        "buyer_sends": "Người mua sẽ gửi",
+        "deadline": "Thời hạn",
+        "deadline_value": "Nếu không thanh toán trong {{hours}} giờ, IRM của bạn sẽ trở lại tự động.",
+        "lock_funds": "Khóa tiền",
+        "tx_note": "Việc này sẽ tạo một giao dịch trên blockchain Irium."
+      },
+      "share": {
+        "title": "Chia sẻ với người mua",
+        "subtitle": "Gửi mã cho người mua. Họ sẽ dùng để xác minh giao dịch trước khi thanh toán cho bạn off-chain."
+      },
+      "selling": {
+        "step2_title": "Thiết lập giao dịch",
+        "step2_subtitle": "Cho chúng tôi biết người mua của bạn là ai và bạn khóa bao nhiêu.",
+        "step3_title": "Xem lại giao dịch",
+        "step3_subtitle": "Kiểm tra lại mọi thứ trước khi khóa tiền.",
+        "step4_title": "Tiền đã khóa — chia sẻ với người mua",
+        "step4_subtitle": "Gửi mã giao dịch cho người mua. Họ sẽ dùng để xác minh giao dịch trước khi thanh toán cho bạn.",
+        "buyer_address_label": "Địa chỉ Irium của người mua",
+        "amount_label": "Bạn khóa bao nhiêu IRM?",
+        "amount_helper": "Giữ trong escrow cho đến khi bạn xác nhận đã nhận thanh toán.",
+        "receiving_label": "Họ gửi gì cho bạn?",
+        "receiving_placeholder": "ví dụ: 200 USDT, chuyển khoản ngân hàng, tiền mặt",
+        "deadline_label": "Giao dịch này nên mở trong bao lâu?",
+        "deadline_helper": "Nếu họ không thanh toán trong thời gian này, IRM của bạn sẽ trở lại tự động.",
+        "release_button": "Tôi đã nhận thanh toán — giải phóng tiền cho người mua"
+      },
+      "buying": {
+        "step2_title": "Dán mã giao dịch từ người bán",
+        "step2_subtitle": "Người bán đã gửi cho bạn một mã. Dán vào bên dưới để xác minh giao dịch.",
+        "step3_title": "Xác minh các chi tiết giao dịch này",
+        "step3_subtitle": "Đảm bảo các chi tiết khớp với những gì bạn đã đồng ý off-chain.",
+        "step4_title": "Gửi thanh toán rồi chờ",
+        "step4_subtitle": "Gửi thanh toán đã đồng ý cho người bán. IRM của bạn sẽ đến tự động khi họ xác nhận.",
+        "review_intro": "Giao dịch này đã được nhập và xác minh trên node của bạn. IRM của người bán đã khóa trong escrow — bạn sẽ nhận khi đã gửi thanh toán off-chain và người bán xác nhận.",
+        "seller_locks": "Người bán đang khóa",
+        "seller_label": "Người bán",
+        "trade_id_label": "ID giao dịch",
+        "details_unavailable": "Không thể lấy chi tiết giao dịch từ node của bạn. Bạn vẫn có thể tiếp tục, nhưng xác minh rằng ID agreement khớp với những gì người bán đã gửi.",
+        "cancel_button": "Có gì đó sai — Hủy",
+        "confirm_button": "Trông đúng — tôi sẽ gửi thanh toán",
+        "status_waiting": "Đang chờ người bán xác nhận đã nhận thanh toán.",
+        "status_releasing": "Đã xác nhận thanh toán — IRM đang trên đường đi.",
+        "status_complete": "Hoàn thành — IRM đã đến wallet của bạn.",
+        "view_agreements": "Xem trong agreement"
+      }
+    },
+    "pay_for_work": {
+      "step1_title": "Thanh toán một lần hay theo mốc?",
+      "step1_subtitle": "Chọn cách bạn sẽ thanh toán.",
+      "single_button": "Thanh toán một lần",
+      "single_subtitle": "Thanh toán tất cả trước khi công việc hoàn thành.",
+      "milestone_button": "Theo mốc",
+      "milestone_subtitle": "Thanh toán theo giai đoạn khi từng phần hoàn thành.",
+      "step2_title": "Thiết lập thanh toán",
+      "step2_subtitle_single": "Cho chúng tôi biết bạn thanh toán cho ai và bao nhiêu.",
+      "step2_subtitle_milestone": "Cho chúng tôi biết tổng số, số giai đoạn và những gì được mong đợi.",
+      "step3_title": "Xem lại",
+      "step3_subtitle": "Kiểm tra lại trước khi khóa tiền.",
+      "step4_title": "Tiền đã khóa",
+      "step4_subtitle": "Đang chờ giao công việc.",
+      "contractor_label": "Bạn thanh toán cho ai?",
+      "amount_label_single": "Bao nhiêu?",
+      "amount_label_milestone": "Tổng số tiền để khóa",
+      "amount_helper_milestone": "Chia đều giữa các mốc bên dưới.",
+      "count_label": "Bao nhiêu mốc?",
+      "per_milestone_preview": "Mỗi mốc: {{amount}}",
+      "deadline_label": "Thời hạn",
+      "deadline_helper": "Bao lâu cho đến khi tiền tự động hoàn lại nếu công việc không được xác nhận.",
+      "description_label": "Mô tả (tùy chọn)",
+      "description_placeholder": "Cái gì đang được giao? (tối đa 200 ký tự)",
+      "errors": {
+        "contractor_required": "Nhập người bạn đang thanh toán.",
+        "amount_required": "Nhập số IRM bạn đang khóa.",
+        "count_range": "Từ 2 đến 10 mốc."
+      },
+      "review": {
+        "paying": "Đang thanh toán",
+        "locking": "Đang khóa",
+        "milestones": "Mốc",
+        "milestones_value": "{{count}} mốc · {{per}} mỗi cái",
+        "deadline": "Thời hạn",
+        "deadline_value": "{{hours}} giờ",
+        "scope": "Mô tả",
+        "lock_funds": "Khóa tiền",
+        "lock_all": "Khóa tất cả tiền"
+      },
+      "status_title": "Trạng thái",
+      "status_setting_up": "Đang thiết lập — tiền đang được khóa.",
+      "status_pending": "Chờ xác nhận tài trợ on-chain.",
+      "status_in_progress": "Tiền đã khóa. Đang chờ giao công việc.",
+      "status_can_refund": "Đã đến hạn. Bạn có thể yêu cầu hoàn tiền.",
+      "status_complete": "Hoàn thành. Thanh toán đã được giải phóng.",
+      "mark_complete": "Đánh dấu hoàn thành — giải phóng thanh toán",
+      "claim_refund": "Yêu cầu hoàn tiền",
+      "toast_released": "Đã giải phóng thanh toán cho nhà thầu.",
+      "toast_release_pending": "Đã ghi lại hoàn thành. Tiền sẽ giải phóng sau khi xác nhận vài block tiếp theo.",
+      "toast_refunded": "Đã yêu cầu hoàn tiền — tiền đang trở lại wallet của bạn."
+    },
+    "deposit": {
+      "step1_title": "Thiết lập tiền đặt cọc",
+      "step1_subtitle": "Khóa IRM làm bảo đảm. Tự động lấy lại nếu các điều kiện không được đáp ứng.",
+      "step2_title": "Xem lại",
+      "step2_subtitle": "Kiểm tra lại trước khi khóa tiền đặt cọc.",
+      "step3_title": "Tiền đặt cọc đã khóa",
+      "step3_subtitle": "Giữ trong escrow cho đến khi bạn giải phóng, hoặc cho đến khi thời hạn qua và bạn lấy lại.",
+      "recipient_label": "Ai nhận nếu các điều kiện được đáp ứng?",
+      "amount_label": "Số tiền đặt cọc",
+      "purpose_label": "Mục đích",
+      "purpose_placeholder": "ví dụ: Tiền đặt cọc thuê nhà",
+      "purpose_helper": "Ghi chú cho hồ sơ của bạn. Lưu trữ cục bộ — bên kia có thể không thấy.",
+      "deadline_label": "Thời hạn trả lại",
+      "deadline_helper": "Nếu người nhận không yêu cầu trước thời hạn này, bạn có thể lấy lại.",
+      "preset_1m": "1 tháng",
+      "preset_3m": "3 tháng",
+      "errors": {
+        "recipient_required": "Nhập địa chỉ Irium của người nhận.",
+        "amount_required": "Nhập số IRM bạn đang đặt cọc."
+      },
+      "review": {
+        "recipient": "Người nhận",
+        "amount": "Số tiền",
+        "purpose": "Mục đích",
+        "deadline": "Thời hạn trả lại",
+        "deadline_value": "{{hours}} giờ kể từ bây giờ",
+        "lock_deposit": "Khóa tiền đặt cọc"
+      },
+      "status_title": "Trạng thái",
+      "status_setting_up": "Đang thiết lập — tiền đặt cọc của bạn đang được khóa.",
+      "status_locked": "Đã khóa trong escrow. Sẽ giải phóng khi bạn ra lệnh, hoặc tự động hoàn lại sau thời hạn.",
+      "status_can_claim_back": "Đã đến hạn. Bạn có thể lấy lại tiền đặt cọc.",
+      "status_released": "Đã giải phóng cho người nhận.",
+      "status_refunded": "Đã hoàn lại vào wallet.",
+      "release_button": "Giải phóng cho người nhận",
+      "claim_back_button": "Lấy lại",
+      "toast_released": "Đã giải phóng tiền đặt cọc cho người nhận.",
+      "toast_refunded": "Đã lấy lại tiền đặt cọc — tiền đang trở lại wallet của bạn."
+    },
+    "dispute": {
+      "step1_title": "Chuyện gì đã xảy ra?",
+      "step1_subtitle": "Mô tả vấn đề bằng lời của bạn. Bên kia sẽ nhìn thấy điều này.",
+      "step2_title": "Đã ghi lại tranh chấp",
+      "step2_subtitle": "Tranh chấp của bạn hiện đang trên blockchain Irium.",
+      "about_agreement": "Về agreement này",
+      "reason_label": "Mô tả vấn đề",
+      "reason_placeholder": "Điều gì đã sai? Cụ thể — bên kia sẽ đọc điều này.",
+      "evidence_label": "Thêm bằng chứng (tệp)",
+      "evidence_coming_soon": "Đính kèm tệp sẽ có trong bản phát hành tương lai.",
+      "submit_button": "Báo cáo vấn đề",
+      "confirm_title": "Tranh chấp của bạn đã được ghi lại trên chuỗi.",
+      "confirm_body": "Bên kia đã được thông báo. Liên hệ trực tiếp để giải quyết. Nếu không thể đạt thỏa thuận, bước tiếp theo là trò chuyện ngoài ứng dụng — giải quyết tự động bởi trọng tài sẽ có trong bản phát hành tương lai.",
+      "next_step_note": "Trong khi tranh chấp đang mở, không bên nào có thể giải phóng hoặc hoàn tiền. Nói chuyện với đối tác của bạn trước tiên.",
+      "back_to_hub": "Quay lại Settlement",
+      "view_agreements": "Xem agreement",
+      "toast_submitted": "Đã ghi lại tranh chấp trên chuỗi.",
+      "errors": {
+        "no_agreement": "Chưa chọn agreement. Mở một từ trung tâm và thử lại.",
+        "reason_required": "Vui lòng mô tả điều gì đã xảy ra."
+      }
+    }
   }
 }

@@ -2,9 +2,7 @@
   "_meta": {
     "status": "machine_translated",
     "review_needed": true,
-    "language": "العربية",
-    "english_name": "Arabic",
-    "direction": "rtl"
+    "language": "العربية"
   },
   "common": {
     "save": "يحفظ",
@@ -223,7 +221,10 @@
       "midnight": "منتصف الليل",
       "obsidian": "سبج",
       "aurora": "أورورا",
-      "nebula": "سديم"
+      "nebula": "سديم",
+      "solar": "شمسي",
+      "ocean": "محيط",
+      "rose": "وردي"
     },
     "network_info": {
       "network": "شبكة",
@@ -314,7 +315,17 @@
       "clearing": "المقاصة…",
       "confirm_resync": "تأكيد - ستتم إعادة المزامنة!",
       "clear_resync": "مسح وإعادة المزامنة",
-      "confirm_hint": "انقر مرة أخرى للتأكيد. سيتم إعادة تنزيل الكتل."
+      "confirm_hint": "انقر مرة أخرى للتأكيد. سيتم إعادة تنزيل الكتل.",
+      "reset_state_button": "إعادة تعيين حالة node (الاحتفاظ بـ block)",
+      "reset_state_description": "بديل أخف من المسح وإعادة المزامنة. يحتفظ بـ block التي تم تنزيلها ويعيد بناء مجموعة UTXO محلياً. استخدم هذا عند ظهور فشل في التحقق من توقيع المعاملة.",
+      "reset_state_confirm_title": "هل تريد إعادة تعيين حالة node؟",
+      "reset_state_confirm_body": "هذا يعيد تسمية مجلد الحالة الخاص بك إلى نسخة احتياطية مؤرَّخة ويحتفظ بـ block التي تم تنزيلها. سيقوم iriumd بإعادة بناء مجموعة UTXO من block المحلية عند بدء التشغيل التالي — عادةً من 5 إلى 15 دقيقة بدلاً من ساعات للمزامنة الكاملة. استخدم هذا عند ظهور فشل في التحقق من توقيع المعاملة أو فساد حالة UTXO أخرى. wallet وagreement لا تتأثر.",
+      "reset_state_proceed": "إعادة تعيين الحالة",
+      "reset_state_resetting": "جارٍ إعادة التعيين…",
+      "reset_state_success": "تم إعادة تعيين الحالة — النسخة الاحتياطية في {{path}}",
+      "reset_state_no_backup": "لا توجد حالة لإجراء نسخ احتياطي — تم إنشاء حالة جديدة",
+      "reset_state_rebuilding": "node قيد إعادة التشغيل — يعيد بناء مجموعة UTXO من block المحلية (5-15 دقيقة)",
+      "reset_state_failed": "فشلت إعادة التعيين: {{reason}}"
     },
     "developer_info": {
       "reset_onboarding": "إعادة ضبط الإعداد",
@@ -743,7 +754,18 @@
       "load_error_title": "تعذر تحميل الاتفاقيات",
       "empty_state": "لم تقم بإنشاء أية اتفاقيات حتى الآن.",
       "create_first": "أنشئ اتفاقيتك الأولى →",
-      "create_offer": "إنشاء العرض"
+      "create_offer": "إنشاء العرض",
+      "selling_title": "أنا أبيع",
+      "selling_subtitle": "أنشئ عرضاً، شاركه مع المشتري، استلم الدفع عبر proof",
+      "selling_cta": "ابدأ مسار البائع ←",
+      "buying_title": "أنا أشتري",
+      "buying_subtitle": "اعثر على عرض، مَوِّل escrow، حرِّر الدفع عند التسليم",
+      "buying_cta": "ابدأ مسار المشتري ←",
+      "create_direct": "أنشئ agreement مباشرة (متقدم)",
+      "how_it_works": "كيف يعمل",
+      "step_create": "أنشئ أو اعثر على agreement",
+      "step_lock": "اقفل IRM في escrow على السلسلة",
+      "step_proof": "أرسل proof — تُفرَج الأموال تلقائياً"
     },
     "templates": {
       "otc": "التجارة خارج البورصة",
@@ -779,7 +801,9 @@
         "memo_merchant_placeholder": "وصف الطلب...",
         "total_escrow_hours": "إجمالي فترة الضمان (ساعات)",
         "party_placeholder": "س... أو ف..."
-      }
+      },
+      "step_details_short": "التفاصيل",
+      "step_review_confirm": "مراجعة وتأكيد"
     },
     "seller_dashboard": "لوحة تحكم البائع",
     "buyer_dashboard": "لوحة تحكم المشتري",
@@ -803,6 +827,76 @@
     "review_agreement": "مراجعة الاتفاقية",
     "modals": {
       "payment_invoice": "فاتورة الدفع"
+    },
+    "page_subtitle": "Settlement عبر السلسلة بدون ثقة باستخدام نظام escrow القائم على proof من Irium",
+    "templates_desc": {
+      "otc": "استخدم هذا لشراء أو بيع IRM من نظير إلى نظير. يقفل المشتري IRM في escrow، ويُجري دفعاً خارج السلسلة، ويؤكد البائع الاستلام لتحرير الأموال.",
+      "freelance": "استخدم هذا للعمل المستقل أو الخدمات. يقفل العميل الدفعة في escrow مسبقاً. تُفرَج الأموال عندما يكمل المتعاقد العمل ويرسل proof.",
+      "milestone": "استخدم هذا للمشاريع الكبيرة المُقسَّمة إلى مراحل. كل مرحلة لها escrow ومتطلب proof خاص. تحدث إفراجات جزئية مع اكتمال المراحل.",
+      "deposit": "استخدم هذا للودائع القابلة للاسترداد أو الضمانات. تُقفَل الأموال على السلسلة وتعود تلقائياً إذا لم تُستوفَ الشروط بحلول الموعد النهائي.",
+      "merchant_delayed": "بيع تاجر بنافذة تهدئة مدمجة. تُحتجَز الأموال في escrow ويمكن للتاجر المطالبة بها فقط بعد إغلاق نافذة النزاع.",
+      "contractor": "عمل المتعاقد مُقسَّم إلى مراحل. كل مرحلة لها escrow خاص ومتطلب proof تسليم. تُفرَج الأموال مرحلةً مرحلة."
+    },
+    "role_labels": {
+      "buyer": "عنوان المشتري",
+      "seller": "عنوان البائع",
+      "client": "عنوان العميل",
+      "contractor": "عنوان المتعاقد",
+      "payer": "عنوان الدافع",
+      "payee": "عنوان المستفيد",
+      "depositor": "عنوان المودِع",
+      "recipient": "عنوان المستلِم",
+      "merchant": "عنوان التاجر"
+    },
+    "form_errors": {
+      "address_required": "العنوان مطلوب",
+      "same_party": "لا يمكن أن يكون الطرف A والطرف B العنوان نفسه",
+      "positive_amount": "أدخل مبلغاً موجباً",
+      "amount_exceeds_supply": "لا يمكن أن يتجاوز المبلغ {{max}} IRM (إجمالي العرض)",
+      "milestones_range": "بين 2 و 20",
+      "deadline_range": "يجب أن يكون الموعد النهائي بين 1 و {{max}} ساعة (سنة واحدة)",
+      "cooldown_range": "يجب أن تكون فترة التهدئة بين 1 و {{max}} ساعة (سنة واحدة)"
+    },
+    "review_labels": {
+      "amount": "المبلغ",
+      "deadline": "الموعد النهائي",
+      "scope": "النطاق",
+      "milestones": "المراحل",
+      "per_milestone": "لكل مرحلة",
+      "cooldown_window": "نافذة التهدئة",
+      "total_escrow_window": "نافذة escrow الإجمالية",
+      "memo": "ملاحظة",
+      "asset_ref": "مرجع الأصل",
+      "payment": "الدفع"
+    },
+    "preview": {
+      "preview_suffix": "معاينة",
+      "fill_hint": "املأ النموذج لرؤية معاينة مباشرة",
+      "amount": "المبلغ",
+      "sats": "Sats",
+      "fee_rate": "معدل الرسوم",
+      "per_milestone": "لكل مرحلة",
+      "deadline": "الموعد النهائي",
+      "cooldown": "التهدئة",
+      "total_window": "النافذة الإجمالية",
+      "type": "النوع"
+    },
+    "dashboard": {
+      "select_seller_hint": "اختر عنوان wallet لعرض إحصائيات البائع.",
+      "select_buyer_hint": "اختر عنوان wallet لعرض إحصائيات المشتري.",
+      "active_offers": "العروض النشطة",
+      "open_agreements": "agreement مفتوحة",
+      "completed": "مكتمل",
+      "active_purchases": "المشتريات النشطة",
+      "total_received": "إجمالي المستلَم",
+      "total_received_hint": "حجم العمر لـ agreement المُفرَج عنها حيث كنت البائع (sats → IRM)",
+      "total_spent": "إجمالي المُنفَق",
+      "total_spent_hint": "حجم العمر لـ agreement المُفرَج عنها حيث كنت المشتري (sats → IRM)",
+      "reputation": "السمعة",
+      "restrictions_label": "القيود: "
+    },
+    "errors": {
+      "generic_failure": "حدث خطأ ما. تحقق من تشغيل node ثم أعد المحاولة."
     }
   },
   "marketplace": {
@@ -1355,6 +1449,20 @@
       "col_reject_pct": "Reject %",
       "col_hashrate": "15m H/s",
       "col_last_share": "Last share"
+    },
+    "calculator": {
+      "title": "حاسبة التعدين",
+      "your_hashrate": "معدل التجزئة الخاص بك",
+      "placeholder": "0",
+      "network_label": "الشبكة",
+      "block_reward_label": "مكافأة block",
+      "protocol_target": "هدف البروتوكول",
+      "protocol_target_sub": "block بعشر دقائق (هدف تصميم السلسلة)",
+      "current_rate": "معدل السلسلة الحالي",
+      "current_rate_sub": "~block بدقيقة واحدة (المرصود حالياً)",
+      "blocks_per_day_suffix": "block/يوم",
+      "irm_per_day_suffix": "IRM/يوم",
+      "disclaimer": "تقديرات فقط — الأرباح الفعلية تعتمد على الحظ ورسوم التجمع وتغيرات الصعوبة. تستخدم الحاسبة معدل التجزئة المباشر للشبكة، يُحدّث كل 60 ثانية."
     }
   },
   "help": {
@@ -1877,5 +1985,285 @@
     "clear_output": "مسح",
     "input_placeholder": "أدخل أمراً... ('help' للقائمة)",
     "input_busy_placeholder": "قيد التشغيل..."
+  },
+  "settlement_ui": {
+    "hub": {
+      "title": "Settlement",
+      "subtitle": "اقفل IRM في escrow. حرِّر عند التأكيد. استرد عند انتهاء الوقت.",
+      "safe_trade_title": "تجارة آمنة",
+      "safe_trade_subtitle": "اقفل IRM، بدِّل بأي شيء. كلا الطرفين محميان.",
+      "pay_for_work_title": "ادفع مقابل عمل",
+      "pay_for_work_subtitle": "مَوِّل عملاً بدفعة واحدة أو بالمرحلة. تُحرَّر الأموال عند إنجاز العمل.",
+      "deposit_title": "إيداع قابل للاسترداد",
+      "deposit_subtitle": "اقفل IRM كضمان. استرده تلقائياً إذا لم تُستوفَ الشروط.",
+      "active_title": "agreement النشطة",
+      "active_empty": "لا توجد agreement نشطة بعد. ابدأ واحدة أعلاه.",
+      "active_load_error": "تعذّر تحميل agreement — قد يكون node غير متصل.",
+      "other_party": "الطرف الآخر",
+      "amount": "المبلغ",
+      "start_cta": "ابدأ",
+      "toast_released": "تم تحرير الأموال للطرف الآخر.",
+      "toast_refunded": "تمت المطالبة بالاسترداد — الأموال تعود إلى wallet."
+    },
+    "status": {
+      "setting_up": "جاري الإعداد",
+      "waiting": "في الانتظار",
+      "ready_release": "جاهز للتحرير",
+      "ready_refund": "جاهز للاسترداد",
+      "disputed": "متنازَع عليه — تم تعيين مُحَكِّم",
+      "complete": "مكتمل",
+      "refunded": "مُسترَد",
+      "expired": "منتهي الصلاحية",
+      "unknown": "حالة غير معروفة",
+      "checking": "جارٍ التحقق…"
+    },
+    "actions": {
+      "release_funds": "تحرير الأموال",
+      "claim_refund": "المطالبة بالاسترداد",
+      "view_dispute": "عرض النزاع",
+      "view_details": "عرض التفاصيل",
+      "report_problem": "حدث خطأ ما؟"
+    },
+    "amount": {
+      "over_max": "الحد الأقصى هو {{max}} IRM"
+    },
+    "address": {
+      "placeholder": "عنوان Q… أو P…",
+      "paste": "لصق من الحافظة",
+      "format_error": "لا يبدو هذا عنوان Irium صالحاً."
+    },
+    "duration": {
+      "preset_1h": "ساعة واحدة",
+      "preset_4h": "4 ساعات",
+      "preset_24h": "24 ساعة",
+      "preset_48h": "يومان",
+      "preset_1w": "أسبوع واحد",
+      "custom": "مخصص",
+      "custom_placeholder": "ساعات",
+      "hours_suffix": "ساعات",
+      "expires_around": "ينتهي حوالي {{datetime}}"
+    },
+    "deal_code": {
+      "code_label": "كود الصفقة",
+      "paste_placeholder": "الصق هنا كود الصفقة الذي أرسله بائعك…",
+      "building": "جارٍ بناء كود الصفقة…",
+      "copy_code": "نسخ كود الصفقة",
+      "copy_id": "نسخ معرّف agreement",
+      "copied": "تم النسخ إلى الحافظة",
+      "paste": "لصق",
+      "verify": "التحقق من الصفقة",
+      "imported": "تم التحقق من الصفقة",
+      "import_success": "تم استيراد الصفقة والتحقق منها",
+      "fallback_explainer": "تعذّر بناء كود الصفقة. شارك معرّف agreement هذا بدلاً من ذلك — يجب أن يكون node المشتري متصلاً لجلب الباقي."
+    },
+    "technical": {
+      "title": "تفاصيل تقنية",
+      "empty": "لا توجد بيانات متاحة.",
+      "copied": "تم النسخ"
+    },
+    "errors": {
+      "generic": "حدث خطأ ما — يرجى المحاولة مجدداً.",
+      "node_offline": "node Irium الخاص بك لا يعمل. شغِّله من لوحة التحكم ثم حاول مجدداً.",
+      "network_timeout": "استغرق الطلب وقتاً طويلاً جداً. تحقق من اتصالك وحاول مجدداً.",
+      "auth_failed": "رفض node طلبك. تحقق من رمز RPC في الإعدادات.",
+      "insufficient_funds": "ليس لديك ما يكفي من IRM في wallet لهذا الإجراء.",
+      "coinbase_immature": "بعض IRM لديك جاء من تعدين حديث وغير قابل للإنفاق بعد. حاول مجدداً بعد بضع block إضافية.",
+      "double_spend": "معاملة معلّقة أخرى تستخدم الأموال نفسها. انتظر لحظة ثم حاول مجدداً.",
+      "already_settled": "هذا agreement تم تسويته بالفعل. حدِّث لرؤية حالته الحالية.",
+      "refund_not_ready": "لا يمكنك المطالبة بالاسترداد بعد. انتظر حتى يمر الموعد النهائي.",
+      "release_not_ready": "الأموال غير جاهزة للتحرير بعد. انتظر تأكيد proof.",
+      "agreement_mismatch": "كود الصفقة هذا لا يطابق agreement على node. اطلب من الطرف الآخر إعادة إرساله.",
+      "expired": "هذه الصفقة منتهية الصلاحية بالفعل.",
+      "bad_secret": "مفتاح التحرير خاطئ. تحقق من امتلاكك كود الصفقة الصحيح.",
+      "bad_address": "هذا العنوان لا يبدو صحيحاً. تحقق مرة أخرى وحاول مجدداً.",
+      "bad_format": "تعذّرت قراءة البيانات. قد تكون تالفة أو من تطبيق آخر.",
+      "fs_blocked": "تعذّر على التطبيق حفظ كود الصفقة محلياً. تحقق من أذونات القرص.",
+      "file_missing": "تعذّر العثور على ملف كود الصفقة المحفوظ.",
+      "pack_not_found": "لم نتمكن من العثور على agreement هذا على node.",
+      "unpack_signature_invalid": "كود الصفقة موقَّع بشكل خاطئ. لا تثق به — اطلب من الطرف الآخر إعادة إرساله.",
+      "dispute_duplicate": "نزاع مفتوح بالفعل لهذا agreement.",
+      "dispute_not_party": "يمكن للمشتري أو البائع فقط رفع نزاع على هذه الصفقة."
+    },
+    "safe_trade": {
+      "step1_title": "على أي جانب من الصفقة أنت؟",
+      "step1_subtitle": "اختر الجانب الذي يطابق دورك.",
+      "selling_button": "أنا أبيع IRM",
+      "selling_subtitle": "أنت تقفل IRM في escrow وتنتظر الدفعة.",
+      "buying_button": "أنا أشتري IRM",
+      "buying_subtitle": "تدفع خارج السلسلة وتستلم IRM.",
+      "status_title": "الحالة",
+      "status_initial": "جاري الإعداد — جارٍ قفل أموالك.",
+      "status_waiting_verify": "في انتظار تحقق مشتريك من الصفقة.",
+      "status_waiting_payment": "تم التحقق من المشتري — في انتظار دفعته خارج السلسلة.",
+      "status_ready_release": "تم تأكيد الدفعة. جارٍ تحرير الأموال للمشتري الآن.",
+      "toast_funded": "تم تمويل Escrow.",
+      "toast_released": "تم تحرير الأموال للطرف الآخر.",
+      "toast_release_pending": "تم تسجيل الدفعة. ستُحرَّر الأموال بعد تأكيد بضع block التالية.",
+      "errors": {
+        "buyer_required": "أدخل عنوان Irium للمشتري.",
+        "amount_required": "أدخل كم IRM تريد قفله.",
+        "receiving_required": "أخبر مشتريك بما تتوقعه في المقابل."
+      },
+      "review": {
+        "you_lock": "أنت تقفل",
+        "buyer_sends": "سيرسل المشتري",
+        "deadline": "الموعد النهائي",
+        "deadline_value": "إذا لم يُدفع في غضون {{hours}} ساعة، يعود IRM تلقائياً.",
+        "lock_funds": "اقفل الأموال",
+        "tx_note": "هذا سينشئ معاملة على بلوكشين Irium."
+      },
+      "share": {
+        "title": "شارك هذا مع مشتريك",
+        "subtitle": "أرسل الكود لمشتريك. سيستخدمه للتحقق من الصفقة قبل أن يدفع لك خارج السلسلة."
+      },
+      "selling": {
+        "step2_title": "أعدّ صفقتك",
+        "step2_subtitle": "أخبرنا من مشتريك وكم تقفل.",
+        "step3_title": "راجع صفقتك",
+        "step3_subtitle": "تحقق من كل شيء قبل قفل الأموال.",
+        "step4_title": "الأموال مقفولة — شارك هذا مع مشتريك",
+        "step4_subtitle": "أرسل كود الصفقة لمشتريك. سيستخدمه للتحقق من الصفقة قبل أن يدفع لك.",
+        "buyer_address_label": "عنوان Irium للمشتري",
+        "amount_label": "كم IRM تقفل؟",
+        "amount_helper": "مُحتجَز في escrow حتى تؤكد استلامك الدفعة.",
+        "receiving_label": "ماذا يرسلون لك؟",
+        "receiving_placeholder": "مثل: 200 USDT، تحويل بنكي، نقداً",
+        "deadline_label": "كم يجب أن تبقى هذه الصفقة مفتوحة؟",
+        "deadline_helper": "إذا لم يدفعوا خلال هذا الوقت، يعود IRM تلقائياً.",
+        "release_button": "استلمت الدفعة — حرِّر الأموال للمشتري"
+      },
+      "buying": {
+        "step2_title": "الصق كود الصفقة من بائعك",
+        "step2_subtitle": "أرسل بائعك كوداً. الصقه أدناه للتحقق من الصفقة.",
+        "step3_title": "تحقق من تفاصيل هذه الصفقة",
+        "step3_subtitle": "تأكد من تطابق التفاصيل مع ما اتفقتما عليه خارج السلسلة.",
+        "step4_title": "أرسل دفعتك ثم انتظر",
+        "step4_subtitle": "أرسل الدفعة المتفق عليها لبائعك. سيصل IRM تلقائياً بمجرد تأكيده.",
+        "review_intro": "تم استيراد هذه الصفقة والتحقق منها على node. IRM البائع مقفول في escrow — ستستلمه عندما ترسل الدفعة خارج السلسلة ويؤكد البائع.",
+        "seller_locks": "البائع يقفل",
+        "seller_label": "البائع",
+        "trade_id_label": "معرّف الصفقة",
+        "details_unavailable": "تعذّر جلب تفاصيل الصفقة من node. لا يزال بإمكانك المتابعة، لكن تحقق من تطابق معرّف agreement مع ما أرسله بائعك.",
+        "cancel_button": "هناك خطأ ما — إلغاء",
+        "confirm_button": "هذا يبدو صحيحاً — سأرسل الدفعة",
+        "status_waiting": "في انتظار تأكيد البائع لاستلام الدفعة.",
+        "status_releasing": "تم تأكيد الدفعة — IRM في الطريق.",
+        "status_complete": "مكتمل — وصل IRM إلى wallet.",
+        "view_agreements": "عرض في agreement"
+      }
+    },
+    "pay_for_work": {
+      "step1_title": "دفعة واحدة أم بالمراحل؟",
+      "step1_subtitle": "اختر كيف ستدفع.",
+      "single_button": "دفعة واحدة",
+      "single_subtitle": "ادفع كل شيء مقدماً عند انتهاء العمل.",
+      "milestone_button": "بالمراحل",
+      "milestone_subtitle": "ادفع على مراحل مع اكتمال كل جزء.",
+      "step2_title": "أعدّ الدفعة",
+      "step2_subtitle_single": "أخبرنا من تدفع له وكم.",
+      "step2_subtitle_milestone": "أخبرنا بالمجموع وعدد المراحل وما هو متوقَّع.",
+      "step3_title": "مراجعة",
+      "step3_subtitle": "تحقق قبل قفل الأموال.",
+      "step4_title": "تم قفل الأموال",
+      "step4_subtitle": "في انتظار تسليم العمل.",
+      "contractor_label": "لمن تدفع؟",
+      "amount_label_single": "كم؟",
+      "amount_label_milestone": "المبلغ الإجمالي للقفل",
+      "amount_helper_milestone": "مقسومة بالتساوي على المراحل أدناه.",
+      "count_label": "كم عدد المراحل؟",
+      "per_milestone_preview": "كل مرحلة: {{amount}}",
+      "deadline_label": "الموعد النهائي",
+      "deadline_helper": "كم من الوقت حتى يُسترَد المال تلقائياً إذا لم يُؤكَّد العمل.",
+      "description_label": "الوصف (اختياري)",
+      "description_placeholder": "ماذا يتم تسليمه؟ (بحد أقصى 200 حرف)",
+      "errors": {
+        "contractor_required": "أدخل من تدفع له.",
+        "amount_required": "أدخل كم IRM تقفل.",
+        "count_range": "بين 2 و 10 مراحل."
+      },
+      "review": {
+        "paying": "جارٍ الدفع",
+        "locking": "جارٍ القفل",
+        "milestones": "المراحل",
+        "milestones_value": "{{count}} مراحل · {{per}} لكل واحدة",
+        "deadline": "الموعد النهائي",
+        "deadline_value": "{{hours}} ساعة",
+        "scope": "الوصف",
+        "lock_funds": "اقفل الأموال",
+        "lock_all": "اقفل كل الأموال"
+      },
+      "status_title": "الحالة",
+      "status_setting_up": "جاري الإعداد — جارٍ قفل الأموال.",
+      "status_pending": "في انتظار تأكيد التمويل على السلسلة.",
+      "status_in_progress": "الأموال مقفولة. في انتظار تسليم العمل.",
+      "status_can_refund": "وصل الموعد النهائي. يمكنك المطالبة باسترداد.",
+      "status_complete": "مكتمل. تم تحرير الدفعة.",
+      "mark_complete": "وضع علامة كمكتمل — تحرير الدفعة",
+      "claim_refund": "المطالبة بالاسترداد",
+      "toast_released": "تم تحرير الدفعة للمتعاقد.",
+      "toast_release_pending": "تم تسجيل الاكتمال. ستُحرَّر الأموال بعد تأكيد بضع block التالية.",
+      "toast_refunded": "تمت المطالبة بالاسترداد — الأموال تعود إلى wallet."
+    },
+    "deposit": {
+      "step1_title": "أعدّ إيداعك",
+      "step1_subtitle": "اقفل IRM كضمان. استرده تلقائياً إذا لم تُستوفَ الشروط.",
+      "step2_title": "مراجعة",
+      "step2_subtitle": "تحقق مرة أخرى قبل قفل الإيداع.",
+      "step3_title": "تم قفل الإيداع",
+      "step3_subtitle": "مُحتجَز في escrow حتى تُحرِّره، أو حتى يمر الموعد النهائي وتسترده.",
+      "recipient_label": "من يستلم في حال استيفاء الشروط؟",
+      "amount_label": "مبلغ الإيداع",
+      "purpose_label": "الغرض",
+      "purpose_placeholder": "مثل: ضمان إيجار",
+      "purpose_helper": "ملاحظة لسجلاتك. مخزّنة محلياً — قد لا يراها الطرف الآخر.",
+      "deadline_label": "الموعد النهائي للإرجاع",
+      "deadline_helper": "إذا لم يطالب به المستلِم بحلول هذا الموعد، يمكنك المطالبة باسترداده.",
+      "preset_1m": "شهر واحد",
+      "preset_3m": "3 أشهر",
+      "errors": {
+        "recipient_required": "أدخل عنوان Irium الخاص بالمستلِم.",
+        "amount_required": "أدخل كم IRM تودِع."
+      },
+      "review": {
+        "recipient": "المستلِم",
+        "amount": "المبلغ",
+        "purpose": "الغرض",
+        "deadline": "الموعد النهائي للإرجاع",
+        "deadline_value": "{{hours}} ساعة من الآن",
+        "lock_deposit": "قفل الإيداع"
+      },
+      "status_title": "الحالة",
+      "status_setting_up": "جاري الإعداد — جارٍ قفل إيداعك.",
+      "status_locked": "مقفول في escrow. سيُفرَج بإجرائك، أو يُسترَد تلقائياً بعد الموعد النهائي.",
+      "status_can_claim_back": "وصل الموعد النهائي. يمكنك المطالبة باسترداد الإيداع.",
+      "status_released": "تم تحريره إلى المستلِم.",
+      "status_refunded": "تمت إعادته إلى wallet.",
+      "release_button": "تحرير للمستلِم",
+      "claim_back_button": "المطالبة باسترداده",
+      "toast_released": "تم تحرير الإيداع للمستلِم.",
+      "toast_refunded": "تم استرداد الإيداع — الأموال تعود إلى wallet."
+    },
+    "dispute": {
+      "step1_title": "ماذا حدث؟",
+      "step1_subtitle": "صف المشكلة بكلماتك الخاصة. سيراها الطرف الآخر.",
+      "step2_title": "تم تسجيل النزاع",
+      "step2_subtitle": "نزاعك الآن على بلوكشين Irium.",
+      "about_agreement": "حول agreement هذا",
+      "reason_label": "وصف المشكلة",
+      "reason_placeholder": "ما الذي حدث خطأ؟ كن محدداً — سيقرأ الطرف الآخر هذا.",
+      "evidence_label": "إضافة دليل (ملف)",
+      "evidence_coming_soon": "مرفقات الملفات قادمة في إصدار مستقبلي.",
+      "submit_button": "الإبلاغ عن مشكلة",
+      "confirm_title": "تم تسجيل نزاعك على السلسلة.",
+      "confirm_body": "تم إخطار الطرف الآخر. تواصل معه مباشرة للوصول إلى حل. إذا لم تتمكنا من الاتفاق، فالخطوة التالية هي محادثة خارج التطبيق — حل المُحَكِّم التلقائي قادم في إصدار مستقبلي.",
+      "next_step_note": "أثناء فتح النزاع، لا يستطيع أي طرف تحرير الأموال أو ردها. تحدث مع الطرف المقابل قبل أي شيء آخر.",
+      "back_to_hub": "العودة إلى Settlement",
+      "view_agreements": "عرض agreement",
+      "toast_submitted": "تم تسجيل النزاع على السلسلة.",
+      "errors": {
+        "no_agreement": "لم يتم اختيار أي agreement. افتح واحداً من المركز وحاول مجدداً.",
+        "reason_required": "يرجى وصف ما حدث."
+      }
+    }
   }
 }
