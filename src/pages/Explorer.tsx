@@ -1395,6 +1395,252 @@ function PoolStatsSection() {
   );
 }
 
+// ── Solo Pool panel ───────────────────────────────────────────
+//
+// Sibling of PoolStatsSection scoped to the solo listener on port 3336.
+// Fetches `pool.iriumlabs.org:3337/solo-stats` (aggregate) and
+// `/solo-miners` (per-worker) — both endpoints are exposed by
+// `pool/stats-proxy.py` on the VPS, which scrapes the loopback metrics
+// endpoint of the irium-stratum-solo service at `127.0.0.1:3338/metrics`.
+// Direct loopback fetch is not used because end users running this
+// desktop app are not the pool operator and cannot reach 3338.
+//
+// Solo mode coinbase pays the connecting worker directly: 99% of the
+// 50 IRM block reward (= 49.5 IRM) to the worker's pkh + 1% (= 0.5 IRM)
+// to the pool wallet. The connection-info card surfaces the stratum URL
+// with a copy button so non-CLI users can paste it into their ASIC
+// firmware without manual typo risk.
+interface SoloStats {
+  pool: string;
+  url: string;
+  solo_port: number;
+  fee_bps: number;
+  active_miners: number;
+  tcp_sessions: number;
+  accepted_shares: number;
+  rejected_shares: number;
+  blocks_found: number;
+  hashrate_estimate_hps: number | null;
+  hashrate_window_seconds: number;
+  hashrate_confidence: string;
+  current_diff: number;
+  recent_reject_rate_pct: number | null;
+  integrity: string;
+}
+
+function SoloPoolPanel() {
+  const { t } = useTranslation();
+  const [stats, setStats] = useState<SoloStats | null>(null);
+  const [miners, setMiners] = useState<MinerRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string>('');
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+
+  const fetchAll = useCallback(async (silent: boolean = false) => {
+    if (!silent) setLoading(true);
+    setErr('');
+    try {
+      const [statsR, minersR] = await Promise.all([
+        tauriFetch<SoloStats>('http://pool.iriumlabs.org:3337/solo-stats', {
+          method: 'GET',
+          responseType: ResponseType.JSON,
+          timeout: 10,
+        }),
+        tauriFetch<MinersResponse>('http://pool.iriumlabs.org:3337/solo-miners', {
+          method: 'GET',
+          responseType: ResponseType.JSON,
+          timeout: 10,
+        }).catch(() => null),
+      ]);
+      if (statsR.ok && statsR.data) setStats(statsR.data);
+      if (minersR && minersR.ok && minersR.data) setMiners(minersR.data.miners ?? []);
+      setLastUpdated(Math.floor(Date.now() / 1000));
+    } catch (e) {
+      if (!silent) setErr(String(e));
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAll(false);
+    const id = setInterval(() => fetchAll(true), 30_000);
+    return () => clearInterval(id);
+  }, [fetchAll]);
+
+  const formatSoloHashrate = (hps: number | null | undefined): string => {
+    if (hps == null) return t('explorer.pool_stats.hashrate_collecting');
+    if (hps >= 1e12) return `${(hps / 1e12).toFixed(2)} TH/s`;
+    if (hps >= 1e9)  return `${(hps / 1e9).toFixed(2)} GH/s`;
+    if (hps >= 1e6)  return `${(hps / 1e6).toFixed(2)} MH/s`;
+    if (hps >= 1e3)  return `${(hps / 1e3).toFixed(2)} KH/s`;
+    return `${Math.round(hps)} H/s`;
+  };
+
+  const connectionUrl = stats
+    ? `stratum+tcp://${stats.url}:${stats.solo_port}`
+    : 'stratum+tcp://pool.iriumlabs.org:3336';
+  const feePct = stats ? (stats.fee_bps / 100).toFixed(2) : '1.00';
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 style={{ fontSize: 16, fontWeight: 800, color: '#d4eeff', fontFamily: '"Space Grotesk", sans-serif', letterSpacing: '0.02em' }}>
+            {t('explorer.solo_pool.title')}
+          </h2>
+          <p className="mt-1" style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.45)' }}>
+            {t('explorer.solo_pool.subtitle')}
+          </p>
+          {lastUpdated && (
+            <p className="mt-1" style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, color: 'rgba(167,139,250,0.55)' }}>
+              {t('explorer.pool_stats.last_updated', { ago: timeAgo(lastUpdated) })}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={() => fetchAll(false)}
+          disabled={loading}
+          className="btn-secondary text-xs gap-2 flex-shrink-0"
+        >
+          <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+          {loading ? t('explorer.pool_stats.refreshing') : t('explorer.pool_stats.refresh')}
+        </button>
+      </div>
+
+      {/* Connection info card — paste-ready URL with copy button */}
+      <div
+        className="p-4 group"
+        style={{
+          background: 'linear-gradient(135deg, rgba(167,139,250,0.10) 0%, rgba(110,198,255,0.05) 100%)',
+          border: '1px solid rgba(167,139,250,0.30)',
+          borderRadius: 8,
+        }}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(167,139,250,0.85)', fontFamily: '"Space Grotesk", sans-serif' }}>
+            {t('explorer.solo_pool.connect_here')}
+          </span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.45)' }}>
+            {t('explorer.solo_pool.fee_label', { fee: feePct })}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <code
+            className="font-mono text-sm flex-1 px-3 py-2 truncate"
+            style={{ background: 'rgba(0,0,0,0.35)', color: '#c4b5fd', borderRadius: 6, border: '1px solid rgba(167,139,250,0.15)' }}
+          >
+            {connectionUrl}
+          </code>
+          <CopyBtn text={connectionUrl} />
+        </div>
+        <p className="mt-2" style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)' }}>
+          {t('explorer.solo_pool.connect_help')}
+        </p>
+      </div>
+
+      {/* Empty / error / aggregate stats */}
+      {err && !stats ? (
+        <div className="py-10 text-center text-sm" style={{ background: 'rgba(244,63,94,0.06)', border: '1px solid rgba(244,63,94,0.20)', borderRadius: 8, color: '#fda4af' }}>
+          {t('explorer.solo_pool.load_error')}
+        </div>
+      ) : !stats && loading ? (
+        <div className="py-10 text-center text-sm" style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(167,139,250,0.10)', borderRadius: 8, color: 'rgba(255,255,255,0.30)' }}>
+          {t('explorer.pool_stats.loading')}
+        </div>
+      ) : stats ? (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <PoolStatsTile
+              label={t('explorer.solo_pool.active_miners')}
+              value={stats.active_miners.toLocaleString('en-US')}
+              sub={t('explorer.solo_pool.port_sub', { port: stats.solo_port })}
+              accent="#a78bfa"
+            />
+            <PoolStatsTile
+              label={t('explorer.solo_pool.blocks_found')}
+              value={stats.blocks_found.toLocaleString('en-US')}
+              accent="#34d399"
+            />
+            <PoolStatsTile
+              label={t('explorer.solo_pool.hashrate')}
+              value={formatSoloHashrate(stats.hashrate_estimate_hps)}
+              accent="#6ec6ff"
+            />
+            <PoolStatsTile
+              label={t('explorer.solo_pool.pool_fee')}
+              value={`${feePct}%`}
+              sub={t('explorer.solo_pool.fee_sub')}
+              accent="#fbbf24"
+            />
+          </div>
+
+          {/* Per-miner table — only renders when miners are connected */}
+          <div
+            className="p-4"
+            style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(167,139,250,0.13)', borderRadius: 8 }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#d4eeff', fontFamily: '"Space Grotesk", sans-serif' }}>
+                  {t('explorer.solo_pool.solo_miners')}
+                </span>
+                <span className="font-mono" style={{ fontSize: 11, color: 'rgba(167,139,250,0.65)' }}>
+                  {miners.length} {miners.length === 1 ? t('explorer.solo_pool.worker_singular') : t('explorer.solo_pool.worker_plural')}
+                </span>
+              </div>
+            </div>
+            {miners.length === 0 ? (
+              <div className="py-6 text-center" style={{ fontSize: 12, color: 'rgba(255,255,255,0.40)' }}>
+                {t('explorer.solo_pool.no_miners')}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                      <th className="text-left py-2 px-2 font-semibold" style={{ color: 'rgba(255,255,255,0.45)' }}>{t('explorer.solo_pool.col_worker')}</th>
+                      <th className="text-right py-2 px-2 font-semibold" style={{ color: 'rgba(255,255,255,0.45)' }}>{t('explorer.solo_pool.col_accepted')}</th>
+                      <th className="text-right py-2 px-2 font-semibold" style={{ color: 'rgba(255,255,255,0.45)' }}>{t('explorer.solo_pool.col_rejected')}</th>
+                      <th className="text-right py-2 px-2 font-semibold" style={{ color: 'rgba(255,255,255,0.45)' }}>{t('explorer.solo_pool.col_reject_pct')}</th>
+                      <th className="text-right py-2 px-2 font-semibold" style={{ color: 'rgba(255,255,255,0.45)' }}>{t('explorer.solo_pool.col_hashrate')}</th>
+                      <th className="text-right py-2 px-2 font-semibold" style={{ color: 'rgba(255,255,255,0.45)' }}>{t('explorer.solo_pool.col_last_share')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {miners.map((m, i) => (
+                      <tr key={`${m.worker}-${i}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <td className="py-1.5 px-2 font-mono" style={{ color: '#eef0ff' }} title={m.worker}>
+                          {truncateMinerWorker(m.worker, 22)}
+                        </td>
+                        <td className="py-1.5 px-2 text-right font-mono" style={{ color: '#34d399' }}>
+                          {m.accepted.toLocaleString('en-US')}
+                        </td>
+                        <td className="py-1.5 px-2 text-right font-mono" style={{ color: m.rejected > 0 ? '#fda4af' : 'rgba(255,255,255,0.35)' }}>
+                          {m.rejected.toLocaleString('en-US')}
+                        </td>
+                        <td className="py-1.5 px-2 text-right font-mono" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                          {m.reject_rate_pct != null ? `${m.reject_rate_pct}%` : '—'}
+                        </td>
+                        <td className="py-1.5 px-2 text-right font-mono" style={{ color: '#a78bfa' }}>
+                          {formatMinerHashrate(m.hashrate_15m)}
+                        </td>
+                        <td className="py-1.5 px-2 text-right" style={{ color: 'rgba(255,255,255,0.50)' }}>
+                          {formatAgoPlainEnglish(m.last_share_ago_seconds)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 function RichListSection({ running }: { running: boolean }) {
   const { t } = useTranslation();
   const [entries, setEntries] = useState<RichListEntry[] | null>(null);
@@ -2261,6 +2507,7 @@ export default function Explorer() {
            <div className="space-y-6">
              <NetworkMiningOverview />
              <PoolStatsSection />
+             <SoloPoolPanel />
            </div>
          ) : (
         <>
