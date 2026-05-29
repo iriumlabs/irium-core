@@ -10,6 +10,16 @@ import OrderBook from './marketplace/OrderBook';
 import TradeCalculator from './marketplace/TradeCalculator';
 import TakeOfferModal from './marketplace/TakeOfferModal';
 import EscrowProgress from './marketplace/EscrowProgress';
+import CreateOrderModal from './marketplace/CreateOrderModal';
+
+type MyTradesTab = 'active' | 'completed' | 'all';
+
+const ACTIVE_LIFECYCLE_STATES = new Set([
+  'draft', 'proposed', 'funded', 'partially_released',
+]);
+const COMPLETED_LIFECYCLE_STATES = new Set([
+  'released', 'refunded', 'expired', 'cancelled', 'disputed_metadata_only',
+]);
 
 // OTC marketplace — three-pane container. Order book on the left, trade
 // calculator in the middle, my-trades on the right. Taking an offer
@@ -96,6 +106,12 @@ export default function MarketplacePage() {
   const [activeWalletAddr, setActiveWalletAddr] = useState<string>('');
   const [reputationStars, setReputationStars] = useState<Record<string, number | null>>({});
   const [refreshing, setRefreshing] = useState(false);
+  // Create Order modal state — tied only to local UI, no need to persist
+  // in zustand since reopening the page should land on a clean modal.
+  const [showCreateOrder, setShowCreateOrder] = useState(false);
+  // My Trades tab filter (Fix 5). Defaults to active so the user lands
+  // on the rows that actually need attention.
+  const [myTradesTab, setMyTradesTab] = useState<MyTradesTab>('active');
 
   const view = useStore((s) => s.marketplaceView);
   const setMarketplaceSelectedOffer = useStore((s) => s.setMarketplaceSelectedOffer);
@@ -229,6 +245,7 @@ export default function MarketplacePage() {
           {/* LEFT — Order book */}
           <OrderBook
             onTakeOffer={handleTake}
+            onCreateOrder={() => setShowCreateOrder(true)}
             selectedOfferId={view.selectedOfferId}
           />
 
@@ -249,14 +266,49 @@ export default function MarketplacePage() {
 
           {/* RIGHT — My Trades */}
           <div className="card p-4 space-y-3" style={{ border: '1px solid rgba(167,139,250,0.18)' }}>
-            <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>My Trades</h3>
-            {sortedTrades.length === 0 ? (
-              <div className="text-xs py-6 text-center" style={{ color: 'rgba(238,240,255,0.35)' }}>
-                No trades yet. Take an offer from the order book to start.
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>My Trades</h3>
+              <div className="inline-flex rounded text-[10px] font-display font-semibold" style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                {(['active', 'completed', 'all'] as MyTradesTab[]).map((tab) => {
+                  const isActive = tab === myTradesTab;
+                  return (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setMyTradesTab(tab)}
+                      className="px-2 py-1 uppercase tracking-wide transition-colors"
+                      style={{
+                        color: isActive ? '#A78BFA' : 'rgba(238,240,255,0.45)',
+                        background: isActive ? 'rgba(167,139,250,0.15)' : 'transparent',
+                      }}
+                    >
+                      {tab}
+                    </button>
+                  );
+                })}
               </div>
-            ) : (
+            </div>
+            {(() => {
+              const tabFiltered = sortedTrades.filter(({ agreement }) => {
+                if (myTradesTab === 'all') return true;
+                const state = ((agreement as unknown as { lifecycle?: { state?: string } })?.lifecycle?.state ?? 'unknown') as string;
+                if (myTradesTab === 'active') return ACTIVE_LIFECYCLE_STATES.has(state);
+                return COMPLETED_LIFECYCLE_STATES.has(state);
+              });
+              if (tabFiltered.length === 0) {
+                return (
+                  <div className="text-xs py-6 text-center" style={{ color: 'rgba(238,240,255,0.35)' }}>
+                    {myTradesTab === 'active'
+                      ? 'No active trades. Take an offer from the order book to start.'
+                      : myTradesTab === 'completed'
+                        ? 'No completed trades yet.'
+                        : 'No trades yet. Take an offer from the order book to start.'}
+                  </div>
+                );
+              }
+              return (
               <div className="space-y-1.5">
-                {sortedTrades.slice(0, 20).map(({ agreement, side }) => {
+                {tabFiltered.slice(0, 20).map(({ agreement, side }) => {
                   const id = (agreement as unknown as { agreement_id?: string; id?: string }).agreement_id
                     ?? (agreement as unknown as { id?: string }).id ?? '';
                   const state = (agreement as unknown as { lifecycle?: { state?: string } })?.lifecycle?.state ?? 'unknown';
@@ -286,9 +338,22 @@ export default function MarketplacePage() {
                   );
                 })}
               </div>
-            )}
+              );
+            })()}
           </div>
         </div>
+
+        {showCreateOrder && (
+          <CreateOrderModal
+            sellerAddress={activeWalletAddr}
+            onClose={() => setShowCreateOrder(false)}
+            onCreated={() => {
+              // Trigger a refresh on the next poll tick — the OrderBook
+              // and offerList poll on their own cadences, so we don't
+              // need to fire a manual fetch here.
+            }}
+          />
+        )}
 
         {takeModalOffer && (
           <TakeOfferModal

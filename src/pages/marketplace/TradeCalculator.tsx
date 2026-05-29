@@ -106,7 +106,7 @@ export default function TradeCalculator({
             fontFamily: '"JetBrains Mono", monospace',
           }}
         >
-          {cheapest ? `${formatIRM(cheapest.amount ?? 0)} IRM` : '— no offers —'}
+          {cheapest ? formatIRM(cheapest.amount ?? 0) : '— no offers —'}
         </div>
         <p className="text-xs" style={{ color: 'rgba(238,240,255,0.35)' }}>
           {numericUsdt > 0
@@ -127,7 +127,7 @@ export default function TradeCalculator({
             Cheapest seller
           </div>
           <div className="text-xs space-y-1" style={{ color: 'rgba(238,240,255,0.65)', fontFamily: '"JetBrains Mono", monospace' }}>
-            <div>amount: <span style={{ color: '#34d399' }}>{formatIRM(cheapest.amount ?? 0)} IRM</span></div>
+            <div>amount: <span style={{ color: '#34d399' }}>{formatIRM(cheapest.amount ?? 0)}</span></div>
             <div>seller: {(cheapest.seller ?? '').slice(0, 10)}…</div>
             <div>rep: {reputationStars[cheapest.seller ?? ''] ?? '?'} ★</div>
             <div>payment: {cheapest.payment_method ?? '—'}</div>
@@ -153,7 +153,7 @@ export default function TradeCalculator({
             Top reputation alternative
           </div>
           <div className="text-xs space-y-1" style={{ color: 'rgba(238,240,255,0.65)', fontFamily: '"JetBrains Mono", monospace' }}>
-            <div>amount: {formatIRM(bestReputation.offer.amount ?? 0)} IRM</div>
+            <div>amount: {formatIRM(bestReputation.offer.amount ?? 0)}</div>
             <div>seller: {(bestReputation.offer.seller ?? '').slice(0, 10)}…</div>
             <div>rep: {bestReputation.stars} ★</div>
           </div>

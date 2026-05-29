@@ -128,7 +128,7 @@ export default function TakeOfferModal({
                 color: 'var(--t1)',
               }}
             >
-              <div>You receive: <span style={{ color: '#34d399' }}>{formatIRM(offer.amount ?? 0)} IRM</span></div>
+              <div>You receive: <span style={{ color: '#34d399' }}>{formatIRM(offer.amount ?? 0)}</span></div>
               <div>Payment method: {offer.payment_method ?? '—'}</div>
               <div>Seller: {offer.seller ?? '—'}</div>
               <div>Buyer (you): {buyerAddress || '— not set —'}</div>
