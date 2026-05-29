@@ -290,7 +290,7 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
             className="input"
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value as SortKey)}
-            style={{ height: 28, fontSize: 12, minWidth: 110 }}
+            style={{ height: 28, fontSize: 12, minWidth: 130 }}
           >
             {SORT_OPTIONS.map((opt) => (
               <option key={opt.key} value={opt.key} style={{ background: '#0f0f23' }}>
