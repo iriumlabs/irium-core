@@ -2220,7 +2220,9 @@
     "dismiss": "Dismiss"
   },
   "titlebar": {
-    "miner_active_confirm": "Mining is active. The miner will continue running in the background.\n\nClick OK to minimize to tray, or Cancel to keep the window open and stop mining first if you want to quit completely."
+    "miner_active_confirm": "Mining is active. The miner will continue running in the background.\n\nClick OK to minimize to tray, or Cancel to keep the window open and stop mining first if you want to quit completely.",
+    "pin_tooltip": "Pin title bar (stay visible)",
+    "unpin_tooltip": "Unpin title bar (auto-hide)"
   },
   "sidebar": {
     "live": "Live",
