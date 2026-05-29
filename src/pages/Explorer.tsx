@@ -927,13 +927,19 @@ function NetworkMiningOverview() {
   //     larger hashrate; ties prefer the profile with more accepted
   //     shares so a single high-hashrate row in solo doesn't mask a
   //     larger sustained ASIC presence on the official pool
-  type ExtRow = MinerRow & { profile: 'asic' | 'cpu_gpu' | 'solo'; session_status?: 'active' | 'stale' };
+  // ExtRow extends MinerRow with the proxy's optional session_status
+  // field. Profile union mirrors MinerRow (including 'port443' which
+  // was added when sslh-multiplexed cpuminer stratum got wired into
+  // /miners). The narrower 'asic'|'cpu_gpu'|'solo' typing here was a
+  // pre-port443 artifact that forced an unsafe `as unknown as ExtRow`
+  // cast; the new union lets the rows flow through with a clean cast.
+  type ExtRow = MinerRow & { session_status?: 'active' | 'stale' };
   const myPoolRows: ExtRow[] = (poolMiners ?? [])
     .filter((m) => {
       const baseAddr = (m.worker.split('.')[0] ?? '').trim();
       return baseAddr.length > 0 && myAddresses.has(baseAddr);
     })
-    .map((m) => m as unknown as ExtRow);
+    .map((m) => m as ExtRow);
   const myPoolHashrateHps = myPoolRows.reduce(
     (sum, m) => sum + (m.hashrate_15m ?? 0),
     0,
