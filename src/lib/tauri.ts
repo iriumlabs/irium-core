@@ -1215,6 +1215,69 @@ export const rpcCall = {
     fee_per_byte?: number; broadcast?: boolean;
   }) => rpcPost('/rpc/sweepexpiredorder', body),
 
+  // ── LTC SPV header relay (Phase E.1) ─
+  submitLtcHeaders: (body: {
+    headers_hex: string; broadcast?: boolean; fee_per_byte?: number;
+  }) => rpcPost('/rpc/submitltcheaders', body),
+  getLtcRelayTip: () => rpcGet('/rpc/ltcrelaytip'),
+  getLtcHeader: (params: { hash?: string; height?: number }) =>
+    rpcGet('/rpc/ltcheader', params),
+
+  // ── HtlcLtcSwap (Phase C) ─
+  createLtcSwap: (body: {
+    irm_amount: string; ltc_amount_sats: number;
+    ltc_recipient_address: string;
+    recipient_address: string; refund_address: string;
+    confirmations_required: number; timeout_height: number;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/createltcswap', body),
+  claimLtcSwap: (body: {
+    funding_txid: string; vout: number;
+    destination_address: string;
+    ltc_block_hash: string; ltc_tx_hex: string;
+    ltc_merkle_branch_hex: string[]; ltc_merkle_index: number;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/claimltcswap', body),
+  refundLtcSwap: (body: {
+    funding_txid: string; vout: number; destination_address: string;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/refundltcswap', body),
+  inspectLtcSwap: (txid: string, vout: number) =>
+    rpcGet('/rpc/inspectltcswap', { txid, vout }),
+
+  // ── LtcSwapOrder book (Phase D) ─
+  postLtcSwapOrder: (body: {
+    direction: 'sell_irm' | 'buy_irm';
+    irm_amount: string; ltc_amount_sats: number;
+    maker_iriumd_address: string; maker_ltc_address: string;
+    confirmations_required: number; expiry_blocks_from_now: number;
+    expected_hash_hex?: string;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/postltcswaporder', body),
+  listLtcSwapOrders: (params?: {
+    direction?: 'sell_irm' | 'buy_irm' | 'both';
+    min_irm?: number; max_irm?: number;
+    min_ltc?: number; max_ltc?: number;
+    limit?: number; offset?: number;
+    sort?: 'price_asc' | 'price_desc' | 'recent';
+  }) => rpcGet('/rpc/listltcswaporders', params ?? {}),
+  getLtcSwapOrder: (txid: string, vout: number) =>
+    rpcGet('/rpc/getltcswaporder', { txid, vout }),
+  cancelLtcSwapOrder: (body: {
+    order_txid: string; order_vout: number; destination_address: string;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/cancelltcswaporder', body),
+  fillLtcSwapOrder: (body: {
+    order_txid: string; order_vout: number;
+    taker_iriumd_address: string; taker_ltc_address?: string;
+    timeout_blocks_from_now: number;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/fillltcswaporder', body),
+  sweepLtcExpiredOrder: (body: {
+    order_txid: string; order_vout: number;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/sweepltcexpiredorder', body),
+
   // ── Settlement ─
   createAgreement: (agreement: unknown) => rpcPost('/rpc/createagreement', agreement),
   computeAgreementHash: (agreement: unknown) => rpcPost('/rpc/computeagreementhash', agreement),
