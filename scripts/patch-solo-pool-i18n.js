@@ -11,7 +11,7 @@ const LOCALES_DIR = path.join(__dirname, '..', 'src', 'i18n', 'locales');
 
 const SOLO_POOL_EN = {
   title: 'Solo Pool',
-  subtitle: 'Direct-payout mining on port 3336. Coinbase pays the worker 99% and pool fee 1% at block-find time.',
+  subtitle: 'Coinbase pays the full block reward directly to the block finder. Zero fees.',
   connect_here: 'Connect with your own Irium address as the worker name',
   fee_label: 'Pool fee {{fee}}%',
   connect_help: 'Paste this URL into your ASIC firmware. Use your Irium address as the worker username (Q-prefix) and any password.',
