@@ -395,6 +395,7 @@
       "height_stuck_subtitle": "If your node appears stuck, try restarting or clearing the chain state.",
       "restart_node": "Restart Node",
       "clear_chain_state": "Clear Chain State",
+      "try_reset_node_state": "Try Reset Node State",
       "dismiss_1h": "Dismiss for 1 hour",
       "no_peers_searching": "Searching for peers…",
       "sync_stall": "Sync stalled — {{count}} blocks behind",

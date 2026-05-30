@@ -845,28 +845,58 @@ export default function Dashboard() {
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={handleReconnect}
-                  disabled={operation === 'clearing'}
-                  className="relative flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-display font-semibold transition-all active:scale-[0.97] disabled:opacity-50"
-                  style={{
-                    background: 'rgba(245,158,11,0.16)',
-                    border: '1px solid rgba(245,158,11,0.55)',
-                    color: '#fff',
-                    boxShadow: '0 0 16px rgba(245,158,11,0.18)',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (operation === 'clearing') return;
-                    e.currentTarget.style.background  = 'rgba(245,158,11,0.24)';
-                    e.currentTarget.style.borderColor = 'rgba(245,158,11,0.75)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background  = 'rgba(245,158,11,0.16)';
-                    e.currentTarget.style.borderColor = 'rgba(245,158,11,0.55)';
-                  }}
-                >
-                  <RefreshCw size={12} className={operation === 'clearing' ? 'animate-spin' : ''} /> {t('dashboard.banners.clear_restart')}
-                </button>
+                <div className="relative flex items-center gap-2 flex-shrink-0">
+                  {/* "Try Reset Node State" CTA — only when the node has been
+                      stalled for 30+ minutes with peers connected. The Sync
+                      Stalled banner fires immediately on a fresh OS install
+                      (height 0, thousands of blocks behind), so we wait for a
+                      real 30-min stall signal before suggesting the softer
+                      recovery path. Navigates to Settings where the Reset
+                      Node State (Keep Blocks) action lives. */}
+                  {heightLastChanged !== null && (Date.now() - heightLastChanged) > 30 * 60 * 1000 && (nodeStatus?.peers ?? 0) > 0 && (
+                    <button
+                      onClick={() => navigate('/settings')}
+                      className="inline-flex items-center px-4 py-2 rounded-xl text-xs font-display font-semibold transition-all active:scale-[0.97]"
+                      style={{
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.14)',
+                        color: 'rgba(238,240,255,0.75)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background  = 'rgba(255,255,255,0.09)';
+                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background  = 'rgba(255,255,255,0.05)';
+                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)';
+                      }}
+                    >
+                      {t('dashboard.banners.try_reset_node_state')}
+                    </button>
+                  )}
+                  <button
+                    onClick={handleReconnect}
+                    disabled={operation === 'clearing'}
+                    className="relative inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-display font-semibold transition-all active:scale-[0.97] disabled:opacity-50"
+                    style={{
+                      background: 'rgba(245,158,11,0.16)',
+                      border: '1px solid rgba(245,158,11,0.55)',
+                      color: '#fff',
+                      boxShadow: '0 0 16px rgba(245,158,11,0.18)',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (operation === 'clearing') return;
+                      e.currentTarget.style.background  = 'rgba(245,158,11,0.24)';
+                      e.currentTarget.style.borderColor = 'rgba(245,158,11,0.75)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background  = 'rgba(245,158,11,0.16)';
+                      e.currentTarget.style.borderColor = 'rgba(245,158,11,0.55)';
+                    }}
+                  >
+                    <RefreshCw size={12} className={operation === 'clearing' ? 'animate-spin' : ''} /> {t('dashboard.banners.clear_restart')}
+                  </button>
+                </div>
               </div>
             </motion.div>
           ) : heightLastChanged !== null && (Date.now() - heightLastChanged) > 30 * 60 * 1000 && (nodeStatus?.peers ?? 0) > 0 && Date.now() > heightWarnDismissedUntil ? (
@@ -947,7 +977,7 @@ export default function Dashboard() {
                       e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)';
                     }}
                   >
-                    {t('dashboard.banners.clear_chain_state')}
+                    {t('dashboard.banners.try_reset_node_state')}
                   </button>
                   <button
                     onClick={() => {
