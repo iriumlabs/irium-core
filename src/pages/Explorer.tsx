@@ -650,6 +650,10 @@ interface MinerRow {
   reject_rate_pct: number | null;
   hashrate_15m: number | null;
   last_share_ago_seconds: number | null;
+  // Cumulative blocks the worker has found at this stratum, populated by
+  // the stats-proxy. Optional + nullable because older proxies and the
+  // warmup window emit null; the column renders "—" when missing.
+  blocks_found?: number | null;
 }
 
 interface MinersResponse {
@@ -861,12 +865,16 @@ function NetworkMiningOverview() {
 
   // Panel 2: pool aggregate from the per-miner rows.
   const poolRows = poolMiners ?? [];
-  // Sum hashrate_15m across all pool rows. The /miners proxy now emits
-  // session_status; prefer 'active' rows so a stale leftover row (idle
-  // > 10 min, zero hashrate, same base address as an active row) is
-  // already filtered before it could distort the total.
-  const poolHashrateRaw = poolRows.length > 0
-    ? poolRows.reduce((sum, m) => sum + (m.hashrate_15m ?? 0), 0)
+  // Filter offline workers before aggregating. Same isMinerOffline
+  // predicate the Active Miners table uses below, so the displayed Pool
+  // Hashrate, Active Pool Miners count, and the table all agree on who
+  // counts. The /miners feed's 15-min EMA tail keeps stale rows visible
+  // for ~15 min after a worker disconnects (notably MRR rental sessions
+  // that auto-failover after a stratum bounce), which would otherwise
+  // inflate the aggregate Pool Hashrate.
+  const activeRows = poolRows.filter((m) => !isMinerOffline(m));
+  const poolHashrateRaw = activeRows.length > 0
+    ? activeRows.reduce((sum, m) => sum + (m.hashrate_15m ?? 0), 0)
     : null;
   // Sanity cap: the proxy estimates per-worker hashrate from
   // accepted-share counts × current_diff over a rolling window. Vardiff
@@ -881,16 +889,9 @@ function NetworkMiningOverview() {
     : poolHashrateRaw;
   const poolHashrateClamped = poolHashrateRaw != null && networkHashrate != null && poolHashrateRaw > networkHashrate;
   const poolHashrate = poolHashrateCapped;
-  // Active miner count: rows that submitted a share in the last 10 min
-  // AND have a non-zero rolling hashrate. The proxy's session_status
-  // field already encodes this; we count session_status==='active' if
-  // present and fall back to a hashrate>0 test when it's not.
-  type MinerRowExt = MinerRow & { session_status?: 'active' | 'stale' };
-  const activePoolMiners = poolRows.filter((m) => {
-    const ext = m as MinerRowExt;
-    if (ext.session_status) return ext.session_status === 'active';
-    return (m.hashrate_15m ?? 0) > 0;
-  }).length;
+  // Active miner count derived from the same activeRows filter so the
+  // count and the hashrate sum stay consistent.
+  const activePoolMiners = activeRows.length;
   const poolBlocksFound = poolAggregate?.total_blocks_found ?? null;
   const poolShareOfNetwork = (poolHashrate != null && networkHashrate != null && networkHashrate > 0)
     ? (poolHashrate / networkHashrate) * 100
@@ -1267,6 +1268,7 @@ function PoolStatsSection() {
           reject_rate_pct: m.reject_rate_pct,
           hashrate_15m: m.hashrate_15m,
           last_share_ago_seconds: m.last_share_ago_seconds,
+          blocks_found: m.blocks_found ?? null,
         });
         continue;
       }
@@ -1282,6 +1284,13 @@ function PoolStatsSection() {
       }
       if (m.rejected_15m != null) {
         existing.rejected_15m = (existing.rejected_15m ?? 0) + m.rejected_15m;
+      }
+      // Sum blocks_found across the merged group so the column reflects
+      // the wallet's total per-pool block credit. Same null-as-0
+      // accumulation as the rejected_15m field above; the sum stays
+      // null if NO row in the group had data.
+      if (m.blocks_found != null) {
+        existing.blocks_found = (existing.blocks_found ?? 0) + m.blocks_found;
       }
       const eHr = existing.hashrate_15m ?? -1;
       const mHr = m.hashrate_15m ?? -1;
@@ -1598,6 +1607,7 @@ function PoolStatsSection() {
                       <th className="text-right py-2 px-3 font-semibold" title="Rejected shares in the last 15 minutes only. The cumulative count (since stratum restart) kept a worker showing a stale warmup-burst total even after they recovered.">Rejected (15m)</th>
                       <th className="text-right py-2 px-3 font-semibold" title="Rolling rejection rate over the last 15 minutes. The cumulative-since-restart rate kept a worker stuck on a post-restart warmup burst even after they recovered.">Reject % (15m)</th>
                       <th className="text-right py-2 px-3 font-semibold">Hashrate (15m)</th>
+                      <th className="text-right py-2 px-3 font-semibold" title="Blocks found by this worker at the pool. Populated by the stats-proxy; shows '—' until the proxy backfills per-worker block credit.">Blocks</th>
                       <th className="text-right py-2 pl-3 font-semibold">Last Share</th>
                     </tr>
                   </thead>
@@ -1658,6 +1668,9 @@ function PoolStatsSection() {
                           </td>
                           <td className="py-2 px-3 text-right font-mono" style={{ color: 'rgba(255,255,255,0.80)' }}>
                             {formatMinerHashrate(m.hashrate_15m)}
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono" style={{ color: (m.blocks_found ?? 0) > 0 ? '#fbbf24' : 'rgba(255,255,255,0.30)' }}>
+                            {m.blocks_found == null ? '—' : m.blocks_found.toLocaleString('en-US')}
                           </td>
                           <td className="py-2 pl-3 text-right" style={{ color: 'rgba(255,255,255,0.55)' }}>
                             {formatAgoPlainEnglish(m.last_share_ago_seconds)}
