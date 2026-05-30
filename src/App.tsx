@@ -378,7 +378,17 @@ function AppLayout() {
   }, [setUpdateInfo]);
 
   return (
-    <div className="relative flex h-screen overflow-hidden app-bg">
+    <div
+      className="relative flex h-screen overflow-hidden app-bg"
+      // Push Sidebar + main content down by exactly the title bar's
+      // height while it's pinned, so the TopBar's stop-node button and
+      // balance section don't get hidden behind the always-visible bar.
+      // The --titlebar-offset CSS variable is set by TitleBar.tsx
+      // (defaults to 0px when unpinned). TitleBar itself uses
+      // position: fixed, so it sits above this padding without being
+      // affected by it.
+      style={{ paddingTop: 'var(--titlebar-offset, 0px)' }}
+    >
       {/* Animated crypto-network background — sits behind all UI chrome.
           key={theme} forces a clean remount when the user switches themes
           so the canvas reinitializes its palette without leaking the old

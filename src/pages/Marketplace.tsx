@@ -13,8 +13,10 @@ import EscrowProgress from './marketplace/EscrowProgress';
 import CreateOrderModal from './marketplace/CreateOrderModal';
 import SellerTradeReview from './marketplace/SellerTradeReview';
 import ResolverPicker from './marketplace/ResolverPicker';
+import SwapPanel from './marketplace/swap/SwapPanel';
 
 type MyTradesTab = 'active' | 'completed' | 'all';
+type MarketplaceMode = 'otc' | 'swap';
 
 const ACTIVE_LIFECYCLE_STATES = new Set([
   'draft', 'proposed', 'funded', 'partially_released',
@@ -118,6 +120,10 @@ export default function MarketplacePage() {
   // seller-side dispute action fires; the modal then displays the
   // agreement's nominated resolvers + the public registry.
   const [resolverPickerAgreement, setResolverPickerAgreement] = useState<Agreement | null>(null);
+  // Top-level mode: OTC (the existing peer-to-peer fiat marketplace) or
+  // Swap (multi-pair atomic swap marketplace). Each mode owns a distinct
+  // panel; only the mode-strip and page header are shared.
+  const [mode, setMode] = useState<MarketplaceMode>('otc');
 
   const view = useStore((s) => s.marketplaceView);
   const setMarketplaceSelectedOffer = useStore((s) => s.setMarketplaceSelectedOffer);
@@ -229,10 +235,20 @@ export default function MarketplacePage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="page-title">Marketplace</h1>
-            <p className="page-subtitle">Peer-to-peer OTC. Lock IRM in escrow, swap for anything.</p>
+            <p className="page-subtitle">
+              {mode === 'otc'
+                ? 'Peer-to-peer OTC. Lock IRM in escrow, swap for anything.'
+                : 'Atomic swaps between IRM and other chains. Trustless. No bridge.'}
+            </p>
           </div>
           <div className="flex items-center gap-3">
-            {refreshing && <RefreshCw size={13} className="animate-spin" style={{ color: 'rgba(238,240,255,0.55)' }} />}
+            {refreshing && mode === 'otc' && (
+              <RefreshCw
+                size={13}
+                className="animate-spin"
+                style={{ color: 'rgba(238,240,255,0.55)' }}
+              />
+            )}
             <Link
               to="/settlement-hub"
               className="text-xs inline-flex items-center gap-1.5"
@@ -244,6 +260,43 @@ export default function MarketplacePage() {
           </div>
         </div>
 
+        {/* Top-level mode strip — OTC vs Swap. Each mode owns a fully
+            distinct panel below; the page header is the only shared chrome. */}
+        <div
+          className="inline-flex rounded mb-4 text-xs font-display font-semibold"
+          style={{
+            background: 'rgba(0,0,0,0.25)',
+            border: '1px solid rgba(255,255,255,0.06)',
+          }}
+        >
+          {(['otc', 'swap'] as MarketplaceMode[]).map((m) => {
+            const active = m === mode;
+            const accent = m === 'otc' ? '#A78BFA' : '#F7931A';
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className="px-4 py-1.5 uppercase tracking-wide transition-colors"
+                style={{
+                  color: active ? accent : 'rgba(238,240,255,0.55)',
+                  background: active
+                    ? m === 'otc'
+                      ? 'rgba(167,139,250,0.15)'
+                      : 'rgba(247,147,26,0.15)'
+                    : 'transparent',
+                }}
+              >
+                {m === 'otc' ? 'OTC' : 'Swap'}
+              </button>
+            );
+          })}
+        </div>
+
+        {mode === 'swap' ? (
+          <SwapPanel />
+        ) : (
+        <>
         <div
           className="grid gap-3"
           style={{ gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr)' }}
@@ -389,6 +442,8 @@ export default function MarketplacePage() {
             agreement={resolverPickerAgreement}
             onClose={() => setResolverPickerAgreement(null)}
           />
+        )}
+        </>
         )}
       </div>
     </div>
