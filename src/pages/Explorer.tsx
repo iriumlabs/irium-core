@@ -705,6 +705,20 @@ const truncateMinerWorker = (w: string, n: number = 12): string => {
   return `${w.slice(0, headLen)}…${w.slice(-tailLen)}`;
 };
 
+// A miner is "offline" if they've stopped submitting shares recently.
+// Two thresholds: hard cutoff at last share > 5 min (hide regardless of
+// hashrate), and a stalled cutoff for zero 15-min hashrate + last share
+// > 2 min. Rows where last_share_ago_seconds is null (proxy warmup) stay
+// visible — "no data" must not be treated as "offline" because the
+// rolling window genuinely has no samples yet.
+const isMinerOffline = (m: MinerRow): boolean => {
+  const last = m.last_share_ago_seconds;
+  if (last == null) return false;
+  if (last > 300) return true;
+  if ((m.hashrate_15m ?? 0) === 0 && last > 120) return true;
+  return false;
+};
+
 function PoolStatsTile({
   label, value, sub, accent,
 }: {
@@ -1143,6 +1157,10 @@ function PoolStatsSection() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string>('');
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  // Hide stale rows (e.g. an MRR rental that disconnected and is still
+  // showing in the 15-min EMA tail). Default false; user can flip via the
+  // toggle in the table header to inspect offline workers when debugging.
+  const [showOffline, setShowOffline] = useState(false);
 
   // Parallel fetch of both endpoints. /stats goes via the Tauri command
   // (which is cached 30s on the Rust side); /miners goes via tauriFetch
@@ -1285,6 +1303,18 @@ function PoolStatsSection() {
       return (b.accepted ?? 0) - (a.accepted ?? 0);
     });
   }, [miners, myAddresses]);
+
+  // Split sortedMiners into active vs offline. activeMiners drives the
+  // header counter and the default-visible table; displayedMiners adds the
+  // offline rows back in when the user toggles showOffline on. Keeping the
+  // partition separate from sortedMiners means a single sort/merge feeds
+  // both views and the offline-toggle is just a filter, not a re-fetch.
+  const activeMiners = useMemo(
+    () => sortedMiners.filter((m) => !isMinerOffline(m)),
+    [sortedMiners],
+  );
+  const offlineCount = sortedMiners.length - activeMiners.length;
+  const displayedMiners = showOffline ? sortedMiners : activeMiners;
 
   const integrityLabel = (raw: string) =>
     raw === 'healthy' ? t('explorer.pool_stats.integrity_healthy')
@@ -1518,22 +1548,43 @@ function PoolStatsSection() {
             className="p-4"
             style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.13)', borderRadius: 8 }}
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <span style={{ fontSize: 13, fontWeight: 700, color: '#d4eeff', fontFamily: '"Space Grotesk", sans-serif' }}>
                   Active Miners
                 </span>
                 <span className="font-mono" style={{ fontSize: 11, color: 'rgba(110,198,255,0.55)' }}>
-                  {sortedMiners.length} {sortedMiners.length === 1 ? 'worker' : 'workers'}
+                  {activeMiners.length} {activeMiners.length === 1 ? 'worker' : 'workers'}
                 </span>
               </div>
-              {myAddresses.size > 0 && sortedMiners.some((m) => myAddresses.has((m.worker.split('.')[0] ?? '').trim())) && (
-                <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.45)' }}>
-                  Your miners pinned to top
-                </span>
-              )}
+              <div className="flex items-center gap-3">
+                {myAddresses.size > 0 && displayedMiners.some((m) => myAddresses.has((m.worker.split('.')[0] ?? '').trim())) && (
+                  <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.45)' }}>
+                    Your miners pinned to top
+                  </span>
+                )}
+                {offlineCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowOffline((s) => !s)}
+                    style={{
+                      fontSize: 10.5,
+                      color: showOffline ? '#a78bfa' : 'rgba(255,255,255,0.55)',
+                      background: showOffline ? 'rgba(167,139,250,0.10)' : 'transparent',
+                      border: `1px solid ${showOffline ? 'rgba(167,139,250,0.40)' : 'rgba(110,198,255,0.20)'}`,
+                      borderRadius: 6,
+                      padding: '3px 8px',
+                      fontFamily: '"Space Grotesk", sans-serif',
+                      cursor: 'pointer',
+                      letterSpacing: '0.02em',
+                    }}
+                  >
+                    {showOffline ? `Hide offline (${offlineCount})` : `Show offline miners (${offlineCount})`}
+                  </button>
+                )}
+              </div>
             </div>
-            {sortedMiners.length === 0 ? (
+            {displayedMiners.length === 0 ? (
               <div className="py-6 text-center" style={{ fontSize: 12, color: 'rgba(255,255,255,0.40)' }}>
                 No active miners reporting.
               </div>
@@ -1551,7 +1602,7 @@ function PoolStatsSection() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedMiners.map((m, idx) => {
+                    {displayedMiners.map((m, idx) => {
                       const addressPart = (m.worker.split('.')[0] ?? '').trim();
                       const isMine = addressPart.length > 0 && myAddresses.has(addressPart);
                       // Color by reject rate: < 10% green, 10-30% amber,
