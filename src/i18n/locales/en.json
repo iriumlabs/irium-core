@@ -397,6 +397,8 @@
       "clear_chain_state": "Clear Chain State",
       "try_reset_node_state": "Try Reset Node State",
       "dismiss_1h": "Dismiss for 1 hour",
+      "post_import_title": "Wallet imported — syncing in the background",
+      "post_import_body": "Your wallet is restored. Your balance will appear here once iriumd finishes downloading the chain. This typically takes a few hours on a fresh install.",
       "no_peers_searching": "Searching for peers…",
       "sync_stall": "Sync stalled — {{count}} blocks behind",
       "height_warning": "Block height hasn't changed in {{minutes}} minutes",

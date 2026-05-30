@@ -351,6 +351,13 @@ function agreementBorderColor(status: AgreementStatus): string {
 // ── Decentralization banner ───────────────────────────────────
 const DECENTRAL_DISMISSED_KEY = 'irium-decentral-dismissed';
 const HEIGHT_WARN_DISMISSED_KEY = 'irium-height-warn-dismissed-until';
+// One-shot post-import sync awareness banner. Set by Wallet.tsx after
+// importMnemonic / importWif / restoreBackup succeed. Payload shape:
+// { at: number (ms epoch), dismissed: boolean }. Auto-hides once sync
+// is within 50 blocks of tip; explicit dismiss + 7-day expiry also.
+const POST_IMPORT_BANNER_KEY = 'irium-post-import-banner';
+const POST_IMPORT_BANNER_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const POST_IMPORT_BANNER_NEAR_TIP_BLOCKS = 50;
 
 // SVG viewBox 0 0 112 78 — 5 healthy network nodes + 1 dimmed "you" node at bottom
 const NET_POS = [
@@ -529,6 +536,22 @@ export default function Dashboard() {
   const [heightWarnDismissedUntil, setHeightWarnDismissedUntil] = useState(
     () => parseInt(localStorage.getItem(HEIGHT_WARN_DISMISSED_KEY) ?? '0', 10)
   );
+  // Post-import sync awareness banner state. Lazy-loaded from localStorage
+  // so the banner re-appears across browser sessions until either the user
+  // dismisses it, sync catches up, or the 7-day TTL expires. Malformed
+  // payloads (manual edits, prior schema versions) parse to null and
+  // suppress the banner safely.
+  const [postImportBanner, setPostImportBanner] = useState<{ at: number; dismissed: boolean } | null>(() => {
+    try {
+      const raw = localStorage.getItem(POST_IMPORT_BANNER_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (typeof parsed?.at !== 'number' || typeof parsed?.dismissed !== 'boolean') return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  });
   const [recentTx, setRecentTx] = useState<Transaction[]>([]);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(true);
@@ -999,6 +1022,81 @@ export default function Dashboard() {
               </div>
             </motion.div>
           ) : null}
+        </AnimatePresence>
+
+        {/* ── Post-import sync awareness banner ───────────────────────
+            One-shot dismissable info banner that surfaces after a fresh
+            wallet.importMnemonic / wallet.importWif / wallet.restoreBackup.
+            Explains why a freshly-imported wallet's balance might still
+            read 0 — iriumd is downloading the chain and the balance
+            appears once sync catches up. Auto-hides within 50 blocks of
+            tip, dismissable, expires after 7 days. Separate AnimatePresence
+            so it coexists with status banners (sync_stalled is amber, this
+            is green — the contrast is intentional, the green banner
+            provides positive context for the amber one). */}
+        <AnimatePresence>
+          {postImportBanner !== null
+            && !postImportBanner.dismissed
+            && Date.now() - postImportBanner.at < POST_IMPORT_BANNER_TTL_MS
+            && nodeStatus?.running === true
+            && (nodeStatus?.network_tip ?? 0) > 0
+            && (nodeStatus.network_tip - nodeStatus.height) > POST_IMPORT_BANNER_NEAR_TIP_BLOCKS && (
+            <motion.div
+              key="post-import-banner"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div
+                className="relative flex items-center gap-3 rounded-xl px-5 py-4 overflow-hidden"
+                style={{
+                  background: 'rgba(8,11,22,0.94)',
+                  border: '1px solid rgba(52,211,153,0.40)',
+                  boxShadow: '0 8px 28px rgba(0,0,0,0.45), 0 0 24px rgba(52,211,153,0.12)',
+                }}
+              >
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{ background: 'radial-gradient(ellipse 60% 100% at 0% 0%, rgba(52,211,153,0.14) 0%, transparent 70%)' }}
+                />
+                <div className="relative flex items-center gap-3 flex-1">
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'rgba(52,211,153,0.14)', border: '1px solid rgba(52,211,153,0.40)' }}
+                  >
+                    <CheckCircle2 size={16} style={{ color: '#34d399' }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-display font-bold" style={{ color: '#34d399' }}>
+                      {t('dashboard.banners.post_import_title')}
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: 'rgba(238,240,255,0.55)' }}>
+                      {t('dashboard.banners.post_import_body')}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (!postImportBanner) return;
+                    const next = { at: postImportBanner.at, dismissed: true };
+                    localStorage.setItem(POST_IMPORT_BANNER_KEY, JSON.stringify(next));
+                    setPostImportBanner(next);
+                  }}
+                  className="relative flex-shrink-0 inline-flex items-center px-3 py-2 rounded-xl text-xs font-display font-semibold transition-all active:scale-[0.97]"
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    color: 'rgba(238,240,255,0.45)',
+                  }}
+                  title={t('dashboard.banners.dismiss')}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
 
         {/* ── Decentralization nudge — separate AnimatePresence so it coexists with status banners */}

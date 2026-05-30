@@ -38,6 +38,13 @@ import type { AddressInfo, Transaction, SendResult, WalletCreateResult } from ".
  * by registering the listener; no central registry needs updating.
  * ───────────────────────────────────────────────────────────────────────── */
 
+// LocalStorage key for the one-shot post-import sync awareness banner the
+// Dashboard renders. Set here by every wallet-restore success path
+// (importMnemonic, importWif, restoreBackup); read + cleared by the
+// Dashboard banner. Shape: { at: number (ms epoch), dismissed: boolean }.
+// Keeping the key adjacent to its writer so future restore paths see it.
+const POST_IMPORT_BANNER_KEY = 'irium-post-import-banner';
+
 export default function WalletPage() {
   const { t } = useTranslation();
   const balance = useStore((s) => s.balance);
@@ -1137,6 +1144,13 @@ export default function WalletPage() {
                         } catch {
                           // swallow — we'll fall through to the toast below.
                         }
+                        // Arm the Dashboard post-import banner (same flag
+                        // used by mnemonic/WIF import) so backup-restored
+                        // users get the same sync-awareness context.
+                        localStorage.setItem(
+                          POST_IMPORT_BANNER_KEY,
+                          JSON.stringify({ at: Date.now(), dismissed: false }),
+                        );
                         toast.success(
                           restarted
                             ? t('wallet.toasts.restored_backup_with_restart')
@@ -1655,6 +1669,16 @@ function CreateWalletModal({
       } else if (resolvedPath) {
         throw new Error(`Wallet binary returned invalid path: ${resolvedPath}`);
       }
+      // Arm the Dashboard's one-shot post-import sync awareness banner so
+      // the user gets an inline explanation of why their balance might
+      // still read 0 right after a fresh import. The Dashboard reads this
+      // key on mount and renders a dismissable info banner until either
+      // the user dismisses it, sync catches within ~50 blocks of tip, or
+      // 7 days elapse.
+      localStorage.setItem(
+        POST_IMPORT_BANNER_KEY,
+        JSON.stringify({ at: Date.now(), dismissed: false }),
+      );
       toast.success(t('wallet.toasts.imported_successfully'));
       onSuccess();
     } catch (e) {
