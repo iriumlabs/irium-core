@@ -650,6 +650,10 @@ interface MinerRow {
   reject_rate_pct: number | null;
   hashrate_15m: number | null;
   last_share_ago_seconds: number | null;
+  // Cumulative blocks the worker has found at this stratum, populated by
+  // the stats-proxy. Optional + nullable because older proxies and the
+  // warmup window emit null; the column renders "—" when missing.
+  blocks_found?: number | null;
 }
 
 interface MinersResponse {
@@ -703,6 +707,20 @@ const truncateMinerWorker = (w: string, n: number = 12): string => {
   const headLen = 5;
   const tailLen = Math.max(1, n - headLen - 1);
   return `${w.slice(0, headLen)}…${w.slice(-tailLen)}`;
+};
+
+// A miner is "offline" if they've stopped submitting shares recently.
+// Two thresholds: hard cutoff at last share > 5 min (hide regardless of
+// hashrate), and a stalled cutoff for zero 15-min hashrate + last share
+// > 2 min. Rows where last_share_ago_seconds is null (proxy warmup) stay
+// visible — "no data" must not be treated as "offline" because the
+// rolling window genuinely has no samples yet.
+const isMinerOffline = (m: MinerRow): boolean => {
+  const last = m.last_share_ago_seconds;
+  if (last == null) return false;
+  if (last > 300) return true;
+  if ((m.hashrate_15m ?? 0) === 0 && last > 120) return true;
+  return false;
 };
 
 function PoolStatsTile({
@@ -847,12 +865,16 @@ function NetworkMiningOverview() {
 
   // Panel 2: pool aggregate from the per-miner rows.
   const poolRows = poolMiners ?? [];
-  // Sum hashrate_15m across all pool rows. The /miners proxy now emits
-  // session_status; prefer 'active' rows so a stale leftover row (idle
-  // > 10 min, zero hashrate, same base address as an active row) is
-  // already filtered before it could distort the total.
-  const poolHashrateRaw = poolRows.length > 0
-    ? poolRows.reduce((sum, m) => sum + (m.hashrate_15m ?? 0), 0)
+  // Filter offline workers before aggregating. Same isMinerOffline
+  // predicate the Active Miners table uses below, so the displayed Pool
+  // Hashrate, Active Pool Miners count, and the table all agree on who
+  // counts. The /miners feed's 15-min EMA tail keeps stale rows visible
+  // for ~15 min after a worker disconnects (notably MRR rental sessions
+  // that auto-failover after a stratum bounce), which would otherwise
+  // inflate the aggregate Pool Hashrate.
+  const activeRows = poolRows.filter((m) => !isMinerOffline(m));
+  const poolHashrateRaw = activeRows.length > 0
+    ? activeRows.reduce((sum, m) => sum + (m.hashrate_15m ?? 0), 0)
     : null;
   // Sanity cap: the proxy estimates per-worker hashrate from
   // accepted-share counts × current_diff over a rolling window. Vardiff
@@ -867,16 +889,9 @@ function NetworkMiningOverview() {
     : poolHashrateRaw;
   const poolHashrateClamped = poolHashrateRaw != null && networkHashrate != null && poolHashrateRaw > networkHashrate;
   const poolHashrate = poolHashrateCapped;
-  // Active miner count: rows that submitted a share in the last 10 min
-  // AND have a non-zero rolling hashrate. The proxy's session_status
-  // field already encodes this; we count session_status==='active' if
-  // present and fall back to a hashrate>0 test when it's not.
-  type MinerRowExt = MinerRow & { session_status?: 'active' | 'stale' };
-  const activePoolMiners = poolRows.filter((m) => {
-    const ext = m as MinerRowExt;
-    if (ext.session_status) return ext.session_status === 'active';
-    return (m.hashrate_15m ?? 0) > 0;
-  }).length;
+  // Active miner count derived from the same activeRows filter so the
+  // count and the hashrate sum stay consistent.
+  const activePoolMiners = activeRows.length;
   const poolBlocksFound = poolAggregate?.total_blocks_found ?? null;
   const poolShareOfNetwork = (poolHashrate != null && networkHashrate != null && networkHashrate > 0)
     ? (poolHashrate / networkHashrate) * 100
@@ -1143,6 +1158,10 @@ function PoolStatsSection() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string>('');
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  // Hide stale rows (e.g. an MRR rental that disconnected and is still
+  // showing in the 15-min EMA tail). Default false; user can flip via the
+  // toggle in the table header to inspect offline workers when debugging.
+  const [showOffline, setShowOffline] = useState(false);
 
   // Parallel fetch of both endpoints. /stats goes via the Tauri command
   // (which is cached 30s on the Rust side); /miners goes via tauriFetch
@@ -1249,6 +1268,7 @@ function PoolStatsSection() {
           reject_rate_pct: m.reject_rate_pct,
           hashrate_15m: m.hashrate_15m,
           last_share_ago_seconds: m.last_share_ago_seconds,
+          blocks_found: m.blocks_found ?? null,
         });
         continue;
       }
@@ -1264,6 +1284,13 @@ function PoolStatsSection() {
       }
       if (m.rejected_15m != null) {
         existing.rejected_15m = (existing.rejected_15m ?? 0) + m.rejected_15m;
+      }
+      // Sum blocks_found across the merged group so the column reflects
+      // the wallet's total per-pool block credit. Same null-as-0
+      // accumulation as the rejected_15m field above; the sum stays
+      // null if NO row in the group had data.
+      if (m.blocks_found != null) {
+        existing.blocks_found = (existing.blocks_found ?? 0) + m.blocks_found;
       }
       const eHr = existing.hashrate_15m ?? -1;
       const mHr = m.hashrate_15m ?? -1;
@@ -1285,6 +1312,18 @@ function PoolStatsSection() {
       return (b.accepted ?? 0) - (a.accepted ?? 0);
     });
   }, [miners, myAddresses]);
+
+  // Split sortedMiners into active vs offline. activeMiners drives the
+  // header counter and the default-visible table; displayedMiners adds the
+  // offline rows back in when the user toggles showOffline on. Keeping the
+  // partition separate from sortedMiners means a single sort/merge feeds
+  // both views and the offline-toggle is just a filter, not a re-fetch.
+  const activeMiners = useMemo(
+    () => sortedMiners.filter((m) => !isMinerOffline(m)),
+    [sortedMiners],
+  );
+  const offlineCount = sortedMiners.length - activeMiners.length;
+  const displayedMiners = showOffline ? sortedMiners : activeMiners;
 
   const integrityLabel = (raw: string) =>
     raw === 'healthy' ? t('explorer.pool_stats.integrity_healthy')
@@ -1518,22 +1557,43 @@ function PoolStatsSection() {
             className="p-4"
             style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.13)', borderRadius: 8 }}
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <span style={{ fontSize: 13, fontWeight: 700, color: '#d4eeff', fontFamily: '"Space Grotesk", sans-serif' }}>
                   Active Miners
                 </span>
                 <span className="font-mono" style={{ fontSize: 11, color: 'rgba(110,198,255,0.55)' }}>
-                  {sortedMiners.length} {sortedMiners.length === 1 ? 'worker' : 'workers'}
+                  {activeMiners.length} {activeMiners.length === 1 ? 'worker' : 'workers'}
                 </span>
               </div>
-              {myAddresses.size > 0 && sortedMiners.some((m) => myAddresses.has((m.worker.split('.')[0] ?? '').trim())) && (
-                <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.45)' }}>
-                  Your miners pinned to top
-                </span>
-              )}
+              <div className="flex items-center gap-3">
+                {myAddresses.size > 0 && displayedMiners.some((m) => myAddresses.has((m.worker.split('.')[0] ?? '').trim())) && (
+                  <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.45)' }}>
+                    Your miners pinned to top
+                  </span>
+                )}
+                {offlineCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowOffline((s) => !s)}
+                    style={{
+                      fontSize: 10.5,
+                      color: showOffline ? '#a78bfa' : 'rgba(255,255,255,0.55)',
+                      background: showOffline ? 'rgba(167,139,250,0.10)' : 'transparent',
+                      border: `1px solid ${showOffline ? 'rgba(167,139,250,0.40)' : 'rgba(110,198,255,0.20)'}`,
+                      borderRadius: 6,
+                      padding: '3px 8px',
+                      fontFamily: '"Space Grotesk", sans-serif',
+                      cursor: 'pointer',
+                      letterSpacing: '0.02em',
+                    }}
+                  >
+                    {showOffline ? `Hide offline (${offlineCount})` : `Show offline miners (${offlineCount})`}
+                  </button>
+                )}
+              </div>
             </div>
-            {sortedMiners.length === 0 ? (
+            {displayedMiners.length === 0 ? (
               <div className="py-6 text-center" style={{ fontSize: 12, color: 'rgba(255,255,255,0.40)' }}>
                 No active miners reporting.
               </div>
@@ -1547,11 +1607,12 @@ function PoolStatsSection() {
                       <th className="text-right py-2 px-3 font-semibold" title="Rejected shares in the last 15 minutes only. The cumulative count (since stratum restart) kept a worker showing a stale warmup-burst total even after they recovered.">Rejected (15m)</th>
                       <th className="text-right py-2 px-3 font-semibold" title="Rolling rejection rate over the last 15 minutes. The cumulative-since-restart rate kept a worker stuck on a post-restart warmup burst even after they recovered.">Reject % (15m)</th>
                       <th className="text-right py-2 px-3 font-semibold">Hashrate (15m)</th>
+                      <th className="text-right py-2 px-3 font-semibold" title="Blocks found by this worker at the pool. Populated by the stats-proxy; shows '—' until the proxy backfills per-worker block credit.">Blocks</th>
                       <th className="text-right py-2 pl-3 font-semibold">Last Share</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedMiners.map((m, idx) => {
+                    {displayedMiners.map((m, idx) => {
                       const addressPart = (m.worker.split('.')[0] ?? '').trim();
                       const isMine = addressPart.length > 0 && myAddresses.has(addressPart);
                       // Color by reject rate: < 10% green, 10-30% amber,
@@ -1607,6 +1668,9 @@ function PoolStatsSection() {
                           </td>
                           <td className="py-2 px-3 text-right font-mono" style={{ color: 'rgba(255,255,255,0.80)' }}>
                             {formatMinerHashrate(m.hashrate_15m)}
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono" style={{ color: (m.blocks_found ?? 0) > 0 ? '#fbbf24' : 'rgba(255,255,255,0.30)' }}>
+                            {m.blocks_found == null ? '—' : m.blocks_found.toLocaleString('en-US')}
                           </td>
                           <td className="py-2 pl-3 text-right" style={{ color: 'rgba(255,255,255,0.55)' }}>
                             {formatAgoPlainEnglish(m.last_share_ago_seconds)}
