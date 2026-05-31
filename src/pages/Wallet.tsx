@@ -2380,7 +2380,7 @@ function SendModal({
                   )}
                 </div>
 
-                <div className="text-white/30 text-xs font-mono">Estimated fee: ~1,000 sats</div>
+                <div className="text-white/30 text-xs font-mono">Estimated fee: ~25,000 sats</div>
                 <div className="flex gap-3 pt-1">
                   <button onClick={onClose} className="btn-secondary flex-1 justify-center">Cancel</button>
                   <button
@@ -2410,7 +2410,7 @@ function SendModal({
                     </div>
                     <div className="flex justify-between text-xs text-white/40">
                       <span>Estimated fee</span>
-                      <span className="font-mono">~1,000 sats</span>
+                      <span className="font-mono">~25,000 sats</span>
                     </div>
                   </div>
                 </div>
