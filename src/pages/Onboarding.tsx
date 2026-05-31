@@ -9,7 +9,7 @@ import {
   Key, Lock, FileText, Wallet as WalletIcon, RefreshCw,
 } from 'lucide-react';
 import { fetch as tauriFetch, Body, ResponseType } from '@tauri-apps/api/http';
-import { node, wallet } from '../lib/tauri';
+import { node, wallet, rpcCall } from '../lib/tauri';
 import { startAggressivePoll } from '../hooks/useNodePoller';
 import { useStore } from '../lib/store';
 import type { NodeStatus, WalletCreateResult, BinaryCheckResult } from '../lib/types';
@@ -1224,7 +1224,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
 }
 
 // ─── Step 4: Wallet Setup ─────────────────────────────────────────────────────
-type WalletFlow = 'choose' | 'creating' | 'import_form' | 'importing' | 'restored';
+type WalletFlow = 'choose' | 'creating' | 'set_password' | 'encrypting' | 'import_form' | 'importing' | 'restored';
 type ImportTab  = 'mnemonic' | 'wif' | 'privkey';
 
 function StepWalletSetup({
@@ -1241,6 +1241,14 @@ function StepWalletSetup({
   const [importValue, setImportValue] = useState('');
   const [restoredAddresses, setRestoredAddresses] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
+  // Mandatory wallet-creation password state. The wallet RPC creates a
+  // plaintext file on disk first; we immediately call
+  // /wallet/migrate_to_encrypted with this passphrase before completing
+  // onboarding, so a freshly-created wallet is always encrypted at rest.
+  const [pendingWallet, setPendingWallet] = useState<WalletCreateResult | null>(null);
+  const [passphrase, setPassphrase] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
+  const [showPass, setShowPass] = useState(false);
 
   const handleCreate = async () => {
     setFlow('creating');
@@ -1248,10 +1256,43 @@ function StepWalletSetup({
       const r = await wallet.create();
       // Persist the wallet path so the app uses it on next launch
       updateSettings({ wallet_path: r.wallet_path });
-      onCreated(r);
+      // Stage the wallet result; encryption is mandatory before
+      // completing onboarding (handleSetPassword finishes the flow).
+      setPendingWallet(r);
+      setPassphrase('');
+      setConfirmPass('');
+      setFlow('set_password');
     } catch (e) {
       toast.error(`Failed to create wallet: ${e}`);
       setFlow('choose');
+    }
+  };
+
+  const handleSetPassword = async () => {
+    if (passphrase.length < 8) {
+      toast.error(t('onboarding.wallet_password.too_short', 'Password must be at least 8 characters'));
+      return;
+    }
+    if (passphrase !== confirmPass) {
+      toast.error(t('onboarding.wallet_password.mismatch', 'Passwords do not match'));
+      return;
+    }
+    if (!pendingWallet) {
+      toast.error('No wallet pending encryption');
+      setFlow('choose');
+      return;
+    }
+    setFlow('encrypting');
+    try {
+      await rpcCall.walletMigrateToEncrypted(passphrase);
+      const r = pendingWallet;
+      setPendingWallet(null);
+      setPassphrase('');
+      setConfirmPass('');
+      onCreated(r);
+    } catch (e) {
+      toast.error(`Failed to set wallet password: ${String(e)}`);
+      setFlow('set_password');
     }
   };
 
@@ -1315,6 +1356,93 @@ function StepWalletSetup({
       setTimeout(() => setCopied(false), 1800);
     });
   };
+
+  if (flow === 'set_password') {
+    return (
+      <motion.div key="set_password" {...fadeIn}>
+        <div className="panel p-8">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#6ec6ff]/10">
+              <Lock size={18} style={{ color: '#6ec6ff' }} />
+            </div>
+            <div>
+              <h3 className="font-display font-semibold text-white text-lg">
+                {t('onboarding.wallet_password.title', 'Set a wallet password')}
+              </h3>
+              <p className="text-xs text-white/40 mt-0.5">
+                {t('onboarding.wallet_password.subtitle', 'Encrypts your wallet file. Required before continuing.')}
+              </p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div className="relative">
+              <input
+                type={showPass ? 'text' : 'password'}
+                value={passphrase}
+                onChange={(e) => setPassphrase(e.target.value)}
+                placeholder={t('onboarding.wallet_password.placeholder', 'Choose a strong password (8+ chars)')}
+                className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm font-mono focus:outline-none focus:border-[#6ec6ff]/60"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPass(!showPass)}
+                className="absolute right-2 top-2 text-white/40 hover:text-white/80"
+                aria-label={showPass ? 'hide' : 'show'}
+              >
+                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <input
+              type={showPass ? 'text' : 'password'}
+              value={confirmPass}
+              onChange={(e) => setConfirmPass(e.target.value)}
+              placeholder={t('onboarding.wallet_password.confirm_placeholder', 'Confirm password')}
+              className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm font-mono focus:outline-none focus:border-[#6ec6ff]/60"
+            />
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20">
+              <AlertTriangle size={14} className="text-yellow-400 mt-0.5 flex-shrink-0" />
+              <p className="text-[11px] text-yellow-200/80 leading-relaxed">
+                {t('onboarding.wallet_password.warning', 'This password cannot be recovered if forgotten. Write it down and store it safely. Your seed phrase is the only way to restore the wallet without this password.')}
+              </p>
+            </div>
+            <button
+              onClick={handleSetPassword}
+              disabled={passphrase.length < 8 || passphrase !== confirmPass}
+              className="btn-primary w-full justify-center"
+            >
+              {t('onboarding.wallet_password.continue', 'Encrypt & Continue')} <ArrowRight size={15} />
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (flow === 'encrypting') {
+    return (
+      <motion.div key="encrypting" {...fadeIn}>
+        <div className="panel p-10 flex flex-col items-center gap-4">
+          <div className="relative w-16 h-16 flex items-center justify-center">
+            <motion.div
+              className="absolute inset-0 rounded-full"
+              style={{ border: '1px solid rgba(110,198,255,0.25)' }}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+            />
+            <Loader2 size={24} className="animate-spin" style={{ color: '#a78bfa' }} />
+          </div>
+          <div>
+            <p className="font-display font-semibold text-white text-center mb-1">
+              {t('onboarding.wallet_password.encrypting', 'Encrypting wallet…')}
+            </p>
+            <p className="text-xs text-center" style={{ color: 'rgba(238,240,255,0.40)' }}>
+              Applying PBKDF2-derived key to your wallet file.
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   if (flow === 'creating') {
     return (
