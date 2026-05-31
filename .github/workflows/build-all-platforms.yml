@@ -60,6 +60,28 @@ jobs:
         with:
           submodules: recursive
 
+      # Defensive check: ensure the irium-source submodule SHA is reachable
+      # from iriumlabs/irium's main branch. v1.0.70 silently shipped with a
+      # stale submodule pointer (78e42ed) that lacked the BTC SPV
+      # retarget-anchor fix and the new /wallet/info endpoints, so the
+      # bundled iriumd hit the mainnet stall on user machines. This step
+      # makes that class of regression impossible: if the submodule SHA is
+      # not on main, the build fails BEFORE producing a stale installer.
+      - name: Verify irium-source submodule SHA is on iriumlabs/irium main
+        shell: bash
+        run: |
+          cd irium-source
+          git fetch origin main --depth=500 || true
+          SHA=$(git rev-parse HEAD)
+          if git merge-base --is-ancestor "$SHA" origin/main; then
+            echo "OK: irium-source submodule SHA $SHA is reachable from iriumlabs/irium main"
+          else
+            echo "::error::irium-source submodule SHA $SHA is NOT reachable from iriumlabs/irium main."
+            echo "::error::This release would ship a stale iriumd that lacks the latest fixes."
+            echo "::error::Fix: cd irium-source && git fetch origin main && git checkout origin/main && cd .. && git add irium-source && git commit"
+            exit 1
+          fi
+
       # Belt-and-suspenders: strip any stray \r from the signed bootstrap files
       # before cargo runs. include_str! reads file bytes verbatim, so even a
       # single \r anywhere in these files breaks signature verification.
