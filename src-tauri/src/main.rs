@@ -3796,6 +3796,68 @@ async fn rename_wallet_file(
 //
 // No address is printed — must call list-addresses after creation.
 // Mnemonic is stored in the wallet file — must call export-mnemonic after creation.
+
+// ── Tauri shell wrappers for the unified-wallet RPCs ──────────────────────
+// These three commands proxy to iriumd's GET /wallet/info,
+// POST /wallet/migrate_to_encrypted, and POST /wallet/recover_from_seed.
+// The frontend's rpcCall.* helpers also reach the same endpoints via the
+// generic rpc_proxy, so these dedicated wrappers are sugar for callers
+// that want strongly-typed invocations and the per-command Tauri
+// permission/logging story that comes with a dedicated #[tauri::command].
+#[tauri::command]
+async fn wallet_node_info(
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    rpc_proxy(state, "GET".to_string(), "/wallet/info".to_string(), None, None).await
+}
+
+#[tauri::command]
+async fn wallet_migrate_to_encrypted(
+    state: State<'_, AppState>,
+    passphrase: String,
+) -> Result<serde_json::Value, String> {
+    if passphrase.is_empty() {
+        return Err("password_required".to_string());
+    }
+    let body = serde_json::json!({ "passphrase": passphrase });
+    rpc_proxy(
+        state,
+        "POST".to_string(),
+        "/wallet/migrate_to_encrypted".to_string(),
+        None,
+        Some(body),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn wallet_recover_from_seed(
+    state: State<'_, AppState>,
+    seed_hex: String,
+    passphrase: String,
+    allow_overwrite: Option<bool>,
+) -> Result<serde_json::Value, String> {
+    if passphrase.is_empty() {
+        return Err("password_required".to_string());
+    }
+    if seed_hex.is_empty() {
+        return Err("seed_required".to_string());
+    }
+    let body = serde_json::json!({
+        "seed_hex": seed_hex,
+        "passphrase": passphrase,
+        "allow_overwrite": allow_overwrite.unwrap_or(false),
+    });
+    rpc_proxy(
+        state,
+        "POST".to_string(),
+        "/wallet/recover_from_seed".to_string(),
+        None,
+        Some(body),
+    )
+    .await
+}
+
 #[tauri::command]
 async fn wallet_create(state: State<'_, AppState>) -> Result<WalletCreateResult, String> {
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
@@ -9256,6 +9318,9 @@ fn main() {
             delete_wallet_file,
             rename_wallet_file,
             wallet_create,
+            wallet_node_info,
+            wallet_migrate_to_encrypted,
+            wallet_recover_from_seed,
             wallet_import_mnemonic,
             wallet_import_wif,
             wallet_import_private_key,

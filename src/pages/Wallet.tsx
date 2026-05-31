@@ -509,81 +509,124 @@ export default function WalletPage() {
     >
       <div className="px-8 py-6 space-y-6 w-full">
 
-        {/* ── Node-wallet mode banner ───────────────────────────
-            Inline (non-modal) prompt that surfaces the two states
-            the legacy UI silently ignored: a plaintext on-disk
-            wallet that needs encryption, and an encrypted wallet
-            that needs unlocking. Renders nothing in the happy
-            path (mode=encrypted && is_unlocked). Modal version
-            with Escape-close lands in the follow-up commit. */}
+        {/* ── Node-wallet mode modals ────────────────────────────
+            Forced fullscreen overlays that block the rest of the
+            wallet UI until resolved:
+              mode === "plaintext"   -> migration modal (mandatory,
+                                         no dismiss; the wallet on
+                                         disk MUST be encrypted)
+              mode === "encrypted"
+                 && !is_unlocked     -> unlock modal (no dismiss; the
+                                         keys are required before any
+                                         action)
+            Happy path (mode === "encrypted" && is_unlocked) renders
+            no overlay and the wallet UI is unchanged. */}
         {nodeWalletInfo && nodeWalletInfo.mode === "plaintext" && (
-          <div className="panel-hero p-6" style={{ border: "1px solid rgba(255, 200, 0, 0.4)" }}>
-            <div className="font-display font-semibold text-white text-lg mb-2">
-              {t("wallet.encryption.migration_title")}
-            </div>
-            <p className="text-white/70 text-sm mb-2">{t("wallet.encryption.migration_body")}</p>
-            <p className="text-white/50 text-xs mb-4">{t("wallet.encryption.migration_seed_note")}</p>
-            {nodeWalletInfo.plaintext_backups.length > 0 && (
-              <div className="text-amber-300 text-xs mb-3">
-                {t("wallet.encryption.plaintext_backup_warning", {
-                  paths: nodeWalletInfo.plaintext_backups.join(", "),
-                })}
-              </div>
-            )}
-            <div className="space-y-2">
-              <input
-                type="password"
-                placeholder={t("wallet.encryption.password_placeholder")}
-                value={encPass}
-                onChange={(e) => setEncPass(e.target.value)}
-                disabled={encBusy}
-                className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
-              />
-              <input
-                type="password"
-                placeholder={t("wallet.encryption.password_confirm_label")}
-                value={encConfirm}
-                onChange={(e) => setEncConfirm(e.target.value)}
-                disabled={encBusy}
-                className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
-              />
-              {encError && <div className="text-red-400 text-xs">{encError}</div>}
-              <button
-                onClick={submitMigration}
-                disabled={encBusy}
-                className="px-4 py-2 rounded bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm disabled:opacity-50"
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="migration-modal-title"
+          >
+            <div
+              className="panel-hero p-8 max-w-md w-full mx-4"
+              style={{ border: "1px solid rgba(255, 200, 0, 0.4)" }}
+            >
+              <div
+                id="migration-modal-title"
+                className="font-display font-semibold text-white text-xl mb-3"
               >
-                {encBusy ? t("wallet.encryption.encrypting") : t("wallet.encryption.encrypt_submit")}
-              </button>
+                {t("wallet.encryption.migration_title")}
+              </div>
+              <p className="text-white/70 text-sm mb-2">
+                {t("wallet.encryption.migration_body")}
+              </p>
+              <p className="text-white/50 text-xs mb-4">
+                {t("wallet.encryption.migration_seed_note")}
+              </p>
+              {nodeWalletInfo.plaintext_backups.length > 0 && (
+                <div className="text-amber-300 text-xs mb-3">
+                  {t("wallet.encryption.plaintext_backup_warning", {
+                    paths: nodeWalletInfo.plaintext_backups.join(", "),
+                  })}
+                </div>
+              )}
+              <div className="space-y-3">
+                <input
+                  type="password"
+                  placeholder={t("wallet.encryption.password_placeholder")}
+                  value={encPass}
+                  onChange={(e) => setEncPass(e.target.value)}
+                  disabled={encBusy}
+                  autoFocus
+                  className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
+                />
+                <input
+                  type="password"
+                  placeholder={t("wallet.encryption.password_confirm_label")}
+                  value={encConfirm}
+                  onChange={(e) => setEncConfirm(e.target.value)}
+                  disabled={encBusy}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") submitMigration();
+                  }}
+                  className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
+                />
+                {encError && <div className="text-red-400 text-xs">{encError}</div>}
+                <button
+                  onClick={submitMigration}
+                  disabled={encBusy}
+                  className="w-full px-4 py-2 rounded bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm disabled:opacity-50"
+                >
+                  {encBusy
+                    ? t("wallet.encryption.encrypting")
+                    : t("wallet.encryption.encrypt_submit")}
+                </button>
+              </div>
             </div>
           </div>
         )}
         {nodeWalletInfo && nodeWalletInfo.mode === "encrypted" && !nodeWalletInfo.is_unlocked && (
-          <div className="panel-hero p-6">
-            <div className="font-display font-semibold text-white text-lg mb-2">
-              {t("wallet.encryption.unlock_title")}
-            </div>
-            <p className="text-white/70 text-sm mb-3">{t("wallet.encryption.unlock_body")}</p>
-            <div className="space-y-2">
-              <input
-                type="password"
-                placeholder={t("wallet.encryption.password_placeholder")}
-                value={unlockPass}
-                onChange={(e) => setUnlockPass(e.target.value)}
-                disabled={unlockBusy}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") submitUnlock();
-                }}
-                className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
-              />
-              {unlockError && <div className="text-red-400 text-xs">{unlockError}</div>}
-              <button
-                onClick={submitUnlock}
-                disabled={unlockBusy}
-                className="px-4 py-2 rounded bg-blue-500 hover:bg-blue-400 text-white font-semibold text-sm disabled:opacity-50"
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="unlock-modal-title"
+          >
+            <div className="panel-hero p-8 max-w-md w-full mx-4">
+              <div
+                id="unlock-modal-title"
+                className="font-display font-semibold text-white text-xl mb-3"
               >
-                {unlockBusy ? t("wallet.encryption.unlocking") : t("wallet.encryption.unlock_submit")}
-              </button>
+                {t("wallet.encryption.unlock_title")}
+              </div>
+              <p className="text-white/70 text-sm mb-4">
+                {t("wallet.encryption.unlock_body")}
+              </p>
+              <div className="space-y-3">
+                <input
+                  type="password"
+                  placeholder={t("wallet.encryption.password_placeholder")}
+                  value={unlockPass}
+                  onChange={(e) => setUnlockPass(e.target.value)}
+                  disabled={unlockBusy}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") submitUnlock();
+                  }}
+                  className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
+                />
+                {unlockError && <div className="text-red-400 text-xs">{unlockError}</div>}
+                <button
+                  onClick={submitUnlock}
+                  disabled={unlockBusy}
+                  className="w-full px-4 py-2 rounded bg-blue-500 hover:bg-blue-400 text-white font-semibold text-sm disabled:opacity-50"
+                >
+                  {unlockBusy
+                    ? t("wallet.encryption.unlocking")
+                    : t("wallet.encryption.unlock_submit")}
+                </button>
+              </div>
             </div>
           </div>
         )}
