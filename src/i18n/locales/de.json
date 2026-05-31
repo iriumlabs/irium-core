@@ -563,6 +563,28 @@
       "name_invalid_chars": "Der Wallet-Name darf Folgendes nicht enthalten: / \\ : * ? \" < > |",
       "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
       "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
+    },
+    "encryption": {
+      "migration_title": "Encrypt your wallet",
+      "migration_body": "Your wallet is currently stored unencrypted on this device. Set a password to protect it. The same addresses and balances will be preserved; nothing on-chain changes.",
+      "migration_seed_note": "If you lose this password, recover with your seed phrase. The password only protects this device's wallet file.",
+      "password_label": "New password",
+      "password_confirm_label": "Confirm password",
+      "password_placeholder": "Enter a strong password",
+      "password_mismatch": "Passwords do not match",
+      "password_too_short": "Password must be at least 4 characters",
+      "password_required": "Password is required",
+      "encrypt_submit": "Encrypt wallet",
+      "encrypting": "Encrypting…",
+      "encrypted_success": "Wallet encrypted",
+      "unlock_title": "Unlock wallet",
+      "unlock_body": "Enter your wallet password to continue.",
+      "unlock_submit": "Unlock",
+      "unlocking": "Unlocking…",
+      "wrong_password": "Wrong password — try again or recover with your seed phrase.",
+      "needs_migration_status": "Wallet on disk uses the legacy unencrypted format and must be encrypted before use.",
+      "plaintext_backup_warning": "Plaintext backup file(s) detected at {{paths}}. Delete after verifying the migration succeeded.",
+      "recover_link": "Forgot your password? Recover with seed phrase"
     }
   },
   "agreements": {
@@ -1159,6 +1181,17 @@
     },
     "tooltips": {
       "copy_address": "Adresse kopieren"
+    },
+    "password": {
+      "title": "Set a wallet password",
+      "subtitle": "This password protects the wallet file on this device. If you lose it, recover with your seed phrase.",
+      "label": "Wallet password",
+      "confirm": "Confirm password",
+      "placeholder": "Enter a strong password",
+      "mismatch": "Passwords do not match",
+      "too_short": "Password must be at least 4 characters",
+      "required": "Password is required",
+      "continue": "Continue"
     }
   },
   "reputation": {

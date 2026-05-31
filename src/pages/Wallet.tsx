@@ -13,7 +13,8 @@ import {
 import toast from "react-hot-toast";
 import clsx from "clsx";
 import { useStore } from "../lib/store";
-import { wallet, config, node } from "../lib/tauri";
+import { wallet, config, node, rpcCall } from "../lib/tauri";
+import type { NodeWalletInfo } from "../lib/types";
 import TxDetailModal from "../components/TxDetailModal";
 import { formatIRM, timeAgo, SATS_PER_IRM, computeConfirmations, getAddressBadgeText } from "../lib/types";
 import type { AddressInfo, Transaction, SendResult, WalletCreateResult } from "../lib/types";
@@ -75,6 +76,87 @@ export default function WalletPage() {
   // address transaction filter. Duplicated further down for hero-only
   // helpers — those use the same expression so the value is identical.
   const activeAddress = addresses[activeAddrIdx]?.address ?? "";
+
+  // ── Node-wallet mode banner state ─
+  // Polls iriumd's GET /wallet/info on mount + after every successful
+  // migrate / unlock. Drives the inline banner at the top of the wallet
+  // page that handles two scenarios the legacy UI never covered:
+  //   - mode === 'plaintext'      → force migration to encrypted before
+  //                                  any other action; password + confirm
+  //   - mode === 'encrypted' &&
+  //     !is_unlocked               → unlock prompt; password
+  // Full modal dialog work (close-modal Escape integration, animations)
+  // is the next iteration; inline banner ships the critical UX now so
+  // existing plaintext-wallet users can act immediately.
+  const [nodeWalletInfo, setNodeWalletInfo] = useState<NodeWalletInfo | null>(null);
+  const [encPass, setEncPass] = useState("");
+  const [encConfirm, setEncConfirm] = useState("");
+  const [encError, setEncError] = useState("");
+  const [encBusy, setEncBusy] = useState(false);
+  const [unlockPass, setUnlockPass] = useState("");
+  const [unlockError, setUnlockError] = useState("");
+  const [unlockBusy, setUnlockBusy] = useState(false);
+
+  const refreshNodeWalletInfo = useCallback(async () => {
+    try {
+      const info = (await rpcCall.walletInfo()) as NodeWalletInfo;
+      setNodeWalletInfo(info);
+    } catch {
+      // /wallet/info unreachable usually means iriumd isn't running
+      // locally — render nothing rather than showing a stale banner.
+      setNodeWalletInfo(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshNodeWalletInfo();
+  }, [refreshNodeWalletInfo]);
+
+  const submitMigration = useCallback(async () => {
+    setEncError("");
+    if (!encPass) {
+      setEncError(t("wallet.encryption.password_required"));
+      return;
+    }
+    if (encPass.length < 4) {
+      setEncError(t("wallet.encryption.password_too_short"));
+      return;
+    }
+    if (encPass !== encConfirm) {
+      setEncError(t("wallet.encryption.password_mismatch"));
+      return;
+    }
+    setEncBusy(true);
+    try {
+      await rpcCall.walletMigrateToEncrypted(encPass);
+      toast.success(t("wallet.encryption.encrypted_success"));
+      setEncPass("");
+      setEncConfirm("");
+      await refreshNodeWalletInfo();
+    } catch (e) {
+      setEncError(String(e));
+    } finally {
+      setEncBusy(false);
+    }
+  }, [encPass, encConfirm, t, refreshNodeWalletInfo]);
+
+  const submitUnlock = useCallback(async () => {
+    setUnlockError("");
+    if (!unlockPass) {
+      setUnlockError(t("wallet.encryption.password_required"));
+      return;
+    }
+    setUnlockBusy(true);
+    try {
+      await rpcCall.walletUnlock(unlockPass);
+      setUnlockPass("");
+      await refreshNodeWalletInfo();
+    } catch {
+      setUnlockError(t("wallet.encryption.wrong_password"));
+    } finally {
+      setUnlockBusy(false);
+    }
+  }, [unlockPass, t, refreshNodeWalletInfo]);
 
   const [txs, setTxs] = useState<Transaction[]>([]);
   // Loading is split so switching addresses only shimmers the Transactions
@@ -426,6 +508,85 @@ export default function WalletPage() {
       className="h-full overflow-y-auto"
     >
       <div className="px-8 py-6 space-y-6 w-full">
+
+        {/* ── Node-wallet mode banner ───────────────────────────
+            Inline (non-modal) prompt that surfaces the two states
+            the legacy UI silently ignored: a plaintext on-disk
+            wallet that needs encryption, and an encrypted wallet
+            that needs unlocking. Renders nothing in the happy
+            path (mode=encrypted && is_unlocked). Modal version
+            with Escape-close lands in the follow-up commit. */}
+        {nodeWalletInfo && nodeWalletInfo.mode === "plaintext" && (
+          <div className="panel-hero p-6" style={{ border: "1px solid rgba(255, 200, 0, 0.4)" }}>
+            <div className="font-display font-semibold text-white text-lg mb-2">
+              {t("wallet.encryption.migration_title")}
+            </div>
+            <p className="text-white/70 text-sm mb-2">{t("wallet.encryption.migration_body")}</p>
+            <p className="text-white/50 text-xs mb-4">{t("wallet.encryption.migration_seed_note")}</p>
+            {nodeWalletInfo.plaintext_backups.length > 0 && (
+              <div className="text-amber-300 text-xs mb-3">
+                {t("wallet.encryption.plaintext_backup_warning", {
+                  paths: nodeWalletInfo.plaintext_backups.join(", "),
+                })}
+              </div>
+            )}
+            <div className="space-y-2">
+              <input
+                type="password"
+                placeholder={t("wallet.encryption.password_placeholder")}
+                value={encPass}
+                onChange={(e) => setEncPass(e.target.value)}
+                disabled={encBusy}
+                className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
+              />
+              <input
+                type="password"
+                placeholder={t("wallet.encryption.password_confirm_label")}
+                value={encConfirm}
+                onChange={(e) => setEncConfirm(e.target.value)}
+                disabled={encBusy}
+                className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
+              />
+              {encError && <div className="text-red-400 text-xs">{encError}</div>}
+              <button
+                onClick={submitMigration}
+                disabled={encBusy}
+                className="px-4 py-2 rounded bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm disabled:opacity-50"
+              >
+                {encBusy ? t("wallet.encryption.encrypting") : t("wallet.encryption.encrypt_submit")}
+              </button>
+            </div>
+          </div>
+        )}
+        {nodeWalletInfo && nodeWalletInfo.mode === "encrypted" && !nodeWalletInfo.is_unlocked && (
+          <div className="panel-hero p-6">
+            <div className="font-display font-semibold text-white text-lg mb-2">
+              {t("wallet.encryption.unlock_title")}
+            </div>
+            <p className="text-white/70 text-sm mb-3">{t("wallet.encryption.unlock_body")}</p>
+            <div className="space-y-2">
+              <input
+                type="password"
+                placeholder={t("wallet.encryption.password_placeholder")}
+                value={unlockPass}
+                onChange={(e) => setUnlockPass(e.target.value)}
+                disabled={unlockBusy}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitUnlock();
+                }}
+                className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
+              />
+              {unlockError && <div className="text-red-400 text-xs">{unlockError}</div>}
+              <button
+                onClick={submitUnlock}
+                disabled={unlockBusy}
+                className="px-4 py-2 rounded bg-blue-500 hover:bg-blue-400 text-white font-semibold text-sm disabled:opacity-50"
+              >
+                {unlockBusy ? t("wallet.encryption.unlocking") : t("wallet.encryption.unlock_submit")}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ── Balance Hero ──────────────────────────────────── */}
         <div className="panel-hero p-8 relative overflow-hidden">
