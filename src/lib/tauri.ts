@@ -1331,4 +1331,18 @@ export const rpcCall = {
   walletExportSeed: () => rpcGet('/wallet/export_seed'),
   walletImportSeed: (seedHex: string) => rpcPost('/wallet/import_seed', { seed_hex: seedHex }),
   walletSendHttp: (body: Record<string, unknown>) => rpcPost('/wallet/send', body),
+
+  // ── Unified wallet info + migration + recovery (Commit 1 backend) ─
+  // Used by Wallet.tsx to route between the unlock prompt (encrypted)
+  // and the forced migration modal (plaintext). Recovery is the
+  // "I have my seed phrase" path users hit when they've forgotten their
+  // password — backs up the existing file before overwriting.
+  walletInfo: () => rpcGet('/wallet/info'),
+  walletMigrateToEncrypted: (passphrase: string) =>
+    rpcPost('/wallet/migrate_to_encrypted', { passphrase }),
+  walletRecoverFromSeed: (body: {
+    seed_hex: string;
+    passphrase: string;
+    allow_overwrite?: boolean;
+  }) => rpcPost('/wallet/recover_from_seed', body),
 };

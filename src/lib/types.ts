@@ -100,6 +100,25 @@ export interface WalletInfo {
   total_balance: number | null;
 }
 
+// Mirror of iriumd's GET /wallet/info response (the on-node wallet
+// status, not the per-file inspector above). `mode` discriminates the
+// next user-facing flow:
+//   - "none"      -> Onboarding (create or recover)
+//   - "plaintext" -> forced migration modal before anything else
+//   - "encrypted" -> unlock prompt (or already unlocked -> wallet UI)
+// `plaintext_backups` lists `.plaintext.bak.<unix-secs>` files left
+// behind by migrate_to_encrypted so the UI can warn the operator to
+// delete them after verification.
+export type NodeWalletMode = 'none' | 'plaintext' | 'encrypted';
+
+export interface NodeWalletInfo {
+  exists:             boolean;
+  mode:               NodeWalletMode;
+  path:               string;
+  is_unlocked:        boolean;
+  plaintext_backups:  string[];
+}
+
 export interface NodeStartResult {
   success: boolean;
   message: string;
