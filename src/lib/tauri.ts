@@ -1277,6 +1277,60 @@ export const rpcCall = {
     order_txid: string; order_vout: number;
     fee_per_byte?: number; broadcast?: boolean;
   }) => rpcPost('/rpc/sweepltcexpiredorder', body),
+  // ── HtlcDogeSwap (Phase C) ─
+  createDogeSwap: (body: {
+    irm_amount: string; doge_amount_sats: number;
+    doge_recipient_address: string;
+    recipient_address: string; refund_address: string;
+    confirmations_required: number; timeout_height: number;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/createdogeswap', body),
+  claimDogeSwap: (body: {
+    funding_txid: string; vout: number;
+    destination_address: string;
+    doge_block_hash: string; doge_tx_hex: string;
+    doge_merkle_branch_hex: string[]; doge_merkle_index: number;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/claimdogeswap', body),
+  refundDogeSwap: (body: {
+    funding_txid: string; vout: number; destination_address: string;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/refunddogeswap', body),
+  inspectDogeSwap: (txid: string, vout: number) =>
+    rpcGet('/rpc/inspectdogeswap', { txid, vout }),
+
+  // ── DogeSwapOrder book (Phase D) ─
+  postDogeSwapOrder: (body: {
+    direction: 'sell_irm' | 'buy_irm';
+    irm_amount: string; doge_amount_sats: number;
+    maker_iriumd_address: string; maker_doge_address: string;
+    confirmations_required: number; expiry_blocks_from_now: number;
+    expected_hash_hex?: string;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/postdogeswaporder', body),
+  listDogeSwapOrders: (params?: {
+    direction?: 'sell_irm' | 'buy_irm' | 'both';
+    min_irm?: number; max_irm?: number;
+    min_doge?: number; max_doge?: number;
+    limit?: number; offset?: number;
+    sort?: 'price_asc' | 'price_desc' | 'recent';
+  }) => rpcGet('/rpc/listdogeswaporders', params ?? {}),
+  getDogeSwapOrder: (txid: string, vout: number) =>
+    rpcGet('/rpc/getdogeswaporder', { txid, vout }),
+  cancelDogeSwapOrder: (body: {
+    order_txid: string; order_vout: number; destination_address: string;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/canceldogeswaporder', body),
+  fillDogeSwapOrder: (body: {
+    order_txid: string; order_vout: number;
+    taker_iriumd_address: string; taker_doge_address?: string;
+    timeout_blocks_from_now: number;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/filldogeswaporder', body),
+  sweepDogeExpiredOrder: (body: {
+    order_txid: string; order_vout: number;
+    fee_per_byte?: number; broadcast?: boolean;
+  }) => rpcPost('/rpc/sweepdogeexpiredorder', body),
 
   // ── Settlement ─
   createAgreement: (agreement: unknown) => rpcPost('/rpc/createagreement', agreement),
