@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { X, ArrowRight, AlertTriangle, Check, Loader2, Send } from 'lucide-react';
+import { ArrowRight, AlertTriangle, Check, Loader2, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { SwapOrderRow, SwapPairConfig, SwapTxResult } from './pairs/types';
+import { TradingModal } from '../../../components/ui';
 
 // Two-step Take flow for a swap order.
 //   Step 1 — Review the order, choose where IRM lands, confirm.
@@ -106,24 +107,14 @@ export default function TakeSwapOrderModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-6"
-      style={{ background: 'rgba(2,5,14,0.78)' }}
-      onClick={onClose}
+    <TradingModal
+      open={true}
+      onClose={() => { if (!busy) onClose(); }}
+      title={`${takerLabel} on ${pair.label}`}
+      subtitle={`Step ${step} of 2`}
+      size="md"
     >
-      <div
-        className="w-full max-w-lg card p-5 space-y-4"
-        style={{ border: `1px solid ${pair.accent.primary}` }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <div className="text-sm font-display font-semibold" style={{ color: 'var(--t1)' }}>
-            {takerLabel} on {pair.label} — Step {step} of 2
-          </div>
-          <button onClick={onClose} className="btn-secondary px-2 py-1" disabled={busy}>
-            <X size={14} />
-          </button>
-        </div>
+      <div className="space-y-4">
 
         {step === 1 && (
           <>
@@ -345,6 +336,6 @@ export default function TakeSwapOrderModal({
           </>
         )}
       </div>
-    </div>
+    </TradingModal>
   );
 }
