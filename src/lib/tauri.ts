@@ -146,6 +146,17 @@ export const wallet = {
   listFiles: () =>
     safeInvoke<WalletFileInfo[]>('list_wallet_files'),
 
+  // Authoritative "does iriumd see a wallet?" check used by the
+  // OnboardingGate to decide between the wizard and the main app shell.
+  // Returns iriumd's /wallet/info shape: { exists, mode, path, is_unlocked,
+  // plaintext_backups }. Encrypted wallets still report exists: true even
+  // when locked, so the gate can route directly to the unlock dialog
+  // instead of re-running the onboarding wizard.
+  getActiveInfo: () =>
+    safeInvoke<{ exists?: boolean; mode?: string; path?: string; is_unlocked?: boolean }>(
+      'wallet_node_info'
+    ),
+
   // Read-only inspection of a wallet file — does NOT change which wallet
   // is active. Used by the Delete confirmation modal to show contents at
   // stake before unlinking.

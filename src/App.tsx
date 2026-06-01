@@ -526,9 +526,28 @@ function OnboardingGate() {
     }
     // localStorage flag is absent — could be a genuine first run, or a
     // returning user whose AppData was reset (Windows profile move, bundle
-    // identifier change, manual cleanup). Probe ~/.irium/ via the wallet.list
-    // IPC; if any wallet file exists, the user has already onboarded — heal
-    // the localStorage flag and skip the wizard.
+    // identifier change, manual cleanup) or an encrypted wallet whose
+    // file scan misfires.
+    //
+    // Layer 1 (authoritative): ask iriumd via /wallet/info. Encrypted
+    // wallets correctly report exists=true here even when locked. This
+    // closes the bug where users with mandatory-password wallets saw the
+    // wizard on every launch because the CLI-based file sniff failed.
+    try {
+      const info = await wallet.getActiveInfo();
+      if (info && info.exists === true) {
+        localStorage.setItem(ONBOARDING_KEY, '1');
+        setGateState('app');
+        return;
+      }
+    } catch {
+      // iriumd may not have bound its RPC port yet at splash time — fall
+      // through to the file scan below.
+    }
+    // Layer 2 (fallback): scan ~/.irium/ for wallet files directly. Works
+    // when iriumd is mid-startup. is_wallet_json_file in src-tauri now
+    // recognises the `crypto` envelope marker so encrypted wallets are
+    // detected even by the file scan.
     try {
       const files = await wallet.listFiles();
       if (Array.isArray(files) && files.length > 0) {

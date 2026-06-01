@@ -3077,40 +3077,27 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
 // WALLET COMMANDS
 // ============================================================
 
-// wallet_get_balance: lists all addresses, sums balances via /rpc/balance
+// wallet_get_balance: queries iriumd's /wallet/addresses (encryption-aware
+// in-memory wallet) then sums per-address balances via /rpc/balance. Previously
+// shelled out to irium-wallet's `list-addresses` which returns an empty list
+// for encrypted wallets because irium-wallet's WalletFile struct has no
+// `crypto` field — producing a misleading zero balance.
 #[tauri::command]
 async fn wallet_get_balance(state: State<'_, AppState>) -> Result<WalletBalance, String> {
-    // Mirror wallet_list_addresses: pass whatever wallet_path is in state to the
-    // binary (None → binary uses its own default ~/.irium/wallet.json). This was
-    // previously short-circuiting to all-zeros when wallet_path was None, which
-    // made the hero balance read 0 even though wallet_list_addresses correctly
-    // surfaced the same wallet's addresses with balances via the binary default.
-    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
-    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    // H-1 fix: previously `.unwrap_or_default()` silently returned a
-    // zero-balance for any wallet-binary failure (locked file, wrong path,
-    // crash), which looked indistinguishable from a real empty wallet.
-    let addr_output = run_wallet_cmd(
-        vec!["list-addresses".to_string()],
-        wallet_path, data_dir,
-    ).await
-    .map_err(|e| format!("Failed to list addresses for balance: {}", e))?;
+    let resp: WalletAddressesRpcResponse =
+        iriumd_rpc(state.clone(), "GET", "/wallet/addresses", None, None)
+            .await
+            .map_err(|e| format!("Failed to list addresses for balance: {}", e))?;
 
-    let addresses: Vec<String> = addr_output
-        .lines()
-        .map(|l| l.trim().to_string())
-        .filter(|l| !l.is_empty())
-        .collect();
-
-    if addresses.is_empty() {
+    if resp.addresses.is_empty() {
         return Ok(WalletBalance { confirmed: 0, unconfirmed: 0, total: 0 });
     }
 
     let client = rpc_client(&state);
     let mut total: u64 = 0;
-    for addr in &addresses {
+    for addr in &resp.addresses {
         let url = format!("{}/rpc/balance?address={}", rpc_url, addr);
         if let Ok(resp) = client.get(&url).timeout(Duration::from_secs(5)).send().await {
             if let Ok(b) = resp.json::<RpcBalance>().await {
@@ -3122,44 +3109,32 @@ async fn wallet_get_balance(state: State<'_, AppState>) -> Result<WalletBalance,
     Ok(WalletBalance { confirmed: total, unconfirmed: 0, total })
 }
 
-// wallet_new_address: derives a new address and returns it
+// wallet_new_address: derives a new address via iriumd's POST /wallet/new_address,
+// which mutates the in-memory unlocked wallet and persists the updated keys
+// back to the (encrypted) file. CLI's `new-address` reads/writes the plaintext
+// `seed_hex` field directly and fails on encrypted wallets.
 #[tauri::command]
 async fn wallet_new_address(state: State<'_, AppState>) -> Result<String, String> {
-    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
-    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
-
-    run_wallet_cmd(vec!["new-address".to_string()], wallet_path.clone(), data_dir.clone()).await?;
-
-    let list = run_wallet_cmd(vec!["list-addresses".to_string()], wallet_path, data_dir).await?;
-    // H-3 fix: previously `.unwrap_or_default()` returned an empty string when
-    // list was empty, which the frontend then stored as the "new address" —
-    // breaking all subsequent balance/send operations silently.
-    list.lines()
-        .map(|l| l.trim().to_string())
-        .filter(|l| !l.is_empty())
-        .last()
-        .ok_or_else(|| "wallet new-address succeeded but list-addresses returned no entries — wallet state inconsistent".to_string())
+    let resp: WalletReceiveRpcResponse =
+        iriumd_rpc(state, "POST", "/wallet/new_address", None, Some(serde_json::json!({}))).await?;
+    if resp.address.is_empty() {
+        return Err("wallet/new_address returned empty address".to_string());
+    }
+    Ok(resp.address)
 }
 
-// wallet_list_addresses: list-addresses outputs one address per line.
-// Also fetches RPC balance per address (best-effort — returns None if node offline).
+// wallet_list_addresses: queries iriumd's /wallet/addresses (encryption-aware)
+// instead of shelling out to irium-wallet's `list-addresses` which iterates
+// `wallet.keys[]` and returns empty on encrypted wallets.
 #[tauri::command]
 async fn wallet_list_addresses(state: State<'_, AppState>) -> Result<Vec<AddressInfo>, String> {
-    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
-    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
-
-    let output = run_wallet_cmd(vec!["list-addresses".to_string()], wallet_path, data_dir).await?;
-
-    let raw_addrs: Vec<String> = output
-        .lines()
-        .map(|l| l.trim().to_string())
-        .filter(|l| !l.is_empty())
-        .collect();
+    let resp: WalletAddressesRpcResponse =
+        iriumd_rpc(state.clone(), "GET", "/wallet/addresses", None, None).await?;
 
     let client = rpc_client(&state);
-    let mut results = Vec::with_capacity(raw_addrs.len());
-    for (idx, address) in raw_addrs.into_iter().enumerate() {
+    let mut results = Vec::with_capacity(resp.addresses.len());
+    for (idx, address) in resp.addresses.into_iter().enumerate() {
         let balance = fetch_address_balance_sats(&client, &rpc_url, &address).await;
         results.push(AddressInfo { address, label: None, balance, index: Some(idx as u32) });
     }
@@ -3204,6 +3179,54 @@ struct WalletSendRpcResponse {
     #[serde(default)]
     #[allow(dead_code)]
     change: u64,
+}
+
+// Shared response types for the read-path RPCs the desktop wallet now
+// consults instead of the encryption-blind irium-wallet CLI.
+#[derive(Debug, serde::Deserialize)]
+struct WalletAddressesRpcResponse {
+    addresses: Vec<String>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct WalletReceiveRpcResponse {
+    address: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct WalletExportWifRpcResponse {
+    #[serde(default)]
+    #[allow(dead_code)]
+    address: String,
+    wif: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct WalletExportSeedRpcResponse {
+    seed_hex: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct WalletImportWifRpcResponse {
+    #[serde(default)]
+    #[allow(dead_code)]
+    address: String,
+}
+
+// Helper: call iriumd's HTTP API via the existing rpc_proxy and deserialize
+// the JSON response into a typed struct. All the read-path commands below use
+// this so the failure mode is uniform — RPC HTTP errors (locked wallet,
+// iriumd not yet running, network) propagate verbatim instead of being
+// silently swallowed.
+async fn iriumd_rpc<T: serde::de::DeserializeOwned>(
+    state: State<'_, AppState>,
+    method: &str,
+    path: &str,
+    query: Option<HashMap<String, String>>,
+    body: Option<serde_json::Value>,
+) -> Result<T, String> {
+    let v = rpc_proxy(state, method.to_string(), path.to_string(), query, body).await?;
+    serde_json::from_value(v).map_err(|e| format!("rpc {} {} parse failed: {}", method, path, e))
 }
 
 #[tauri::command]
@@ -3326,15 +3349,13 @@ async fn wallet_transactions(
     limit: Option<u32>,
     address: Option<String>,
 ) -> Result<Vec<Transaction>, String> {
-    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
-    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
     // If the caller passes an explicit `address`, query only that one —
-    // mirrors the binary's `history <base58_addr>` command and the RPC's
-    // `?address=` filter. Otherwise fall back to listing every wallet
-    // address and concatenating their histories (legacy "all transactions"
-    // behaviour used by the Dashboard's recent-activity feed).
+    // mirrors the RPC's `?address=` filter. Otherwise fall back to listing
+    // every wallet address (via iriumd's /wallet/addresses RPC so encrypted
+    // wallets work) and concatenating their histories (legacy "all
+    // transactions" behaviour used by the Dashboard's recent-activity feed).
     let addresses: Vec<String> = if let Some(addr) = address {
         let trimmed = addr.trim();
         if trimmed.is_empty() {
@@ -3345,18 +3366,11 @@ async fn wallet_transactions(
         // H-2 fix: previously `.unwrap_or_default()` returned an empty list on
         // wallet binary failure, indistinguishable from a wallet that has no
         // transactions. Propagate the error so the UI can surface it.
-        let addr_output = run_wallet_cmd(
-            vec!["list-addresses".to_string()],
-            wallet_path,
-            data_dir,
-        )
-        .await
-        .map_err(|e| format!("Failed to list addresses for transaction history: {}", e))?;
-        addr_output
-            .lines()
-            .map(|l| l.trim().to_string())
-            .filter(|l| !l.is_empty())
-            .collect()
+        let resp: WalletAddressesRpcResponse =
+            iriumd_rpc(state.clone(), "GET", "/wallet/addresses", None, None)
+                .await
+                .map_err(|e| format!("Failed to list addresses for transaction history: {}", e))?;
+        resp.addresses
     };
 
     let client = rpc_client(&state);
@@ -3493,7 +3507,14 @@ fn is_wallet_json_file(path: &std::path::Path) -> bool {
     let Ok(contents) = std::fs::read_to_string(path) else { return false };
     let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&contents) else { return false };
     let Some(obj) = parsed.as_object() else { return false };
-    obj.contains_key("bip32_seed")
+    // `crypto` is the encrypted-wallet envelope written by iriumd's
+    // migrate_to_encrypted / recover_from_seed paths. Some iriumd builds
+    // strip the plaintext `keys` placeholder on encryption, so without this
+    // marker an encrypted wallet's file could fail the content sniff and the
+    // OnboardingGate would re-show the wizard. Defence in depth — the
+    // OnboardingGate also consults /wallet/info before falling through here.
+    obj.contains_key("crypto")
+        || obj.contains_key("bip32_seed")
         || obj.contains_key("mnemonic")
         || obj.contains_key("keys")
 }
@@ -3637,24 +3658,49 @@ async fn get_wallet_info(
         return Err(format!("File is not a wallet: {}", name));
     }
 
-    // Pass the requested path directly to the binary — do NOT touch
-    // state.wallet_path. The active wallet stays exactly as it was.
-    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    // Inspecting a wallet file's addresses without activating it. Two paths:
+    //   (a) If the requested file IS the currently active wallet, ask iriumd
+    //       via GET /wallet/addresses — works for encrypted wallets because
+    //       iriumd holds the decrypted keymap in memory.
+    //   (b) Otherwise we cannot get addresses for an encrypted non-active
+    //       wallet (iriumd only tracks one wallet, and the CLI is
+    //       encryption-blind). Parse the file directly and read whatever
+    //       `keys[]` entries are present in plaintext (empty array on
+    //       encrypted files); the UI's delete-confirmation modal will show
+    //       "encrypted wallet (locked)" semantics when address_count is 0.
     let rpc_url  = state.rpc_url.lock().map_err(lock_err)?.clone();
-    let inspect_path = canonical.to_string_lossy().to_string();
+    let active_path = state.wallet_path.lock().map_err(lock_err)?.clone()
+        .unwrap_or_else(resolve_wallet_path);
+    let inspect_path_str = canonical.to_string_lossy().to_string();
+    let is_active = std::path::PathBuf::from(&active_path)
+        .canonicalize()
+        .ok()
+        .as_deref()
+        == Some(canonical.as_path());
 
-    let output = run_wallet_cmd(
-        vec!["list-addresses".to_string()],
-        Some(inspect_path),
-        data_dir,
-    )
-    .await?;
-
-    let raw_addrs: Vec<String> = output
-        .lines()
-        .map(|l| l.trim().to_string())
-        .filter(|l| !l.is_empty())
-        .collect();
+    let raw_addrs: Vec<String> = if is_active {
+        match iriumd_rpc::<WalletAddressesRpcResponse>(state.clone(), "GET", "/wallet/addresses", None, None).await {
+            Ok(resp) => resp.addresses,
+            Err(_) => Vec::new(),
+        }
+    } else {
+        // Direct file parse — non-active wallet file. For encrypted wallets
+        // this is empty by design (keys are encrypted inside `crypto`).
+        let _ = inspect_path_str;
+        let contents = std::fs::read_to_string(&canonical).unwrap_or_default();
+        match serde_json::from_str::<serde_json::Value>(&contents) {
+            Ok(v) => v
+                .get("keys")
+                .and_then(|k| k.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|k| k.get("address").and_then(|a| a.as_str()).map(String::from))
+                        .collect()
+                })
+                .unwrap_or_default(),
+            Err(_) => Vec::new(),
+        }
+    };
 
     let client = rpc_client(&state);
     let mut addresses: Vec<WalletInfoAddress> = Vec::with_capacity(raw_addrs.len());
@@ -4017,12 +4063,16 @@ async fn wallet_import_mnemonic(
 // could no longer see their other addresses. Honoring the function's own
 // header comment ("ADDS to an existing wallet — does not replace it") by
 // targeting the active wallet path instead.
+// Imports a WIF private key into the active wallet via iriumd's
+// POST /wallet/import_wif. iriumd appends the derived key into the
+// in-memory keymap and re-persists the (encrypted) wallet file. CLI's
+// `import-wif` writes a plaintext keys[] entry and fails on encrypted
+// wallets.
 #[tauri::command]
 async fn wallet_import_wif(
     state: State<'_, AppState>,
     wif: String,
 ) -> Result<String, String> {
-    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let wallet_file = {
         let active = state.wallet_path.lock().map_err(lock_err)?.clone();
         match active {
@@ -4030,13 +4080,9 @@ async fn wallet_import_wif(
             _ => resolve_wallet_path(),
         }
     };
-
-    run_wallet_cmd(
-        vec!["import-wif".to_string(), wif],
-        Some(wallet_file.clone()),
-        data_dir,
-    ).await?;
-
+    let body = serde_json::json!({ "wif": wif });
+    let _: WalletImportWifRpcResponse =
+        iriumd_rpc(state.clone(), "POST", "/wallet/import_wif", None, Some(body)).await?;
     *state.wallet_path.lock().map_err(lock_err)? = Some(wallet_file.clone());
     Ok(wallet_file)
 }
@@ -4051,29 +4097,15 @@ async fn wallet_import_private_key(
     Err("Raw hex private key import is not supported by this wallet version. Convert to WIF format and use Import WIF instead.".to_string())
 }
 
+// Reads the wallet's seed_hex via iriumd's GET /wallet/export_seed which
+// operates on the in-memory unlocked wallet (works for both plaintext and
+// encrypted). The historical CLI temp-file dance read `wallet.seed_hex`
+// directly and failed on encrypted wallets where that field is absent.
 #[tauri::command]
 async fn wallet_export_seed(state: State<'_, AppState>) -> Result<String, String> {
-    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
-    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
-
-    let tmp = std::env::temp_dir().join(format!(
-        "irium_seed_{}.txt",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis()
-    ));
-
-    run_wallet_cmd(
-        vec!["export-seed".to_string(), "--out".to_string(), tmp.to_string_lossy().to_string()],
-        wallet_path,
-        data_dir,
-    ).await?;
-
-    let content = std::fs::read_to_string(&tmp)
-        .map_err(|e| format!("Failed to read seed file: {}", e))?;
-    let _ = std::fs::remove_file(&tmp);
-    Ok(content.trim().to_string())
+    let resp: WalletExportSeedRpcResponse =
+        iriumd_rpc(state, "GET", "/wallet/export_seed", None, None).await?;
+    Ok(resp.seed_hex)
 }
 
 #[tauri::command]
@@ -4101,21 +4133,27 @@ async fn wallet_export_mnemonic(state: State<'_, AppState>) -> Result<String, St
     Ok(content.trim().to_string())
 }
 
+// Backup is a direct file copy of the active wallet file. For encrypted
+// wallets the on-disk file IS the encrypted backup blob; copying it
+// verbatim preserves the same passphrase-locked envelope and is the only
+// shape that round-trips through restore. The historical CLI `backup`
+// re-emitted a decrypted-keys JSON dump which is (a) useless on encrypted
+// wallets (the CLI sees keys=[]) and (b) less secure (writes plaintext to
+// disk even when the user's intent was an encrypted-only export).
 #[tauri::command]
 async fn wallet_backup(state: State<'_, AppState>, out_path: String) -> Result<String, String> {
-    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let active_wallet = state.wallet_path.lock().map_err(lock_err)?.clone()
+        .unwrap_or_else(resolve_wallet_path);
+    let src = std::path::PathBuf::from(&active_wallet);
+    if !src.exists() {
+        return Err(format!("Active wallet file does not exist: {}", active_wallet));
+    }
     let staged = next_staged_path("backup", "bak", &data_dir)?;
-    let result = run_wallet_cmd(
-        vec!["backup".to_string(), "--out".to_string(), staged.to_string_lossy().to_string()],
-        wallet_path,
-        data_dir,
-    ).await;
-    match result {
-        Ok(_) => {
-            finalize_output(&staged, &out_path)?;
-            Ok(out_path)
-        }
+    std::fs::copy(&src, &staged)
+        .map_err(|e| format!("Could not stage backup: {}", e))?;
+    match finalize_output(&staged, &out_path) {
+        Ok(()) => Ok(out_path),
         Err(e) => {
             let _ = std::fs::remove_file(&staged);
             Err(e)
@@ -4123,40 +4161,57 @@ async fn wallet_backup(state: State<'_, AppState>, out_path: String) -> Result<S
     }
 }
 
+// Restore replaces the active wallet file with the user-supplied backup
+// file (which is itself a wallet.json — encrypted or plaintext). After the
+// copy lands on disk the iriumd-side wallet state needs to be re-read; the
+// caller (frontend) typically follows up with /wallet/unlock so the user
+// can supply the passphrase.
 #[tauri::command]
 async fn wallet_restore_backup(state: State<'_, AppState>, file_path: String) -> Result<String, String> {
-    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let active_wallet = state.wallet_path.lock().map_err(lock_err)?.clone()
+        .unwrap_or_else(resolve_wallet_path);
     let staged = stage_input(&file_path, "restore", &data_dir)?;
-    let result = run_wallet_cmd(
-        vec!["restore-backup".to_string(), staged.to_string_lossy().to_string(), "--force".to_string()],
-        wallet_path,
-        data_dir,
-    ).await;
+    // Validate that the staged file looks like a wallet (encrypted or
+    // plaintext) before clobbering the active wallet — guards against an
+    // accidentally-selected unrelated JSON file.
+    if !is_wallet_json_file(&staged) {
+        let _ = std::fs::remove_file(&staged);
+        return Err("Selected file is not a valid Irium wallet backup".to_string());
+    }
+    let dest = std::path::PathBuf::from(&active_wallet);
+    if let Some(parent) = dest.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let copy_res = std::fs::copy(&staged, &dest)
+        .map_err(|e| format!("Could not write wallet file: {}", e));
     let _ = std::fs::remove_file(&staged);
-    result?;
+    copy_res?;
     Ok("Wallet restored successfully".to_string())
 }
 
+// Exports the WIF private key for a given wallet address via iriumd's
+// GET /wallet/export_wif?address=…, then writes it to the user-chosen
+// output path. iriumd operates on the in-memory decrypted keymap so this
+// works on encrypted wallets (after unlock). CLI's `export-wif` reads
+// `wallet.keys[i].privkey` directly and fails on encrypted wallets where
+// the keys array is empty.
 #[tauri::command]
 async fn wallet_export_wif(
     state: State<'_, AppState>,
     address: String,
     out_path: String,
 ) -> Result<String, String> {
-    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let mut query = HashMap::new();
+    query.insert("address".to_string(), address.clone());
+    let resp: WalletExportWifRpcResponse =
+        iriumd_rpc(state, "GET", "/wallet/export_wif", Some(query), None).await?;
     let staged = next_staged_path("wif", "txt", &data_dir)?;
-    let result = run_wallet_cmd(
-        vec!["export-wif".to_string(), address, "--out".to_string(), staged.to_string_lossy().to_string()],
-        wallet_path,
-        data_dir,
-    ).await;
-    match result {
-        Ok(_) => {
-            finalize_output(&staged, &out_path)?;
-            Ok(out_path)
-        }
+    std::fs::write(&staged, &resp.wif)
+        .map_err(|e| format!("Could not stage WIF: {}", e))?;
+    match finalize_output(&staged, &out_path) {
+        Ok(()) => Ok(out_path),
         Err(e) => {
             let _ = std::fs::remove_file(&staged);
             Err(e)
@@ -4164,42 +4219,30 @@ async fn wallet_export_wif(
     }
 }
 
-// wallet_read_wif: exports WIF to a temp file, reads it back, returns the WIF string.
-// Used to display the WIF key inline in the UI without requiring a user-chosen file path.
+// wallet_read_wif: returns the WIF for an address inline (no file output).
+// Used by the UI to display the key in a copyable field. Routes through
+// iriumd's GET /wallet/export_wif so encrypted wallets work after unlock.
 //
-// Optional wallet_path parameter — when provided, reads from that specific
-// wallet file instead of state.wallet_path. Used by handleCreate after a
-// wallet creation, before the new wallet has been registered as active
-// (registration is deferred to the Done button). Without the explicit path
-// the call would target the previous wallet, where the just-created address
-// doesn't exist, and the WIF read would fail.
+// The legacy `wallet_path` parameter is kept in the Tauri signature for JS
+// backwards-compatibility but is no longer consulted — iriumd's export_wif
+// operates on the active in-memory wallet. If callers passed a path
+// different from the active wallet, the previous CLI behaviour read the
+// other file via IRIUM_WALLET_FILE; that flow was only useful during
+// wallet_create's pre-registration window (handleCreate), which no longer
+// applies because wallet_create itself returns the address and the
+// subsequent wallet_set_path activates the new wallet before any WIF read.
 #[tauri::command]
 async fn wallet_read_wif(
     state: State<'_, AppState>,
     address: String,
     wallet_path: Option<String>,
 ) -> Result<String, String> {
-    let resolved_path = match wallet_path {
-        Some(p) => Some(p),
-        None => state.wallet_path.lock().map_err(lock_err)?.clone(),
-    };
-    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
-
-    // Use the staging dir (under ~/.irium/staging/) instead of system temp.
-    // The sidecar has guaranteed write access there; system temp is unreliable
-    // in the Tauri sidecar context on some platforms.
-    let tmp = next_staged_path("wif", "txt", &data_dir)?;
-
-    run_wallet_cmd(
-        vec!["export-wif".to_string(), address, "--out".to_string(), tmp.to_string_lossy().to_string()],
-        resolved_path,
-        data_dir,
-    ).await?;
-
-    let content = std::fs::read_to_string(&tmp)
-        .map_err(|e| format!("Failed to read WIF file: {}", e))?;
-    let _ = std::fs::remove_file(&tmp);
-    Ok(content.trim().to_string())
+    let _ = wallet_path; // legacy param — see header comment
+    let mut query = HashMap::new();
+    query.insert("address".to_string(), address);
+    let resp: WalletExportWifRpcResponse =
+        iriumd_rpc(state, "GET", "/wallet/export_wif", Some(query), None).await?;
+    Ok(resp.wif)
 }
 
 // ============================================================
