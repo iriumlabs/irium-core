@@ -1,16 +1,15 @@
 import { ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 interface WizardShellProps {
   // Total number of steps in the wizard (1-4 per design rule).
   totalSteps: number;
   // Current step, 0-indexed.
   currentStep: number;
-  // Called when the user clicks Back. Receives the previous step index
-  // when applicable; on the first step, called with -1 so the parent can
-  // decide whether to exit the wizard or do something else.
+  // Called when the user clicks Back. On the first step, called with -1
+  // so the parent can decide whether to exit the wizard.
   onBack: (previousStep: number) => void;
   // Optional title shown above the children. Pass as already-localized string.
   title?: string;
@@ -20,9 +19,9 @@ interface WizardShellProps {
   children: ReactNode;
   // Optional extra controls in the top-right (e.g. a Help icon).
   topRight?: ReactNode;
-  // When true, ESC pressed on the page triggers a Back click. Defaults to true.
+  // When true, ESC pressed on the page triggers a Back click.
   escClosesStep?: boolean;
-  // Max-width of the wizard body. Defaults to '2xl'.
+  // Max-width of the wizard body.
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
 }
 
@@ -35,10 +34,15 @@ const MAX_WIDTH_CLASS: Record<NonNullable<WizardShellProps['maxWidth']>, string>
   '3xl': 'max-w-3xl',
 };
 
-// WizardShell — generic 1-4 step wizard frame. Renders the back button,
-// progress dots, and an optional title/subtitle, then drops the step
-// content underneath. Animation is owned by the children (or AnimatePresence
-// in the parent) so step transitions can vary per flow.
+// WizardShell — Binance-style thin progress stepper. Header strip carries
+// the Back button, step indicator ("Step N of M"), and title. The
+// stepper itself is a thin segmented bar: completed segments use the
+// CTA-yellow accent, the current segment is the same yellow at full
+// opacity, future segments are border-only.
+//
+// Removes the previous numbered-dot stepper + brand-blue accents in
+// favour of the neutral palette used across the Marketplace + Settlement
+// redesign.
 export default function WizardShell({
   totalSteps,
   currentStep,
@@ -63,61 +67,66 @@ export default function WizardShell({
     return () => document.removeEventListener('keydown', handler);
   }, [escClosesStep, currentStep, onBack]);
 
-  const dots = Array.from({ length: Math.min(Math.max(totalSteps, 1), 4) });
+  const segments = Math.min(Math.max(totalSteps, 1), 4);
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
-      className="h-full overflow-y-auto p-6 scroll-visible"
+      transition={{ duration: 0.2 }}
+      className="h-full overflow-y-auto bg-[#0b0e11] text-[#eaecef]"
     >
-      <div className={`${MAX_WIDTH_CLASS[maxWidth]} mx-auto`}>
-        {/* Top bar: Back + progress dots + optional right controls */}
-        <div className="flex items-center gap-4 mb-6">
+      <div className={`${MAX_WIDTH_CLASS[maxWidth]} mx-auto px-6 py-5`}>
+        {/* Top bar: Back link + step indicator + optional right controls */}
+        <div className="flex items-center gap-4 mb-4">
           <button
             onClick={() => onBack(currentStep - 1)}
-            className="btn-ghost flex items-center gap-2 text-white/50 hover:text-white cursor-pointer"
+            className="inline-flex items-center gap-1.5 h-8 px-2 -ml-2 rounded text-[12px] text-[#b7bdc6] hover:text-[#eaecef] hover:bg-[#181a20] transition-colors"
             aria-label={t('common.back')}
           >
-            <ArrowLeft size={16} />
-            <span className="text-sm">{t('common.back')}</span>
+            <ArrowLeft size={14} />
+            <span>{t('common.back')}</span>
           </button>
 
-          <div className="ml-auto flex items-center gap-2">
-            {dots.map((_, i) => {
-              const isDone = i < currentStep;
-              const isActive = i === currentStep;
-              return (
-                <span key={i} className="flex items-center gap-1.5">
-                  <span
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all
-                      ${
-                        isDone
-                          ? 'bg-irium-500 text-white'
-                          : isActive
-                          ? 'bg-irium-500/80 text-white ring-2 ring-irium-400/40'
-                          : 'bg-white/10 text-white/25'
-                      }`}
-                  >
-                    {isDone ? <CheckCircle2 size={12} /> : i + 1}
-                  </span>
-                  {i < dots.length - 1 && (
-                    <span className={`w-6 h-0.5 ${i < currentStep ? 'bg-irium-500' : 'bg-white/10'}`} />
-                  )}
-                </span>
-              );
-            })}
+          <div className="ml-auto text-[11px] uppercase tracking-wider text-[#5e6673] font-medium">
+            Step {currentStep + 1} of {segments}
           </div>
 
           {topRight && <div className="flex-shrink-0">{topRight}</div>}
         </div>
 
+        {/* Thin stepper bar — replaces numbered circle dots with a
+            Binance-style segmented progress strip. */}
+        <div className="flex items-center gap-1 mb-6">
+          {Array.from({ length: segments }).map((_, i) => {
+            const isDone = i < currentStep;
+            const isActive = i === currentStep;
+            return (
+              <span
+                key={i}
+                className="flex-1 h-[3px] rounded-sm transition-colors"
+                style={{
+                  background: isDone || isActive
+                    ? '#fcd535'
+                    : '#2b3139',
+                  opacity: isActive ? 1 : isDone ? 0.55 : 1,
+                }}
+              />
+            );
+          })}
+        </div>
+
         {/* Title block */}
         {(title || subtitle) && (
           <div className="mb-5">
-            {title && <h2 className="font-display font-bold text-xl text-white">{title}</h2>}
-            {subtitle && <p className="text-white/45 text-sm mt-1 leading-relaxed">{subtitle}</p>}
+            {title && (
+              <h2 className="text-[20px] font-semibold tracking-tight text-[#eaecef]">
+                {title}
+              </h2>
+            )}
+            {subtitle && (
+              <p className="text-[12px] text-[#b7bdc6] mt-1 leading-relaxed">{subtitle}</p>
+            )}
           </div>
         )}
 

@@ -50,6 +50,27 @@ export default {
           500:  '#1A2244',
           400:  '#222B57',
         },
+        // Binance-style trading palette — neutral grayscale + semantic buy/sell.
+        // Used by the new Marketplace + Settlement primitives in src/components/ui/.
+        // Coexists with the legacy `irium-*` / `iris-*` brand tokens; nothing
+        // outside the trading surfaces should reference these.
+        trade: {
+          canvas:    '#0b0e11',   // page background
+          elev:      '#181a20',   // card / panel surface
+          rowAlt:    '#1e2026',   // zebra / hover
+          rowActive: '#2b3139',   // selected row
+          border:    '#2b3139',   // hairline divider
+          text:      '#eaecef',   // primary text
+          subtext:   '#b7bdc6',   // secondary text
+          muted:     '#5e6673',   // captions
+          disabled:  '#474d57',   // placeholder
+          buy:       '#0ecb81',   // buy / up / success
+          sell:      '#f6465d',   // sell / down / error
+          warn:      '#f0b90b',   // locked funds / pending
+          info:      '#1c8cff',   // informational
+          cta:       '#fcd535',   // primary CTA (Binance-yellow)
+          ctaHover:  '#f0c020',
+        },
       },
       fontFamily: {
         display: ['"Space Grotesk"',   'sans-serif'],

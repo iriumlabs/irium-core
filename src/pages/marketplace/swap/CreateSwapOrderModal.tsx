@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { X, Loader2, Check, Lock, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { Loader2, Check, Lock, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { SwapDirection, SwapPairConfig, SwapTxResult } from './pairs/types';
+import { TradingModal } from '../../../components/ui';
 
 // Create a swap order on the active pair. Mirrors the OTC CreateOrderModal
 // shape but adds a direction toggle (sell IRM / buy IRM) up top and uses
@@ -110,24 +111,13 @@ export default function CreateSwapOrderModal({
       : `Buy IRM with ${pair.quote.code}`;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-6"
-      style={{ background: 'rgba(2,5,14,0.78)' }}
-      onClick={onClose}
+    <TradingModal
+      open={true}
+      onClose={() => { if (!busy) onClose(); }}
+      title={`New ${pair.label} swap order`}
+      size="md"
     >
-      <div
-        className="w-full max-w-lg card p-5 space-y-4"
-        style={{ border: `1px solid ${pair.accent.primary}` }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <div className="text-sm font-display font-semibold" style={{ color: 'var(--t1)' }}>
-            New {pair.label} swap order
-          </div>
-          <button onClick={onClose} className="btn-secondary px-2 py-1" disabled={busy}>
-            <X size={14} />
-          </button>
-        </div>
+      <div className="space-y-4">
 
         {/* Direction toggle — first because every other field's label depends on it */}
         <div className="grid grid-cols-2 gap-2">
@@ -309,6 +299,6 @@ export default function CreateSwapOrderModal({
           </button>
         </div>
       </div>
-    </div>
+    </TradingModal>
   );
 }

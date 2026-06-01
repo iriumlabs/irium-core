@@ -2241,8 +2241,8 @@
   },
   "quarantine_banner": {
     "title": "Found {{count}} quarantined block file(s) from a previous session.",
-    "subtitle": "These blocks cannot be shown in mining history until recovered.",
-    "node_running_caption": "Stop the node first, then click Recover Now to delete the quarantined block files.",
+    "subtitle": "These are leftover block files from a previous chain fork. Deleting them is safe — your wallet and balance are not affected, and the node will re-fetch any blocks it still needs from peers.",
+    "node_running_caption": "These are leftover block files from a previous chain fork. Deleting them is safe — your wallet and balance are not affected. Stop the node first, then click Recover Now to clean them up.",
     "recover_now": "Recover Now",
     "clearing": "Clearing...",
     "stop_node_button": "Stop Node",

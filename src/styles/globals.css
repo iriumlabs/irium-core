@@ -792,3 +792,39 @@ html, body, #root {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0);   }
 }
+
+/* ── Binance-style trading tokens ───────────────────────────────────────────
+   Used by the Marketplace + Settlement redesign primitives in
+   src/components/ui/. CSS vars exposed so inline styles (chart tooltips,
+   recharts grid, etc.) can pick up the same values as the Tailwind
+   `trade-*` utility classes without duplicating hex codes. */
+:root {
+  --trade-canvas:     #0b0e11;
+  --trade-elev:       #181a20;
+  --trade-row-alt:    #1e2026;
+  --trade-row-active: #2b3139;
+  --trade-border:     #2b3139;
+  --trade-text:       #eaecef;
+  --trade-subtext:    #b7bdc6;
+  --trade-muted:      #5e6673;
+  --trade-buy:        #0ecb81;
+  --trade-sell:       #f6465d;
+  --trade-warn:       #f0b90b;
+  --trade-info:       #1c8cff;
+  --trade-cta:        #fcd535;
+}
+
+/* Tabular numerics utility — applied via .num or font-variant-numeric. */
+.num, .tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cell-flash highlight for live-updating data rows. Mounted by toggling
+   a `data-flash` attribute; the keyframe runs once. */
+@keyframes trade-flash {
+  0%   { background-color: var(--trade-row-active); }
+  100% { background-color: transparent; }
+}
+[data-flash="on"] {
+  animation: trade-flash 400ms ease-out;
+}

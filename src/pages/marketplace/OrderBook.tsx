@@ -1,21 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Star, Loader2, ShieldCheck, ArrowRight, Activity, Lock, CreditCard } from 'lucide-react';
+import { Plus, Loader2, ShieldCheck, ArrowRight, Activity, Star } from 'lucide-react';
 import { offers, reputation } from '../../lib/tauri';
 import type { Offer } from '../../lib/types';
 import { formatIRM, timeAgo } from '../../lib/types';
+import { Pill, Table, THead, TBody, TR, TH, TD } from '../../components/ui';
 
-// Price-sorted offer book. Polls offers.list() every 10s. Each row is a
-// card showing order id / IRM amount / unit + total price (USDT) /
-// seller / payment method / created timestamp / escrow-verified badge.
-// Header has sort controls and a Create Order button (Fix 2/3/4).
+// Dense Binance-style order book. Polls offers.list() every 10s. Each
+// row is a single 32 px table line: order # / amount / price-per-IRM /
+// total / payment / seller (truncated 8…4) / reputation / age. Click
+// the row to load the trade panel; click "Take" to open the take modal.
 //
-// Per-seller reputation is fetched from reputation.show(seller) and
-// cached with a 60s TTL so the badges light up without spamming the
-// wallet sidecar each poll.
+// All polling, sort, filter, and reputation-cache machinery is preserved
+// verbatim from the prior card-layout version; only the render output
+// rotates to the dense table.
 
 type ReputationSummary = {
-  stars: number;     // 1..5
-  completed: number; // total satisfied agreements
+  stars: number;
+  completed: number;
 };
 
 const REP_CACHE = new Map<string, { fetched: number; rep: ReputationSummary | null }>();
@@ -51,10 +52,6 @@ async function fetchReputation(addr: string): Promise<ReputationSummary | null> 
   }
 }
 
-// Best-effort parse of the offer's free-text asset_reference (e.g.
-// "50 USDT", "0.001 BTC", "200 EUR") into a numeric total + unit. Used
-// to derive the per-unit price column. Falls back to null when the
-// value is unparseable so the card shows "—".
 function parsePrice(raw: string | undefined | null): { total: number; unit: string } | null {
   if (!raw) return null;
   const m = raw.match(/^\s*([\d]+(?:[.,]\d+)?)\s*([A-Za-z]{1,8})?\s*/);
@@ -65,60 +62,9 @@ function parsePrice(raw: string | undefined | null): { total: number; unit: stri
   return { total, unit };
 }
 
-function StarBadge({ rep }: { rep: ReputationSummary | null }) {
-  if (!rep) {
-    return (
-      <span className="text-[10px]" style={{ color: 'rgba(238,240,255,0.35)' }}>
-        no rep
-      </span>
-    );
-  }
-  return (
-    <span
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-display"
-      style={{
-        background: 'rgba(252,211,77,0.10)',
-        color: '#fbbf24',
-        border: '1px solid rgba(252,211,77,0.25)',
-      }}
-      title={`${rep.completed} completed trades`}
-    >
-      <Star size={9} fill="currentColor" />
-      {rep.stars} · {rep.completed}
-    </span>
-  );
-}
-
-function VerifiedBadge({ rep }: { rep: ReputationSummary | null }) {
-  // "Escrow verified" — the seller has at least one satisfied agreement
-  // on record on this node, so the on-chain escrow flow has actually
-  // been driven to release by someone before. This is intentionally
-  // conservative: a fresh seller does NOT get the badge, which keeps
-  // the badge meaningful.
-  const verified = !!rep && rep.completed > 0;
-  if (!verified) return null;
-  return (
-    <span
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-display font-semibold uppercase tracking-wide"
-      style={{
-        background: 'rgba(34,197,94,0.12)',
-        color: '#22c55e',
-        border: '1px solid rgba(34,197,94,0.30)',
-      }}
-      title="This seller has previously released escrow on a completed trade."
-    >
-      <ShieldCheck size={10} />
-      Escrow Verified
-    </span>
-  );
-}
-
 type SortKey = 'price_asc' | 'price_desc' | 'newest' | 'best_rep';
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  // Short labels keep the dropdown rendering at native width without
-  // truncating "Best reputation" on the platforms that don't expand the
-  // closed-state select to the longest option (most non-mac Webview2).
   { key: 'price_asc',  label: 'Price ↑' },
   { key: 'price_desc', label: 'Price ↓' },
   { key: 'newest',     label: 'Newest' },
@@ -131,6 +77,12 @@ export interface OrderBookProps {
   selectedOfferId: string | null;
 }
 
+function shortAddr(addr: string): string {
+  if (!addr) return '—';
+  if (addr.length <= 12) return addr;
+  return `${addr.slice(0, 8)}…${addr.slice(-4)}`;
+}
+
 export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId }: OrderBookProps) {
   const [allOffers, setAllOffers] = useState<Offer[]>([]);
   const [reps, setReps] = useState<Record<string, ReputationSummary | null>>({});
@@ -138,9 +90,6 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
   const [sortKey, setSortKey] = useState<SortKey>('price_asc');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Wall-clock timestamp of the last successful /offer-list response.
-  // Surfaced in the network-stats bar so the user can see at a glance
-  // whether the panel is fresh or hung on a stale poll.
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
   useEffect(() => {
@@ -175,11 +124,6 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
     };
   }, []);
 
-  // Total offer counters — surfaced in the stats bar so the user can see
-  // when offers were silently filtered out. `totalVisible` is the number
-  // of rows after the strict "complete offer" filter below; `totalRaw`
-  // is the number of offers the node returned. The gap is offers that
-  // failed the Marketplace Fix 1 quality bar.
   const [totalRaw, setTotalRaw] = useState(0);
 
   const rows = useMemo(() => {
@@ -187,13 +131,6 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
       if (showTaken) return o.status === 'open' || o.status === 'taken';
       return o.status === 'open';
     });
-    // Marketplace Fix 1 — strict offer-quality filter. An offer is only
-    // shown when it has all four pieces a buyer actually needs to take a
-    // decision: a real IRM amount, a parseable price (per the same regex
-    // we use to sort), a payment method, and a non-empty seller. Test
-    // offers that surfaced with `Price not set` previously fail the
-    // parsePrice check and disappear. The pre-filter count is captured
-    // so the stats bar can disclose what was filtered.
     const enriched = filtered.map((o) => {
       const parsed = parsePrice((o.asset_reference as string | undefined) ?? null);
       const stars = reps[o.seller ?? '']?.stars ?? 0;
@@ -232,253 +169,168 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
     return enriched;
   }, [allOffers, reps, showTaken, sortKey]);
 
-  // Keep the raw-count state in sync with the latest poll result so the
-  // stats bar can disclose how many offers were filtered out.
   useEffect(() => {
     setTotalRaw(allOffers.filter((o) => showTaken ? (o.status === 'open' || o.status === 'taken') : o.status === 'open').length);
   }, [allOffers, showTaken]);
   const filteredCount = Math.max(0, totalRaw - rows.length);
 
   return (
-    <div className="card p-4 space-y-3" style={{ border: '1px solid rgba(110,198,255,0.12)' }}>
+    <div className="bg-[#181a20] border border-[#2b3139] rounded-lg flex flex-col min-h-0">
       {/* Header */}
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>
-          Order Book
-        </h3>
+      <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-[#2b3139]">
+        <h3 className="text-[13px] font-semibold text-[#eaecef]">Order Book</h3>
         <button
           onClick={onCreateOrder}
-          className="btn-primary inline-flex items-center gap-1.5 text-xs px-3 py-1.5"
-          title="Post a new sell offer to the order book."
+          className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded text-[12px] font-semibold bg-[#fcd535] text-[#0b0e11] hover:bg-[#f0c020] transition-colors"
         >
           <Plus size={12} /> Create Order
         </button>
       </div>
 
-      {/* Network stats bar — total visible offers + filtered count +
-          last-updated. Disclosing the filtered count keeps users from
-          wondering whether the book is broken when a known-bad test
-          offer disappears post-Fix-1. */}
-      <div
-        className="flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded"
-        style={{
-          background: 'rgba(110,198,255,0.05)',
-          border: '1px solid rgba(110,198,255,0.12)',
-          color: 'rgba(238,240,255,0.55)',
-          fontFamily: '"JetBrains Mono", monospace',
-        }}
-      >
+      {/* Stats + filter bar */}
+      <div className="px-4 py-2 flex items-center justify-between gap-3 text-[11px] text-[#5e6673] border-b border-[#2b3139] font-mono">
         <span className="inline-flex items-center gap-1.5">
-          <Activity size={11} style={{ color: '#6EC6FF' }} />
-          {rows.length} offer{rows.length === 1 ? '' : 's'} in book
+          <Activity size={11} className="text-[#0ecb81]" />
+          <span className="text-[#b7bdc6]">{rows.length}</span> offer{rows.length === 1 ? '' : 's'}
           {filteredCount > 0 && (
-            <span title={`${filteredCount} offer${filteredCount === 1 ? '' : 's'} hidden because they had no quoted price`} style={{ color: 'rgba(238,240,255,0.35)' }}>
+            <span title={`${filteredCount} offer${filteredCount === 1 ? '' : 's'} hidden because they had no quoted price`}>
               · {filteredCount} hidden
             </span>
           )}
         </span>
-        <span>
-          {lastUpdated ? `Updated ${timeAgo(lastUpdated)}` : 'Refreshing…'}
-        </span>
-      </div>
-
-      {/* Sort + filter controls */}
-      <div className="flex flex-wrap items-center gap-2 text-xs" style={{ color: 'rgba(238,240,255,0.55)' }}>
-        <label className="inline-flex items-center gap-1.5">
-          <span>Sort by:</span>
+        <span className="inline-flex items-center gap-3">
+          <label className="inline-flex items-center gap-1.5 cursor-pointer text-[#b7bdc6]">
+            <input
+              type="checkbox"
+              checked={showTaken}
+              onChange={(e) => setShowTaken(e.target.checked)}
+              className="accent-[#fcd535]"
+            />
+            Show taken
+          </label>
           <select
-            className="input"
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value as SortKey)}
-            style={{ height: 28, fontSize: 12, minWidth: 130 }}
+            className="h-6 px-2 rounded bg-[#0b0e11] border border-[#2b3139] text-[#eaecef] font-sans text-[11px]"
           >
             {SORT_OPTIONS.map((opt) => (
-              <option key={opt.key} value={opt.key} style={{ background: '#0f0f23' }}>
+              <option key={opt.key} value={opt.key} className="bg-[#181a20]">
                 {opt.label}
               </option>
             ))}
           </select>
-        </label>
-        <label className="inline-flex items-center gap-1.5 ml-auto">
-          <input
-            type="checkbox"
-            checked={showTaken}
-            onChange={(e) => setShowTaken(e.target.checked)}
-          />
-          Show recently taken
-        </label>
+          <span>{lastUpdated ? `Updated ${timeAgo(lastUpdated)}` : 'Refreshing…'}</span>
+        </span>
       </div>
 
       {error && (
-        <div className="text-xs" style={{ color: '#fbbf24' }}>
+        <div className="px-4 py-2 text-[11px] text-[#f0b90b] bg-[rgba(240,185,11,0.06)] border-b border-[#2b3139]">
           {error}
         </div>
       )}
 
-      {/* Rows */}
-      <div className="overflow-y-auto space-y-2" style={{ maxHeight: 540 }}>
-        {rows.length === 0 && !loading && (
-          <div className="text-xs py-6 text-center" style={{ color: 'rgba(238,240,255,0.35)' }}>
-            No offers in the book yet. Click Create Order above to post the first one.
+      {/* Table */}
+      <div className="overflow-y-auto flex-1" style={{ maxHeight: 620 }}>
+        {rows.length === 0 && !loading ? (
+          <div className="text-[12px] py-10 text-center text-[#5e6673] px-4">
+            No offers in the book yet. Click <span className="text-[#eaecef] font-medium">Create Order</span> to post the first one.
           </div>
+        ) : (
+          <Table>
+            <THead>
+              <TR>
+                <TH align="left"  className="w-[44px]">#</TH>
+                <TH align="right">Amount IRM</TH>
+                <TH align="right">Price / IRM</TH>
+                <TH align="right">Total</TH>
+                <TH align="left">Payment</TH>
+                <TH align="left">Seller</TH>
+                <TH align="right">Rep</TH>
+                <TH align="right">Age</TH>
+                <TH align="right" className="pr-3">{/* action */}</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {rows.map(({ offer: o, parsedPrice }, idx) => {
+                const rep = reps[o.seller ?? ''] ?? null;
+                const isSelected = o.id === selectedOfferId;
+                const taken = o.status === 'taken';
+                const amountIrm = (o.amount ?? 0) / 1e8;
+                const pricePerUnit = parsedPrice && amountIrm > 0
+                  ? (parsedPrice.total / amountIrm)
+                  : 0;
+                return (
+                  <TR
+                    key={o.id}
+                    selected={isSelected}
+                    onClick={() => !taken && onTakeOffer(o)}
+                    className={taken ? 'opacity-50' : ''}
+                  >
+                    <TD align="left" className="text-[#5e6673] font-mono">
+                      {idx + 1}
+                    </TD>
+                    <TD align="right" mono className="text-[#eaecef] font-semibold">
+                      {formatIRM(o.amount ?? 0)}
+                    </TD>
+                    <TD align="right" mono className="text-[#b7bdc6]">
+                      {pricePerUnit.toLocaleString('en-US', { maximumFractionDigits: 6 })}
+                      <span className="text-[#5e6673] text-[10px] ml-1">{parsedPrice!.unit}</span>
+                    </TD>
+                    <TD align="right" mono className="text-[#b7bdc6]">
+                      {parsedPrice!.total.toLocaleString('en-US')}
+                      <span className="text-[#5e6673] text-[10px] ml-1">{parsedPrice!.unit}</span>
+                    </TD>
+                    <TD>
+                      <Pill intent="info" size="xs">{o.payment_method}</Pill>
+                    </TD>
+                    <TD mono className="text-[#b7bdc6]" title={o.seller ?? ''}>
+                      {shortAddr(o.seller ?? '')}
+                    </TD>
+                    <TD align="right">
+                      <span className="inline-flex items-center gap-1 text-[#f0b90b] font-mono tabular-nums" title={rep ? `${rep.stars} of 5, ${rep.completed} completed` : 'No reputation'}>
+                        {rep ? (
+                          <>
+                            <Star size={10} fill="currentColor" />
+                            <span>{rep.stars}</span>
+                            {rep.completed > 0 && (
+                              <ShieldCheck size={10} className="text-[#0ecb81] ml-0.5" />
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-[#474d57]">—</span>
+                        )}
+                      </span>
+                    </TD>
+                    <TD align="right" className="text-[#5e6673] font-mono">
+                      {o.created_at ? timeAgo(o.created_at) : '—'}
+                    </TD>
+                    <TD align="right" className="pr-3">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!taken) onTakeOffer(o);
+                        }}
+                        disabled={taken}
+                        className={`inline-flex items-center gap-1 h-6 px-2 rounded text-[11px] font-semibold transition-colors ${
+                          taken
+                            ? 'bg-transparent text-[#474d57] cursor-not-allowed border border-[#2b3139]'
+                            : 'bg-[rgba(14,203,129,0.15)] text-[#0ecb81] border border-[rgba(14,203,129,0.30)] hover:bg-[rgba(14,203,129,0.25)]'
+                        }`}
+                      >
+                        {taken ? 'Taken' : <>Take <ArrowRight size={10} /></>}
+                      </button>
+                    </TD>
+                  </TR>
+                );
+              })}
+            </TBody>
+          </Table>
         )}
-        {rows.map(({ offer: o, parsedPrice }, idx) => {
-          const rep = reps[o.seller ?? ''] ?? null;
-          const isSelected = o.id === selectedOfferId;
-          const taken = o.status === 'taken';
-          const amountIrm = (o.amount ?? 0) / 1e8;
-          // Fix 1's enriched filter guarantees parsedPrice is non-null
-          // here. Compute price-per-IRM directly — no nullable arm.
-          const pricePerUnit = parsedPrice && amountIrm > 0
-            ? (parsedPrice.total / amountIrm)
-            : 0;
-          const orderNumber = idx + 1;
-          // Marketplace Fix 2 — BTCC-style card layout. The IRM amount
-          // is the lead figure (the thing a buyer wants to scan first).
-          // Order number sits as a small chip in the top-left, badges
-          // top-right. Price block sits under the IRM amount, payment
-          // method becomes a proper chip, and the bottom row carries
-          // the seller-id + age + Escrow Protected status + Take CTA.
-          const accentColor = taken ? 'rgba(255,255,255,0.18)' : '#22c55e';
-          return (
-            <div
-              key={o.id}
-              className="rounded transition-colors"
-              style={{
-                background: isSelected ? 'rgba(110,198,255,0.10)' : 'rgba(255,255,255,0.02)',
-                borderTop: '1px solid ' + (isSelected ? 'rgba(110,198,255,0.30)' : 'rgba(255,255,255,0.06)'),
-                borderRight: '1px solid ' + (isSelected ? 'rgba(110,198,255,0.30)' : 'rgba(255,255,255,0.06)'),
-                borderBottom: '1px solid ' + (isSelected ? 'rgba(110,198,255,0.30)' : 'rgba(255,255,255,0.06)'),
-                borderLeft: `3px solid ${accentColor}`,
-                padding: 16,
-                opacity: taken ? 0.55 : 1,
-              }}
-              onMouseEnter={(e) => {
-                if (!taken && !isSelected) e.currentTarget.style.background = 'rgba(110,198,255,0.05)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = isSelected ? 'rgba(110,198,255,0.10)' : 'rgba(255,255,255,0.02)';
-              }}
-            >
-              {/* Row 1 — Order-number chip on the left, reputation +
-                  verified badges on the right. */}
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <span
-                  className="inline-flex items-center px-2 py-0.5 rounded font-display font-bold tracking-wide"
-                  style={{
-                    color: taken ? 'rgba(238,240,255,0.50)' : '#6EC6FF',
-                    background: 'rgba(110,198,255,0.10)',
-                    border: '1px solid rgba(110,198,255,0.25)',
-                    fontSize: 11,
-                    letterSpacing: '0.06em',
-                  }}
-                  title={o.id ?? ''}
-                >
-                  ORDER #{orderNumber}
-                </span>
-                <div className="inline-flex items-center gap-1.5">
-                  <StarBadge rep={rep} />
-                  <VerifiedBadge rep={rep} />
-                </div>
-              </div>
-
-              {/* Row 2 — large prominent IRM amount + price subtitle.
-                  Mirrors the BTCC OTC order-card hierarchy: lead amount
-                  in a 24px monospace headline, with the total + per-unit
-                  price as a single muted subtitle below. */}
-              <div className="mb-3" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
-                <div
-                  className="tabular-nums"
-                  style={{
-                    color: '#eef0ff',
-                    fontSize: 26,
-                    fontWeight: 700,
-                    lineHeight: 1.1,
-                  }}
-                >
-                  {formatIRM(o.amount ?? 0)}
-                </div>
-                <div
-                  className="tabular-nums mt-1"
-                  style={{ color: '#34d399', fontSize: 13 }}
-                >
-                  {parsedPrice!.total.toLocaleString('en-US')} {parsedPrice!.unit}
-                  <span style={{ color: 'rgba(238,240,255,0.35)' }}> · </span>
-                  <span style={{ color: 'rgba(238,240,255,0.65)' }}>
-                    {pricePerUnit.toLocaleString('en-US', { maximumFractionDigits: 6 })} {parsedPrice!.unit}/IRM
-                  </span>
-                </div>
-              </div>
-
-              {/* Row 3 — payment method chip + Escrow Protected badge.
-                  Both are status signals, so they share a row above the
-                  identity/age/CTA row to keep the card scannable. */}
-              <div className="flex items-center gap-2 flex-wrap mb-3">
-                <span
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px]"
-                  style={{
-                    background: 'rgba(167,139,250,0.10)',
-                    color: '#A78BFA',
-                    border: '1px solid rgba(167,139,250,0.25)',
-                  }}
-                  title={`Payment method: ${o.payment_method}`}
-                >
-                  <CreditCard size={10} />
-                  {o.payment_method}
-                </span>
-                <span
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-display font-semibold"
-                  style={{
-                    background: 'rgba(34,197,94,0.10)',
-                    color: '#22c55e',
-                    border: '1px solid rgba(34,197,94,0.28)',
-                  }}
-                  title="Your funds are protected. IRM is locked the moment a buyer commits, and only releases when both sides confirm or a resolver decides."
-                >
-                  <Lock size={10} />
-                  Escrow Protected
-                </span>
-              </div>
-
-              {/* Row 4 — identity + age on the left, Take CTA on the
-                  right. Address shortened to 8…4 to keep the row from
-                  wrapping under the action button on narrow viewports. */}
-              <div
-                className="flex items-center justify-between gap-2 text-[11px] pt-2"
-                style={{ color: 'rgba(238,240,255,0.65)', borderTop: '1px solid rgba(255,255,255,0.04)' }}
-              >
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span title={o.seller ?? ''} style={{ fontFamily: '"JetBrains Mono", monospace' }}>
-                    {(o.seller ?? '').slice(0, 8)}…{(o.seller ?? '').slice(-4)}
-                  </span>
-                  <span style={{ color: 'rgba(238,240,255,0.30)' }}>·</span>
-                  <span title={o.created_at ? new Date(o.created_at * 1000).toISOString() : ''}>
-                    {o.created_at ? timeAgo(o.created_at) : 'just now'}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => !taken && onTakeOffer(o)}
-                  disabled={taken}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-[12px] font-display font-semibold"
-                  style={{
-                    color: taken ? 'rgba(238,240,255,0.35)' : '#22c55e',
-                    background: taken ? 'transparent' : 'rgba(34,197,94,0.12)',
-                    border: '1px solid ' + (taken ? 'rgba(255,255,255,0.08)' : 'rgba(34,197,94,0.30)'),
-                    cursor: taken ? 'default' : 'pointer',
-                  }}
-                >
-                  {taken ? 'Taken' : 'Take Offer'}
-                  {!taken && <ArrowRight size={12} />}
-                </button>
-              </div>
-            </div>
-          );
-        })}
       </div>
 
       {loading && (
-        <div className="text-xs flex items-center gap-2" style={{ color: 'rgba(238,240,255,0.35)' }}>
+        <div className="px-4 py-1.5 text-[11px] flex items-center gap-2 text-[#5e6673] border-t border-[#2b3139]">
           <Loader2 size={11} className="animate-spin" /> refreshing…
         </div>
       )}

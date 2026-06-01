@@ -153,24 +153,11 @@ export default function SwapPanel() {
                   />
                 )}
                 {!activeSwap && (
-                  <div
-                    className="card p-4 text-xs"
-                    style={{
-                      border: '1px solid rgba(110,198,255,0.18)',
-                      color: 'rgba(238,240,255,0.55)',
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    <div
-                      className="font-display font-semibold text-sm mb-1"
-                      style={{ color: 'var(--t1)' }}
-                    >
+                  <div className="bg-[#181a20] border border-[#2b3139] rounded-lg p-4 text-[12px] text-[#b7bdc6] leading-relaxed">
+                    <div className="text-[13px] font-semibold text-[#eaecef] mb-2">
                       How {activePair.label} swaps work
                     </div>
-                    <ol
-                      className="list-decimal pl-4 space-y-1"
-                      style={{ color: 'rgba(238,240,255,0.65)' }}
-                    >
+                    <ol className="list-decimal pl-4 space-y-1 text-[#b7bdc6]">
                       <li>Pick an order from the book on the left, or post your own.</li>
                       <li>
                         The seller&apos;s IRM is locked in escrow the moment the order is taken.

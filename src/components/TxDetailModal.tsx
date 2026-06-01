@@ -6,7 +6,7 @@ import {
   ArrowUpRight, ArrowDownLeft, Loader2, ExternalLink, Copy, CheckCircle2,
   Pickaxe,
 } from 'lucide-react';
-import { formatIRM, computeConfirmations } from '../lib/types';
+import { formatIRM, computeConfirmations, formatLocalDateTime } from '../lib/types';
 import { rpc } from '../lib/tauri';
 import { useStore } from '../lib/store';
 import type { Transaction } from '../lib/types';
@@ -192,12 +192,18 @@ export default function TxDetailModal({ tx, onClose }: { tx: Transaction; onClos
   const isConfirmed  = txHeight > 0;
   const confirmations = computeConfirmations(txHeight, currentTip);
 
+  // Block time wins over the local tx timestamp; both are rendered in
+  // the user's local timezone with a UTC tooltip on hover (the same
+  // formatter used by Explorer's block modal so the two surfaces never
+  // disagree about what time a given block was mined).
   const blockTime     = blockData?.header?.time;
-  const timeStr       = blockTime
-    ? new Date(blockTime * 1000).toLocaleString('en-US')
+  const timeFormatted = blockTime
+    ? formatLocalDateTime(blockTime)
     : (tx.timestamp && tx.timestamp > 0)
-      ? new Date(tx.timestamp * 1000).toLocaleString('en-US')
-      : '—';
+      ? formatLocalDateTime(tx.timestamp)
+      : null;
+  const timeStr       = timeFormatted?.local ?? '—';
+  const timeUtc       = timeFormatted?.utc;
 
   const isCoinbase    = !!txData?.is_coinbase;
   const isSend        = tx.direction === 'send';
@@ -307,7 +313,7 @@ export default function TxDetailModal({ tx, onClose }: { tx: Transaction; onClos
                     {confirmations.toLocaleString('en-US')}
                   </MonoValue>
                 </DetailRow>
-                <DetailRow label={t('tx_detail.time')}><PlainValue>{timeStr}</PlainValue></DetailRow>
+                <DetailRow label={t('tx_detail.time')}><PlainValue><span title={timeUtc}>{timeStr}</span></PlainValue></DetailRow>
               </div>
             </div>
 
