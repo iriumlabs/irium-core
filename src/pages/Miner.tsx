@@ -209,12 +209,10 @@ function StatCard({ label, value, color, icon: Icon }: {
 }
 
 // Block-time V2 activation height. Mirrors the upstream consensus constant
-// MAINNET_BLOCK_TIME_V2_ACTIVATION_HEIGHT in iriumlabs/irium activation.rs.
-// `null` while the upstream value ships as None; flip to a number in
-// lockstep with the activation commit landing on iriumd. Until then,
-// `protocolBlockTimeSecs` returns the V1 value for every height and the
-// estimator behaves exactly as it did at the V1 protocol design pace.
-const BLOCK_TIME_V2_ACTIVATION_HEIGHT: number | null = null;
+// MAINNET_BLOCK_TIME_V2_ACTIVATION_HEIGHT = Some(24_250) in iriumlabs/irium
+// activation.rs (v1.9.47). The estimator switches from V1 (T=600s,
+// blocks_per_day=144) to V2 (T=120s, blocks_per_day=720) at this height.
+const BLOCK_TIME_V2_ACTIVATION_HEIGHT: number | null = 24_250;
 
 // Returns the height-aware protocol-target seconds-per-block. V1=600 pre-fork,
 // V2=120 at/post-fork. These are PROTOCOL design targets and intentionally
