@@ -208,23 +208,47 @@ function StatCard({ label, value, color, icon: Icon }: {
   );
 }
 
+// Block-time V2 activation height. Mirrors the upstream consensus constant
+// MAINNET_BLOCK_TIME_V2_ACTIVATION_HEIGHT in iriumlabs/irium activation.rs.
+// `null` while the upstream value ships as None; flip to a number in
+// lockstep with the activation commit landing on iriumd. Until then,
+// `protocolBlockTimeSecs` returns the V1 value for every height and the
+// estimator behaves exactly as it did at the V1 protocol design pace.
+const BLOCK_TIME_V2_ACTIVATION_HEIGHT: number | null = null;
+
+// Returns the height-aware protocol-target seconds-per-block. V1=600 pre-fork,
+// V2=120 at/post-fork. These are PROTOCOL design targets and intentionally
+// differ from the chain's observed pace: today's mainnet produces blocks ~5–10×
+// faster than V1's 600s target because LWMA cannot fully outrun continuous
+// hashrate growth. The displayed Est. Daily IRM uses the protocol target so
+// the number stays consistent across the activation boundary.
+function protocolBlockTimeSecs(height: number | null | undefined): number {
+  if (BLOCK_TIME_V2_ACTIVATION_HEIGHT !== null && height != null && height >= BLOCK_TIME_V2_ACTIVATION_HEIGHT) {
+    return 120;
+  }
+  return 600;
+}
+
 // FIX 4 (Mining UI): expected daily reward in IRM given the miner's
 // current kH/s and the chain's current difficulty. Uses the standard
 // Bitcoin-style estimate (your_hashrate / network_hashrate × blocks_per_day
-// × reward). At BLOCKS_PER_HOUR=60 (chain reality, not protocol target)
-// that's 1440 blocks/day × 50 IRM = 72000 IRM of network reward per day,
-// scaled by the miner's share of the hashrate. Returns null when we don't
-// have enough data — the StatCard renders "—" in that case rather than 0.
-const BLOCKS_PER_DAY = 1440;
+// × reward). `blockTimeSecs` and `blocksPerDay` are coupled so the formula
+// is invariant under the V1/V2 fork: a faster protocol target also means
+// more blocks per day, leaving the per-miner emission share unchanged.
 const BLOCK_REWARD_IRM = 50;
-function estimateDailyEarnings(hashrateKhs: number | null | undefined, difficulty: number | null | undefined): number | null {
+function estimateDailyEarnings(
+  hashrateKhs: number | null | undefined,
+  difficulty: number | null | undefined,
+  height: number | null | undefined,
+): number | null {
   if (!hashrateKhs || hashrateKhs <= 0) return null;
   if (!difficulty || difficulty <= 0) return null;
+  const blockTimeSecs = protocolBlockTimeSecs(height);
+  const blocksPerDay = 86400 / blockTimeSecs;
   // network_hashrate_hs ≈ difficulty × 2^32 / block_time_secs
-  // block_time_secs at BLOCKS_PER_HOUR=60 is 60.
-  const networkHashrateHs = (difficulty * 4_294_967_296) / 60;
+  const networkHashrateHs = (difficulty * 4_294_967_296) / blockTimeSecs;
   const minerHashrateHs = hashrateKhs * 1000;
-  const expectedBlocksPerDay = (minerHashrateHs / networkHashrateHs) * BLOCKS_PER_DAY;
+  const expectedBlocksPerDay = (minerHashrateHs / networkHashrateHs) * blocksPerDay;
   return expectedBlocksPerDay * BLOCK_REWARD_IRM;
 }
 
@@ -948,7 +972,7 @@ function CpuMinerTab() {
         <StatCard
           label="Est. Daily IRM"
           value={(() => {
-            const e = estimateDailyEarnings(status?.hashrate_khs, netInfo?.difficulty);
+            const e = estimateDailyEarnings(status?.hashrate_khs, netInfo?.difficulty, netInfo?.height);
             return e == null ? '—' : `${e.toFixed(e >= 1 ? 2 : 4)} IRM`;
           })()}
           color="#fbbf24"
@@ -1339,7 +1363,7 @@ function GpuMinerTab() {
         <StatCard
           label="Est. Daily IRM"
           value={(() => {
-            const e = estimateDailyEarnings(status?.hashrate_khs, netInfo?.difficulty);
+            const e = estimateDailyEarnings(status?.hashrate_khs, netInfo?.difficulty, netInfo?.height);
             return e == null ? '—' : `${e.toFixed(e >= 1 ? 2 : 4)} IRM`;
           })()}
           color="#fbbf24"
