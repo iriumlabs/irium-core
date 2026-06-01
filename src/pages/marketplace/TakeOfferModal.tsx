@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { X, ArrowRight, AlertTriangle, Check, Loader2, Lock, Send } from 'lucide-react';
+import { ArrowRight, AlertTriangle, Check, Loader2, Lock, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { offers, agreementSpend, disputes, proofs } from '../../lib/tauri';
 import type { Offer } from '../../lib/types';
 import { formatIRM } from '../../lib/types';
+import { TradingModal } from '../../components/ui';
 
 // Take Offer modal — two steps, no technical jargon.
 //
@@ -146,25 +147,14 @@ export default function TakeOfferModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-6"
-      style={{ background: 'rgba(2,5,14,0.78)' }}
-      onClick={onClose}
+    <TradingModal
+      open={true}
+      onClose={() => { if (!busy) onClose(); }}
+      title="Take Offer"
+      subtitle={`Step ${step} of 2`}
+      size="md"
     >
-      <div
-        className="w-full max-w-lg card p-5 space-y-4"
-        style={{ border: '1px solid rgba(110,198,255,0.25)' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <div className="text-sm font-display font-semibold" style={{ color: 'var(--t1)' }}>
-            Take Offer - Step {step} of 2
-          </div>
-          <button onClick={onClose} className="btn-secondary px-2 py-1">
-            <X size={14} />
-          </button>
-        </div>
-
+      <div className="space-y-4">
         {step === 1 && (
           <>
             <div className="text-xs" style={{ color: 'rgba(238,240,255,0.65)' }}>
@@ -300,6 +290,6 @@ export default function TakeOfferModal({
           </>
         )}
       </div>
-    </div>
+    </TradingModal>
   );
 }

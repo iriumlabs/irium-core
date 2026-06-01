@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { X, Loader2, Scale, Star, Shield, ExternalLink } from 'lucide-react';
+import { Loader2, Scale, Star, Shield, ExternalLink } from 'lucide-react';
 import type { Agreement } from '../../lib/types';
+import { TradingModal } from '../../components/ui';
 
 // Settlement Step 5 - resolver selection screen for an open dispute.
 //
@@ -119,25 +120,18 @@ export default function ResolverPicker({ agreement, rpcUrl, onClose }: ResolverP
   }, [rpcUrl]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-6"
-      style={{ background: 'rgba(2,5,14,0.78)' }}
-      onClick={onClose}
+    <TradingModal
+      open={true}
+      onClose={onClose}
+      title={
+        <span className="inline-flex items-center gap-2">
+          <Scale size={15} className="text-[#f0b90b]" />
+          Resolver selection
+        </span>
+      }
+      size="lg"
     >
-      <div
-        className="w-full max-w-2xl card p-5 space-y-4"
-        style={{ border: '1px solid rgba(252,211,77,0.30)', maxHeight: '85vh', overflowY: 'auto' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between">
-          <div className="inline-flex items-center gap-2 text-sm font-display font-semibold" style={{ color: 'var(--t1)' }}>
-            <Scale size={15} style={{ color: '#fbbf24' }} />
-            Resolver selection
-          </div>
-          <button onClick={onClose} className="btn-secondary px-2 py-1">
-            <X size={14} />
-          </button>
-        </div>
+      <div className="space-y-4">
 
         <div className="text-xs" style={{ color: 'rgba(238,240,255,0.65)', lineHeight: 1.6 }}>
           A resolver is a verified third party who decides who gets the IRM when buyer and
@@ -311,6 +305,6 @@ export default function ResolverPicker({ agreement, rpcUrl, onClose }: ResolverP
           </button>
         </div>
       </div>
-    </div>
+    </TradingModal>
   );
 }
