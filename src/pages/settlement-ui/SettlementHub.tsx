@@ -1,157 +1,159 @@
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, Briefcase, Shield, ArrowRight } from 'lucide-react';
+import { ArrowLeftRight, Briefcase, Shield, Plus, ChevronDown } from 'lucide-react';
 import ActiveAgreementsPanel from '../../components/settlement-ui/ActiveAgreementsPanel';
 
-// SettlementHub — the landing view for the Settlement section. Three
-// big entry cards above the fold (Safe Trade / Pay for Work /
-// Refundable Deposit), then the Active Agreements list below.
+// SettlementHub — Binance-style dashboard. A single condensed header
+// strip with a primary CTA (split-dropdown "+ New agreement"); below
+// it, the Active Agreements panel surfaces the user's in-flight
+// agreements as the page's primary content (was deprioritised under
+// the previous landing-page hero with three marketing-style cards).
 
-interface HubCardSpec {
-  id: 'safe_trade' | 'pay_for_work' | 'deposit';
+type FlowId = 'safe_trade' | 'pay_for_work' | 'deposit';
+
+interface FlowOption {
+  id: FlowId;
   titleKey: string;
   subtitleKey: string;
   Icon: React.ElementType;
-  // Accent colors — set per-card so the three cards are visually
-  // distinct without overwhelming the page. CSS variables are not used
-  // here because the cards intentionally render in fixed brand-tinted
-  // hues that don't shift with the active theme.
-  accentBg: string;
-  accentBorder: string;
-  accentText: string;
-  accentGlow: string;
+  route: string;
 }
 
-const CARDS: HubCardSpec[] = [
+const FLOW_OPTIONS: FlowOption[] = [
   {
     id: 'safe_trade',
     titleKey: 'settlement_ui.hub.safe_trade_title',
     subtitleKey: 'settlement_ui.hub.safe_trade_subtitle',
     Icon: ArrowLeftRight,
-    accentBg: 'rgba(110,198,255,0.14)',
-    accentBorder: 'rgba(110,198,255,0.32)',
-    accentText: '#6ec6ff',
-    accentGlow: '#6ec6ff',
+    route: '/settlement/safe-trade',
   },
   {
     id: 'pay_for_work',
     titleKey: 'settlement_ui.hub.pay_for_work_title',
     subtitleKey: 'settlement_ui.hub.pay_for_work_subtitle',
     Icon: Briefcase,
-    accentBg: 'rgba(167,139,250,0.16)',
-    accentBorder: 'rgba(167,139,250,0.30)',
-    accentText: '#a78bfa',
-    accentGlow: '#a78bfa',
+    route: '/settlement/pay-for-work',
   },
   {
     id: 'deposit',
     titleKey: 'settlement_ui.hub.deposit_title',
     subtitleKey: 'settlement_ui.hub.deposit_subtitle',
     Icon: Shield,
-    accentBg: 'rgba(251,191,36,0.14)',
-    accentBorder: 'rgba(251,191,36,0.32)',
-    accentText: '#fbbf24',
-    accentGlow: '#fbbf24',
+    route: '/settlement/deposit',
   },
 ];
 
 export default function SettlementHub() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
-  // HubCardSpec.id is a closed string-literal union of the three IDs
-  // below, so TS enforces exhaustiveness — no fallback arm needed.
-  const handleCardClick = (cardId: HubCardSpec['id']) => {
-    if (cardId === 'safe_trade')   { navigate('/settlement/safe-trade');   return; }
-    if (cardId === 'pay_for_work') { navigate('/settlement/pay-for-work'); return; }
-    if (cardId === 'deposit')      { navigate('/settlement/deposit');      return; }
+  // Click-outside close for the split-dropdown menu.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
+
+  const handlePick = (route: string) => {
+    setMenuOpen(false);
+    navigate(route);
   };
-
-  // Inline release / refund are handled inside ActiveAgreementsPanel.
-  // View Details + View Dispute use the panel's default navigation
-  // (no override needed here).
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
-      className="h-full overflow-y-auto scroll-visible"
+      transition={{ duration: 0.2 }}
+      className="h-full overflow-y-auto bg-[#0b0e11] text-[#eaecef]"
     >
-      <div className="w-full px-8 py-6 max-w-5xl mx-auto">
-        {/* Header — single-purpose page title + one-line subtitle.
-            "Back to Marketplace" link added so users who landed here via
-            the Marketplace page's "Advanced flows" link have an obvious
-            way back to the price-sorted order book. The new Marketplace
-            redesign positions this page as the lower-level / power-user
-            entry; most casual P2P trades happen on the order book. */}
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="page-title">{t('settlement_ui.hub.title')}</h1>
-            <p className="page-subtitle">For direct deals between two people you already know. To post a public offer anyone can find, use the Marketplace.</p>
+      <div className="mx-auto px-6 py-5" style={{ maxWidth: 1400 }}>
+        {/* Header strip — title + subtitle + primary CTA (split-dropdown).
+            Replaces the prior three large-card hero. */}
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="min-w-0">
+            <h1 className="text-[20px] font-semibold tracking-tight text-[#eaecef]">
+              {t('settlement_ui.hub.title')}
+            </h1>
+            <p className="text-[12px] text-[#b7bdc6] mt-0.5">
+              Hold IRM in escrow until both sides agree. For public offers, use the Marketplace.
+            </p>
           </div>
-          <a
-            href="/marketplace"
-            onClick={(e) => { e.preventDefault(); navigate('/marketplace'); }}
-            className="text-xs inline-flex items-center gap-1.5 mt-1"
-            style={{ color: 'rgba(110,198,255,0.85)', whiteSpace: 'nowrap' }}
-            title="Browse the public order book and take an open offer."
-          >
-            ← Back to Marketplace
-          </a>
-        </div>
-
-        {/* Three entry cards — equal weight, equal size, only three.
-            Above-the-fold real estate is reserved for these three
-            choices and nothing else, per the design rule. */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-          {CARDS.map((card) => (
-            <motion.button
-              key={card.id}
-              type="button"
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => handleCardClick(card.id)}
-              className="card-interactive p-6 text-left flex flex-col gap-4 relative overflow-hidden cursor-pointer min-h-[200px]"
+          <div className="flex items-center gap-2">
+            <a
+              href="/marketplace"
+              onClick={(e) => { e.preventDefault(); navigate('/marketplace'); }}
+              className="text-[12px] inline-flex items-center text-[#b7bdc6] hover:text-[#eaecef] transition-colors whitespace-nowrap"
             >
-              {/* Soft glow behind the icon — subtle visual weight */}
-              <div
-                className="absolute top-4 right-4 w-24 h-24 rounded-full blur-3xl opacity-30"
-                style={{ background: card.accentGlow }}
-              />
-              <div
-                className="p-3 rounded-xl w-fit"
-                style={{
-                  background: card.accentBg,
-                  border: `1px solid ${card.accentBorder}`,
-                }}
-              >
-                <card.Icon size={22} style={{ color: card.accentText }} />
+              ← Marketplace
+            </a>
+            {/* Split-button: a primary action that defaults to Safe Trade
+                plus a chevron that opens a 3-item menu of all flows. */}
+            <div className="relative" ref={menuRef}>
+              <div className="inline-flex rounded overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => navigate('/settlement/safe-trade')}
+                  className="inline-flex items-center gap-1.5 h-9 px-3 text-[13px] font-semibold bg-[#fcd535] text-[#0b0e11] hover:bg-[#f0c020] transition-colors"
+                >
+                  <Plus size={13} />
+                  New agreement
+                </button>
+                <button
+                  type="button"
+                  aria-label="Choose agreement type"
+                  onClick={() => setMenuOpen((v) => !v)}
+                  className="inline-flex items-center h-9 px-2 bg-[#fcd535] text-[#0b0e11] hover:bg-[#f0c020] transition-colors border-l border-[#0b0e11]/20"
+                >
+                  <ChevronDown size={14} />
+                </button>
               </div>
-              <div className="flex-1">
-                <div className="font-display font-bold text-lg text-white leading-tight">
-                  {t(card.titleKey)}
-                </div>
-                <div className="text-white/50 text-sm mt-2 leading-relaxed">
-                  {t(card.subtitleKey)}
-                </div>
-              </div>
-              <div
-                className="text-xs font-medium flex items-center gap-1.5"
-                style={{ color: card.accentText }}
-              >
-                {t('settlement_ui.hub.start_cta')}
-                <ArrowRight size={12} />
-              </div>
-            </motion.button>
-          ))}
+              {menuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.12 }}
+                  className="absolute right-0 mt-1.5 z-20 w-[260px] rounded-lg bg-[#181a20] border border-[#2b3139] shadow-2xl overflow-hidden"
+                >
+                  {FLOW_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => handlePick(opt.route)}
+                      className="w-full text-left flex items-start gap-3 px-3 py-2.5 hover:bg-[#2b3139] transition-colors"
+                    >
+                      <opt.Icon size={16} className="text-[#b7bdc6] mt-0.5 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-[13px] font-medium text-[#eaecef] leading-tight">
+                          {t(opt.titleKey)}
+                        </div>
+                        <div className="text-[11px] text-[#b7bdc6] mt-0.5 leading-snug">
+                          {t(opt.subtitleKey)}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Active Agreements panel — below the entry cards. Lists the
-            user's non-terminal agreements with plain status badges.
-            Release / Refund act inline; View Details navigates to the
-            existing /agreements page. */}
+        {/* Active Agreements — the page's primary content now that the
+            three hero cards have been replaced by the header CTA. */}
         <ActiveAgreementsPanel />
       </div>
     </motion.div>
