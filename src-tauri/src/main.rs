@@ -3207,6 +3207,11 @@ struct WalletExportSeedRpcResponse {
 }
 
 #[derive(Debug, serde::Deserialize)]
+struct WalletMnemonicRpcResponse {
+    mnemonic: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
 struct WalletImportWifRpcResponse {
     #[serde(default)]
     #[allow(dead_code)]
@@ -4162,27 +4167,9 @@ async fn wallet_export_seed(state: State<'_, AppState>) -> Result<String, String
 
 #[tauri::command]
 async fn wallet_export_mnemonic(state: State<'_, AppState>) -> Result<String, String> {
-    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
-    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
-
-    let tmp = std::env::temp_dir().join(format!(
-        "irium_mnemonic_{}.txt",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis()
-    ));
-
-    run_wallet_cmd(
-        vec!["export-mnemonic".to_string(), "--out".to_string(), tmp.to_string_lossy().to_string()],
-        wallet_path,
-        data_dir,
-    ).await?;
-
-    let content = std::fs::read_to_string(&tmp)
-        .map_err(|e| format!("Failed to read mnemonic file: {}", e))?;
-    let _ = std::fs::remove_file(&tmp);
-    Ok(content.trim().to_string())
+    let resp: WalletMnemonicRpcResponse =
+        iriumd_rpc(state, "GET", "/wallet/export_mnemonic", None, None).await?;
+    Ok(resp.mnemonic)
 }
 
 // Backup is a direct file copy of the active wallet file. For encrypted
