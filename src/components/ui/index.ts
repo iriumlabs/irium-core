@@ -30,3 +30,6 @@ export type { ModalSize, TradingModalProps } from './TradingModal';
 
 export { default as NumberDelta } from './NumberDelta';
 export type { NumberDeltaProps } from './NumberDelta';
+
+export { default as TimestampDisplay } from './TimestampDisplay';
+export type { TimestampFormat, TimestampDisplayProps } from './TimestampDisplay';

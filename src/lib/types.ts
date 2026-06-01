@@ -1183,6 +1183,55 @@ export function timeAgo(timestamp: number): string {
   return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+// Canonical timestamp formatter. Returns BOTH the user's local-timezone
+// string and a UTC equivalent so callers can show local in the main
+// surface and surface UTC via a hover tooltip. This is the single
+// source of truth for every clock-time display in the app — explorer
+// block modal, transaction detail, agreement deadlines, swap order
+// "updated at", etc. Before this helper existed every surface called
+// `new Date(...).toLocaleString('en-US')` directly, which produced
+// confusing per-surface variation between local and UTC depending on
+// the Tauri webview's TZ environment.
+//
+// Accepts seconds-since-epoch OR milliseconds: values < 1e12 are
+// treated as seconds (same heuristic as timeAgo).
+export interface FormattedTimestamp {
+  local: string;
+  utc: string;
+}
+
+function normalizeEpoch(ts: number): number {
+  return ts < 1e12 ? ts * 1000 : ts;
+}
+
+export function formatLocalDateTime(ts: number): FormattedTimestamp {
+  const ms = normalizeEpoch(ts);
+  const d = new Date(ms);
+  const local = new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(d);
+  const utc = new Intl.DateTimeFormat('en-GB', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'UTC',
+  }).format(d) + ' UTC';
+  return { local, utc };
+}
+
+export function formatLocalTime(ts: number): FormattedTimestamp {
+  const ms = normalizeEpoch(ts);
+  const d = new Date(ms);
+  const local = new Intl.DateTimeFormat(undefined, {
+    timeStyle: 'medium',
+  }).format(d);
+  const utc = new Intl.DateTimeFormat('en-GB', {
+    timeStyle: 'medium',
+    timeZone: 'UTC',
+  }).format(d) + ' UTC';
+  return { local, utc };
+}
+
 export function riskColor(signal: RiskSignal): string {
   switch (signal) {
     case "low": return "text-green-400";

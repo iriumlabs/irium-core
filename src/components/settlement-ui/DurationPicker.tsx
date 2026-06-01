@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatLocalDateTime } from '../../lib/types';
 
 interface DurationPickerProps {
   // Current value in HOURS. Parent owns the state.
@@ -31,15 +32,20 @@ const DEFAULT_PRESETS = [
 const MAX_HOURS_DEFAULT = 8760;
 
 // Render an approximate "expires around" wall-clock hint so users can
-// sanity-check their hours choice without doing mental math.
-function formatExpiresAround(hours: number, t: (k: string, v?: Record<string, unknown>) => string): string {
-  if (!hours || hours <= 0) return '';
+// sanity-check their hours choice without doing mental math. Returns
+// the rendered text plus a UTC equivalent for a hover tooltip; the
+// caller threads `utc` into a title= on the wrapping <p>.
+function formatExpiresAround(
+  hours: number,
+  t: (k: string, v?: Record<string, unknown>) => string,
+): { text: string; utc?: string } {
+  if (!hours || hours <= 0) return { text: '' };
   const ms = Date.now() + hours * 3600 * 1000;
-  const d = new Date(ms);
-  // Locale-aware date formatting keeps the wording consistent with the rest
-  // of the app's timeAgo helper without re-translating month/day labels.
-  const datestr = d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-  return t('settlement_ui.duration.expires_around', { datetime: datestr });
+  const { local, utc } = formatLocalDateTime(ms);
+  return {
+    text: t('settlement_ui.duration.expires_around', { datetime: local }),
+    utc,
+  };
 }
 
 export default function DurationPicker({
@@ -115,9 +121,12 @@ export default function DurationPicker({
         </div>
       )}
 
-      {value > 0 && (
-        <p className="text-xs text-white/35 leading-relaxed">{formatExpiresAround(value, t)}</p>
-      )}
+      {value > 0 && (() => {
+        const { text, utc } = formatExpiresAround(value, t);
+        return (
+          <p className="text-xs text-white/35 leading-relaxed" title={utc}>{text}</p>
+        );
+      })()}
       {helper && <p className="text-xs text-white/40 leading-relaxed">{helper}</p>}
     </div>
   );

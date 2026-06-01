@@ -12,7 +12,7 @@ import {
 import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
 import { rpc, wallet, miner, gpuMiner, stratum } from '../lib/tauri';
-import { timeAgo, formatIRM, SATS_PER_IRM } from '../lib/types';
+import { timeAgo, formatIRM, formatLocalDateTime, SATS_PER_IRM } from '../lib/types';
 import type {
   ExplorerBlock, NetworkHashrateInfo, RichListEntry, PoolStats,
   MinerStatus, GpuMinerStatus, StratumStatus,
@@ -359,12 +359,25 @@ function BlockDetailModal({ block, onClose }: { block: ExplorerBlock; onClose: (
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const rows = [
+  // Block time is rendered in the user's local timezone with a UTC
+  // tooltip on hover. The helper accepts seconds-since-epoch directly
+  // (block.time is a Bitcoin-style Unix-seconds value) and returns
+  // both strings in a single shape; the renderer below threads the
+  // optional `title` field through the existing rows.map().
+  const blockTimeFormatted = block.time ? formatLocalDateTime(block.time) : null;
+  const rows: Array<{
+    label: string;
+    value: string;
+    mono: boolean;
+    copy: boolean;
+    color?: string;
+    title?: string;
+  }> = [
     { label: t('explorer.block_modal.label_height'),       value: `#${block.height.toLocaleString('en-US')}`,                                   mono: true,  copy: false },
     { label: t('explorer.block_modal.label_hash'),         value: block.hash || '—',                                                            mono: true,  copy: !!block.hash },
     { label: t('explorer.block_modal.label_prev_hash'),    value: block.prev_hash || '—',                                                       mono: true,  copy: !!block.prev_hash },
     { label: t('explorer.block_modal.label_merkle'),       value: block.merkle_root || '—',                                                     mono: true,  copy: !!block.merkle_root },
-    { label: t('explorer.block_modal.label_time'),         value: block.time ? new Date(block.time * 1000).toLocaleString('en-US') : '—',       mono: false, copy: false },
+    { label: t('explorer.block_modal.label_time'),         value: blockTimeFormatted?.local ?? '—',                                             mono: false, copy: false, title: blockTimeFormatted?.utc },
     // H-13/L-12: Reward is computed client-side from a hardcoded halving formula
     // (HALVING_INTERVAL = 210_000, initial = 50 IRM). iriumd doesn't currently
     // expose a parsed reward per block, so this is an estimate based on the
@@ -406,13 +419,17 @@ function BlockDetailModal({ block, onClose }: { block: ExplorerBlock; onClose: (
           </button>
         </div>
         <div className="space-y-2.5">
-          {rows.map(({ label, value, mono, copy, color }) => (
+          {rows.map(({ label, value, mono, copy, color, title }) => (
             <div key={label} className="flex items-start gap-3">
               <span className="flex-shrink-0 w-28 text-right" style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', textTransform: 'uppercase', letterSpacing: '0.1em', paddingTop: 2, fontFamily: '"Space Grotesk", sans-serif' }}>
                 {label}
               </span>
               <div className="group flex items-center min-w-0 flex-1">
-                <span className="break-all" style={{ fontSize: 12, color: color ?? 'rgba(255,255,255,0.80)', fontFamily: mono ? '"JetBrains Mono", monospace' : 'inherit' }}>
+                <span
+                  className="break-all"
+                  style={{ fontSize: 12, color: color ?? 'rgba(255,255,255,0.80)', fontFamily: mono ? '"JetBrains Mono", monospace' : 'inherit' }}
+                  title={title}
+                >
                   {value}
                 </span>
                 {copy && value !== '—' && <CopyBtn text={value} />}

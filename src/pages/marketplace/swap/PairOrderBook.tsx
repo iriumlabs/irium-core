@@ -7,6 +7,7 @@ import type {
   SwapPairConfig,
   SwapSortKey,
 } from './pairs/types';
+import { TimestampDisplay } from '../../../components/ui';
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -123,7 +124,7 @@ export default function PairOrderBook({
             {lastUpdated && (
               <>
                 {' '}
-                · updated {new Date(lastUpdated).toLocaleTimeString()}
+                · updated <TimestampDisplay epoch={lastUpdated} format="time" />
               </>
             )}
           </p>
