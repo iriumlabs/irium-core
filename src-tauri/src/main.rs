@@ -3167,13 +3167,45 @@ async fn wallet_list_addresses(state: State<'_, AppState>) -> Result<Vec<Address
     Ok(results)
 }
 
-// wallet_send: send <from_addr> <to_addr> <amount_irm> [--fee <irm>] [--coin-select <mode>] --rpc <url>
+// wallet_send: routes through iriumd's POST /wallet/send so it operates on
+// the in-memory unlocked wallet (which knows about encryption). The historical
+// CLI sidecar path is encryption-blind — irium-wallet's WalletFile struct has
+// no `crypto` field, so on an encrypted wallet it parses `keys: []` and every
+// send fails with "From address not found in wallet". iriumd's handler
+// validates the from_address against the decrypted in-memory keymap and signs
+// locally.
 //
-// coin_select: forwarded as --coin-select to the wallet binary. Accepts
-//   "smallest" (default in irium-wallet — drains dust first, larger tx, more
-//   fee) or "largest" (picks bigger UTXOs first — fewer inputs, smaller tx,
-//   lower fee, but leaves small UTXOs unconsolidated). Any other value is
-//   rejected here so we don't propagate garbage to the binary.
+// coin_select: forwarded as `coin_select` to the RPC. Accepts "smallest"
+//   (default — drains dust first, larger tx, more fee) or "largest" (picks
+//   bigger UTXOs first — fewer inputs, smaller tx, lower fee, but leaves
+//   small UTXOs unconsolidated). Any other value is rejected here so we
+//   don't propagate garbage to iriumd. We default to "smallest" so behaviour
+//   matches the prior CLI default exactly.
+//
+// fee_sats: legacy absolute-satoshi fee from the CLI era. iriumd's
+//   /wallet/send only exposes `fee_per_byte` (rate). We approximate by
+//   dividing fee_sats by an estimated tx size of 225 bytes (1 P2PKH input +
+//   2 P2PKH outputs — the canonical send shape). Multi-input sends may
+//   diverge by ±50 sats from the user's exact request. When fee_sats is
+//   None we omit fee_per_byte and let iriumd auto-estimate from its live
+//   mempool floor.
+#[derive(Debug, serde::Deserialize)]
+struct WalletSendRpcResponse {
+    txid: String,
+    #[serde(default)]
+    #[allow(dead_code)]
+    accepted: bool,
+    #[serde(default)]
+    #[allow(dead_code)]
+    fee: u64,
+    #[serde(default)]
+    #[allow(dead_code)]
+    total_input: u64,
+    #[serde(default)]
+    #[allow(dead_code)]
+    change: u64,
+}
+
 #[tauri::command]
 async fn wallet_send(
     state: State<'_, AppState>,
@@ -3183,31 +3215,54 @@ async fn wallet_send(
     fee_sats: Option<u64>,
     coin_select: Option<String>,
 ) -> Result<SendResult, String> {
-    let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
-    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
 
-    let amount_irm = format!("{:.8}", sats_to_irm(amount_sats));
-    let mut args = vec![
-        "send".to_string(),
-        from_address,
-        to.clone(),
-        amount_irm,
-    ];
-    if let Some(fee) = fee_sats {
-        args.push(format!("--fee={:.8}", sats_to_irm(fee)));
-    }
-    if let Some(mode) = coin_select.as_deref() {
-        if mode != "smallest" && mode != "largest" {
-            return Err(format!("invalid coin_select value: {} (expected 'smallest' or 'largest')", mode));
-        }
-        args.push("--coin-select".to_string());
-        args.push(mode.to_string());
+    let mode = coin_select.as_deref().unwrap_or("smallest");
+    if mode != "smallest" && mode != "largest" {
+        return Err(format!(
+            "invalid coin_select value: {} (expected 'smallest' or 'largest')",
+            mode
+        ));
     }
 
-    let output = run_wallet_cmd_with_rpc(args, wallet_path, data_dir, rpc_url).await?;
-    let raw = output.trim();
-    let txid = raw.strip_prefix("txid ").unwrap_or(raw).to_string();
+    let amount_irm = format!("{:.8}", sats_to_irm(amount_sats));
+    let mut body = serde_json::json!({
+        "to_address": to.clone(),
+        "amount": amount_irm,
+        "from_address": from_address,
+        "coin_select": mode,
+    });
+    if let Some(fee_abs) = fee_sats {
+        if fee_abs > 0 {
+            const APPROX_TX_BYTES: u64 = 225;
+            let rate = fee_abs.saturating_add(APPROX_TX_BYTES - 1) / APPROX_TX_BYTES;
+            body["fee_per_byte"] = serde_json::Value::from(rate);
+        }
+    }
+
+    let url = format!("{}/wallet/send", rpc_url.trim_end_matches('/'));
+    let client = rpc_client(&state);
+    let resp = client
+        .post(&url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("/wallet/send request failed: {}", e))?;
+
+    let status = resp.status();
+    let raw = resp.text().await.unwrap_or_default();
+    if !status.is_success() {
+        // iriumd returns 400 (parse error, insufficient funds, wallet locked)
+        // or 403 (from_address not owned by the unlocked wallet) with the
+        // body either empty or a short string. Surface verbatim so the UI
+        // can show a meaningful error instead of the misleading
+        // "From address not found in wallet" the CLI used to produce.
+        return Err(format!("/wallet/send returned HTTP {}: {}", status, raw));
+    }
+
+    let parsed: WalletSendRpcResponse = serde_json::from_str(&raw)
+        .map_err(|e| format!("/wallet/send response parse failed: {} (body: {})", e, raw))?;
+    let txid = parsed.txid;
     if txid.len() != 64 || !txid.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err(format!("wallet returned invalid txid: {}", txid));
     }
