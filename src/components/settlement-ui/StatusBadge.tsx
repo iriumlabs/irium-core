@@ -9,33 +9,34 @@ interface StatusBadgeProps {
   className?: string;
 }
 
-// Visual mapping for each status color tier. Uses CSS custom properties
-// from globals.css so badges adapt to the active theme.
+// Visual mapping for each status color tier — aligned with the
+// `trade.*` Binance-style palette in tailwind.config.js so settlement
+// status pills match Marketplace order-book + My Trades chips.
 const COLOR_STYLES: Record<PlainStatusColor, { bg: string; border: string; text: string }> = {
   success: {
-    bg: 'rgba(16,185,129,0.12)',
-    border: 'rgba(16,185,129,0.35)',
-    text: '#34d399',
+    bg: 'rgba(14,203,129,0.12)',
+    border: 'rgba(14,203,129,0.30)',
+    text: '#0ecb81',
   },
   warning: {
-    bg: 'rgba(245,158,11,0.12)',
-    border: 'rgba(245,158,11,0.35)',
-    text: '#fbbf24',
+    bg: 'rgba(240,185,11,0.12)',
+    border: 'rgba(240,185,11,0.30)',
+    text: '#f0b90b',
   },
   error: {
-    bg: 'rgba(239,68,68,0.12)',
-    border: 'rgba(239,68,68,0.35)',
-    text: '#f87171',
+    bg: 'rgba(246,70,93,0.12)',
+    border: 'rgba(246,70,93,0.30)',
+    text: '#f6465d',
   },
   info: {
-    bg: 'rgba(110,198,255,0.12)',
-    border: 'rgba(110,198,255,0.30)',
-    text: 'var(--brand)',
+    bg: 'rgba(28,140,255,0.12)',
+    border: 'rgba(28,140,255,0.30)',
+    text: '#1c8cff',
   },
   neutral: {
-    bg: 'rgba(255,255,255,0.06)',
-    border: 'rgba(255,255,255,0.15)',
-    text: 'rgba(238,240,255,0.65)',
+    bg: '#2b3139',
+    border: '#2b3139',
+    text: '#b7bdc6',
   },
 };
 
@@ -64,7 +65,7 @@ export default function StatusBadge({ status, size = 'md', withIcon = true, clas
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full font-medium border ${padding} ${textSize} ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded font-medium border whitespace-nowrap ${padding} ${textSize} ${className}`}
       style={{
         background: styles.bg,
         borderColor: styles.border,
