@@ -3213,6 +3213,19 @@ struct WalletImportWifRpcResponse {
     address: String,
 }
 
+// Minimal projection of iriumd's /wallet/info response — the desktop wallet
+// only needs to know whether the active wallet is currently unlocked before
+// it issues /wallet/send. Other fields of /wallet/info (mode, path,
+// plaintext_backups) are read elsewhere via raw rpc_proxy.
+#[derive(Debug, serde::Deserialize)]
+struct WalletInfoRpcResponseLite {
+    #[serde(default)]
+    is_unlocked: bool,
+    #[serde(default)]
+    #[allow(dead_code)]
+    exists: bool,
+}
+
 // Helper: call iriumd's HTTP API via the existing rpc_proxy and deserialize
 // the JSON response into a typed struct. All the read-path commands below use
 // this so the failure mode is uniform — RPC HTTP errors (locked wallet,
@@ -3248,6 +3261,23 @@ async fn wallet_send(
         ));
     }
 
+    // Pre-check the unlock state via /wallet/info so we can surface a clear
+    // "wallet is locked" message instead of the opaque HTTP 400 the user
+    // would otherwise see. iriumd's wallet_send returns 400 for the
+    // wallet-locked case and older builds (≤ v1.9.44) emit an empty body,
+    // making the locked state indistinguishable from any other 400 reason
+    // from the GUI's perspective.
+    let info: WalletInfoRpcResponseLite =
+        iriumd_rpc(state.clone(), "GET", "/wallet/info", None, None)
+            .await
+            .map_err(|e| format!("Could not check wallet state: {}", e))?;
+    if !info.is_unlocked {
+        return Err(
+            "Your wallet is locked. Please enter your password to unlock it before sending."
+                .to_string(),
+        );
+    }
+
     let amount_irm = format!("{:.8}", sats_to_irm(amount_sats));
     let mut body = serde_json::json!({
         "to_address": to.clone(),
@@ -3275,11 +3305,33 @@ async fn wallet_send(
     let status = resp.status();
     let raw = resp.text().await.unwrap_or_default();
     if !status.is_success() {
-        // iriumd returns 400 (parse error, insufficient funds, wallet locked)
-        // or 403 (from_address not owned by the unlocked wallet) with the
-        // body either empty or a short string. Surface verbatim so the UI
-        // can show a meaningful error instead of the misleading
-        // "From address not found in wallet" the CLI used to produce.
+        // iriumd v1.9.45+ returns {"error":"reason"} for known failure modes
+        // (wallet_locked, insufficient_funds, invalid_address, invalid_amount,
+        // no_utxos, from_address_not_in_wallet, change_address_not_in_wallet,
+        // fee_calc_failed). Decode and surface a friendly message; pass
+        // through verbatim for older iriumd builds that return empty bodies.
+        if let Ok(err_obj) = serde_json::from_str::<serde_json::Value>(&raw) {
+            if let Some(reason) = err_obj.get("error").and_then(|v| v.as_str()) {
+                let friendly = match reason {
+                    "wallet_locked" =>
+                        "Your wallet is locked. Please enter your password to unlock it before sending.".to_string(),
+                    "insufficient_funds" =>
+                        "Insufficient funds. The selected address does not have enough IRM to cover the amount plus fee.".to_string(),
+                    "no_utxos" =>
+                        "No spendable funds at the selected From address.".to_string(),
+                    "invalid_address" =>
+                        "One of the addresses is invalid. Please check the From and To addresses.".to_string(),
+                    "invalid_amount" =>
+                        "The amount is invalid. Please enter a positive value.".to_string(),
+                    "from_address_not_in_wallet" =>
+                        "The selected From address is not owned by this wallet.".to_string(),
+                    "change_address_not_in_wallet" =>
+                        "The change address is not owned by this wallet.".to_string(),
+                    other => format!("Send failed: {}", other),
+                };
+                return Err(friendly);
+            }
+        }
         return Err(format!("/wallet/send returned HTTP {}: {}", status, raw));
     }
 

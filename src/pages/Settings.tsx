@@ -382,11 +382,15 @@ export default function Settings() {
       // M15: also probe a second endpoint so a half-broken node (status replies
       // but RPC subsystem dead) doesn't silently pass the test. /metrics is the
       // cheapest deeper endpoint and is already used elsewhere in the app.
+      // /metrics serves Prometheus plain text, NOT JSON — ResponseType.Text so
+      // the Tauri HTTP layer doesn't throw SyntaxError on the body. We only
+      // need the HTTP status to confirm the endpoint is alive; the body itself
+      // is not parsed here.
       try {
-        const metricsResp = await tauriFetch<unknown>(`${local.rpc_url}/metrics`, {
+        const metricsResp = await tauriFetch<string>(`${local.rpc_url}/metrics`, {
           method: "GET",
           timeout: 4,
-          responseType: ResponseType.JSON,
+          responseType: ResponseType.Text,
         });
         if (!metricsResp.ok) {
           setRpcOk(true);
@@ -1513,8 +1517,9 @@ export default function Settings() {
                     </button>
                   </div>
 
-                  {/* Individual checks */}
-                  <div className="space-y-1">
+                  {/* Individual checks — cap the list height so a long-detail
+                      check doesn't push the rest of Settings off-screen. */}
+                  <div className="space-y-1 max-h-96 overflow-y-auto pr-1">
                     {diagResult.checks.map((check, i) => (
                       <div
                         key={i}
