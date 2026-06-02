@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { wallet } from '../../../lib/tauri';
+import { useStore } from '../../../lib/store';
 import type { AddressInfo } from '../../../lib/types';
 import PairSwitcher from './PairSwitcher';
 import ComingSoonOverlay from './ComingSoonOverlay';
 import PairOrderBook from './PairOrderBook';
 import CreateSwapOrderModal from './CreateSwapOrderModal';
 import TakeSwapOrderModal from './TakeSwapOrderModal';
-import SwapProgress from './SwapProgress';
+import SwapProgress, { type SwapLifecycle } from './SwapProgress';
 import MySwapsPanel from './MySwapsPanel';
 import PriceChart from './PriceChart';
 import { ActivePairContext, type ActivePairContextValue } from './hooks/useActivePair';
@@ -137,6 +138,33 @@ export default function SwapPanel() {
     setTakeTarget(null);
   }, [activePairId]);
 
+  // fetchStatus for the SwapProgress tracker. Without this prop wired, the
+  // tracker's polling useEffect early-returns and `life` stays at 'unknown',
+  // which surfaces the "Status pending. The node has not yet reported this
+  // trade." default copy. Map the order existence + expiry to a coarse
+  // lifecycle (funded / expired). Richer states — released, refunded,
+  // cancelled — require a server-side swap-status endpoint and are filed
+  // as v1.9.50 work on iriumlabs/irium.
+  const tipHeight = useStore((s) => s.nodeStatus?.height ?? 0);
+  const fetchSwapStatus = useCallback(
+    async (outpoint: { txid: string; vout: number }): Promise<{ lifecycle?: SwapLifecycle }> => {
+      try {
+        const order = await activePair.rpc.getOrder(outpoint.txid, outpoint.vout);
+        if (order && order.expiry_height > 0 && tipHeight > order.expiry_height) {
+          return { lifecycle: 'expired' };
+        }
+        // Whether the outpoint is the open-order (taker hasn't filled yet)
+        // or the post-fill HtlcBtcSwap, 'funded' is the most informative
+        // coarse state and drives statusSentence's "Escrow is locked..." /
+        // "Waiting for the payment to confirm..." copy.
+        return { lifecycle: 'funded' };
+      } catch {
+        return { lifecycle: 'funded' };
+      }
+    },
+    [activePair, tipHeight],
+  );
+
   const handleSelectOrder = useCallback((row: SwapOrderRow) => {
     setSelectedOrderId(row.order_id);
     if (!activePair.available) {
@@ -200,6 +228,7 @@ export default function SwapPanel() {
                     pair={activePair}
                     swapOutpoint={activeSwap.outpoint}
                     paymentSent={activeSwap.paymentSent}
+                    fetchStatus={fetchSwapStatus}
                   />
                 )}
                 {!activeSwap && (
