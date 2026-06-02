@@ -2214,6 +2214,12 @@ function SendModal({
   // doesn't clutter the main send flow.
   const [largestFirst, setLargestFirst] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  // MAX flow: useSendMax stays true after MAX click until the user edits
+  // the amount input. When still set at confirm time, the broadcast goes
+  // via send_max=true (server-authoritative). The displayed sats are a
+  // client-side preview using the same formula iriumd applies.
+  const [useSendMax, setUseSendMax] = useState(false);
+  const [maxLoading, setMaxLoading] = useState(false);
   const navigate = useNavigate();
 
   const parsedIrm = parseFloat(sendAmountIrm);
@@ -2238,6 +2244,44 @@ function SendModal({
     return () => window.removeEventListener('irium:close-modal', handler);
   }, [onClose, onSuccess, sendStep]);
 
+  // MAX button: client-side preview using the same formula as iriumd's
+  // send_max path (max(size_bytes * fee_per_byte, 10_000 sats)). Reads
+  // the exact utxo_count from /rpc/balance and min_fee_per_byte from
+  // /rpc/fee_estimate so the preview matches the server result down to
+  // the satoshi unless balance shifts between MAX click and Send.
+  const handleMaxClick = async () => {
+    if (!fromAddress) return;
+    setMaxLoading(true);
+    setSendError(null);
+    try {
+      const balResp = (await rpcCall.balance(fromAddress)) as
+        { balance?: number; utxo_count?: number } | null;
+      const balance = balResp && typeof balResp.balance === 'number' ? balResp.balance : 0;
+      const utxoCount = balResp && typeof balResp.utxo_count === 'number' ? balResp.utxo_count : 1;
+      const feeResp = (await rpcCall.feeEstimate()) as { min_fee_per_byte?: number } | null;
+      const minFee = feeResp && typeof feeResp.min_fee_per_byte === 'number' ? feeResp.min_fee_per_byte : 1;
+      const feePerByte = Math.max(Math.ceil(minFee), 1);
+      // Matches iriumd's estimate_tx_size(N inputs, 1 output): 10 + N*148 + 34.
+      const size = 10 + utxoCount * 148 + 34;
+      const rawFee = size * feePerByte;
+      const finalFee = Math.max(rawFee, 10_000);
+      if (balance <= finalFee) {
+        setSendError(
+          `Insufficient funds for the network fee. Address balance ${balance.toLocaleString('en-US')} sats; minimum fee ${finalFee.toLocaleString('en-US')} sats.`
+        );
+        return;
+      }
+      const maxSats = balance - finalFee;
+      const maxIrm = maxSats / SATS_PER_IRM;
+      setSendAmountIrm(maxIrm.toFixed(8));
+      setUseSendMax(true);
+    } catch (e) {
+      setSendError(`Could not compute max — ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setMaxLoading(false);
+    }
+  };
+
   const handleConfirmSend = async () => {
     if (!sendTo || !sendAmountIrm) return;
     // FIX 1 defense-in-depth: even if the modal was opened when the node
@@ -2255,8 +2299,28 @@ function SendModal({
     setSendLoading(true);
     setSendError(null);
     try {
-      const result: SendResult = await wallet.send(fromAddress, sendTo, amountSats, undefined, largestFirst ? 'largest' : undefined);
-      const rawTxid = result.txid ?? '';
+      let rawTxid: string;
+      if (useSendMax) {
+        // Server-authoritative sweep: ignore the displayed amount, the
+        // node computes the actual amount = total_inputs - max(size *
+        // fee_per_byte, 10_000 sats) and broadcasts. Form-stage preview
+        // used the same formula so the success amount matches unless
+        // balance moved between clicks.
+        const body: Record<string, unknown> = {
+          to_address: sendTo,
+          from_address: fromAddress,
+          send_max: true,
+        };
+        if (largestFirst) body.coin_select = 'largest';
+        const resp = (await rpcCall.walletSendHttp(body)) as { txid?: string; accepted?: boolean };
+        if (resp.accepted === false) {
+          throw new Error('Transaction was not accepted by the node mempool');
+        }
+        rawTxid = resp.txid ?? '';
+      } else {
+        const result: SendResult = await wallet.send(fromAddress, sendTo, amountSats, undefined, largestFirst ? 'largest' : undefined);
+        rawTxid = result.txid ?? '';
+      }
       const cleanTxid = rawTxid.startsWith('txid ') ? rawTxid.slice(5) : rawTxid;
       setSentTxid(cleanTxid);
       setSendStep("success");
@@ -2320,13 +2384,23 @@ function SendModal({
                 </div>
                 <div>
                   <label htmlFor="send-amount" className="label">Amount (IRM) <span className="text-red-400">*</span></label>
-                  <input
-                    id="send-amount"
-                    className={`input ${insufficientFunds ? 'border-red-500/60' : ''}`}
-                    type="number" min="0" step="0.0001" placeholder="0.0000"
-                    value={sendAmountIrm}
-                    onChange={(e) => setSendAmountIrm(e.target.value)}
-                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="send-amount"
+                      className={`input flex-1 ${insufficientFunds ? 'border-red-500/60' : ''}`}
+                      type="number" min="0" step="0.0001" placeholder="0.0000"
+                      value={sendAmountIrm}
+                      onChange={(e) => { setSendAmountIrm(e.target.value); setUseSendMax(false); }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleMaxClick}
+                      disabled={maxLoading || noFunds}
+                      className="px-3 h-10 rounded text-xs font-semibold text-white/70 hover:text-white bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {maxLoading ? '...' : 'MAX'}
+                    </button>
+                  </div>
                   {sendAmountIrm && !insufficientFunds && (
                     <div className="text-white/30 font-mono text-xs mt-1">
                       = {amountSats.toLocaleString('en-US')} sats
