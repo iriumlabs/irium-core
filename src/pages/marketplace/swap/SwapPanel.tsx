@@ -30,6 +30,31 @@ interface ActiveSwap {
   paymentSent: boolean;
 }
 
+// localStorage key for cross-navigation persistence of the in-flight swap.
+// Versioned so future shape bumps stay backward-compatible with older
+// clients (old entries are silently discarded by the shape guard).
+const ACTIVE_SWAP_STORAGE_KEY = 'irium.marketplace.swap.activeSwap.v1';
+
+function readPersistedActiveSwap(): ActiveSwap | null {
+  try {
+    const raw = localStorage.getItem(ACTIVE_SWAP_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<ActiveSwap>;
+    if (
+      typeof parsed.pairId === 'string' &&
+      parsed.outpoint &&
+      typeof parsed.outpoint.txid === 'string' &&
+      typeof parsed.outpoint.vout === 'number' &&
+      typeof parsed.paymentSent === 'boolean'
+    ) {
+      return parsed as ActiveSwap;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export default function SwapPanel() {
   const [activePairId, setActivePairId] = useState<string>(defaultPair().id);
   const [myAddrs, setMyAddrs] = useState<Set<string>>(new Set());
@@ -37,7 +62,7 @@ export default function SwapPanel() {
   const [showCreate, setShowCreate] = useState(false);
   const [takeTarget, setTakeTarget] = useState<SwapOrderRow | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [activeSwap, setActiveSwap] = useState<ActiveSwap | null>(null);
+  const [activeSwap, setActiveSwap] = useState<ActiveSwap | null>(readPersistedActiveSwap);
   const [refreshTick, setRefreshTick] = useState(0);
 
   const activePair = useMemo(
@@ -62,6 +87,22 @@ export default function SwapPanel() {
       cancelled = true;
     };
   }, []);
+
+  // Mirror activeSwap to localStorage so navigation away from /marketplace
+  // and back restores the in-flight swap instead of silently dropping it.
+  // Storage failures (full quota, disabled storage) are non-fatal — the
+  // tracker just loses persistence for this turn.
+  useEffect(() => {
+    try {
+      if (activeSwap) {
+        localStorage.setItem(ACTIVE_SWAP_STORAGE_KEY, JSON.stringify(activeSwap));
+      } else {
+        localStorage.removeItem(ACTIVE_SWAP_STORAGE_KEY);
+      }
+    } catch {
+      // ignore
+    }
+  }, [activeSwap]);
 
   const ctxValue: ActivePairContextValue = useMemo(
     () => ({
