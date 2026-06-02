@@ -9,7 +9,7 @@
   },
   "package": {
     "productName": "Irium Core",
-    "version": "1.0.76"
+    "version": "1.0.77"
   },
   "tauri": {
     "allowlist": {
@@ -70,7 +70,11 @@
         "readDir": true,
         "createDir": true,
         "exists": true,
-        "scope": ["$APPDATA/**", "$HOME/.irium/**", "$RESOURCE/*"]
+        "scope": [
+          "$APPDATA/**",
+          "$HOME/.irium/**",
+          "$RESOURCE/*"
+        ]
       },
       "process": {
         "all": true
@@ -88,7 +92,15 @@
     },
     "bundle": {
       "active": true,
-      "targets": ["nsis", "deb", "appimage", "rpm", "dmg", "app", "updater"],
+      "targets": [
+        "nsis",
+        "deb",
+        "appimage",
+        "rpm",
+        "dmg",
+        "app",
+        "updater"
+      ],
       "identifier": "com.iriumlabs.core",
       "publisher": "Irium Labs",
       "category": "Finance",
@@ -99,7 +111,9 @@
         "icons/icon.ico",
         "icons/icon.png"
       ],
-      "resources": ["icons/icon.png"],
+      "resources": [
+        "icons/icon.png"
+      ],
       "externalBin": [
         "binaries/iriumd",
         "binaries/irium-wallet",
@@ -126,7 +140,11 @@
         "exceptionDomain": "localhost"
       },
       "deb": {
-        "depends": ["libwebkit2gtk-4.0-37", "libgtk-3-0", "libssl1.1 | libssl3"]
+        "depends": [
+          "libwebkit2gtk-4.0-37",
+          "libgtk-3-0",
+          "libssl1.1 | libssl3"
+        ]
       },
       "appimage": {
         "bundleMediaFramework": true
@@ -142,7 +160,9 @@
     },
     "updater": {
       "active": true,
-      "endpoints": ["https://github.com/iriumlabs/irium-core/releases/latest/download/latest.json"],
+      "endpoints": [
+        "https://github.com/iriumlabs/irium-core/releases/latest/download/latest.json"
+      ],
       "dialog": false,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM1Q0FEMjM3MzY1NTY4Q0EKUldUS2FGVTJOOUxLeFkvbml4WnJzMkVsZ29IVTZ6S0k4YnFWUUQxNk1Tc2UwaHBiNEs3U0h6d2EK"
     },
