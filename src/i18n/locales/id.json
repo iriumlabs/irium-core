@@ -399,7 +399,10 @@
       "no_peers_searching": "Mencari rekan…",
       "sync_stall": "Sinkronisasi terhenti — {{count}} blok tertinggal",
       "height_warning": "Tinggi balok tidak berubah dalam {{minutes}} menit",
-      "dismiss": "Membubarkan"
+      "dismiss": "Membubarkan",
+      "post_import_title": "Dompet diimpor — sinkronisasi di latar belakang",
+      "post_import_body": "Dompet Anda telah dipulihkan. Saldo Anda akan muncul di sini setelah iriumd selesai mengunduh chain. Pada instalasi baru, ini biasanya memakan waktu beberapa jam.",
+      "try_reset_node_state": "Coba Atur Ulang Status Node"
     },
     "page_subtitle": "Ikhtisar blockchain Irium · langsung",
     "refresh": "Menyegarkan",
@@ -1020,6 +1023,10 @@
       "default_feeds_added": "Umpan default ditambahkan",
       "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
       "take_failed_already_taken": "This offer has already been taken by another buyer."
+    },
+    "swap": {
+      "fuel_banner_title": "IRM menggerakkan lapisan Settlement.",
+      "fuel_banner_body": "Tukar BTC, LTC, atau DOGE menjadi IRM untuk mulai trading tanpa kepercayaan."
     }
   },
   "miner": {
@@ -1973,7 +1980,9 @@
     "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
-    "miner_active_confirm": "Penambangan aktif. Penambang akan terus berjalan di latar belakang.\n\nKlik OK untuk memperkecil ke baki, atau Batal untuk membiarkan jendela tetap terbuka dan menghentikan penambangan terlebih dahulu jika Anda ingin berhenti sepenuhnya."
+    "miner_active_confirm": "Penambangan aktif. Penambang akan terus berjalan di latar belakang.\n\nKlik OK untuk memperkecil ke baki, atau Batal untuk membiarkan jendela tetap terbuka dan menghentikan penambangan terlebih dahulu jika Anda ingin berhenti sepenuhnya.",
+    "pin_tooltip": "Sematkan bilah judul (tetap terlihat)",
+    "unpin_tooltip": "Lepas sematan bilah judul (sembunyikan otomatis)"
   },
   "sidebar": {
     "live": "Hidup",
@@ -2036,7 +2045,9 @@
       "amount": "Jumlah",
       "start_cta": "Mulai",
       "toast_released": "Dana dilepaskan ke pihak lain.",
-      "toast_refunded": "Pengembalian dana diklaim — dana kembali ke wallet Anda."
+      "toast_refunded": "Pengembalian dana diklaim — dana kembali ke wallet Anda.",
+      "intro_security": "Semua settlement diamankan oleh IRM yang dikunci on-chain. Kedua pihak harus memiliki IRM untuk membuat atau berpartisipasi dalam perjanjian.",
+      "intro_use_cases": "Kunci IRM di escrow untuk transaksi tanpa kepercayaan apa pun — barang, jasa, pekerjaan freelance, atau perdagangan. IRM dilepas otomatis ketika kedua pihak mengkonfirmasi."
     },
     "status": {
       "setting_up": "Sedang diatur",
@@ -2183,7 +2194,11 @@
         "status_releasing": "Pembayaran dikonfirmasi — IRM dalam perjalanan.",
         "status_complete": "Selesai — IRM telah tiba di wallet Anda.",
         "view_agreements": "Lihat di Agreement"
-      }
+      },
+      "fuel_banner_title": "Anda memerlukan IRM untuk membuat settlement.",
+      "fuel_banner_prefix": "Pergi ke",
+      "fuel_banner_link": "Marketplace → Spot Swap",
+      "fuel_banner_suffix": "untuk memperoleh IRM terlebih dahulu."
     },
     "pay_for_work": {
       "step1_title": "Pembayaran tunggal atau per tonggak?",

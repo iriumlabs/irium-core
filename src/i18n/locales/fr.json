@@ -399,7 +399,10 @@
       "no_peers_searching": "À la recherche de pairs…",
       "sync_stall": "Synchronisation bloquée – {{count}} bloque derrière",
       "height_warning": "La hauteur du bloc n'a pas changé depuis {{minutes}} minutes",
-      "dismiss": "Rejeter"
+      "dismiss": "Rejeter",
+      "post_import_title": "Portefeuille importé — synchronisation en arrière-plan",
+      "post_import_body": "Votre portefeuille est restauré. Votre solde apparaîtra ici dès que iriumd aura terminé le téléchargement de la chaîne. Cela prend généralement quelques heures lors d'une nouvelle installation.",
+      "try_reset_node_state": "Essayer de réinitialiser l'état du nœud"
     },
     "page_subtitle": "Aperçu de la blockchain Irium · en direct",
     "refresh": "Rafraîchir",
@@ -1020,6 +1023,10 @@
       "default_feeds_added": "Flux par défaut ajoutés",
       "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
       "take_failed_already_taken": "This offer has already been taken by another buyer."
+    },
+    "swap": {
+      "fuel_banner_title": "IRM alimente la couche de Règlement.",
+      "fuel_banner_body": "Échangez BTC, LTC ou DOGE contre IRM pour commencer à trader sans intermédiaire."
     }
   },
   "miner": {
@@ -1973,7 +1980,9 @@
     "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
-    "miner_active_confirm": "L'exploitation minière est active. Le mineur continuera à fonctionner en arrière-plan.\n\nCliquez sur OK pour réduire dans la barre d'état ou sur Annuler pour garder la fenêtre ouverte et arrêter d'abord l'exploration si vous souhaitez quitter complètement."
+    "miner_active_confirm": "L'exploitation minière est active. Le mineur continuera à fonctionner en arrière-plan.\n\nCliquez sur OK pour réduire dans la barre d'état ou sur Annuler pour garder la fenêtre ouverte et arrêter d'abord l'exploration si vous souhaitez quitter complètement.",
+    "pin_tooltip": "Épingler la barre de titre (rester visible)",
+    "unpin_tooltip": "Détacher la barre de titre (masquer automatiquement)"
   },
   "sidebar": {
     "live": "En direct",
@@ -2036,7 +2045,9 @@
       "amount": "Montant",
       "start_cta": "Démarrer",
       "toast_released": "Fonds libérés à l’autre partie.",
-      "toast_refunded": "Remboursement réclamé — les fonds reviennent à votre wallet."
+      "toast_refunded": "Remboursement réclamé — les fonds reviennent à votre wallet.",
+      "intro_security": "Tous les règlements sont sécurisés par IRM verrouillé sur la chaîne. Les deux parties doivent détenir IRM pour créer un accord ou y participer.",
+      "intro_use_cases": "Verrouillez IRM en séquestre pour toute transaction sans confiance — biens, services, travail freelance ou échanges. IRM est libéré automatiquement lorsque les deux parties confirment."
     },
     "status": {
       "setting_up": "Configuration",
@@ -2183,7 +2194,11 @@
         "status_releasing": "Paiement confirmé — l’IRM est en route.",
         "status_complete": "Terminé — l’IRM est arrivé dans votre wallet.",
         "view_agreements": "Voir dans agreement"
-      }
+      },
+      "fuel_banner_title": "Vous avez besoin d'IRM pour créer un règlement.",
+      "fuel_banner_prefix": "Allez sur",
+      "fuel_banner_link": "Marketplace → Échange au comptant",
+      "fuel_banner_suffix": "pour acquérir IRM d'abord."
     },
     "pay_for_work": {
       "step1_title": "Paiement unique ou par jalon ?",

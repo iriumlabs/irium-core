@@ -399,7 +399,10 @@
       "no_peers_searching": "Đang tìm kiếm đồng nghiệp…",
       "sync_stall": "Đồng bộ hóa bị đình trệ — {{count}} chặn phía sau",
       "height_warning": "Chiều cao khối không thay đổi sau {{minutes}} phút",
-      "dismiss": "Miễn nhiệm"
+      "dismiss": "Miễn nhiệm",
+      "post_import_title": "Đã nhập ví — đang đồng bộ ở chế độ nền",
+      "post_import_body": "Ví của bạn đã được khôi phục. Số dư của bạn sẽ xuất hiện ở đây ngay khi iriumd hoàn tất tải xuống chuỗi. Trên bản cài đặt mới, quá trình này thường mất vài giờ.",
+      "try_reset_node_state": "Thử đặt lại trạng thái nút"
     },
     "page_subtitle": "Tổng quan về chuỗi khối Irium · trực tiếp",
     "refresh": "Làm cho khỏe lại",
@@ -1020,6 +1023,10 @@
       "default_feeds_added": "Đã thêm nguồn cấp dữ liệu mặc định",
       "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
       "take_failed_already_taken": "This offer has already been taken by another buyer."
+    },
+    "swap": {
+      "fuel_banner_title": "IRM cung cấp sức mạnh cho lớp Thanh toán.",
+      "fuel_banner_body": "Đổi BTC, LTC hoặc DOGE lấy IRM để bắt đầu giao dịch không cần tin tưởng."
     }
   },
   "miner": {
@@ -1973,7 +1980,9 @@
     "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
-    "miner_active_confirm": "Khai thác đang hoạt động. Công cụ khai thác sẽ tiếp tục chạy ở chế độ nền.\n\nNhấp vào OK để thu nhỏ vào khay hoặc Hủy để giữ cửa sổ mở và dừng khai thác trước nếu bạn muốn thoát hoàn toàn."
+    "miner_active_confirm": "Khai thác đang hoạt động. Công cụ khai thác sẽ tiếp tục chạy ở chế độ nền.\n\nNhấp vào OK để thu nhỏ vào khay hoặc Hủy để giữ cửa sổ mở và dừng khai thác trước nếu bạn muốn thoát hoàn toàn.",
+    "pin_tooltip": "Ghim thanh tiêu đề (luôn hiển thị)",
+    "unpin_tooltip": "Bỏ ghim thanh tiêu đề (tự động ẩn)"
   },
   "sidebar": {
     "live": "Sống",
@@ -2036,7 +2045,9 @@
       "amount": "Số tiền",
       "start_cta": "Bắt đầu",
       "toast_released": "Đã giải phóng tiền cho bên kia.",
-      "toast_refunded": "Đã yêu cầu hoàn tiền — tiền đang trở lại wallet của bạn."
+      "toast_refunded": "Đã yêu cầu hoàn tiền — tiền đang trở lại wallet của bạn.",
+      "intro_security": "Tất cả thanh toán đều được bảo mật bằng IRM khóa trên chuỗi. Cả hai bên phải sở hữu IRM để tạo hoặc tham gia thỏa thuận.",
+      "intro_use_cases": "Khóa IRM trong ký quỹ cho bất kỳ giao dịch không cần tin tưởng nào — hàng hóa, dịch vụ, công việc tự do, hoặc giao dịch. IRM được giải phóng tự động khi cả hai bên xác nhận."
     },
     "status": {
       "setting_up": "Đang thiết lập",
@@ -2183,7 +2194,11 @@
         "status_releasing": "Đã xác nhận thanh toán — IRM đang trên đường đi.",
         "status_complete": "Hoàn thành — IRM đã đến wallet của bạn.",
         "view_agreements": "Xem trong agreement"
-      }
+      },
+      "fuel_banner_title": "Bạn cần IRM để tạo thanh toán.",
+      "fuel_banner_prefix": "Đi tới",
+      "fuel_banner_link": "Thị trường → Hoán đổi Spot",
+      "fuel_banner_suffix": "để có được IRM trước."
     },
     "pay_for_work": {
       "step1_title": "Thanh toán một lần hay theo mốc?",

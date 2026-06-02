@@ -399,7 +399,10 @@
       "no_peers_searching": "Auf der Suche nach Gleichgesinnten…",
       "sync_stall": "Synchronisierung ist ins Stocken geraten – {{count}} Blöcke liegen zurück",
       "height_warning": "Die Blockhöhe hat sich seit {{minutes}} Minuten nicht geändert",
-      "dismiss": "Zurückweisen"
+      "dismiss": "Zurückweisen",
+      "post_import_title": "Wallet importiert — Synchronisierung im Hintergrund",
+      "post_import_body": "Ihr Wallet wurde wiederhergestellt. Ihr Kontostand erscheint hier, sobald iriumd den Download der Chain abgeschlossen hat. Bei einer Neuinstallation dauert dies in der Regel einige Stunden.",
+      "try_reset_node_state": "Knotenstatus zurücksetzen versuchen"
     },
     "page_subtitle": "Übersicht über die Irium-Blockchain · live",
     "refresh": "Aktualisieren",
@@ -1020,6 +1023,10 @@
       "default_feeds_added": "Standard-Feeds hinzugefügt",
       "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
       "take_failed_already_taken": "This offer has already been taken by another buyer."
+    },
+    "swap": {
+      "fuel_banner_title": "IRM treibt die Settlement-Schicht an.",
+      "fuel_banner_body": "Tausche BTC, LTC oder DOGE in IRM, um vertrauensfrei zu handeln."
     }
   },
   "miner": {
@@ -1973,7 +1980,9 @@
     "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
-    "miner_active_confirm": "Der Bergbau ist aktiv. Der Miner läuft im Hintergrund weiter.\n\nKlicken Sie auf „OK“, um es in die Taskleiste zu minimieren, oder auf „Abbrechen“, um das Fenster geöffnet zu lassen und zunächst das Mining zu stoppen, wenn Sie es vollständig beenden möchten."
+    "miner_active_confirm": "Der Bergbau ist aktiv. Der Miner läuft im Hintergrund weiter.\n\nKlicken Sie auf „OK“, um es in die Taskleiste zu minimieren, oder auf „Abbrechen“, um das Fenster geöffnet zu lassen und zunächst das Mining zu stoppen, wenn Sie es vollständig beenden möchten.",
+    "pin_tooltip": "Titelleiste anheften (sichtbar lassen)",
+    "unpin_tooltip": "Titelleiste lösen (automatisch ausblenden)"
   },
   "sidebar": {
     "live": "Live",
@@ -2036,7 +2045,9 @@
       "amount": "Betrag",
       "start_cta": "Start",
       "toast_released": "Mittel an die andere Partei freigegeben.",
-      "toast_refunded": "Erstattung beansprucht — Mittel kehren in Ihren wallet zurück."
+      "toast_refunded": "Erstattung beansprucht — Mittel kehren in Ihren wallet zurück.",
+      "intro_security": "Alle Settlements sind durch IRM auf der Blockchain gesichert. Beide Parteien müssen IRM besitzen, um eine Vereinbarung zu erstellen oder daran teilzunehmen.",
+      "intro_use_cases": "Sperre IRM in Treuhand für jede vertrauensfreie Transaktion — Waren, Dienstleistungen, Freelance-Arbeit oder Handel. IRM wird automatisch freigegeben, wenn beide Parteien bestätigen."
     },
     "status": {
       "setting_up": "Einrichtung",
@@ -2183,7 +2194,11 @@
         "status_releasing": "Zahlung bestätigt — IRM sind unterwegs.",
         "status_complete": "Abgeschlossen — IRM sind in Ihrem wallet eingetroffen.",
         "view_agreements": "In agreement anzeigen"
-      }
+      },
+      "fuel_banner_title": "Du benötigst IRM, um ein Settlement zu erstellen.",
+      "fuel_banner_prefix": "Gehe zu",
+      "fuel_banner_link": "Marktplatz → Spot Swap",
+      "fuel_banner_suffix": "um zuerst IRM zu erwerben."
     },
     "pay_for_work": {
       "step1_title": "Einmalzahlung oder nach Meilenstein?",

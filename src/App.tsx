@@ -341,6 +341,23 @@ function AppLayout() {
         // Leave the flag unset so the next launch retries; the user can
         // still click "Use Default Feeds" in the Feed Registry tab.
       }
+      // Cross-node order-book sync: idempotently add the LOCAL iriumd's
+      // /offers/feed to the feed list. iriumd drains incoming P2P
+      // OfferBroadcast payloads into <data_dir>/offers/ and re-serves
+      // them on /offers/feed, so this is the missing link that makes
+      // peer-gossiped offers visible to the wallet sidecar's order
+      // book. Without it, the only feed in BOOTSTRAP_FEEDS is the
+      // centralised hub (api.iriumlabs.org/offers/feed) and orders
+      // created on peer desktop nodes never appear in this desktop's
+      // marketplace, even though the P2P gossip layer has already
+      // delivered them.
+      try {
+        await feeds.add('http://127.0.0.1:38300/offers/feed');
+      } catch {
+        // already-added returns a "warning" not an error in feeds.add,
+        // but tolerate any error here — the next sync still picks up
+        // whatever is in feeds.json.
+      }
       try {
         await feeds.sync();
       } catch {

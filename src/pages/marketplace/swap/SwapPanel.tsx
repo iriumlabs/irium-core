@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { wallet } from '../../../lib/tauri';
+import { useStore } from '../../../lib/store';
 import type { AddressInfo } from '../../../lib/types';
 import PairSwitcher from './PairSwitcher';
 import ComingSoonOverlay from './ComingSoonOverlay';
 import PairOrderBook from './PairOrderBook';
 import CreateSwapOrderModal from './CreateSwapOrderModal';
 import TakeSwapOrderModal from './TakeSwapOrderModal';
-import SwapProgress from './SwapProgress';
+import SwapProgress, { type SwapLifecycle } from './SwapProgress';
 import MySwapsPanel from './MySwapsPanel';
 import PriceChart from './PriceChart';
 import { ActivePairContext, type ActivePairContextValue } from './hooks/useActivePair';
@@ -30,14 +32,40 @@ interface ActiveSwap {
   paymentSent: boolean;
 }
 
+// localStorage key for cross-navigation persistence of the in-flight swap.
+// Versioned so future shape bumps stay backward-compatible with older
+// clients (old entries are silently discarded by the shape guard).
+const ACTIVE_SWAP_STORAGE_KEY = 'irium.marketplace.swap.activeSwap.v1';
+
+function readPersistedActiveSwap(): ActiveSwap | null {
+  try {
+    const raw = localStorage.getItem(ACTIVE_SWAP_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<ActiveSwap>;
+    if (
+      typeof parsed.pairId === 'string' &&
+      parsed.outpoint &&
+      typeof parsed.outpoint.txid === 'string' &&
+      typeof parsed.outpoint.vout === 'number' &&
+      typeof parsed.paymentSent === 'boolean'
+    ) {
+      return parsed as ActiveSwap;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export default function SwapPanel() {
+  const { t } = useTranslation();
   const [activePairId, setActivePairId] = useState<string>(defaultPair().id);
   const [myAddrs, setMyAddrs] = useState<Set<string>>(new Set());
   const [activeWalletAddr, setActiveWalletAddr] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [takeTarget, setTakeTarget] = useState<SwapOrderRow | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [activeSwap, setActiveSwap] = useState<ActiveSwap | null>(null);
+  const [activeSwap, setActiveSwap] = useState<ActiveSwap | null>(readPersistedActiveSwap);
   const [refreshTick, setRefreshTick] = useState(0);
 
   const activePair = useMemo(
@@ -62,6 +90,22 @@ export default function SwapPanel() {
       cancelled = true;
     };
   }, []);
+
+  // Mirror activeSwap to localStorage so navigation away from /marketplace
+  // and back restores the in-flight swap instead of silently dropping it.
+  // Storage failures (full quota, disabled storage) are non-fatal — the
+  // tracker just loses persistence for this turn.
+  useEffect(() => {
+    try {
+      if (activeSwap) {
+        localStorage.setItem(ACTIVE_SWAP_STORAGE_KEY, JSON.stringify(activeSwap));
+      } else {
+        localStorage.removeItem(ACTIVE_SWAP_STORAGE_KEY);
+      }
+    } catch {
+      // ignore
+    }
+  }, [activeSwap]);
 
   const ctxValue: ActivePairContextValue = useMemo(
     () => ({
@@ -96,6 +140,33 @@ export default function SwapPanel() {
     setTakeTarget(null);
   }, [activePairId]);
 
+  // fetchStatus for the SwapProgress tracker. Without this prop wired, the
+  // tracker's polling useEffect early-returns and `life` stays at 'unknown',
+  // which surfaces the "Status pending. The node has not yet reported this
+  // trade." default copy. Map the order existence + expiry to a coarse
+  // lifecycle (funded / expired). Richer states — released, refunded,
+  // cancelled — require a server-side swap-status endpoint and are filed
+  // as v1.9.50 work on iriumlabs/irium.
+  const tipHeight = useStore((s) => s.nodeStatus?.height ?? 0);
+  const fetchSwapStatus = useCallback(
+    async (outpoint: { txid: string; vout: number }): Promise<{ lifecycle?: SwapLifecycle }> => {
+      try {
+        const order = await activePair.rpc.getOrder(outpoint.txid, outpoint.vout);
+        if (order && order.expiry_height > 0 && tipHeight > order.expiry_height) {
+          return { lifecycle: 'expired' };
+        }
+        // Whether the outpoint is the open-order (taker hasn't filled yet)
+        // or the post-fill HtlcBtcSwap, 'funded' is the most informative
+        // coarse state and drives statusSentence's "Escrow is locked..." /
+        // "Waiting for the payment to confirm..." copy.
+        return { lifecycle: 'funded' };
+      } catch {
+        return { lifecycle: 'funded' };
+      }
+    },
+    [activePair, tipHeight],
+  );
+
   const handleSelectOrder = useCallback((row: SwapOrderRow) => {
     setSelectedOrderId(row.order_id);
     if (!activePair.available) {
@@ -117,6 +188,14 @@ export default function SwapPanel() {
   return (
     <ActivePairContext.Provider value={ctxValue}>
       <div className="space-y-3">
+        {/* IRM-as-settlement-fuel banner — frames the Spot Swap as a way
+            to acquire IRM for downstream Settlement use, not just an end
+            in itself. */}
+        <div className="bg-[#fcd535]/10 border border-[#fcd535]/30 rounded-lg px-3 py-2 text-[12px] text-[#eaecef]">
+          <span className="font-semibold text-[#fcd535]">{t('marketplace.swap.fuel_banner_title')}</span>{' '}
+          <span className="text-[#b7bdc6]">{t('marketplace.swap.fuel_banner_body')}</span>
+        </div>
+
         <PairSwitcher
           pairs={SWAP_PAIRS}
           activeId={activePairId}
@@ -150,6 +229,7 @@ export default function SwapPanel() {
                     pair={activePair}
                     swapOutpoint={activeSwap.outpoint}
                     paymentSent={activeSwap.paymentSent}
+                    fetchStatus={fetchSwapStatus}
                   />
                 )}
                 {!activeSwap && (

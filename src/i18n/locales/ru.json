@@ -399,7 +399,10 @@
       "no_peers_searching": "Ищем себе равных…",
       "sync_stall": "Синхронизация остановлена ​​— позади блокируется {{count}}",
       "height_warning": "Высота блока не менялась за {{minutes}} минут.",
-      "dismiss": "Увольнять"
+      "dismiss": "Увольнять",
+      "post_import_title": "Кошелёк импортирован — синхронизация в фоне",
+      "post_import_body": "Ваш кошелёк восстановлен. Ваш баланс появится здесь, как только iriumd завершит загрузку цепи. При новой установке это обычно занимает несколько часов.",
+      "try_reset_node_state": "Попробовать сбросить состояние узла"
     },
     "page_subtitle": "Обзор блокчейна Irium · в реальном времени",
     "refresh": "Обновить",
@@ -1020,6 +1023,10 @@
       "default_feeds_added": "Добавлены каналы по умолчанию",
       "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
       "take_failed_already_taken": "This offer has already been taken by another buyer."
+    },
+    "swap": {
+      "fuel_banner_title": "IRM обеспечивает работу слоя Settlement.",
+      "fuel_banner_body": "Обменяйте BTC, LTC или DOGE на IRM, чтобы начать торговать без посредников."
     }
   },
   "miner": {
@@ -1973,7 +1980,9 @@
     "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
-    "miner_active_confirm": "Майнинг активен. Майнер продолжит работать в фоновом режиме.\n\nНажмите «ОК», чтобы свернуть окно в трей, или «Отмена», чтобы оставить окно открытым и сначала остановить майнинг, если вы хотите полностью выйти."
+    "miner_active_confirm": "Майнинг активен. Майнер продолжит работать в фоновом режиме.\n\nНажмите «ОК», чтобы свернуть окно в трей, или «Отмена», чтобы оставить окно открытым и сначала остановить майнинг, если вы хотите полностью выйти.",
+    "pin_tooltip": "Закрепить заголовок (оставить видимым)",
+    "unpin_tooltip": "Открепить заголовок (автоматически скрывать)"
   },
   "sidebar": {
     "live": "Жить",
@@ -2036,7 +2045,9 @@
       "amount": "Сумма",
       "start_cta": "Начать",
       "toast_released": "Средства отправлены второй стороне.",
-      "toast_refunded": "Возврат запрошен — средства идут в ваш wallet."
+      "toast_refunded": "Возврат запрошен — средства идут в ваш wallet.",
+      "intro_security": "Все расчёты защищены IRM, заблокированными в блокчейне. Обе стороны должны иметь IRM, чтобы создать соглашение или участвовать в нём.",
+      "intro_use_cases": "Заблокируйте IRM в эскроу для любой бездоверительной транзакции — товары, услуги, фриланс или сделки. IRM освобождается автоматически, когда обе стороны подтверждают."
     },
     "status": {
       "setting_up": "Настройка",
@@ -2183,7 +2194,11 @@
         "status_releasing": "Оплата подтверждена — IRM в пути.",
         "status_complete": "Готово — IRM в вашем wallet.",
         "view_agreements": "Открыть в agreement"
-      }
+      },
+      "fuel_banner_title": "Вам нужен IRM, чтобы создать расчёт.",
+      "fuel_banner_prefix": "Перейдите в",
+      "fuel_banner_link": "Маркетплейс → Spot Swap",
+      "fuel_banner_suffix": "чтобы сначала получить IRM."
     },
     "pay_for_work": {
       "step1_title": "Одним платежом или по вехам?",

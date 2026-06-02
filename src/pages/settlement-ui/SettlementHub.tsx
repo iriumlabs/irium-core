@@ -78,7 +78,8 @@ export default function SettlementHub() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="h-full overflow-y-auto bg-[#0b0e11] text-[#eaecef]"
+      className="h-full overflow-y-auto"
+      style={{ background: 'var(--bg-elev-1)', color: 'var(--t1)' }}
     >
       <div className="mx-auto px-6 py-5" style={{ maxWidth: 1400 }}>
         {/* Header strip — title + subtitle + primary CTA (split-dropdown).
@@ -89,7 +90,10 @@ export default function SettlementHub() {
               {t('settlement_ui.hub.title')}
             </h1>
             <p className="text-[12px] text-[#b7bdc6] mt-0.5">
-              Hold IRM in escrow until both sides agree. For public offers, use the Marketplace.
+              {t('settlement_ui.hub.intro_security')}
+            </p>
+            <p className="text-[12px] text-[#b7bdc6] mt-1.5 max-w-3xl">
+              {t('settlement_ui.hub.intro_use_cases')}
             </p>
           </div>
           <div className="flex items-center gap-2">

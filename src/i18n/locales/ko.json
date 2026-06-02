@@ -399,7 +399,10 @@
       "no_peers_searching": "동료를 찾는 중…",
       "sync_stall": "동기화가 중단됨 — {{count}} 블록 뒤",
       "height_warning": "블록 높이가 {{minutes}}분 동안 변경되지 않았습니다.",
-      "dismiss": "해고하다"
+      "dismiss": "해고하다",
+      "post_import_title": "지갑 가져옴 — 백그라운드에서 동기화 중",
+      "post_import_body": "지갑이 복원되었습니다. iriumd 가 체인 다운로드를 완료하면 잔액이 여기에 표시됩니다. 새로 설치한 경우 일반적으로 몇 시간이 걸립니다.",
+      "try_reset_node_state": "노드 상태 재설정 시도"
     },
     "page_subtitle": "Irium 블록체인 개요 · 라이브",
     "refresh": "새로 고치다",
@@ -1020,6 +1023,10 @@
       "default_feeds_added": "기본 피드가 추가되었습니다.",
       "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
       "take_failed_already_taken": "This offer has already been taken by another buyer."
+    },
+    "swap": {
+      "fuel_banner_title": "IRM은 정산 계층을 구동합니다.",
+      "fuel_banner_body": "BTC, LTC 또는 DOGE를 IRM으로 교환하여 신뢰 없는 거래를 시작하세요."
     }
   },
   "miner": {
@@ -1973,7 +1980,9 @@
     "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
-    "miner_active_confirm": "채굴이 활발합니다. 광부는 백그라운드에서 계속 실행됩니다.\n\n트레이로 최소화하려면 확인을 클릭하고, 완전히 종료하려면 창을 열어두고 채굴을 먼저 중지하려면 취소를 클릭하세요."
+    "miner_active_confirm": "채굴이 활발합니다. 광부는 백그라운드에서 계속 실행됩니다.\n\n트레이로 최소화하려면 확인을 클릭하고, 완전히 종료하려면 창을 열어두고 채굴을 먼저 중지하려면 취소를 클릭하세요.",
+    "pin_tooltip": "제목 표시줄 고정 (표시 유지)",
+    "unpin_tooltip": "제목 표시줄 고정 해제 (자동 숨김)"
   },
   "sidebar": {
     "live": "살다",
@@ -2036,7 +2045,9 @@
       "amount": "금액",
       "start_cta": "시작",
       "toast_released": "자금이 상대방에게 해제되었습니다.",
-      "toast_refunded": "환불을 청구했습니다 — 자금이 wallet으로 돌아갑니다."
+      "toast_refunded": "환불을 청구했습니다 — 자금이 wallet으로 돌아갑니다.",
+      "intro_security": "모든 정산은 온체인에 잠긴 IRM으로 보안됩니다. 계약을 생성하거나 참여하려면 양측 모두 IRM을 보유해야 합니다.",
+      "intro_use_cases": "신뢰 없는 모든 거래에 IRM을 에스크로에 잠그세요 — 상품, 서비스, 프리랜서 작업 또는 거래. 양측이 확인하면 IRM이 자동으로 해제됩니다."
     },
     "status": {
       "setting_up": "설정 중",
@@ -2183,7 +2194,11 @@
         "status_releasing": "지불 확인됨 — IRM이 오고 있습니다.",
         "status_complete": "완료 — IRM이 wallet에 도착했습니다.",
         "view_agreements": "agreement에서 보기"
-      }
+      },
+      "fuel_banner_title": "정산을 생성하려면 IRM이 필요합니다.",
+      "fuel_banner_prefix": "이동",
+      "fuel_banner_link": "마켓플레이스 → 스팟 스왑",
+      "fuel_banner_suffix": "먼저 IRM을 획득하려면."
     },
     "pay_for_work": {
       "step1_title": "단일 지불 또는 마일스톤별?",

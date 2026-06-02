@@ -399,7 +399,10 @@
       "no_peers_searching": "仲間を探しています…",
       "sync_stall": "同期が停止しました — {{count}} ブロック遅れています",
       "height_warning": "ブロックの高さは{{minutes}}分間変化していません",
-      "dismiss": "却下する"
+      "dismiss": "却下する",
+      "post_import_title": "ウォレットをインポートしました — バックグラウンドで同期中",
+      "post_import_body": "ウォレットが復元されました。iriumd がチェーンのダウンロードを完了すると、残高がここに表示されます。新規インストールの場合、通常は数時間かかります。",
+      "try_reset_node_state": "ノード状態のリセットを試す"
     },
     "page_subtitle": "Irium ブロックチェーンの概要 · ライブ",
     "refresh": "リフレッシュ",
@@ -1020,6 +1023,10 @@
       "default_feeds_added": "デフォルトのフィードが追加されました",
       "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
       "take_failed_already_taken": "This offer has already been taken by another buyer."
+    },
+    "swap": {
+      "fuel_banner_title": "IRMは決済レイヤーの基盤です。",
+      "fuel_banner_body": "BTC、LTC、またはDOGEをIRMに交換して、信頼不要の取引を始めましょう。"
     }
   },
   "miner": {
@@ -1973,7 +1980,9 @@
     "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
-    "miner_active_confirm": "マイニングが活発に行われています。マイナーはバックグラウンドで実行を続けます。\n\n[OK] をクリックしてトレイに最小化するか、完全に終了したい場合は [キャンセル] をクリックしてウィンドウを開いたままにし、マイニングを停止します。"
+    "miner_active_confirm": "マイニングが活発に行われています。マイナーはバックグラウンドで実行を続けます。\n\n[OK] をクリックしてトレイに最小化するか、完全に終了したい場合は [キャンセル] をクリックしてウィンドウを開いたままにし、マイニングを停止します。",
+    "pin_tooltip": "タイトルバーを固定（表示し続ける）",
+    "unpin_tooltip": "タイトルバーの固定を解除（自動的に非表示）"
   },
   "sidebar": {
     "live": "ライブ",
@@ -2036,7 +2045,9 @@
       "amount": "金額",
       "start_cta": "開始",
       "toast_released": "資金が相手に解放されました。",
-      "toast_refunded": "返金を請求しました — 資金がwalletに戻ります。"
+      "toast_refunded": "返金を請求しました — 資金がwalletに戻ります。",
+      "intro_security": "すべての決済はオンチェーンにロックされたIRMで保護されています。契約を作成または参加するには、両者がIRMを保有している必要があります。",
+      "intro_use_cases": "あらゆる信頼不要の取引でIRMをエスクローにロック — 商品、サービス、フリーランスの仕事、または取引。両者が確認するとIRMは自動的にリリースされます。"
     },
     "status": {
       "setting_up": "セットアップ中",
@@ -2183,7 +2194,11 @@
         "status_releasing": "支払いが確認されました — IRMが送信中です。",
         "status_complete": "完了 — IRMがwalletに到着しました。",
         "view_agreements": "agreementで表示"
-      }
+      },
+      "fuel_banner_title": "決済を作成するにはIRMが必要です。",
+      "fuel_banner_prefix": "移動先:",
+      "fuel_banner_link": "マーケットプレイス → スポットスワップ",
+      "fuel_banner_suffix": "まずIRMを取得してください。"
     },
     "pay_for_work": {
       "step1_title": "一括支払い、それともマイルストーン別?",
