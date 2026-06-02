@@ -16,6 +16,12 @@ export interface CreateOrderModalProps {
   sellerAddress: string;
   onClose: () => void;
   onCreated: () => void;
+  /// Hides the OTC payment-method dropdown + payment-details textarea.
+  /// Pass `true` when this modal is reused in a Spot Swap context: swap
+  /// payments are settled on-chain via atomic swap HTLCs, so no manual
+  /// fiat/USDT payment rail is involved. Default `false` preserves the
+  /// OTC P2P behaviour for the existing caller in Marketplace.tsx.
+  hidePaymentMethod?: boolean;
 }
 
 const PAYMENT_OPTIONS: { value: string; label: string }[] = [
@@ -31,7 +37,12 @@ const PAYMENT_OPTIONS: { value: string; label: string }[] = [
 const INPUT_CLASS = 'w-full h-10 px-3 rounded bg-[#0b0e11] border border-[#2b3139] text-[#eaecef] text-[13px] focus:outline-none focus:border-[#fcd535] disabled:opacity-50 placeholder:text-[#5e6673]';
 const LABEL_CLASS = 'block text-[12px] font-medium text-[#b7bdc6] mb-1';
 
-export default function CreateOrderModal({ sellerAddress, onClose, onCreated }: CreateOrderModalProps) {
+export default function CreateOrderModal({
+  sellerAddress,
+  onClose,
+  onCreated,
+  hidePaymentMethod = false,
+}: CreateOrderModalProps) {
   const [amountIrm, setAmountIrm] = useState('');
   const [pricePerIrmUsdt, setPricePerIrmUsdt] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('bank-transfer');
@@ -57,13 +68,15 @@ export default function CreateOrderModal({ sellerAddress, onClose, onCreated }: 
       toast.error('Enter a positive USDT price per IRM');
       return;
     }
-    if (!paymentMethod.trim()) {
-      toast.error('Select a payment method');
-      return;
-    }
-    if (!paymentDetails.trim()) {
-      toast.error('Enter your payment details so the buyer knows how to pay');
-      return;
+    if (!hidePaymentMethod) {
+      if (!paymentMethod.trim()) {
+        toast.error('Select a payment method');
+        return;
+      }
+      if (!paymentDetails.trim()) {
+        toast.error('Enter your payment details so the buyer knows how to pay');
+        return;
+      }
     }
     setBusy(true);
     try {
@@ -160,36 +173,40 @@ export default function CreateOrderModal({ sellerAddress, onClose, onCreated }: 
           )}
         </div>
 
-        <div>
-          <label className={LABEL_CLASS}>Payment method</label>
-          <select
-            className={INPUT_CLASS}
-            value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
-            disabled={busy}
-          >
-            {PAYMENT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value} className="bg-[#181a20]">
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {!hidePaymentMethod && (
+          <>
+            <div>
+              <label className={LABEL_CLASS}>Payment method</label>
+              <select
+                className={INPUT_CLASS}
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                disabled={busy}
+              >
+                {PAYMENT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value} className="bg-[#181a20]">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        <div>
-          <label className={LABEL_CLASS}>Your payment details</label>
-          <textarea
-            className={INPUT_CLASS + ' h-auto py-2'}
-            rows={3}
-            value={paymentDetails}
-            onChange={(e) => setPaymentDetails(e.target.value)}
-            placeholder="e.g. IBAN DE89 3704 0044 0532 0130 00 or PayPal: seller@example.com"
-            disabled={busy}
-          />
-          <p className="text-[11px] text-[#5e6673] mt-1.5">
-            The buyer sees these details after they take the offer.
-          </p>
-        </div>
+            <div>
+              <label className={LABEL_CLASS}>Your payment details</label>
+              <textarea
+                className={INPUT_CLASS + ' h-auto py-2'}
+                rows={3}
+                value={paymentDetails}
+                onChange={(e) => setPaymentDetails(e.target.value)}
+                placeholder="e.g. IBAN DE89 3704 0044 0532 0130 00 or PayPal: seller@example.com"
+                disabled={busy}
+              />
+              <p className="text-[11px] text-[#5e6673] mt-1.5">
+                The buyer sees these details after they take the offer.
+              </p>
+            </div>
+          </>
+        )}
       </div>
     </TradingModal>
   );
