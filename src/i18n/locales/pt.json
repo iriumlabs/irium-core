@@ -399,7 +399,10 @@
       "no_peers_searching": "Procurando por colegas…",
       "sync_stall": "Sincronização paralisada — {{count}} blocos atrás",
       "height_warning": "A altura do bloco não mudou em {{minutes}} minutos",
-      "dismiss": "Liberar"
+      "dismiss": "Liberar",
+      "post_import_title": "Carteira importada — sincronizando em segundo plano",
+      "post_import_body": "Sua carteira foi restaurada. Seu saldo aparecerá aqui assim que o iriumd terminar de baixar a cadeia. Em uma instalação nova, isso geralmente leva algumas horas.",
+      "try_reset_node_state": "Tentar redefinir o estado do nó"
     },
     "page_subtitle": "Visão geral do blockchain Irium · ao vivo",
     "refresh": "Atualizar",
@@ -1973,7 +1976,9 @@
     "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
-    "miner_active_confirm": "A mineração está ativa. O minerador continuará funcionando em segundo plano.\n\nClique em OK para minimizar para a bandeja ou em Cancelar para manter a janela aberta e interromper a mineração primeiro se quiser sair completamente."
+    "miner_active_confirm": "A mineração está ativa. O minerador continuará funcionando em segundo plano.\n\nClique em OK para minimizar para a bandeja ou em Cancelar para manter a janela aberta e interromper a mineração primeiro se quiser sair completamente.",
+    "pin_tooltip": "Fixar a barra de título (manter visível)",
+    "unpin_tooltip": "Desafixar a barra de título (ocultar automaticamente)"
   },
   "sidebar": {
     "live": "Ao vivo",

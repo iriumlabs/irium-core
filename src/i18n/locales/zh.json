@@ -399,7 +399,10 @@
       "no_peers_searching": "寻找同行...",
       "sync_stall": "同步停止 — 落后 {{count}} 块",
       "height_warning": "区块高度在 {{minutes}} 分钟内没有改变",
-      "dismiss": "解雇"
+      "dismiss": "解雇",
+      "post_import_title": "钱包已导入 — 正在后台同步",
+      "post_import_body": "您的钱包已恢复。iriumd 完成区块链下载后，余额将在此显示。全新安装通常需要几个小时。",
+      "try_reset_node_state": "尝试重置节点状态"
     },
     "page_subtitle": "Irium 区块链概述·直播",
     "refresh": "刷新",
@@ -1973,7 +1976,9 @@
     "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
-    "miner_active_confirm": "采矿活动活跃。矿工将继续在后台运行。\n\n单击“确定”最小化到托盘，或者单击“取消”以保持窗口打开，如果您想完全退出，请先停止挖掘。"
+    "miner_active_confirm": "采矿活动活跃。矿工将继续在后台运行。\n\n单击“确定”最小化到托盘，或者单击“取消”以保持窗口打开，如果您想完全退出，请先停止挖掘。",
+    "pin_tooltip": "固定标题栏（保持可见）",
+    "unpin_tooltip": "取消固定标题栏（自动隐藏）"
   },
   "sidebar": {
     "live": "居住",

@@ -399,7 +399,10 @@
       "no_peers_searching": "Auf der Suche nach Gleichgesinnten…",
       "sync_stall": "Synchronisierung ist ins Stocken geraten – {{count}} Blöcke liegen zurück",
       "height_warning": "Die Blockhöhe hat sich seit {{minutes}} Minuten nicht geändert",
-      "dismiss": "Zurückweisen"
+      "dismiss": "Zurückweisen",
+      "post_import_title": "Wallet importiert — Synchronisierung im Hintergrund",
+      "post_import_body": "Ihr Wallet wurde wiederhergestellt. Ihr Kontostand erscheint hier, sobald iriumd den Download der Chain abgeschlossen hat. Bei einer Neuinstallation dauert dies in der Regel einige Stunden.",
+      "try_reset_node_state": "Knotenstatus zurücksetzen versuchen"
     },
     "page_subtitle": "Übersicht über die Irium-Blockchain · live",
     "refresh": "Aktualisieren",
@@ -1973,7 +1976,9 @@
     "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
-    "miner_active_confirm": "Der Bergbau ist aktiv. Der Miner läuft im Hintergrund weiter.\n\nKlicken Sie auf „OK“, um es in die Taskleiste zu minimieren, oder auf „Abbrechen“, um das Fenster geöffnet zu lassen und zunächst das Mining zu stoppen, wenn Sie es vollständig beenden möchten."
+    "miner_active_confirm": "Der Bergbau ist aktiv. Der Miner läuft im Hintergrund weiter.\n\nKlicken Sie auf „OK“, um es in die Taskleiste zu minimieren, oder auf „Abbrechen“, um das Fenster geöffnet zu lassen und zunächst das Mining zu stoppen, wenn Sie es vollständig beenden möchten.",
+    "pin_tooltip": "Titelleiste anheften (sichtbar lassen)",
+    "unpin_tooltip": "Titelleiste lösen (automatisch ausblenden)"
   },
   "sidebar": {
     "live": "Live",

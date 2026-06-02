@@ -399,7 +399,10 @@
       "no_peers_searching": "À la recherche de pairs…",
       "sync_stall": "Synchronisation bloquée – {{count}} bloque derrière",
       "height_warning": "La hauteur du bloc n'a pas changé depuis {{minutes}} minutes",
-      "dismiss": "Rejeter"
+      "dismiss": "Rejeter",
+      "post_import_title": "Portefeuille importé — synchronisation en arrière-plan",
+      "post_import_body": "Votre portefeuille est restauré. Votre solde apparaîtra ici dès que iriumd aura terminé le téléchargement de la chaîne. Cela prend généralement quelques heures lors d'une nouvelle installation.",
+      "try_reset_node_state": "Essayer de réinitialiser l'état du nœud"
     },
     "page_subtitle": "Aperçu de la blockchain Irium · en direct",
     "refresh": "Rafraîchir",
@@ -1973,7 +1976,9 @@
     "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
-    "miner_active_confirm": "L'exploitation minière est active. Le mineur continuera à fonctionner en arrière-plan.\n\nCliquez sur OK pour réduire dans la barre d'état ou sur Annuler pour garder la fenêtre ouverte et arrêter d'abord l'exploration si vous souhaitez quitter complètement."
+    "miner_active_confirm": "L'exploitation minière est active. Le mineur continuera à fonctionner en arrière-plan.\n\nCliquez sur OK pour réduire dans la barre d'état ou sur Annuler pour garder la fenêtre ouverte et arrêter d'abord l'exploration si vous souhaitez quitter complètement.",
+    "pin_tooltip": "Épingler la barre de titre (rester visible)",
+    "unpin_tooltip": "Détacher la barre de titre (masquer automatiquement)"
   },
   "sidebar": {
     "live": "En direct",

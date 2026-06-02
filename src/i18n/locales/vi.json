@@ -399,7 +399,10 @@
       "no_peers_searching": "Đang tìm kiếm đồng nghiệp…",
       "sync_stall": "Đồng bộ hóa bị đình trệ — {{count}} chặn phía sau",
       "height_warning": "Chiều cao khối không thay đổi sau {{minutes}} phút",
-      "dismiss": "Miễn nhiệm"
+      "dismiss": "Miễn nhiệm",
+      "post_import_title": "Đã nhập ví — đang đồng bộ ở chế độ nền",
+      "post_import_body": "Ví của bạn đã được khôi phục. Số dư của bạn sẽ xuất hiện ở đây ngay khi iriumd hoàn tất tải xuống chuỗi. Trên bản cài đặt mới, quá trình này thường mất vài giờ.",
+      "try_reset_node_state": "Thử đặt lại trạng thái nút"
     },
     "page_subtitle": "Tổng quan về chuỗi khối Irium · trực tiếp",
     "refresh": "Làm cho khỏe lại",
@@ -1973,7 +1976,9 @@
     "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
-    "miner_active_confirm": "Khai thác đang hoạt động. Công cụ khai thác sẽ tiếp tục chạy ở chế độ nền.\n\nNhấp vào OK để thu nhỏ vào khay hoặc Hủy để giữ cửa sổ mở và dừng khai thác trước nếu bạn muốn thoát hoàn toàn."
+    "miner_active_confirm": "Khai thác đang hoạt động. Công cụ khai thác sẽ tiếp tục chạy ở chế độ nền.\n\nNhấp vào OK để thu nhỏ vào khay hoặc Hủy để giữ cửa sổ mở và dừng khai thác trước nếu bạn muốn thoát hoàn toàn.",
+    "pin_tooltip": "Ghim thanh tiêu đề (luôn hiển thị)",
+    "unpin_tooltip": "Bỏ ghim thanh tiêu đề (tự động ẩn)"
   },
   "sidebar": {
     "live": "Sống",

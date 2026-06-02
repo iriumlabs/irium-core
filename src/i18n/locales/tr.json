@@ -399,7 +399,10 @@
       "no_peers_searching": "Akranlar aranıyor…",
       "sync_stall": "Senkronizasyon durduruldu — {{count}} blok geride",
       "height_warning": "Blok yüksekliği {{minutes}} dakikadır değişmedi",
-      "dismiss": "Azletmek"
+      "dismiss": "Azletmek",
+      "post_import_title": "Cüzdan içe aktarıldı — arka planda eşitleniyor",
+      "post_import_body": "Cüzdanınız geri yüklendi. iriumd zinciri indirmeyi bitirdiğinde bakiyeniz burada görünecek. Yeni bir kurulumda bu işlem genellikle birkaç saat sürer.",
+      "try_reset_node_state": "Düğüm durumunu sıfırlamayı dene"
     },
     "page_subtitle": "Irium blockchain'e genel bakış · canlı",
     "refresh": "Yenile",
@@ -1973,7 +1976,9 @@
     "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
-    "miner_active_confirm": "Madencilik aktif. Madenci arka planda çalışmaya devam edecektir.\n\nTepsiye simge durumuna küçültmek için Tamam'a tıklayın veya pencereyi açık tutmak ve tamamen çıkmak istiyorsanız önce madenciliği durdurmak için İptal'e tıklayın."
+    "miner_active_confirm": "Madencilik aktif. Madenci arka planda çalışmaya devam edecektir.\n\nTepsiye simge durumuna küçültmek için Tamam'a tıklayın veya pencereyi açık tutmak ve tamamen çıkmak istiyorsanız önce madenciliği durdurmak için İptal'e tıklayın.",
+    "pin_tooltip": "Başlık çubuğunu sabitle (görünür kal)",
+    "unpin_tooltip": "Başlık çubuğunu çöz (otomatik gizle)"
   },
   "sidebar": {
     "live": "Canlı",

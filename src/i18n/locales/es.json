@@ -399,7 +399,10 @@
       "no_peers_searching": "Buscando compañeros...",
       "sync_stall": "Sincronización detenida: {{count}} bloques detrás",
       "height_warning": "La altura del bloque no ha cambiado en {{minutes}} minutos",
-      "dismiss": "Despedir"
+      "dismiss": "Despedir",
+      "post_import_title": "Billetera importada — sincronizando en segundo plano",
+      "post_import_body": "Tu billetera ha sido restaurada. Tu saldo aparecerá aquí una vez que iriumd termine de descargar la cadena. Esto suele tardar unas horas en una instalación nueva.",
+      "try_reset_node_state": "Intentar restablecer el estado del nodo"
     },
     "page_subtitle": "Descripción general de la cadena de bloques Irium · en vivo",
     "refresh": "Refrescar",
@@ -1973,7 +1976,9 @@
     "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
-    "miner_active_confirm": "La minería está activa. El minero seguirá ejecutándose en segundo plano.\n\nHaga clic en Aceptar para minimizar en la bandeja o en Cancelar para mantener la ventana abierta y detener la minería primero si desea salir por completo."
+    "miner_active_confirm": "La minería está activa. El minero seguirá ejecutándose en segundo plano.\n\nHaga clic en Aceptar para minimizar en la bandeja o en Cancelar para mantener la ventana abierta y detener la minería primero si desea salir por completo.",
+    "pin_tooltip": "Anclar la barra de título (mantener visible)",
+    "unpin_tooltip": "Desanclar la barra de título (ocultar automáticamente)"
   },
   "sidebar": {
     "live": "Vivir",

@@ -399,7 +399,10 @@
       "no_peers_searching": "Mencari rekan…",
       "sync_stall": "Sinkronisasi terhenti — {{count}} blok tertinggal",
       "height_warning": "Tinggi balok tidak berubah dalam {{minutes}} menit",
-      "dismiss": "Membubarkan"
+      "dismiss": "Membubarkan",
+      "post_import_title": "Dompet diimpor — sinkronisasi di latar belakang",
+      "post_import_body": "Dompet Anda telah dipulihkan. Saldo Anda akan muncul di sini setelah iriumd selesai mengunduh chain. Pada instalasi baru, ini biasanya memakan waktu beberapa jam.",
+      "try_reset_node_state": "Coba Atur Ulang Status Node"
     },
     "page_subtitle": "Ikhtisar blockchain Irium · langsung",
     "refresh": "Menyegarkan",
@@ -1973,7 +1976,9 @@
     "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
-    "miner_active_confirm": "Penambangan aktif. Penambang akan terus berjalan di latar belakang.\n\nKlik OK untuk memperkecil ke baki, atau Batal untuk membiarkan jendela tetap terbuka dan menghentikan penambangan terlebih dahulu jika Anda ingin berhenti sepenuhnya."
+    "miner_active_confirm": "Penambangan aktif. Penambang akan terus berjalan di latar belakang.\n\nKlik OK untuk memperkecil ke baki, atau Batal untuk membiarkan jendela tetap terbuka dan menghentikan penambangan terlebih dahulu jika Anda ingin berhenti sepenuhnya.",
+    "pin_tooltip": "Sematkan bilah judul (tetap terlihat)",
+    "unpin_tooltip": "Lepas sematan bilah judul (sembunyikan otomatis)"
   },
   "sidebar": {
     "live": "Hidup",

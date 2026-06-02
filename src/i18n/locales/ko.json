@@ -399,7 +399,10 @@
       "no_peers_searching": "동료를 찾는 중…",
       "sync_stall": "동기화가 중단됨 — {{count}} 블록 뒤",
       "height_warning": "블록 높이가 {{minutes}}분 동안 변경되지 않았습니다.",
-      "dismiss": "해고하다"
+      "dismiss": "해고하다",
+      "post_import_title": "지갑 가져옴 — 백그라운드에서 동기화 중",
+      "post_import_body": "지갑이 복원되었습니다. iriumd 가 체인 다운로드를 완료하면 잔액이 여기에 표시됩니다. 새로 설치한 경우 일반적으로 몇 시간이 걸립니다.",
+      "try_reset_node_state": "노드 상태 재설정 시도"
     },
     "page_subtitle": "Irium 블록체인 개요 · 라이브",
     "refresh": "새로 고치다",
@@ -1973,7 +1976,9 @@
     "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
-    "miner_active_confirm": "채굴이 활발합니다. 광부는 백그라운드에서 계속 실행됩니다.\n\n트레이로 최소화하려면 확인을 클릭하고, 완전히 종료하려면 창을 열어두고 채굴을 먼저 중지하려면 취소를 클릭하세요."
+    "miner_active_confirm": "채굴이 활발합니다. 광부는 백그라운드에서 계속 실행됩니다.\n\n트레이로 최소화하려면 확인을 클릭하고, 완전히 종료하려면 창을 열어두고 채굴을 먼저 중지하려면 취소를 클릭하세요.",
+    "pin_tooltip": "제목 표시줄 고정 (표시 유지)",
+    "unpin_tooltip": "제목 표시줄 고정 해제 (자동 숨김)"
   },
   "sidebar": {
     "live": "살다",

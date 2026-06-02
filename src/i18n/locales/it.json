@@ -399,7 +399,10 @@
       "no_peers_searching": "Alla ricerca di colleghi…",
       "sync_stall": "Sincronizzazione bloccata: {{count}} si blocca dietro",
       "height_warning": "L'altezza del blocco non è cambiata in {{minutes}} minuti",
-      "dismiss": "Congedare"
+      "dismiss": "Congedare",
+      "post_import_title": "Wallet importato — sincronizzazione in background",
+      "post_import_body": "Il tuo wallet è stato ripristinato. Il tuo saldo apparirà qui non appena iriumd avrà terminato il download della catena. Su una nuova installazione, di solito ci vogliono alcune ore.",
+      "try_reset_node_state": "Prova a reimpostare lo stato del nodo"
     },
     "page_subtitle": "Panoramica della blockchain di Irium · dal vivo",
     "refresh": "Aggiorna",
@@ -1973,7 +1976,9 @@
     "toast_recover_failed": "Could not recover quarantined blocks: {{reason}}"
   },
   "titlebar": {
-    "miner_active_confirm": "L'estrazione mineraria è attiva. Il minatore continuerà a funzionare in background.\n\nFare clic su OK per ridurre a icona nel vassoio o su Annulla per mantenere la finestra aperta e interrompere prima l'estrazione se si desidera uscire completamente."
+    "miner_active_confirm": "L'estrazione mineraria è attiva. Il minatore continuerà a funzionare in background.\n\nFare clic su OK per ridurre a icona nel vassoio o su Annulla per mantenere la finestra aperta e interrompere prima l'estrazione se si desidera uscire completamente.",
+    "pin_tooltip": "Fissa la barra del titolo (mantieni visibile)",
+    "unpin_tooltip": "Sblocca la barra del titolo (nascondi automaticamente)"
   },
   "sidebar": {
     "live": "Vivere",
