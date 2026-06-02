@@ -225,7 +225,10 @@ export default function MarketplacePage() {
   ).length;
 
   return (
-    <div className="w-full h-full overflow-y-auto bg-[#0b0e11] text-[#eaecef]">
+    <div
+      className="w-full h-full overflow-y-auto"
+      style={{ background: 'var(--bg-elev-1)', color: 'var(--t1)' }}
+    >
       <div className="mx-auto px-6 py-5" style={{ maxWidth: 1600 }}>
         <NodeOfflineBanner />
 

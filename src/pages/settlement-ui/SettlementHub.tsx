@@ -78,7 +78,8 @@ export default function SettlementHub() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="h-full overflow-y-auto bg-[#0b0e11] text-[#eaecef]"
+      className="h-full overflow-y-auto"
+      style={{ background: 'var(--bg-elev-1)', color: 'var(--t1)' }}
     >
       <div className="mx-auto px-6 py-5" style={{ maxWidth: 1400 }}>
         {/* Header strip — title + subtitle + primary CTA (split-dropdown).
