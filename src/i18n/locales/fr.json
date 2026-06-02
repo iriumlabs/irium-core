@@ -152,7 +152,9 @@
       "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
       "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
       "rpc_token_test_remote": "Test remote",
-      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated",
+      "hide_token": "Masquer le jeton",
+      "show_token": "Afficher le jeton"
     },
     "buttons": {
       "test_connection": "Tester la connexion",
@@ -195,7 +197,9 @@
       "onboarding_reset": "Réinitialisation de l'intégration : redémarrez l'application pour voir l'assistant",
       "update_check_internet": "Impossible de vérifier les mises à jour. Vérifiez votre connexion Internet.",
       "connection_failed": "La connexion a échoué",
-      "update_failed": "La mise à jour a échoué"
+      "update_failed": "La mise à jour a échoué",
+      "metrics_http_error": "Statut OK, mais /metrics a retourné HTTP {{status}}",
+      "metrics_unreachable": "Statut OK, mais /metrics inaccessible : {{error}}"
     },
     "page_subtitle": "Configurez la connexion de votre nœud, les chemins de portefeuille et les préférences d'affichage.",
     "update_banner": {
@@ -261,7 +265,14 @@
       "retry": "Réessayer",
       "external_ip_label": "IP externe",
       "detecting_paragraph": "Attendre jusqu'à 60 s pour qu'un homologue entrant confirme l'accessibilité. PEX a besoin d'un moment pour propager votre adresse aux autres nœuds après le démarrage.",
-      "inactive_paragraph": "L'UPnP a échoué et aucun homologue entrant n'est arrivé. Configurez la redirection de port manuelle sur votre routeur (TCP 38291) ou activez UPnP, puis cliquez sur Réessayer. Les connexions sortantes fonctionnent toujours dans cet état."
+      "inactive_paragraph": "L'UPnP a échoué et aucun homologue entrant n'est arrivé. Configurez la redirection de port manuelle sur votre routeur (TCP 38291) ou activez UPnP, puis cliquez sur Réessayer. Les connexions sortantes fonctionnent toujours dans cet état.",
+      "diag_chosen_lan_ip": "IP LAN choisie",
+      "diag_router_ip": "IP du routeur",
+      "diag_control_url": "URL de contrôle",
+      "diag_external_ip": "IP externe",
+      "diag_private_double_nat": "(privée — double NAT)",
+      "diag_add_port_mapping_tries": "Tentatives AddPortMapping",
+      "diag_last_fault": "Dernière erreur"
     },
     "security_info": {
       "wallet_local": "Irium Core stocke votre fichier de portefeuille localement. Vos clés privées ne quittent jamais votre machine. Le fichier du portefeuille est crypté. Sauvegardez toujours votre phrase de départ et conservez-la hors ligne.",
@@ -325,11 +336,14 @@
       "reset_state_success": "État réinitialisé — sauvegarde dans {{path}}",
       "reset_state_no_backup": "Aucun état existant à sauvegarder — nouvel état créé",
       "reset_state_rebuilding": "node en redémarrage — reconstruction de l’ensemble UTXO depuis les block locaux (5–15 min)",
-      "reset_state_failed": "Échec de la réinitialisation : {{reason}}"
+      "reset_state_failed": "Échec de la réinitialisation : {{reason}}",
+      "external_ip_placeholder": "ex. 203.0.113.42"
     },
     "developer_info": {
       "reset_onboarding": "Réinitialiser l'intégration",
-      "reset_onboarding_description": "Afficher à nouveau l'assistant de configuration de première exécution au prochain lancement"
+      "reset_onboarding_description": "Afficher à nouveau l'assistant de configuration de première exécution au prochain lancement",
+      "show_legacy_settlement": "Afficher l'UI de règlement existante",
+      "show_legacy_settlement_description": "Utilise la page Règlement originale avec grille de modèles au lieu des nouveaux flux SafeTrade / PayForWork / Deposit. Prend effet à la prochaine navigation vers /settlement."
     },
     "action_bar": {
       "are_you_sure": "Es-tu sûr?",
@@ -469,7 +483,27 @@
       "rename_wallet_file": "Renommer le fichier du portefeuille",
       "delete_wallet_file": "Supprimez définitivement ce fichier de portefeuille",
       "manage_wallets": "Gérer les portefeuilles",
-      "manage_description": "Fichiers de portefeuille, importation, adresses cachées"
+      "manage_description": "Fichiers de portefeuille, importation, adresses cachées",
+      "manage_button": "Gérer",
+      "copy_address": "Copier l'adresse",
+      "add_address_button": "Ajouter une adresse",
+      "generating": "Génération…",
+      "empty_state": "Aucune adresse pour le moment. Ouvrez Gérer pour en ajouter une.",
+      "add_address_confirm_title": "Ajouter une nouvelle adresse ?",
+      "add_address_confirm_body": "Ceci dérivera la prochaine adresse à partir de votre seed de portefeuille. Les adresses ne peuvent pas être retirées du fichier de portefeuille une fois créées — seulement masquées de la liste visible.",
+      "set_primary_button": "Définir principale",
+      "primary_button_short": "Principale",
+      "export_wif_short_tooltip": "Exporter la WIF",
+      "wif_short": "WIF",
+      "qr_short": "QR",
+      "hide_button_short": "Masquer",
+      "no_addresses_panel": "Aucune adresse pour le moment.",
+      "panel_description": "Les adresses sont dérivées de votre seed de portefeuille et ne peuvent pas être supprimées définitivement. Utilisez Masquer pour les retirer de la vue.",
+      "label_placeholder_primary": "ex. Principale · Minage",
+      "label_placeholder_other": "ex. Minage",
+      "edit_label": "Modifier le libellé",
+      "add_custom_label": "Ajouter un libellé personnalisé",
+      "address_qr_label": "QR de l'adresse"
     },
     "send": {
       "title": "Envoyer un IRM",
@@ -499,12 +533,44 @@
         "unconfirmed": "Vos fonds ne sont pas encore confirmés. Attendez au moins 1 confirmation avant d'envoyer.",
         "double_spend": "Cette transaction est en conflit avec une autre transaction en attente. Veuillez patienter et réessayer.",
         "generic": "La transaction n'a pas pu être diffusée. Veuillez vérifier que le nœud est en ligne et réessayer.",
-        "fallback": "La transaction a échoué. Veuillez réessayer."
-      }
+        "fallback": "La transaction a échoué. Veuillez réessayer.",
+        "insufficient_for_fee": "Fonds insuffisants pour les frais réseau. Solde de l'adresse {{balance}} sats ; frais minimum {{fee}} sats.",
+        "cannot_compute_max": "Impossible de calculer le maximum — {{reason}}",
+        "node_still_syncing": "Le nœud se synchronise encore ({{persisted}}/{{height}} blocs). Veuillez fermer cette boîte de dialogue, attendre la fin de la synchronisation, puis réessayer.",
+        "not_accepted_mempool": "La transaction n'a pas été acceptée par la mempool du nœud"
+      },
+      "button_label": "Envoyer",
+      "node_offline_tooltip": "Le nœud doit être en ligne pour envoyer",
+      "node_syncing_tooltip": "Le nœud se synchronise — veuillez patienter avant d'envoyer",
+      "max_button": "MAX",
+      "no_spendable_funds_suffix": " — Aucun fonds dépensable",
+      "no_spendable_in_wallet": "Ce portefeuille n'a aucun fonds dépensable.",
+      "estimated_fee_25k": "Frais estimés : ~25 000 sats",
+      "estimated_fee_label": "Frais estimés",
+      "estimated_fee_value_25k": "~25 000 sats",
+      "amount_sats_label": "Montant (sats)",
+      "confirm_send_prefix": "Envoyer",
+      "confirm_send_to_suffix": "à",
+      "back_button": "← Retour",
+      "transaction_sent_title": "Transaction envoyée",
+      "transaction_sent_subtitle": "Votre transaction apparaîtra dans le prochain bloc",
+      "transaction_sent_explanation": "Votre transaction est signée cryptographiquement avec votre clé privée et diffusée au réseau. Elle sera sécurisée de manière permanente une fois incluse dans le prochain bloc miné.",
+      "status_signed": "SIGNÉE",
+      "private_key_verified": "Clé privée vérifiée",
+      "status_confirming": "CONFIRMATION",
+      "next_mined_block": "Prochain bloc miné",
+      "transaction_id_label": "Identifiant de transaction",
+      "copy_transaction_id": "Copier l'identifiant de transaction",
+      "view_in_explorer": "Voir dans l'Explorateur"
     },
     "receive": {
       "title": "Recevez IRM",
-      "scan_qr_hint": "Scannez ce QR code ou copiez l'adresse ci-dessous"
+      "scan_qr_hint": "Scannez ce QR code ou copiez l'adresse ci-dessous",
+      "button_label": "Recevoir",
+      "send_to_this_address": "Envoyez des IRM à cette adresse :",
+      "no_address_short": "Aucune adresse",
+      "no_address_available": "Aucune adresse disponible",
+      "copy_address_button": "Copier l'adresse"
     },
     "security": {
       "section_title": "Sécurité",
@@ -519,7 +585,16 @@
       "seed_modal_title": "Votre phrase de récupération",
       "seed_modal_warning": "Écrivez ceci sur papier. Toute personne possédant ces 24 mots peut dépenser vos fonds.",
       "wif_label": "Clé privée WIF",
-      "backup_warning": "Ce fichier contient toutes vos clés privées. Rangez-le en toute sécurité."
+      "backup_warning": "Ce fichier contient toutes vos clés privées. Rangez-le en toute sécurité.",
+      "backup_subsection": "Sauvegarde",
+      "restore_subsection": "Restauration",
+      "export_wif_dialog_title": "Exporter la clé WIF",
+      "export_wif_private_key_dialog_title": "Exporter la clé privée WIF",
+      "text_file_filter": "Texte",
+      "backup_dialog_title": "Enregistrer la sauvegarde du portefeuille",
+      "select_backup_dialog_title": "Sélectionner un fichier de sauvegarde de portefeuille",
+      "backup_filter_name": "Sauvegarde de portefeuille",
+      "all_files_filter": "Tous les fichiers"
     },
     "transactions": {
       "section_title": "Transactions",
@@ -529,7 +604,17 @@
       "confirmations": "Confirmation {{count}}",
       "pending": "En attente",
       "received": "Reçu",
-      "sent": "Envoyé"
+      "sent": "Envoyé",
+      "confirmed": "Confirmée",
+      "for_address": "pour {{address}}",
+      "mempool_awaiting": "Mempool · en attente de confirmation",
+      "miner_label": "Mineur : {{address}}",
+      "fee_label": "Frais : {{amount}} sats",
+      "txid_label": "TXID : {{txid}}",
+      "conf_short": "{{count}} conf.",
+      "block_number": "Bloc n°{{height}}",
+      "open_in_explorer": "Ouvrir dans l'Explorateur",
+      "copy_txid": "Copier le TXID"
     },
     "toasts": {
       "send_success": "Envoyé — txid {{txid}}",
@@ -565,7 +650,13 @@
       "wif_copied": "WIF copié",
       "name_invalid_chars": "Le nom du portefeuille ne peut pas contenir : / \\ : * ? \" < > |",
       "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
-      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up.",
+      "node_syncing_wait": "Synchronisation du nœud — {{persisted}}/{{height}} blocs. Veuillez patienter.",
+      "failed_add_address": "Échec de l'ajout d'adresse : {{reason}}",
+      "no_recovery_data": "Aucune donnée de récupération trouvée dans le portefeuille",
+      "wallet_deleted": "{{name}} supprimé",
+      "seed_copied": "Seed copiée",
+      "invalid_wallet_path": "Le binaire de portefeuille a retourné un chemin invalide : {{path}}"
     },
     "encryption": {
       "migration_title": "Encrypt your wallet",
@@ -588,6 +679,120 @@
       "needs_migration_status": "Wallet on disk uses the legacy unencrypted format and must be encrypted before use.",
       "plaintext_backup_warning": "Plaintext backup file(s) detected at {{paths}}. Delete after verifying the migration succeeded.",
       "recover_link": "Forgot your password? Recover with seed phrase"
+    },
+    "no_wallet_loaded": "Aucun portefeuille chargé — créez ou importez-en un ci-dessous",
+    "balance_label": "Solde",
+    "balance_label_for_address": "Solde · Adresse {{index}}",
+    "satoshis_amount": "{{amount}} satoshis",
+    "unconfirmed": "non confirmé",
+    "wallet_wide": "(portefeuille entier)",
+    "syncing_tooltip": "Attendez que le nœud termine la synchronisation avant d'envoyer. Envoyer maintenant peut échouer avec une erreur de vérification de signature car l'ensemble UTXO est encore en cours de reconstruction.",
+    "syncing_progress": "Synchronisation…",
+    "gaps_count": "{{count}} écarts",
+    "common": {
+      "cancel": "Annuler",
+      "done": "Terminé",
+      "reveal": "Révéler",
+      "hide": "Masquer",
+      "copy": "Copier",
+      "delete": "Supprimer",
+      "loading": "Chargement…"
+    },
+    "seed": {
+      "recovery_phrase_title": "Phrase de récupération",
+      "wallet_seed_title": "Seed de portefeuille",
+      "recovery_phrase_warning": "Ne partagez jamais votre phrase de récupération. Quiconque possède ces 24 mots peut accéder à tous vos fonds. Stockez-la hors ligne en lieu sûr.",
+      "wallet_seed_warning": "Ne partagez jamais votre seed de portefeuille. Cette valeur hexadécimale donne un accès complet à tous les fonds. Stockez-la hors ligne en lieu sûr.",
+      "custom_seed_hint": "Ce portefeuille utilise une seed personnalisée. Sauvegardez cette seed hexadécimale pour la restauration.",
+      "copy_phrase": "Copier la phrase",
+      "copy_seed": "Copier la seed"
+    },
+    "restore": {
+      "title": "Restaurer depuis une sauvegarde",
+      "warning_body": "Ceci écrasera les données actuelles de votre portefeuille. Assurez-vous d'avoir votre clé WIF ou votre fichier de sauvegarde avant de continuer. Le nœud redémarrera automatiquement à la fin de la restauration afin que le nouvel état du portefeuille soit pris en compte proprement.",
+      "restore_button": "Restaurer le portefeuille"
+    },
+    "create_modal": {
+      "create_title": "Créer un portefeuille",
+      "import_title": "Importer un portefeuille",
+      "create_new_tab": "Créer un nouveau",
+      "import_tab": "Importer",
+      "generate_description": "Générer un nouveau portefeuille BIP39 avec une phrase de récupération de 24 mots.",
+      "creating": "Création…",
+      "create_new_wallet_button": "Créer un nouveau portefeuille",
+      "save_warning": "Sauvegardez votre phrase de récupération de 24 mots hors ligne — elle permet de restaurer la totalité de votre portefeuille. Votre clé WIF sauvegarde une seule adresse. Aucune des deux ne peut être récupérée en cas de perte.",
+      "address_label": "Adresse",
+      "recovery_phrase_label": "Phrase de récupération (24 mots)",
+      "recovery_phrase_hint": "(n'importe laquelle des phrases restaure votre portefeuille)",
+      "wif_label": "Clé WIF",
+      "wif_hint": "(votre clé privée au format portable)",
+      "loading_wif": "Chargement de la WIF…",
+      "export_wif_to_file": "Exporter la WIF vers un fichier",
+      "saved_confirmation": "J'ai sauvegardé ma phrase de récupération et ma clé WIF en lieu sûr.",
+      "import_notice_lead": "Ceci importera un nouveau portefeuille. Votre portefeuille actuel reste intact et peut être réactivé depuis",
+      "seed_phrase_method": "Phrase de récupération",
+      "wif_key_method": "Clé WIF",
+      "seed_phrase_input_label": "Phrase de récupération (12 ou 24 mots)",
+      "seed_phrase_placeholder": "mot1 mot2 mot3 …",
+      "bip39_hint": "Phrase de récupération BIP39 séparée par des espaces.",
+      "wif_placeholder": "5J… ou K… ou L…",
+      "wif_format_hint": "Wallet Import Format — commence par 5, K ou L.",
+      "import_button": "Importer"
+    },
+    "new_address": {
+      "title": "Nouvelle adresse",
+      "derived_lead": "Une nouvelle adresse a été dérivée de la seed BIP32 de votre portefeuille. Votre",
+      "derived_emphasis": "phrase de récupération n'a pas changé",
+      "derived_trail": "— cette adresse partage le même fichier de portefeuille que vos adresses existantes.",
+      "copy_address": "Copier l'adresse",
+      "wif_private_key_label": "Clé privée WIF",
+      "wif_warning": "Quiconque possède cette WIF peut dépenser les fonds à cette adresse. Stockez-la hors ligne.",
+      "copy_wif": "Copier la WIF",
+      "recovery_reminder_lead": "Cette adresse partage la phrase de récupération de votre portefeuille. Pour la consulter, allez dans",
+      "recovery_reminder_path": "Sécurité → Afficher la phrase de récupération"
+    },
+    "files": {
+      "section_title": "Fichiers de portefeuille",
+      "section_description": "Chaque fichier possède sa propre seed. Basculez pour charger un autre portefeuille.",
+      "no_files_found": "Aucun fichier de portefeuille trouvé dans ~/.irium/",
+      "rename_placeholder": "nom-du-portefeuille",
+      "active_badge": "Actif",
+      "switch_button": "Basculer",
+      "create_new_wallet_file": "Créer un nouveau fichier de portefeuille",
+      "create_new_advanced_hint": "(avancé — seed distincte)",
+      "create_new_description": "Crée un fichier de portefeuille distinct avec sa propre seed. Votre portefeuille actuel reste sur le disque et peut être réactivé depuis cette liste."
+    },
+    "hidden": {
+      "section_title": "Adresses masquées",
+      "still_in_file": "(toujours dans le fichier de portefeuille)",
+      "description": "Les adresses ne peuvent pas être supprimées définitivement du fichier de portefeuille. Les adresses masquées sont retirées de la vue mais restent récupérables — cliquez sur Démasquer pour les réafficher.",
+      "unhide_button": "Démasquer"
+    },
+    "delete_file": {
+      "confirm_title": "Supprimer définitivement ce fichier de portefeuille ?",
+      "address_count": "{{count}} adresses",
+      "address_count_one": "{{count}} adresse",
+      "warning_label": "AVERTISSEMENT :",
+      "warning_funds_lead": "Ce portefeuille contient des fonds. Le supprimer sans sauvegarde entraîne la perte définitive de",
+      "warning_funds_trail": ". Assurez-vous d'avoir exporté vos clés WIF ou phrase de récupération avant de continuer.",
+      "warning_unknown_lead": "Le solde n'a pas pu être confirmé — le nœud est peut-être hors ligne. Si ce portefeuille contenait des fonds et que vous n'avez pas sauvegardé la phrase de récupération ou les clés WIF, la suppression entraînera la",
+      "warning_unknown_emphasis": "perte définitive",
+      "warning_unknown_trail": "de ces fonds.",
+      "warning_zero_lead": "Ceci supprimera le fichier du disque. Si vous n'avez pas sauvegardé la phrase de récupération ou les clés WIF de ce portefeuille, tous les fonds qu'il contient seront",
+      "warning_zero_emphasis": "définitivement perdus",
+      "warning_zero_trail": ". Cette action est irréversible.",
+      "type_prompt_prefix": "Tapez",
+      "type_prompt_word": "DELETE",
+      "type_prompt_suffix": "pour confirmer",
+      "deleting": "Suppression…",
+      "delete_forever": "Supprimer définitivement"
+    },
+    "hide_address": {
+      "confirm_title": "Masquer cette adresse ?",
+      "body_lead": "L'adresse reste dans le fichier de portefeuille — seule la liste visible est mise à jour. Vous pouvez la",
+      "body_emphasis": "démasquer",
+      "body_trail": "plus tard depuis la section Adresses masquées.",
+      "confirm_button": "Masquer l'adresse"
     }
   },
   "agreements": {
@@ -621,7 +826,18 @@
       "share_text": "Partager du texte",
       "delete": "Supprimer",
       "submitting": "Soumission…",
-      "sign": "Signe"
+      "sign": "Signe",
+      "fund_escrow": "Financer l'escrow",
+      "release_to_counterparty": "Libérer vers la contrepartie",
+      "submit_proof": "Soumettre une preuve",
+      "refund": "Rembourser",
+      "agreement_expired": "Accord expiré",
+      "create_and_submit_proof": "Créer et soumettre une preuve",
+      "confirm_release": "Confirmer la libération",
+      "confirm_fund": "Confirmer le financement",
+      "confirm_open_dispute": "Confirmer l'ouverture du litige",
+      "use_this_invoice": "Utiliser cette facture →",
+      "verify_signature_file": "Vérifier un fichier de signature…"
     },
     "proof_modal": {
       "title": "Soumettre une preuve",
@@ -634,7 +850,15 @@
       "evidence_summary": "Résumé des preuves",
       "evidence_placeholder": "par ex. Paiement de 50$ reçu par virement bancaire, référence #12345.",
       "submit_button": "Soumettre une preuve",
-      "submitting": "Soumission…"
+      "submitting": "Soumission…",
+      "intro": "Construisez une preuve signée dans l'application, ou téléchargez-en une que vous avez déjà.",
+      "mode_create": "Créer à partir d'une preuve",
+      "mode_upload": "Téléverser un fichier",
+      "mode_create_sub": "Construire dans l'application",
+      "mode_upload_sub": "Utiliser un fichier existant",
+      "upload_note_prefix": "N'utilisez cet onglet que si vous avez déjà un fichier de preuve — par exemple, un fichier qu'une contrepartie ou un attestataire a signé pour vous, ou que vous avez produit via",
+      "upload_note_middle": "Si vous soumettez votre propre preuve, utilisez l'onglet",
+      "upload_note_suffix": "ci-dessus — il construit et soumet la preuve sans quitter l'application."
     },
     "toasts": {
       "agreement_signed": "Accord signé.",
@@ -663,7 +887,9 @@
       "signature_valid": "Signature valide (signataire {{signer}})",
       "signature_invalid": "Signature invalide : {{reason}}",
       "agreement_signed_short": "Accord signé.",
-      "sign_failed": "Échec de la signature"
+      "sign_failed": "Échec de la signature",
+      "cleanup_removed": "{{count}} accord(s) supprimé(s)",
+      "cleanup_removed_with_failures": "{{count}} accord(s) supprimé(s) ({{failed}} échec(s))"
     },
     "refund": {
       "blocked_default": "Éligibilité au remboursement inconnue",
@@ -685,13 +911,26 @@
       "share_text": "Copiez un résumé en texte brut de cet accord dans le presse-papiers",
       "delete_local": "Supprimez cet accord de votre magasin local. La copie de la contrepartie n'est pas affectée.",
       "save_friendly_name": "Enregistrez un nom convivial pour cet accord (stocké localement)",
-      "verify_signature_file": "Vérifier un fichier de signature (.sig ou .json) par rapport à cet accord"
+      "verify_signature_file": "Vérifier un fichier de signature (.sig ou .json) par rapport à cet accord",
+      "cleanup_old_test_data": "Supprimer de votre stockage local les accords dont l'identifiant contient test / gossip / demo / pr",
+      "node_offline_sign": "Le nœud doit être en ligne pour signer",
+      "sign_to_confirm": "Signez cet accord pour confirmer votre participation",
+      "node_offline_fund": "Le nœud doit être en ligne pour financer l'escrow",
+      "fund_escrow_action": "Verrouiller le montant de l'accord dans l'escrow HTLC",
+      "node_offline_release": "Le nœud doit être en ligne pour libérer les fonds",
+      "release_to_counterparty": "Libérer les fonds vers la contrepartie",
+      "node_offline_dispute": "Le nœud doit être en ligne pour ouvrir un litige",
+      "mark_disputed": "Marquer cet accord comme litigieux — nécessite l'attestation d'un résolveur pour être réglé",
+      "node_offline_refund": "Le nœud doit être en ligne pour rembourser",
+      "view_audit": "Voir l'enregistrement d'audit on-chain complet"
     },
     "buttons": {
       "import_invoice": "Importer une facture",
       "import_pack": "Pack d'importation",
       "browse": "Parcourir",
-      "delete_agreement": "Supprimer l'accord"
+      "delete_agreement": "Supprimer l'accord",
+      "cleanup_old_test_data": "Nettoyer les anciennes données de test ({{count}})",
+      "export_pack": "Exporter le pack"
     },
     "page_views": {
       "agreements": "Accords",
@@ -744,12 +983,19 @@
       "seller": "Vendeur",
       "signer_wallet": "Adresse du portefeuille du signataire",
       "role": "Rôle:",
-      "reason": "Raison:"
+      "reason": "Raison:",
+      "agreement_short": "Accord",
+      "signer_prefix": "signataire"
     },
     "placeholders": {
       "your_wallet_address": "L'adresse de votre portefeuille",
       "secret_preimage": "Facultatif · 64 caractères hexadécimaux",
-      "dispute_reason": "Décrivez ce qui n'a pas fonctionné - ceci est partagé avec le résolveur."
+      "dispute_reason": "Décrivez ce qui n'a pas fonctionné - ceci est partagé avec le résolveur.",
+      "output_pack_path": "/chemin/vers/output.pack.json",
+      "proof_json_path": "/chemin/vers/proof.json",
+      "pack_json_path": "/chemin/vers/agreement.pack.json",
+      "invoice_json_path": "/chemin/vers/invoice.json",
+      "hash_64_hex": "64 caractères hexadécimaux"
     },
     "modals": {
       "submit_proof_title": "Soumettre une preuve",
@@ -757,16 +1003,117 @@
       "import_invoice_title": "Importer une facture",
       "open_dispute_title": "Litige ouvert ?",
       "audit_title": "Vérification de l'accord",
-      "sign_title": "Signer un accord"
+      "sign_title": "Signer un accord",
+      "delete_confirm_prefix": "Supprimer l'accord",
+      "delete_confirm_body": "Cette action retire l'accord uniquement de votre stockage local. La copie de la contrepartie n'est pas affectée. Seuls les accords non financés (ouverts/en attente) peuvent être supprimés.",
+      "cleanup_title": "Nettoyer les anciennes données de test",
+      "cleanup_found": "{{count}} accord(s) trouvé(s) dont l'identifiant contient test, gossip, demo ou pr.",
+      "cleanup_disclaimer": "Cette action les retire uniquement de votre stockage local. La copie de la contrepartie n'est pas affectée. Les HTLC actifs on-chain ne sont pas touchés — les fonds doivent toujours être libérés ou remboursés séparément.",
+      "cleanup_remove_count": "Supprimer {{count}}",
+      "release_funds_title": "Libérer les fonds ?",
+      "release_funds_body_prefix": "Ceci libérera",
+      "release_funds_body_suffix": "vers le vendeur.",
+      "fund_escrow_title": "Financer l'escrow ?",
+      "fund_escrow_body_prefix": "Ceci verrouillera",
+      "fund_escrow_body_suffix": "dans l'escrow HTLC. Les fonds sont libérés vers la contrepartie à l'acceptation de la preuve, ou remboursés après la hauteur d'expiration.",
+      "import_pack_format_prefix": "Format accepté :",
+      "import_pack_format_suffix": "— exporté par la Partie A",
+      "import_invoice_subtitle": "Choisissez un fichier de facture JSON pour pré-remplir un nouvel accord sur la page Règlement."
     },
     "audit": {
-      "fetching": "Récupération du dossier d'audit…"
+      "fetching": "Récupération du dossier d'audit…",
+      "no_data": "Le RPC d'audit n'a retourné aucune donnée",
+      "show_raw_json": "Afficher le JSON brut",
+      "hide_raw_json": "Masquer le JSON brut"
     },
     "empty": {
       "no_signatures": "Aucune signature vérifiée pour l'instant. Utilisez le bouton ci-dessus pour en vérifier un.",
       "no_wallet_addresses": "Aucune adresse de portefeuille",
       "no_disputes": "Aucun litige.",
-      "disputes_offline": "(Le nœud est hors ligne : la liste de contestation peut être indisponible.)"
+      "disputes_offline": "(Le nœud est hors ligne : la liste de contestation peut être indisponible.)",
+      "no_agreements_found": "Aucun accord trouvé",
+      "with_status": "avec le statut",
+      "matching": "correspondant à",
+      "go_to_settlement_cta": "Allez dans Règlement pour créer votre premier accord →"
+    },
+    "scope": {
+      "my": "Mes accords",
+      "all": "Tous"
+    },
+    "dialog_titles": {
+      "save_agreement_pack": "Enregistrer le pack d'accord",
+      "select_proof_file": "Sélectionner un fichier de preuve (.json)",
+      "select_pack_file": "Sélectionner un pack d'accord (.pack.json)",
+      "select_invoice_file": "Sélectionner un fichier de facture JSON",
+      "select_signature_file": "Sélectionner un fichier de signature"
+    },
+    "timeline": {
+      "created": "Créé",
+      "funded": "Financé",
+      "proof_submitted": "Preuve soumise",
+      "released": "Libéré",
+      "refunded": "Remboursé"
+    },
+    "detail_labels": {
+      "template": "Modèle",
+      "created": "Créé",
+      "deadline": "Échéance",
+      "proof_status": "Statut de la preuve",
+      "release_eligible": "Éligible à la libération",
+      "kind": "Type",
+      "threshold": "Seuil",
+      "attestors": "Attestataires",
+      "parties": "Parties",
+      "amount": "Montant",
+      "payer": "Payeur",
+      "payee": "Bénéficiaire",
+      "outcome": "Résultat",
+      "satisfied": "Satisfait",
+      "reason": "Motif"
+    },
+    "detail_values": {
+      "none": "aucun",
+      "party": "partie",
+      "parties": "parties"
+    },
+    "sections": {
+      "policy": "Politique",
+      "proofs": "Preuves",
+      "timeline": "Chronologie ({{count}} événement(s))",
+      "proofs_count": "Preuves ({{count}})",
+      "funding_legs": "Financement ({{count}} branche(s))",
+      "linked_transactions": "Transactions liées ({{count}})"
+    },
+    "warnings": {
+      "proof_finality_body": "Attendez davantage de confirmations de blocs avant la libération — une réorganisation de la chaîne pourrait annuler la preuve.",
+      "open_dispute_body": "Ouvrir un litige signifie que l'accord nécessite qu'un résolveur examine les preuves des deux parties. Assurez-vous d'avoir un motif valable et des preuves à l'appui avant de continuer. Cette action est irréversible."
+    },
+    "helpers": {
+      "sign_confirms_participation": "La signature confirme votre participation. Les deux parties doivent signer avant le financement.",
+      "sign_modal_body": "Signer cet accord avec votre clé de portefeuille confirme votre participation. Les deux parties doivent signer avant le financement.",
+      "no_hash_on_file": "Aucun hash enregistré pour cet accord — collez le hash partagé par la contrepartie.",
+      "no_file_selected": "Aucun fichier sélectionné",
+      "secret_auto_loaded": "Chargé automatiquement depuis le stockage local des secrets d'accord",
+      "secret_required_hint": "Requis si vous n'avez pas créé cet accord vous-même. Laissez vide si votre portefeuille le dérive automatiquement.",
+      "use_invoice_hint": "Cliquer sur Utiliser cette facture vous redirige vers Règlement avec le modèle OTC pré-rempli. Vous pouvez modifier le modèle, éditer les champs et confirmer avant de créer l'accord.",
+      "signer_unknown": "inconnu",
+      "rejected": "rejeté",
+      "role_buyer_suffix": "(acheteur)",
+      "role_seller_suffix": "(vendeur)",
+      "signer_not_party": "Cette adresse n'est ni l'acheteur ni le vendeur — la signature sera enregistrée sans rôle de partie."
+    },
+    "form_errors": {
+      "hash_required": "Le hash de l'accord est requis",
+      "proof_type_required": "Choisissez un type de preuve",
+      "attested_by_required": "L'adresse de l'attestataire est requise",
+      "evidence_required": "Décrivez ce qui s'est passé dans le résumé des preuves",
+      "secret_must_be_64_hex": "Doit comporter exactement 64 caractères hexadécimaux (0-9, a-f)."
+    },
+    "disputes": {
+      "opened_prefix": "ouvert",
+      "resolved_prefix": "· résolu",
+      "open_this_agreement": "Ouvrir cet accord",
+      "agreement_not_in_list": "Accord absent de la liste actuelle — essayez de rafraîchir la vue Accords"
     }
   },
   "settlement": {
@@ -971,14 +1318,72 @@
       "confirm_large_amount": "Vous êtes sur le point de verrouiller {{amount}} IRM en séquestre.\n\nC'est une somme importante. Confirmez que vous avez saisi correctement la décimale.",
       "remote_label": "télécommande",
       "remote_tooltip": "Cette offre provient d'un autre vendeur et ne peut pas être supprimée de votre magasin local.",
-      "delete_tooltip": "Supprimez cette offre de votre magasin local"
+      "delete_tooltip": "Supprimez cette offre de votre magasin local",
+      "modal_title": "Créer un ordre de vente",
+      "modal_subtitle": "Publiez une offre dans le carnet d'ordres — l'IRM est verrouillé dès qu'un acheteur la prend.",
+      "post_offer_button": "Publier l'offre",
+      "lock_info_prefix": "Votre IRM est verrouillé dès qu'un acheteur s'engage. Vous recevez alors le paiement off-chain de l'acheteur et cliquez sur",
+      "confirm_received_label": "Confirmer la réception",
+      "lock_info_suffix": "pour libérer. Ou ouvrez un litige s'il ne paie pas.",
+      "amount_to_sell_label": "Montant d'IRM à vendre",
+      "price_per_irm_label": "Prix par IRM en USDT",
+      "buyer_pays_total_prefix": "L'acheteur paie au total",
+      "buyer_pays_total_amount": "{{amount}} USDT",
+      "payment_method_label": "Mode de paiement",
+      "your_payment_details_label": "Vos coordonnées de paiement",
+      "payment_details_placeholder": "ex. IBAN DE89 3704 0044 0532 0130 00 ou PayPal : vendeur@example.com",
+      "payment_details_helper": "L'acheteur voit ces coordonnées après avoir pris l'offre.",
+      "payment_options": {
+        "bank_transfer": "Virement bancaire",
+        "paypal": "PayPal",
+        "usdt_trc20": "USDT (TRC-20)",
+        "usdt_erc20": "USDT (ERC-20)",
+        "sepa": "SEPA",
+        "cash": "Espèces",
+        "other": "Autre"
+      },
+      "errors": {
+        "positive_irm_amount": "Saisissez un montant d'IRM positif",
+        "positive_usdt_price": "Saisissez un prix positif en USDT par IRM",
+        "select_payment_method": "Sélectionnez un mode de paiement",
+        "payment_details_required": "Saisissez vos coordonnées de paiement pour que l'acheteur sache comment payer"
+      },
+      "toasts": {
+        "offer_posted": "Offre publiée. L'IRM sera verrouillé dès qu'un acheteur s'engage."
+      }
     },
     "take_offer": {
       "title": "Accepter l'offre",
       "completed_trades": "Transactions terminées",
       "take_button": "Accepter l'offre",
       "taking": "Prise…",
-      "title_modal": "Acceptez cette offre"
+      "title_modal": "Acceptez cette offre",
+      "set_buyer_address_first": "Définissez d'abord votre adresse d'acheteur",
+      "error_agreement_id_missing": "Offre prise mais identifiant d'accord manquant dans la réponse",
+      "irm_locked_send_payment": "L'IRM est désormais verrouillé en escrow. Envoyez le paiement off-chain.",
+      "dispute_reason_buyer_cancelled": "l'acheteur a annulé avant le paiement",
+      "dispute_opened_refund_hint": "Litige ouvert. Vous pouvez réclamer votre remboursement depuis la page Accords après l'expiration.",
+      "enter_payment_reference": "Saisissez un identifiant de transaction ou une note afin que le vendeur puisse vérifier votre paiement",
+      "payment_reported_seller_notified": "Paiement signalé. Le vendeur a été notifié.",
+      "step_of_two": "Étape {{step}} sur 2",
+      "step1_intro": "La confirmation verrouille les IRM du vendeur en escrow. Vous avez ensuite une échéance pour envoyer le paiement off-chain et signaler la transaction.",
+      "you_receive": "Vous recevez :",
+      "payment_method": "Mode de paiement :",
+      "seller": "Vendeur :",
+      "buyer_you": "Acheteur (vous) :",
+      "not_set": "- non défini -",
+      "cancel": "Annuler",
+      "confirm_take": "Confirmer la prise",
+      "irm_locked_in_escrow": "IRM verrouillé en escrow",
+      "step2_intro": "Les IRM du vendeur sont verrouillés. Envoyez le paiement off-chain, puis saisissez votre référence de transaction ci-dessous et cliquez sur « J'ai envoyé le paiement ».",
+      "sellers_payment_details": "Coordonnées de paiement du vendeur",
+      "no_payment_details": "Aucun détail dans l'offre. Contactez directement le vendeur pour les instructions de paiement.",
+      "your_transaction_reference": "Votre référence de transaction",
+      "payment_reference_placeholder": "Référence de virement bancaire, txid PayPal, txid blockchain, etc.",
+      "payment_reference_hint": "Le vendeur voit exactement ceci. Tout ce qu'il peut utiliser pour confirmer la réception de votre paiement convient — numéro de référence, identifiant de transaction, nom de l'expéditeur, etc.",
+      "cancel_opens_dispute_warning": "Si vous annulez ici, un litige s'ouvre. Vous pouvez réclamer un remboursement après l'expiration depuis la page Accords.",
+      "cancel_and_dispute": "Annuler et ouvrir un litige",
+      "i_have_sent_payment": "J'ai envoyé le paiement"
     },
     "feeds": {
       "discover_button": "Découvrez les flux",
@@ -1026,7 +1431,189 @@
     },
     "swap": {
       "fuel_banner_title": "IRM alimente la couche de Règlement.",
-      "fuel_banner_body": "Échangez BTC, LTC ou DOGE contre IRM pour commencer à trader sans intermédiaire."
+      "fuel_banner_body": "Échangez BTC, LTC ou DOGE contre IRM pour commencer à trader sans intermédiaire.",
+      "pair_not_available": "Cette paire n'est pas encore disponible",
+      "own_order_hint": "Il s'agit de votre propre ordre. Utilisez le panneau Mes swaps à droite pour l'annuler.",
+      "not_available_yet": "Pas encore disponible",
+      "how_it_works_title": "Comment fonctionnent les swaps {{pair}}",
+      "how_it_works_step1": "Choisissez un ordre dans le carnet à gauche, ou publiez le vôtre.",
+      "how_it_works_step2": "Les IRM du vendeur sont verrouillés en escrow dès la prise de l'ordre.",
+      "how_it_works_step3": "L'acheteur envoie des {{quote}} à l'adresse du vendeur.",
+      "how_it_works_step4": "Une fois le paiement confirmé, les IRM sont libérés automatiquement vers l'acheteur."
+    },
+    "header": {
+      "subtitle_otc": "OTC pair-à-pair. Verrouillez vos IRM en escrow, échangez contre n'importe quoi.",
+      "subtitle_swap": "Swaps atomiques entre IRM et autres chaînes. Sans confiance. Sans bridge.",
+      "advanced_flows": "Flux avancés",
+      "advanced_flows_tooltip": "Ouvrir les flux de règlement de plus bas niveau."
+    },
+    "mode_tabs": {
+      "otc": "OTC P2P",
+      "swap": "Spot Swap"
+    },
+    "my_trades": {
+      "title": "Mes échanges",
+      "tab_active": "Actifs",
+      "tab_completed": "Terminés",
+      "tab_all": "Tous",
+      "empty_active": "Aucun échange actif. Prenez une offre du carnet d'ordres pour commencer.",
+      "empty_completed": "Aucun échange terminé pour le moment.",
+      "empty_all": "Aucun échange pour le moment. Prenez une offre du carnet d'ordres pour commencer.",
+      "side_buy": "ACHAT",
+      "side_sell": "VENTE"
+    },
+    "trade_status": {
+      "released": "Libéré",
+      "refunded": "remboursé",
+      "expired": "expiré",
+      "cancelled": "annulé",
+      "disputed": "En litige",
+      "confirming": "Confirmation",
+      "locked": "Verrouillé",
+      "proposed": "Proposé",
+      "drafting": "Brouillon"
+    },
+    "order_book": {
+      "title": "Carnet d'ordres",
+      "create_order": "Créer un ordre",
+      "offers_count_one": "offre",
+      "offers_count_other": "offres",
+      "offers_count": "offres",
+      "hidden_tooltip_one": "{{count}} offre masquée car sans prix indiqué",
+      "hidden_tooltip_other": "{{count}} offres masquées car sans prix indiqué",
+      "hidden_tooltip": "{{count}} offres masquées car sans prix indiqué",
+      "hidden_suffix": "{{count}} masquée(s)",
+      "show_taken": "Afficher les prises",
+      "sort": {
+        "price_asc": "Prix ↑",
+        "price_desc": "Prix ↓",
+        "newest": "Plus récents",
+        "best_rep": "Meilleure réputation"
+      },
+      "updated_ago": "Mis à jour {{time}}",
+      "refreshing": "Actualisation…",
+      "refreshing_lower": "actualisation…",
+      "empty_prefix": "Aucune offre dans le carnet pour le moment. Cliquez sur",
+      "empty_suffix": "pour publier la première.",
+      "col_amount_irm": "Montant IRM",
+      "col_price_per_irm": "Prix / IRM",
+      "col_total": "Total",
+      "col_payment": "Paiement",
+      "col_seller": "Vendeur",
+      "col_rep": "Rép.",
+      "col_age": "Ancienneté",
+      "rep_tooltip": "{{stars}} sur 5, {{completed}} terminés",
+      "no_reputation": "Aucune réputation",
+      "taken": "Pris",
+      "take": "Prendre"
+    },
+    "pair_order_book": {
+      "header_title": "Carnet d'ordres {{pair}}",
+      "open_shown_summary": "{{open}} ouverts · {{shown}} affichés",
+      "updated_label": "mis à jour",
+      "new_swap": "Nouveau swap",
+      "direction_both": "Les deux",
+      "direction_sell_irm": "Vendre IRM",
+      "direction_buy_irm": "Acheter IRM",
+      "sort_price_asc": "Meilleur prix d'abord",
+      "sort_price_desc": "Prix le plus élevé d'abord",
+      "sort_recent": "Plus récents d'abord",
+      "hide_my_orders": "Masquer mes ordres",
+      "loading_orders": "Chargement des ordres {{pair}}…",
+      "empty_state": "Aucun ordre {{pair}} ouvert. Soyez le premier — publiez-en un avec le bouton Nouveau swap ci-dessus.",
+      "side_sells_irm": "Vend des IRM",
+      "side_buys_irm": "Achète des IRM",
+      "badge_yours": "À vous",
+      "escrow_protected": "Protégé par escrow",
+      "maker_line": "Maker {{address}} · {{ago}}",
+      "needs_confirmations": "Nécessite {{count}} confirmation côté {{network}}",
+      "needs_confirmations_plural": "Nécessite {{count}} confirmations côté {{network}}",
+      "relative_recent": "récent",
+      "relative_just_now": "à l'instant",
+      "relative_blocks_ago": "il y a {{count}} blocs",
+      "relative_blocks_ago_one": "il y a {{count}} bloc",
+      "relative_hours_ago": "il y a {{count}} h",
+      "relative_days_ago": "il y a {{count}} j"
+    },
+    "resolver_picker": {
+      "title": "Sélection du résolveur",
+      "intro": "Un résolveur est un tiers vérifié qui décide qui reçoit les IRM lorsque l'acheteur et le vendeur ne parviennent pas à un accord. Le résolveur perçoit de petits frais, déduits du montant litigieux au règlement de l'échange.",
+      "nominated_section_title": "Résolveurs désignés pour cet échange",
+      "primary_label": "Principal",
+      "fallback_label": "Secours",
+      "fee_with_value": "Frais : {{value}}",
+      "no_nominated_notice": "Cet échange a été créé sans résolveurs désignés. Les deux parties peuvent co-signer une nouvelle désignation depuis le flux de re-désignation de résolveurs du portefeuille avant que tout résolveur ci-dessous puisse agir.",
+      "available_section_title": "Résolveurs disponibles",
+      "registry_unreachable": "Le point de terminaison du registre de résolveurs est inaccessible sur ce nœud ({{error}}). Utilisez le flux de re-désignation de résolveurs depuis votre portefeuille pour découvrir les candidats directement via la CLI resolver-list.",
+      "empty_registry_before": "Aucun résolveur ne s'est encore enregistré sur ce nœud. Les résolveurs s'enregistrent en appelant",
+      "empty_registry_after": "après que leur adresse soit apparue dans une sortie coinbase récente.",
+      "unnamed_resolver": "Résolveur sans nom",
+      "no_reputation_yet": "pas encore de réputation",
+      "agreements_hint": "Utilisez la page Accords pour soumettre des preuves supplémentaires au résolveur et suivre le déroulement de la résolution du litige. Les deux parties peuvent soumettre des preuves à tout moment avant la décision du résolveur.",
+      "close": "Fermer"
+    },
+    "seller_review": {
+      "toast_released": "IRM libérés. L'acheteur dispose désormais des fonds.",
+      "dispute_reason": "le vendeur n'a pas reçu le paiement off-chain",
+      "toast_dispute_opened": "Litige ouvert. Un résolveur examinera les preuves.",
+      "empty_state": "Aucun échange entrant en attente. Lorsqu'un acheteur prend l'une de vos offres et signale son paiement, il apparaît ici.",
+      "section_title": "Échanges entrants à vérifier",
+      "waiting_count": "{{count}} en attente",
+      "status_releasing": "Libération",
+      "status_funded": "Financé",
+      "buyer_label": "Acheteur :",
+      "buyer_claims_paid": "L'acheteur déclare avoir envoyé le paiement {{time}}",
+      "no_reference": "(aucune référence de transaction fournie)",
+      "no_payment_yet": "L'acheteur n'a pas encore signalé l'envoi du paiement. Patientez, ou ouvrez un litige si l'échéance est passée.",
+      "open_dispute_button": "Pas de paiement — ouvrir un litige",
+      "confirm_release_button": "Confirmer la réception et libérer",
+      "loading_trades": "Chargement des échanges…",
+      "time_ago_seconds": "il y a {{count}} s",
+      "time_ago_minutes": "il y a {{count}} min",
+      "time_ago_hours": "il y a {{count}} h",
+      "time_ago_days": "il y a {{count}} j"
+    },
+    "take_swap": {
+      "buy_irm": "Acheter des IRM",
+      "sell_irm": "Vendre des IRM",
+      "toast_no_wallet": "Aucune adresse de portefeuille Irium active. Ouvrez d'abord un portefeuille.",
+      "toast_min_blocks": "L'échéance de remboursement doit être d'au moins 10 blocs",
+      "toast_locked_buyer": "Ordre verrouillé. Envoyez le paiement {{code}} et signalez-le.",
+      "toast_locked_seller": "Ordre verrouillé. Les IRM du vendeur sont en escrow.",
+      "toast_need_ref": "Saisissez un identifiant de transaction ou une note afin que le vendeur puisse vérifier votre paiement {{code}}",
+      "toast_payment_reported": "Paiement signalé. Le vendeur a été notifié.",
+      "toast_dispute_info": "Un litige peut être ouvert depuis la page Accords. Annulez ici pour le moment et reprenez là-bas.",
+      "modal_title": "{{label}} sur {{pair}}",
+      "step_of_2": "Étape {{step}} sur 2",
+      "intro_buyer": "La confirmation verrouillera les IRM du vendeur en escrow. Vous enverrez ensuite des {{code}} à l'adresse indiquée.",
+      "intro_seller": "La confirmation créera un escrow correspondant avec vos IRM. L'acheteur enverra des {{code}} à votre adresse.",
+      "you_receive": "Vous recevez",
+      "you_pay": "Vous payez",
+      "you_send": "Vous envoyez",
+      "price": "Prix",
+      "maker": "Maker",
+      "maker_foreign_address": "Adresse {{code}} du maker",
+      "needs": "Nécessite",
+      "confirmation_one": "{{count}} confirmation {{code}}",
+      "confirmation_other": "{{count}} confirmations {{code}}",
+      "refund_deadline_label": "Échéance de remboursement (blocs Irium)",
+      "refund_deadline_hint": "Si le paiement n'est pas confirmé avant cette échéance, vos fonds peuvent être remboursés.",
+      "cancel": "Annuler",
+      "confirm_action": "Confirmer {{label}}",
+      "escrow_locked": "Escrow verrouillé",
+      "escrow_locked_buyer": "Envoyez le paiement {{code}} à l'adresse ci-dessous. Une fois votre paiement confirmé, les IRM sont libérés automatiquement vers votre portefeuille.",
+      "escrow_locked_seller": "Vos IRM sont en escrow. L'acheteur enverra des {{code}} à votre adresse. Quand son paiement sera confirmé, les IRM lui seront libérés et le flux acheteur se terminera tout seul.",
+      "send_to_label": "Envoyer des {{code}} à",
+      "exact_amount_label": "Montant {{code}} exact",
+      "required_memo_label": "Mémo de paiement requis",
+      "memo_hint": "La plupart des portefeuilles {{name}} l'incluent comme champ de données supplémentaire sur le paiement. Cela lie votre paiement à cet échange afin que les IRM puissent être libérés automatiquement.",
+      "tx_reference_label": "Votre référence de transaction",
+      "tx_reference_placeholder": "Identifiant de transaction {{code}} ou note",
+      "tx_reference_hint": "Le vendeur voit exactement ceci. Tout ce qu'il peut utiliser pour confirmer votre paiement convient.",
+      "cancel_warning": "Si vous annulez maintenant, vos fonds restent verrouillés jusqu'à l'échéance de remboursement ci-dessus.",
+      "cancel_and_dispute": "Annuler et ouvrir un litige",
+      "i_have_sent": "J'ai envoyé les {{code}}",
+      "watching_escrow": "Surveillance de l'escrow"
     }
   },
   "miner": {
@@ -1047,7 +1634,11 @@
       "uptime": "Temps de disponibilité",
       "difficulty": "Difficulté",
       "temperature": "Température",
-      "power": "Pouvoir"
+      "power": "Pouvoir",
+      "est_daily_irm": "IRM quotidiens estimés",
+      "na_linux_only": "N/D (Linux uniquement)",
+      "pool_difficulty": "Difficulté du pool",
+      "pool_hashrate": "Taux de hachage du pool"
     },
     "buttons": {
       "start_mining": "Commencer l'exploitation minière",
@@ -1056,7 +1647,23 @@
       "connect_pool": "Se connecter à la piscine",
       "disconnect": "Déconnecter",
       "confirm_disconnect": "Confirmer la déconnexion ?",
-      "detect_gpus": "Détecter les GPU"
+      "detect_gpus": "Détecter les GPU",
+      "view_wallet": "Voir le portefeuille",
+      "starting": "Démarrage…",
+      "connecting": "Connexion…",
+      "start_gpu_mining": "Démarrer le minage GPU",
+      "stop_gpu": "Arrêter le GPU",
+      "scanning": "Analyse…",
+      "yes": "Oui",
+      "no": "Non",
+      "close": "Fermer",
+      "done": "Terminé",
+      "ok": "OK",
+      "start": "Démarrer",
+      "stop": "Arrêter",
+      "refresh": "Actualiser",
+      "view_pool_stats": "Voir les stats du pool",
+      "view_pool_stats_tooltip": "Ouvrir les stats en direct des mineurs du pool public dans l'Explorateur de blocs"
     },
     "fields": {
       "mining_address_label": "Adresse minière",
@@ -1080,21 +1687,49 @@
       "intensity_label": "Intensité — {{value}}%",
       "intensity_mac_note": "Intensité plafonnée à 50 % sur macOS pour empêcher le chien de garde du GPU de tuer les noyaux en cours de lot. Le mineur GPU détecte automatiquement les blocages du chien de garde et s'arrête proprement s'il les voit quand même.",
       "pool_preset": "Préréglage de piscine",
-      "stratum_worker_use_wallet": "Use my wallet"
+      "stratum_worker_use_wallet": "Use my wallet",
+      "intensity_hint": "Intensité plus élevée = plus de taux de hachage, plus de consommation",
+      "core_active_tooltip": "Cœur {{n}} (actif)",
+      "core_idle_tooltip": "Cœur {{n}} (inactif)",
+      "stratum_worker_placeholder": "adressePortefeuille.nomWorker",
+      "stratum_worker_autofill_tooltip": "Remplissage auto : {{address}}.rig1",
+      "stratum_password_hint": "Laissez vide pour utiliser « x » (la valeur par défaut pour la plupart des pools)"
     },
     "found_blocks": {
       "section_title": "Blocs trouvés",
       "empty": "Aucun bloc trouvé pour l'instant dans cette session.",
-      "open_in_explorer_tooltip": "Ouvrez ce bloc dans l'Explorateur"
+      "open_in_explorer_tooltip": "Ouvrez ce bloc dans l'Explorateur",
+      "hide_orphans_tooltip": "Masquer les blocs gagnés par un autre mineur",
+      "reveal_orphans_tooltip_one": "Révéler {{count}} candidat orphelin",
+      "reveal_orphans_tooltip_other": "Révéler {{count}} candidats orphelins",
+      "hide_orphans_button": "Masquer les orphelins ({{count}})",
+      "show_orphans_button": "Afficher les orphelins ({{count}})",
+      "all_orphaned": "Aucun bloc confirmé pour le moment — tous les candidats jusqu'à présent étaient orphelins.",
+      "orphaned_tooltip": "Orphelin — gagné par un autre mineur",
+      "orphaned_long_tooltip": "Le bloc canonique à cette hauteur a été miné par une autre adresse — nous avons enregistré notre candidat mais perdu la course.",
+      "orphaned_badge": "orphelin",
+      "block_height_tooltip": "Hauteur de bloc {{height}}",
+      "won_by_another": "Gagné par un autre mineur",
+      "hash_unavailable": "hash indisponible dans cette version du mineur",
+      "reward_not_indexed_tooltip": "Récompense non encore indexée par le nœud — la valeur sera renseignée à maturité",
+      "reward_unknown_tooltip": "Récompense inconnue — la sortie stdout du mineur ne la rapporte pas",
+      "estimate_marker": "~ est"
     },
     "shares": {
       "accepted": "Accepté",
       "rejected": "Rejeté",
-      "ratio": "Rapport"
+      "ratio": "Rapport",
+      "last_share": "Dernier share"
     },
     "asic_info": {
       "headline": "Connectez votre ASIC ou GPU à un pool de minage via Stratum",
-      "after_install": "Après l'installation, redémarrez Irium Core."
+      "after_install": "Après l'installation, redémarrez Irium Core.",
+      "external_title": "Minage en pool avec un ASIC ou GPU externe",
+      "external_body_before_url": "Pointez votre logiciel de minage ASIC ou GPU directement vers l'URL du pool ci-dessus (par ex. ",
+      "external_body_after_url": "). Irium Core surveille les statistiques de shares côté pool affichées ici ; le taux de hachage local de votre matériel est rapporté par le mineur lui-même.",
+      "connect_button_intro_before": "Le bouton ",
+      "connect_button_intro_middle": " ci-dessous démarre le minage en pool avec votre CPU via le sidecar ",
+      "connect_button_intro_after": " intégré — utile uniquement si vous souhaitez aussi que cette machine contribue au taux de hachage CPU du pool. Les ASIC externes n'ont pas besoin de ce bouton."
     },
     "toasts": {
       "miner_started": "Le mineur de CPU a démarré",
@@ -1114,17 +1749,42 @@
       "connecting_to_pool": "Connexion à la piscine…",
       "pool_disconnected_reconnecting": "Piscine déconnectée – reconnexion…",
       "pool_connection_lost": "Connexion à la piscine perdue. Veuillez vous reconnecter.",
-      "pool_error": "Erreur de pool : {{message}}"
+      "pool_error": "Erreur de pool : {{message}}",
+      "no_device_selected": "Aucun périphérique sélectionné — utilisation du périphérique 0 par défaut",
+      "solo_listening_on": "Stratum solo à l'écoute sur {{addr}}",
+      "solo_failed_start": "Échec du démarrage du Stratum solo",
+      "solo_stopped": "Stratum solo arrêté",
+      "solo_failed_stop": "Échec de l'arrêt du Stratum solo",
+      "copied": "Copié"
     },
     "page_subtitle": "SHA-256d · CPU · GPU · Prise en charge du pool ASIC",
     "tooltips": {
       "copy_address": "Copier l'adresse",
-      "copy_full_hash": "Copier le hachage complet"
+      "copy_full_hash": "Copier le hachage complet",
+      "copy": "Copier"
     },
     "pool_configuration": "Configuration du pool",
     "opencl": {
       "detected_title": "Matériel OpenCL détecté",
-      "none_detected": "Aucun GPU compatible OpenCL détecté"
+      "none_detected": "Aucun GPU compatible OpenCL détecté",
+      "no_gpu_idle_message": "Aucun GPU compatible détecté — voir Configuration ci-dessous",
+      "select_platform": "Sélectionnez une plateforme et démarrez le minage",
+      "no_compatible_gpu": "Aucun GPU compatible détecté",
+      "install_drivers_before": "Le minage GPU nécessite un runtime OpenCL. Installez les pilotes de votre fournisseur de GPU (NVIDIA, AMD ou Intel OpenCL SDK) et cliquez sur ",
+      "install_drivers_after": ".",
+      "supports_pool_and_solo": "Une fois activé, le mineur GPU prend en charge le minage en pool (Stratum) comme en solo (RPC direct vers le nœud).",
+      "read_docs": "Lire la documentation du mineur GPU",
+      "no_platforms_found": "Aucune plateforme OpenCL trouvée.",
+      "install_icd_before": "Installez le pilote de votre GPU et le loader ICD, puis cliquez sur ",
+      "install_icd_after": " à nouveau.",
+      "platform_n": "Plateforme {{n}}",
+      "discrete_gpu": "GPU discret",
+      "device_n": "Périphérique {{n}}",
+      "fix_intro": "Pour corriger, installez le pilote OpenCL pour votre GPU :",
+      "fix_nvidia": "Réinstallez votre pilote GPU depuis nvidia.com",
+      "fix_amd": "Installez AMD Software Adrenalin depuis amd.com",
+      "fix_intel": "Installez le pilote Intel Graphics depuis intel.com",
+      "scanning": "Recherche des périphériques OpenCL…"
     },
     "unexpected_exit": {
       "title": "Miner stopped unexpectedly",
@@ -1133,6 +1793,75 @@
       "restart_cpu": "Restart CPU Miner",
       "restart_gpu": "Restart GPU Miner",
       "dismiss": "Dismiss"
+    },
+    "activity": {
+      "share_accepted": "Share accepté",
+      "share_rejected": "Share rejeté",
+      "share_rejected_with_detail": "Share rejeté — {{detail}}",
+      "pool_error": "Erreur du pool",
+      "pool_error_with_detail": "Erreur du pool — {{detail}}",
+      "mining_active": "Minage actif",
+      "block_hash_marker": "· bloc n°{{height}}",
+      "section_title": "Activité récente",
+      "last_count": "derniers {{count}}",
+      "waiting_for_first_share": "En attente du premier share…"
+    },
+    "status": {
+      "loading": "Chargement…",
+      "mining_active": "Minage actif",
+      "mining_active_syncing": "Minage actif — Synchronisation des blocs…",
+      "cpu_idle": "CPU inactif",
+      "gpu_active": "GPU actif",
+      "gpu_idle": "GPU inactif",
+      "pool_connected": "Pool connecté",
+      "pool_disconnected": "Pool déconnecté",
+      "live_badge": "En direct",
+      "syncing_badge": "Synchronisation"
+    },
+    "sync": {
+      "node_syncing_height": "Synchronisation du nœud — hauteur {{localHeight}} / réseau {{networkTip}}",
+      "warming_up_header": "Préchauffage du mineur — en attente du premier débit de shares…",
+      "node_syncing_body": "Le nœud rattrape encore le sommet du réseau. Le minage est activé mais aucun share ne sera accepté tant que la chaîne locale ne correspond pas. Cela se termine généralement en quelques minutes.",
+      "warming_up_body": "Le sidecar du mineur a démarré. La première mesure de taux de hachage arrive sous 1 à 3 secondes — aucune action requise."
+    },
+    "block_info": {
+      "mining_block_n": "Minage du bloc n°{{height}}",
+      "previous_block": "Bloc précédent",
+      "last_confirmed_block": "dernier bloc confirmé",
+      "network_difficulty": "Difficulté du réseau"
+    },
+    "solo": {
+      "title": "Pont Stratum Solo",
+      "subtitle": "Faites tourner un ASIC contre votre propre iriumd. Aucun frais de pool, aucune dépendance au pool.",
+      "listening": "À l'écoute",
+      "stopped": "Arrêté",
+      "listen_address_label": "Adresse d'écoute",
+      "listen_default_before": "La valeur par défaut ",
+      "listen_default_after": " écoute toutes les interfaces afin que l'ASIC de votre LAN puisse l'atteindre.",
+      "asic_connection_string": "Chaîne de connexion ASIC",
+      "bullet_replace_host_before": "• Remplacez ",
+      "bullet_replace_host_after": " par l'IP LAN de votre machine (ou l'IP de votre VPS).",
+      "bullet_worker_username_before": "• Nom d'utilisateur du worker : votre adresse Q suivie de ",
+      "bullet_worker_username_after": ". Mot de passe : n'importe quelle chaîne.",
+      "bullet_bridge_serves_before": "• Le pont sert ",
+      "bullet_bridge_serves_middle": " et ",
+      "bullet_bridge_serves_after": " sur votre iriumd local."
+    },
+    "found_block_banner": {
+      "title": "Bloc n°{{height}} miné !",
+      "body": "Votre mineur {{kind}} vient de remporter la course du réseau — 50 IRM sont en route (maturation en 100 blocs).",
+      "dismiss_aria": "Ignorer"
+    },
+    "tabs_v2": {
+      "cpu": "Mineur CPU",
+      "gpu": "Mineur GPU",
+      "stratum": "Pool / Stratum",
+      "solo": "Stratum solo"
+    },
+    "pool_presets": {
+      "irium_official_cpu_gpu": "Pool officiel Irium (CPU/GPU)",
+      "irium_official_asic": "Pool officiel Irium (ASIC)",
+      "custom": "Personnalisé"
     }
   },
   "onboarding": {
@@ -1162,7 +1891,8 @@
       "generating": "Génération de portefeuille…",
       "show_recovery": "Afficher la phrase de récupération",
       "i_wrote_it_down": "je l'ai écrit",
-      "continue_to_wallet": "Continuer vers Wallet"
+      "continue_to_wallet": "Continuer vers Wallet",
+      "generating_sub": "Création d'un portefeuille HD BIP32 avec phrase de récupération de 24 mots…"
     },
     "import": {
       "tab_mnemonic": "Phrase de récupération",
@@ -1199,6 +1929,153 @@
       "too_short": "Password must be at least 4 characters",
       "required": "Password is required",
       "continue": "Continue"
+    },
+    "splash": {
+      "subtitle_full_node": "PORTEFEUILLE DESKTOP NŒUD COMPLET",
+      "status_initializing": "Initialisation du runtime…",
+      "status_loading_crypto": "Chargement des modules cryptographiques…",
+      "status_verifying_binary": "Vérification de l'intégrité du binaire…",
+      "status_establishing_context": "Établissement du contexte sécurisé…",
+      "status_ready": "Prêt"
+    },
+    "rail": {
+      "system_check": "Vérification système",
+      "bootstrap": "Bootstrap",
+      "network_sync": "Synchro réseau",
+      "wallet_setup": "Configuration du portefeuille",
+      "backup_secure": "Sauvegarde et sécurisation"
+    },
+    "binary_check": {
+      "subtitle": "Vérification de la présence des binaires de nœud requis sur cette machine.",
+      "iriumd_desc": "Démon du nœud complet",
+      "irium_wallet_desc": "CLI portefeuille et marketplace",
+      "irium_miner_desc": "Mineur CPU",
+      "all_verified": "Tous les binaires vérifiés. Poursuite…",
+      "missing_binaries": "Binaires manquants. Placez les exécutables dans src-tauri/binaries/",
+      "retry": "Réessayer",
+      "skip_advanced": "Ignorer (avancé)"
+    },
+    "bootstrap": {
+      "subtitle": "Configuration des nœuds seed, ancres de confiance et bloc genesis.",
+      "creating_data_dir": "Création du répertoire de données…",
+      "writing_seedlist": "Écriture du seedlist.txt de bootstrap…",
+      "writing_static_peers": "Écriture de static_peers.txt…",
+      "installing_anchors": "Installation des ancres genesis anchors.json…",
+      "installing_trust_signatures": "Installation des signatures de confiance…",
+      "complete": "Configuration de bootstrap terminée.",
+      "error_prefix": "Erreur",
+      "skip_continue": "Ignorer (continuer quand même)"
+    },
+    "network_sync": {
+      "subtitle": "Chargement des données blockchain locales et connexion au réseau P2P Irium.",
+      "port_in_use_message": "Le port 38291 est déjà utilisé. Un autre nœud Irium peut tourner en arrière-plan. Vérifiez la barre d'état système pour une instance existante d'Irium Core, ou ouvrez le Gestionnaire des tâches et arrêtez tout processus iriumd.exe, puis relancez l'application.",
+      "add_peer_format_error": "Utilisez le format IP:PORT (ex. 1.2.3.4:38291)",
+      "add_peer_rejected": "Le nœud a rejeté l'adresse",
+      "add_peer_unreachable": "Impossible d'atteindre le nœud",
+      "starting_iriumd": "Démarrage d'iriumd…",
+      "loading_blockchain_data": "Chargement des données blockchain…",
+      "starting_node": "Démarrage du nœud…",
+      "discovering": "découverte…",
+      "searching_for_peers": "Recherche de pairs sur le réseau Irium",
+      "checking_connectivity": "Vérification de la connectivité réseau…",
+      "network_reachable": "Réseau accessible — démarrage du nœud…",
+      "port_blocked_title": "Le port 38291 semble bloqué en sortie",
+      "port_blocked_body_before": "Le réseau Irium est inaccessible. Vérifiez votre routeur ou pare-feu — le port",
+      "port_blocked_body_after": "doit être ouvert pour les connexions TCP sortantes.",
+      "restarting_node": "Redémarrage du nœud…",
+      "retry_connection": "Réessayer la connexion",
+      "still_connecting_title": "Connexion aux pairs toujours en cours…",
+      "still_connecting_body": "Le nœud contacte le réseau Irium. Cela se termine généralement en moins de 30 secondes — patientez.",
+      "connecting_for": "Connexion depuis {{seconds}} s…",
+      "add_peer_manually": "Ajouter un pair manuellement",
+      "add_peer_button": "Ajouter un pair",
+      "added_peer": "{{addr}} ajouté",
+      "continuing_in": "Poursuite dans {{seconds}} s…",
+      "syncing_background": "Synchronisation en arrière-plan…",
+      "continue_anyway": "Continuer quand même →"
+    },
+    "wallet_setup_subtitle": "Créez un nouveau portefeuille HD ou restaurez à partir d'un portefeuille existant.",
+    "wallet_setup_errors": {
+      "failed_create": "Échec de création du portefeuille",
+      "no_wallet_pending": "Aucun portefeuille en attente de chiffrement",
+      "failed_set_password": "Échec de définition du mot de passe du portefeuille",
+      "import_failed": "Échec de l'import"
+    },
+    "wallet_password": {
+      "title": "Définir un mot de passe de portefeuille",
+      "subtitle": "Chiffre votre fichier de portefeuille. Requis avant de continuer.",
+      "placeholder": "Choisissez un mot de passe fort (8+ caractères)",
+      "confirm_placeholder": "Confirmer le mot de passe",
+      "warning": "Ce mot de passe ne peut être récupéré s'il est oublié. Notez-le et conservez-le en lieu sûr. Votre phrase de récupération est le seul moyen de restaurer le portefeuille sans ce mot de passe.",
+      "continue": "Chiffrer et continuer",
+      "too_short": "Le mot de passe doit comporter au moins 8 caractères",
+      "mismatch": "Les mots de passe ne correspondent pas",
+      "encrypting": "Chiffrement du portefeuille…",
+      "encrypting_sub": "Application d'une clé dérivée par PBKDF2 à votre fichier de portefeuille.",
+      "hide": "masquer",
+      "show": "afficher"
+    },
+    "wallet_restored_sub": "Votre portefeuille a été importé avec succès.",
+    "restored": {
+      "primary_address": "Adresse principale",
+      "address_pending": "L'adresse apparaîtra sur le Tableau de bord une fois la synchronisation du nœud terminée.",
+      "additional_addresses": "{{count}} adresse(s) supplémentaire(s) trouvée(s)",
+      "balance_will_load": "Votre solde et historique de transactions se chargeront automatiquement sur le Tableau de bord à mesure que le nœud se synchronise.",
+      "continue_to_dashboard": "Continuer vers le Tableau de bord"
+    },
+    "import_form": {
+      "subtitle": "Choisissez votre méthode de restauration ci-dessous.",
+      "tab_mnemonic_label": "Phrase de récupération",
+      "tab_wif_label": "Clé WIF",
+      "tab_privkey_label": "Clé privée",
+      "mnemonic_placeholder": "mot1 mot2 mot3 … mot24",
+      "mnemonic_hint": "Mnémonique BIP32 — 12 ou 24 mots séparés par des espaces",
+      "wif_placeholder": "5Jxx… ou Kxx… ou Lxx…",
+      "wif_hint": "Wallet Import Format (clé privée encodée en Base58Check)",
+      "privkey_placeholder": "0x1a2b3c4d… (64 caractères hex)",
+      "privkey_hint": "Clé privée brute 256 bits en hexadécimal",
+      "back": "Retour",
+      "importing": "Import…"
+    },
+    "choose": {
+      "create_description": "Générez un nouveau portefeuille HD BIP32 avec une phrase de récupération de 24 mots.",
+      "import_description": "Restaurez via phrase de récupération, clé WIF ou clé privée brute."
+    },
+    "backup": {
+      "field_address_label": "Adresse du portefeuille",
+      "field_wif_label": "Clé WIF",
+      "field_mnemonic_label": "Phrase de récupération (24 mots)",
+      "field_wif_warning": "La WIF est votre clé privée au format portable. Quiconque la possède contrôle les fonds à cette adresse.",
+      "field_mnemonic_warning": "Notez ces 24 mots dans l'ordre. Ne peut être récupéré en cas de perte.",
+      "copy": "Copier",
+      "copied": "Copié !",
+      "hide": "Masquer",
+      "reveal": "Révéler",
+      "click_to_reveal": "Cliquer pour révéler",
+      "confirm_address": "J'ai sauvegardé mon adresse de portefeuille",
+      "confirm_wif": "J'ai stocké ma clé WIF en lieu sûr",
+      "confirm_mnemonic": "J'ai noté ma phrase de récupération hors ligne",
+      "loading": "Chargement…",
+      "wif_read_failed": "(échec de lecture de la WIF — utilisez le panneau Sécurité après lancement",
+      "shown_once_before": "Ces informations sont affichées",
+      "shown_once_emphasis": "une seule fois",
+      "shown_once_after": ". Stockez chaque élément hors ligne avant de continuer.",
+      "critical_warning_strong": "Vous ne pourrez pas récupérer votre portefeuille",
+      "critical_warning_body": "si vous perdez votre phrase de récupération ou votre clé WIF. Irium Core ne dispose d'aucune sauvegarde cloud. Notez tout dès maintenant.",
+      "items_confirmed": "{{count}} sur {{total}} éléments confirmés",
+      "launch_dashboard": "Lancer le Tableau de bord",
+      "confirm_all_to_continue": "Confirmez les 4 éléments pour continuer"
+    },
+    "welcome_screen": {
+      "welcome_to": "Bienvenue sur",
+      "tagline": "Votre portefeuille desktop nœud complet pour la blockchain Irium. Envoyez, recevez, échangez et réglez — entièrement pair-à-pair, entièrement on-chain.",
+      "wizard_intro": "Cet assistant de configuration installera votre nœud, synchronisera la chaîne et créera ou restaurera votre portefeuille.",
+      "chip_full_node": "Nœud complet",
+      "chip_hd_wallet": "Portefeuille HD",
+      "chip_p2p_trade": "Trading P2P",
+      "chip_on_chain_settlement": "Règlement on-chain",
+      "chip_privacy_first": "Confidentialité d'abord",
+      "get_started": "Commencer"
     }
   },
   "reputation": {
@@ -1426,7 +2303,26 @@
       "hashrate_avg_window": "{{minutes}}min moyenne",
       "confidence_low": "Faible confiance",
       "confidence_medium": "Confiance moyenne",
-      "confidence_high": "Confiance élevée"
+      "confidence_high": "Confiance élevée",
+      "asic_port_with_443": "ports {{port}} + 443",
+      "active_miners": "Mineurs actifs",
+      "worker_count_one": "{{count}} worker",
+      "worker_count_other": "{{count}} workers",
+      "your_miners_pinned": "Vos mineurs épinglés en haut",
+      "hide_offline": "Masquer hors ligne ({{count}})",
+      "show_offline": "Afficher les mineurs hors ligne ({{count}})",
+      "no_miners_reporting": "Aucun mineur actif ne rapporte.",
+      "col_worker": "Worker",
+      "col_accepted": "Acceptés",
+      "col_rejected_15m": "Rejetés (15 min)",
+      "col_rejected_15m_tooltip": "Shares rejetés au cours des 15 dernières minutes uniquement. Le décompte cumulé (depuis le redémarrage du stratum) laissait un worker afficher un total obsolète de rejets initiaux même après récupération.",
+      "col_reject_pct_15m": "% rejet (15 min)",
+      "col_reject_pct_15m_tooltip": "Taux de rejet glissant sur les 15 dernières minutes. Le taux cumulé depuis le redémarrage laissait un worker bloqué sur une rafale de rejets post-redémarrage même après récupération.",
+      "col_hashrate_15m": "Taux de hachage (15 min)",
+      "col_blocks": "Blocs",
+      "col_blocks_tooltip": "Blocs trouvés par ce worker dans le pool. Renseigné par le stats-proxy ; affiche « — » jusqu'à ce que le proxy renseigne le crédit de bloc par worker.",
+      "col_last_share": "Dernier share",
+      "yours_badge": "à vous"
     },
     "richlist": {
       "title": "Meilleurs détenteurs d'IRM",
@@ -1464,7 +2360,8 @@
       "load_more_loading": "Chargement des 500 meilleurs…",
       "load_error": "Échec du chargement de la liste riche : {{reason}}",
       "empty": "Aucun solde P2PKH sur la chaîne pour l'instant.",
-      "node_offline_hint": "Démarrez le nœud sur le tableau de bord pour charger la liste riche."
+      "node_offline_hint": "Démarrez le nœud sur le tableau de bord pour charger la liste riche.",
+      "sr_total_supply": "{{total}} IRM contexte d'approvisionnement total pour les lecteurs d'écran"
     },
     "solo_pool": {
       "title": "Solo Pool",
@@ -1503,6 +2400,61 @@
       "blocks_per_day_suffix": "block/jour",
       "irm_per_day_suffix": "IRM/jour",
       "disclaimer": "Estimations uniquement — les gains réels dépendent de la chance, des frais de pool et des changements de difficulté. Le calculateur utilise le hashrate réseau en direct, rafraîchi toutes les 60 s."
+    },
+    "mining_overview": {
+      "title": "Aperçu du minage réseau",
+      "subtitle": "Vue d'ensemble du réseau, du pool et de votre propre minage. Actualisation toutes les 30 secondes.",
+      "network_summary": "Résumé du réseau",
+      "pool_mining": "Minage en pool",
+      "your_mining": "Votre minage",
+      "network_hashrate": "Taux de hachage du réseau",
+      "difficulty": "Difficulté",
+      "avg_block_time": "Temps moyen par bloc",
+      "est_active_miners": "Mineurs actifs estimés",
+      "network_wide_estimate": "estimation à l'échelle du réseau",
+      "pool_hashrate": "Taux de hachage du pool",
+      "estimate_sub": "estimation",
+      "active_pool_miners": "Mineurs actifs du pool",
+      "pool_blocks_found": "Blocs trouvés par le pool",
+      "all_time": "depuis le début",
+      "pool_share": "Pool / Réseau",
+      "share_of_network_hashrate": "part du taux de hachage du réseau",
+      "your_hashrate": "Votre taux de hachage",
+      "collecting": "collecte en cours…",
+      "pool_workers_one": "{{count}} worker du pool",
+      "pool_workers_other": "{{count}} workers du pool",
+      "mode": "Mode",
+      "mode_pool": "Pool",
+      "mode_solo": "Solo",
+      "not_mining": "pas en minage",
+      "connected_via_stratum": "connecté via Stratum",
+      "direct_to_local_node": "direct vers le nœud local",
+      "on_pool": "sur pool.iriumlabs.org",
+      "on_solo_bridge": "sur le pont solo-stratum",
+      "accepted_shares": "Shares acceptés",
+      "none": "aucun",
+      "pool_lifetime": "pool, total",
+      "last_share": "Dernier share",
+      "blocks_you_found": "Blocs que vous avez trouvés",
+      "from_pool_worker": "depuis le worker du pool",
+      "this_session": "cette session"
+    },
+    "relative_time": {
+      "just_now": "à l'instant",
+      "seconds_ago_one": "il y a {{count}} seconde",
+      "seconds_ago_other": "il y a {{count}} secondes",
+      "minutes_ago_one": "il y a {{count}} minute",
+      "minutes_ago_other": "il y a {{count}} minutes",
+      "hours_ago_one": "il y a {{count}} heure",
+      "hours_ago_other": "il y a {{count}} heures",
+      "days_ago_one": "il y a {{count}} jour",
+      "days_ago_other": "il y a {{count}} jours"
+    },
+    "founder_card": {
+      "title": "Adresse de vesting du fondateur",
+      "description": "Cette adresse contient 3 500 000 IRM verrouillés via un timelock CLTV au genesis. Le solde affiché est 0 car les fonds verrouillés utilisent un script spécial non compté comme solde dépensable.",
+      "unlocks_at": "Déverrouillage au bloc n°{{height}}",
+      "blocks_remaining": "(~{{count}} blocs restants)"
     }
   },
   "help": {
@@ -2146,7 +3098,10 @@
       "errors": {
         "buyer_required": "Saisissez l’adresse Irium de l’acheteur.",
         "amount_required": "Saisissez le montant d’IRM que vous voulez verrouiller.",
-        "receiving_required": "Indiquez à votre acheteur ce que vous attendez en retour."
+        "receiving_required": "Indiquez à votre acheteur ce que vous attendez en retour.",
+        "no_agreement_id": "La création de l'accord n'a retourné aucun identifiant",
+        "fund_after_create_failed": "Accord créé mais le financement a échoué. Ouvrez la page Accords pour relancer.",
+        "payment_ref_required": "Saisissez une référence de transaction afin que le vendeur puisse vérifier votre paiement."
       },
       "review": {
         "you_lock": "Vous verrouillez",
@@ -2154,7 +3109,14 @@
         "deadline": "Échéance",
         "deadline_value": "Sans paiement sous {{hours}} heures, votre IRM est restitué automatiquement.",
         "lock_funds": "Verrouiller les fonds",
-        "tx_note": "Cela créera une transaction sur la blockchain Irium."
+        "tx_note": "Cela créera une transaction sur la blockchain Irium.",
+        "you_lock_short": "Vous verrouillez",
+        "buyer_pays_you": "L'acheteur vous paie",
+        "payment_deadline": "Échéance de paiement",
+        "hours_from_now": "{{hours}} heures à partir de maintenant",
+        "buyer_address": "Adresse de l'acheteur",
+        "lock_my_irm": "Verrouiller mes IRM",
+        "tx_broadcast_note": "Une transaction blockchain sera diffusée. La confirmation peut prendre un moment."
       },
       "share": {
         "title": "Partagez ceci avec votre acheteur",
@@ -2174,7 +3136,25 @@
         "receiving_placeholder": "ex. 200 USDT, virement bancaire, espèces",
         "deadline_label": "Combien de temps cette opération doit-elle rester ouverte ?",
         "deadline_helper": "Sans paiement dans ce délai, votre IRM est restitué automatiquement.",
-        "release_button": "J’ai reçu le paiement — libérer les fonds à l’acheteur"
+        "release_button": "J’ai reçu le paiement — libérer les fonds à l’acheteur",
+        "buyer_address_short_label": "Adresse de l'acheteur",
+        "buyer_address_helper": "L'adresse qui reçoit les IRM lorsque vous confirmez que l'acheteur a payé.",
+        "amount_label_short": "Montant d'IRM à vendre",
+        "amount_helper_short": "Conservé en escrow jusqu'à ce que vous confirmiez le paiement de l'acheteur.",
+        "receiving_label_short": "Ce que vous recevez en retour",
+        "receiving_placeholder_detailed": "ex. 50 USDT via virement SEPA",
+        "deadline_label_short": "Échéance pour que l'acheteur paie",
+        "deadline_helper_refund": "Si aucun paiement n'arrive avant l'échéance, vous pouvez réclamer un remboursement.",
+        "locked_hero_title": "Vos IRM sont maintenant verrouillés et protégés",
+        "locked_hero_body": "L'acheteur ne peut pas les prendre sans votre confirmation. Partagez le code de transaction ci-dessous pour qu'il puisse rejoindre, puis attendez son paiement.",
+        "share_code_title": "Partagez ce code de transaction",
+        "share_code_body": "L'acheteur colle ce code dans son portefeuille pour rejoindre l'échange.",
+        "header1_title": "Configurez votre vente",
+        "header1_subtitle": "Indiquez qui est l'acheteur et combien d'IRM vous souhaitez vendre.",
+        "header2_title": "Vérifier et verrouiller",
+        "header2_subtitle": "Confirmez les détails. Le verrouillage envoie les IRM en escrow.",
+        "header3_title": "Votre échange est en cours",
+        "header3_subtitle": "Partagez le code de transaction avec l'acheteur et attendez son paiement."
       },
       "buying": {
         "step2_title": "Collez le code d’opération de votre vendeur",
@@ -2193,12 +3173,42 @@
         "status_waiting": "En attente de confirmation du paiement par le vendeur.",
         "status_releasing": "Paiement confirmé — l’IRM est en route.",
         "status_complete": "Terminé — l’IRM est arrivé dans votre wallet.",
-        "view_agreements": "Voir dans agreement"
+        "view_agreements": "Voir dans agreement",
+        "review_commit_intro": "Confirmez les détails de l'échange ci-dessous. En continuant, vous vous engagez sur cet échange. Après cette étape, envoyez le paiement off-chain au vendeur et signalez-le depuis l'écran suivant.",
+        "seller_is_locking": "Le vendeur verrouille",
+        "seller_short_label": "Vendeur",
+        "details_did_not_load": "Les détails de l'échange n'ont pas pu être chargés. Vous pouvez continuer, mais vérifiez le montant d'IRM auprès du vendeur avant de payer.",
+        "continue_and_link": "Continuer et lier",
+        "trade_complete_title": "Échange terminé",
+        "trade_complete_body": "Les IRM sont arrivés dans votre portefeuille.",
+        "seller_locked_for_you_title": "Les IRM du vendeur sont verrouillés pour vous",
+        "seller_locked_for_you_body": "Envoyez le paiement off-chain au vendeur, puis signalez votre référence de transaction ci-dessous.",
+        "report_payment_title": "Signaler votre paiement",
+        "report_payment_body": "Après avoir envoyé le paiement off-chain, collez toute référence que le vendeur peut utiliser pour confirmer sa réception — référence du virement bancaire, identifiant de transaction PayPal, etc.",
+        "report_payment_placeholder": "Référence de virement bancaire, txid PayPal, txid blockchain, etc.",
+        "cancel_open_dispute": "Annuler et ouvrir un litige",
+        "payment_reported": "Paiement signalé",
+        "i_have_sent_payment": "J'ai envoyé le paiement",
+        "header1_title": "Collez le code de transaction du vendeur",
+        "header1_subtitle": "Le vendeur vous aura envoyé un code après avoir verrouillé ses IRM.",
+        "header2_title": "Vérifiez l'échange",
+        "header2_subtitle": "Assurez-vous que le montant et le vendeur correspondent à ce que vous attendez.",
+        "header3_title": "Votre échange est en cours",
+        "header3_subtitle": "Envoyez le paiement off-chain, puis signalez-le pour que le vendeur puisse libérer les IRM."
       },
       "fuel_banner_title": "Vous avez besoin d'IRM pour créer un règlement.",
       "fuel_banner_prefix": "Allez sur",
       "fuel_banner_link": "Marketplace → Échange au comptant",
-      "fuel_banner_suffix": "pour acquérir IRM d'abord."
+      "fuel_banner_suffix": "pour acquérir IRM d'abord.",
+      "toast_buyer_linked": "Votre partie est désormais liée à l'échange. Envoyez le paiement off-chain au vendeur.",
+      "toast_payment_reported": "Paiement signalé. En attente de la confirmation du vendeur.",
+      "toast_dispute_opened": "Litige ouvert. Un résolveur examinera les preuves.",
+      "dispute_reason_buyer": "l'acheteur ne peut pas finaliser l'échange",
+      "choose_selling_title": "Je vends des IRM",
+      "choose_selling_body": "Verrouillez vos IRM en escrow. L'acheteur vous paie off-chain, puis vous libérez.",
+      "choose_buying_title": "J'achète des IRM",
+      "choose_buying_body": "Collez le code de transaction du vendeur. Envoyez-lui le paiement, puis confirmez pour recevoir les IRM.",
+      "view_resolvers": "Voir les résolveurs disponibles"
     },
     "pay_for_work": {
       "step1_title": "Paiement unique ou par jalon ?",
@@ -2250,7 +3260,12 @@
       "claim_refund": "Demander un remboursement",
       "toast_released": "Paiement libéré au prestataire.",
       "toast_release_pending": "Complétion enregistrée. Les fonds seront libérés après quelques confirmations de block.",
-      "toast_refunded": "Remboursement réclamé — les fonds reviennent à votre wallet."
+      "toast_refunded": "Remboursement réclamé — les fonds reviennent à votre wallet.",
+      "toast_fund_failed": "Accord créé mais le financement a échoué. Retrouvez-le dans la page Accords pour relancer le financement.",
+      "which_milestone": "Quel jalon ?",
+      "milestone_option": "Jalon {{index}} sur {{total}}",
+      "milestone_helper": "Marquer comme terminé libère la part d'IRM verrouillée pour ce jalon. Le prestataire reçoit 1/{{count}} du total par jalon.",
+      "mark_complete_milestone": "Marquer comme terminé — Libérer le paiement (jalon {{index}})"
     },
     "deposit": {
       "step1_title": "Configurez votre dépôt",

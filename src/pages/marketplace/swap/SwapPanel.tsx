@@ -171,13 +171,13 @@ export default function SwapPanel() {
     setSelectedOrderId(row.order_id);
     if (!activePair.available) {
       toast.error(
-        activePair.comingSoonReason ?? 'This pair is not available yet',
+        activePair.comingSoonReason ?? t('marketplace.swap.pair_not_available'),
       );
       return;
     }
     if (myAddrs.has(row.maker_iriumd_address)) {
       // Tapping your own order opens it for inspection but does not take it.
-      toast('That is your own order. Use the My Swaps panel on the right to cancel it.', {
+      toast(t('marketplace.swap.own_order_hint'), {
         icon: 'i',
       });
       return;
@@ -205,7 +205,7 @@ export default function SwapPanel() {
         {!availability.available ? (
           <ComingSoonOverlay
             pair={activePair}
-            reason={availability.reason ?? 'Not available yet'}
+            reason={availability.reason ?? t('marketplace.swap.not_available_yet')}
           />
         ) : (
           <>
@@ -235,20 +235,13 @@ export default function SwapPanel() {
                 {!activeSwap && (
                   <div className="bg-[#181a20] border border-[#2b3139] rounded-lg p-4 text-[12px] text-[#b7bdc6] leading-relaxed">
                     <div className="text-[13px] font-semibold text-[#eaecef] mb-2">
-                      How {activePair.label} swaps work
+                      {t('marketplace.swap.how_it_works_title', { pair: activePair.label })}
                     </div>
                     <ol className="list-decimal pl-4 space-y-1 text-[#b7bdc6]">
-                      <li>Pick an order from the book on the left, or post your own.</li>
-                      <li>
-                        The seller&apos;s IRM is locked in escrow the moment the order is taken.
-                      </li>
-                      <li>
-                        The buyer sends {activePair.quote.code} to the seller&apos;s address.
-                      </li>
-                      <li>
-                        Once the payment confirms, the IRM is released to the buyer
-                        automatically.
-                      </li>
+                      <li>{t('marketplace.swap.how_it_works_step1')}</li>
+                      <li>{t('marketplace.swap.how_it_works_step2')}</li>
+                      <li>{t('marketplace.swap.how_it_works_step3', { quote: activePair.quote.code })}</li>
+                      <li>{t('marketplace.swap.how_it_works_step4')}</li>
                     </ol>
                   </div>
                 )}

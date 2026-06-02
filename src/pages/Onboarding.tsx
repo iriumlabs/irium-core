@@ -106,12 +106,12 @@ const fadeIn = {
   transition: { duration: 0.25, ease: 'easeOut' as const },
 };
 
-const STEPS = [
-  { id: 1, label: 'System Check'   },
-  { id: 2, label: 'Bootstrap'      },
-  { id: 3, label: 'Network Sync'   },
-  { id: 4, label: 'Wallet Setup'   },
-  { id: 5, label: 'Backup & Secure'},
+const STEP_LABEL_KEYS = [
+  { id: 1, labelKey: 'onboarding.rail.system_check'   },
+  { id: 2, labelKey: 'onboarding.rail.bootstrap'      },
+  { id: 3, labelKey: 'onboarding.rail.network_sync'   },
+  { id: 4, labelKey: 'onboarding.rail.wallet_setup'   },
+  { id: 5, labelKey: 'onboarding.rail.backup_secure'  },
 ];
 
 // ─── Particle field (memoised — never re-renders) ────────────────────────────
@@ -151,15 +151,16 @@ const ParticleField = memo(function ParticleField() {
 });
 
 // ─── Cinematic Splash ─────────────────────────────────────────────────────────
-const SPLASH_STATUSES = [
-  'Initializing runtime…',
-  'Loading cryptographic modules…',
-  'Verifying binary integrity…',
-  'Establishing secure context…',
-  'Ready',
+const SPLASH_STATUS_KEYS = [
+  'onboarding.splash.status_initializing',
+  'onboarding.splash.status_loading_crypto',
+  'onboarding.splash.status_verifying_binary',
+  'onboarding.splash.status_establishing_context',
+  'onboarding.splash.status_ready',
 ];
 
 export function Splash({ onDone }: { onDone: () => void }) {
+  const { t } = useTranslation();
   const appVersion  = useStore((s) => s.appVersion);
   const [pct, setPct]           = useState(0);
   const [statusIdx, setStatusIdx] = useState(0);
@@ -184,7 +185,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
 
   useEffect(() => {
     const id = setInterval(() => {
-      setStatusIdx((i) => Math.min(i + 1, SPLASH_STATUSES.length - 1));
+      setStatusIdx((i) => Math.min(i + 1, SPLASH_STATUS_KEYS.length - 1));
     }, 650);
     return () => clearInterval(id);
   }, []);
@@ -334,7 +335,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
           color: 'rgba(238,240,255,0.27)',
         }}
       >
-        FULL NODE DESKTOP WALLET
+        {t('onboarding.splash.subtitle_full_node')}
       </motion.p>
 
       {/* Version badge */}
@@ -378,7 +379,7 @@ export function Splash({ onDone }: { onDone: () => void }) {
               color: 'rgba(238,240,255,0.24)',
             }}
           >
-            {SPLASH_STATUSES[statusIdx]}
+            {t(SPLASH_STATUS_KEYS[statusIdx])}
           </motion.span>
         </AnimatePresence>
       </motion.div>
@@ -425,7 +426,8 @@ export function Splash({ onDone }: { onDone: () => void }) {
 
 // ─── Left step rail ───────────────────────────────────────────────────────────
 function StepRail({ current, showStep5 }: { current: number; showStep5: boolean }) {
-  const steps = showStep5 ? STEPS : STEPS.slice(0, 4);
+  const { t } = useTranslation();
+  const steps = showStep5 ? STEP_LABEL_KEYS : STEP_LABEL_KEYS.slice(0, 4);
   return (
     <div className="flex flex-col gap-0 w-48 flex-shrink-0">
       <div className="flex items-center gap-3 mb-12">
@@ -503,7 +505,7 @@ function StepRail({ current, showStep5 }: { current: number; showStep5: boolean 
               })}
               style={{ letterSpacing: '0.02em' }}
             >
-              {step.label}
+              {t(step.labelKey)}
             </div>
           </div>
         );
@@ -539,9 +541,9 @@ function StepBinaryCheck({ onNext }: { onNext: () => void }) {
   useEffect(() => { doCheck(); }, []);
 
   const bins: Array<{ key: keyof BinaryCheckResult; label: string; desc: string }> = [
-    { key: 'iriumd',       label: 'iriumd',        desc: 'Full node daemon'         },
-    { key: 'irium_wallet', label: 'irium-wallet',  desc: 'Wallet & marketplace CLI' },
-    { key: 'irium_miner',  label: 'irium-miner',   desc: 'CPU miner'                },
+    { key: 'iriumd',       label: 'iriumd',        desc: t('onboarding.binary_check.iriumd_desc')         },
+    { key: 'irium_wallet', label: 'irium-wallet',  desc: t('onboarding.binary_check.irium_wallet_desc') },
+    { key: 'irium_miner',  label: 'irium-miner',   desc: t('onboarding.binary_check.irium_miner_desc')                },
   ];
 
   const allOk = result?.iriumd && result?.irium_wallet && result?.irium_miner;
@@ -550,7 +552,7 @@ function StepBinaryCheck({ onNext }: { onNext: () => void }) {
     <motion.div key="bin-check" {...fadeIn}>
       <h2 className="font-display font-bold text-2xl mb-1.5 gradient-text">{t('onboarding.system_check_title')}</h2>
       <p className="text-sm mb-6" style={{ color: 'rgba(238,240,255,0.45)' }}>
-        Verifying required node binaries are present on this machine.
+        {t('onboarding.binary_check.subtitle')}
       </p>
 
       <div className="terminal-box p-4 mb-5 space-y-3">
@@ -582,12 +584,12 @@ function StepBinaryCheck({ onNext }: { onNext: () => void }) {
         {!checking && allOk && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
             className="pt-1 terminal-line-ok font-mono text-xs">
-            ✓ All binaries verified. Continuing…
+            ✓ {t('onboarding.binary_check.all_verified')}
           </motion.div>
         )}
         {!checking && !allOk && (
           <div className="pt-1 terminal-line-err font-mono text-xs">
-            ✗ Missing binaries. Place executables in src-tauri/binaries/
+            ✗ {t('onboarding.binary_check.missing_binaries')}
           </div>
         )}
       </div>
@@ -595,10 +597,10 @@ function StepBinaryCheck({ onNext }: { onNext: () => void }) {
       {!checking && !allOk && (
         <div className="flex items-center gap-3">
           <button className="btn-secondary text-sm" onClick={doCheck}>
-            <Loader2 size={13} /> Retry
+            <Loader2 size={13} /> {t('onboarding.binary_check.retry')}
           </button>
           <button className="btn-ghost text-sm" style={{ color: 'rgba(238,240,255,0.40)' }} onClick={onNext}>
-            Skip (advanced)
+            {t('onboarding.binary_check.skip_advanced')}
           </button>
         </div>
       )}
@@ -619,24 +621,24 @@ function StepBootstrap({ onNext }: { onNext: () => void }) {
     const run = async () => {
       log('$ mkdir -p ~/.irium/bootstrap/trust');
       await new Promise((r) => setTimeout(r, 380));
-      log('→ Creating data directory…');
+      log(`→ ${t('onboarding.bootstrap.creating_data_dir')}`);
       await new Promise((r) => setTimeout(r, 280));
       try {
         await node.setupDataDir();
-        log('→ Writing bootstrap seedlist.txt…');
+        log(`→ ${t('onboarding.bootstrap.writing_seedlist')}`);
         await new Promise((r) => setTimeout(r, 340));
-        log('→ Writing static_peers.txt…');
+        log(`→ ${t('onboarding.bootstrap.writing_static_peers')}`);
         await new Promise((r) => setTimeout(r, 260));
-        log('→ Installing genesis anchors.json…');
+        log(`→ ${t('onboarding.bootstrap.installing_anchors')}`);
         await new Promise((r) => setTimeout(r, 420));
-        log('→ Installing trust signatures…');
+        log(`→ ${t('onboarding.bootstrap.installing_trust_signatures')}`);
         await new Promise((r) => setTimeout(r, 310));
-        log('✓ Bootstrap configuration complete.');
+        log(`✓ ${t('onboarding.bootstrap.complete')}`);
         setDone(true);
         setTimeout(onNext, 900);
       } catch (e) {
         setError(String(e));
-        log(`✗ Error: ${String(e)}`);
+        log(`✗ ${t('onboarding.bootstrap.error_prefix')}: ${String(e)}`);
       }
     };
     run();
@@ -651,7 +653,7 @@ function StepBootstrap({ onNext }: { onNext: () => void }) {
     <motion.div key="bootstrap" {...fadeIn}>
       <h2 className="font-display font-bold text-2xl mb-1.5 gradient-text">{t('onboarding.steps.network_bootstrap')}</h2>
       <p className="text-sm mb-6" style={{ color: 'rgba(238,240,255,0.45)' }}>
-        Configuring seed nodes, trust anchors, and genesis block.
+        {t('onboarding.bootstrap.subtitle')}
       </p>
 
       <div className="terminal-box p-4 mb-5 space-y-1.5 overflow-auto max-h-52">
@@ -679,7 +681,7 @@ function StepBootstrap({ onNext }: { onNext: () => void }) {
 
       {error && (
         <button className="btn-secondary text-sm" onClick={onNext}>
-          Skip (continue anyway)
+          {t('onboarding.bootstrap.skip_continue')}
         </button>
       )}
     </motion.div>
@@ -699,7 +701,7 @@ function isAlreadyRunning(msg: string): boolean {
 // and iriumd's own startup to a single user-actionable message. Falls
 // through to the raw error if no pattern matches — better to show
 // something verbatim than to hide a real problem behind a generic message.
-function humanizeStartError(raw: string): string {
+function humanizeStartError(raw: string, t: (key: string) => string): string {
   const lower = raw.toLowerCase();
   if (
     lower.includes('port 38291 is already in use') ||         // our backend pre-flight
@@ -709,12 +711,7 @@ function humanizeStartError(raw: string): string {
     lower.includes('os error 48') ||                          // macOS numeric
     lower.includes('os error 98')                             // Linux numeric
   ) {
-    return (
-      'Port 38291 is already in use. Another Irium node may be running in ' +
-      'the background. Check your system tray for an existing Irium Core ' +
-      'instance, or open Task Manager and end any iriumd.exe processes, ' +
-      'then restart the app.'
-    );
+    return t('onboarding.network_sync.port_in_use_message');
   }
   return raw;
 }
@@ -780,7 +777,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
         setNodeStarted(true);
         // Only swallow the literal "node already running" success path;
         // every other failure (incl. port-in-use) goes through humanizeStartError.
-        if (!isAlreadyRunning(String(e))) setStartError(humanizeStartError(String(e)));
+        if (!isAlreadyRunning(String(e))) setStartError(humanizeStartError(String(e), t));
       });
 
     const poll = async () => {
@@ -878,7 +875,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
       await node.start();
       startAggressivePoll();
     } catch (e) {
-      setStartError(humanizeStartError(String(e)));
+      setStartError(humanizeStartError(String(e), t));
     } finally {
       setRetrying(false);
     }
@@ -887,7 +884,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
   const handleAddPeer = async () => {
     const addr = manualPeer.trim();
     if (!isValidIpPort(addr)) {
-      setAddPeerStatus({ kind: 'err', message: 'Use IP:PORT format (e.g. 1.2.3.4:38291)' });
+      setAddPeerStatus({ kind: 'err', message: t('onboarding.network_sync.add_peer_format_error') });
       return;
     }
     setAddPeerStatus({ kind: 'pending' });
@@ -902,10 +899,10 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
         setAddPeerStatus({ kind: 'ok', addr });
         setManualPeer('');
       } else {
-        setAddPeerStatus({ kind: 'err', message: `Node rejected the address (HTTP ${res.status})` });
+        setAddPeerStatus({ kind: 'err', message: `${t('onboarding.network_sync.add_peer_rejected')} (HTTP ${res.status})` });
       }
     } catch (e) {
-      setAddPeerStatus({ kind: 'err', message: `Could not reach node: ${String(e)}` });
+      setAddPeerStatus({ kind: 'err', message: `${t('onboarding.network_sync.add_peer_unreachable')}: ${String(e)}` });
     }
   };
 
@@ -913,7 +910,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
     <motion.div key="sync" {...fadeIn}>
       <h2 className="font-display font-bold text-2xl mb-1.5 gradient-text">{t('onboarding.steps.network_sync')}</h2>
       <p className="text-sm mb-6" style={{ color: 'rgba(238,240,255,0.45)' }}>
-        Loading local blockchain data and connecting to the Irium P2P network.
+        {t('onboarding.network_sync.subtitle')}
       </p>
 
       <div className="panel p-5 mb-5 space-y-4">
@@ -922,7 +919,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
           <span style={{ color: 'rgba(238,240,255,0.45)' }}>{t('onboarding.labels.node_daemon')}</span>
           {!nodeStarted ? (
             <span className="flex items-center gap-2 font-mono text-xs" style={{ color: 'rgba(238,240,255,0.45)' }}>
-              <Loader2 size={12} className="animate-spin" /> Starting iriumd…
+              <Loader2 size={12} className="animate-spin" /> {t('onboarding.network_sync.starting_iriumd')}
             </span>
           ) : running ? (
             <span className="flex items-center gap-2 text-xs">
@@ -933,7 +930,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
             <span className="flex items-center gap-2 text-xs">
               <Loader2 size={12} className="animate-spin" style={{ color: '#fbbf24' }} />
               <span style={{ color: '#fbbf24' }}>
-                {secondsSinceSpawn < 30 ? 'Loading blockchain data…' : 'Starting node…'}
+                {secondsSinceSpawn < 30 ? t('onboarding.network_sync.loading_blockchain_data') : t('onboarding.network_sync.starting_node')}
               </span>
             </span>
           )}
@@ -961,7 +958,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
               {peers}
             </motion.span>
             {peers === 0 && (
-              <span className="text-xs" style={{ color: 'rgba(238,240,255,0.30)' }}>discovering…</span>
+              <span className="text-xs" style={{ color: 'rgba(238,240,255,0.30)' }}>{t('onboarding.network_sync.discovering')}</span>
             )}
           </span>
         </div>
@@ -983,7 +980,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
                 animate={{ opacity: [0.3, 1, 0.3] }}
                 transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
               />
-              <span>Searching for peers on the Irium network{'.'.repeat(nowTick % 4)}</span>
+              <span>{t('onboarding.network_sync.searching_for_peers')}{'.'.repeat(nowTick % 4)}</span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -1062,8 +1059,8 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
             <Loader2 size={11} className="animate-spin flex-shrink-0" />
             <span>
               {networkReachable === null
-                ? 'Checking network connectivity…'
-                : 'Network reachable — starting node…'}
+                ? t('onboarding.network_sync.checking_connectivity')
+                : t('onboarding.network_sync.network_reachable')}
             </span>
           </motion.div>
         )}
@@ -1090,10 +1087,10 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
             <div className="flex items-start gap-2">
               <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" style={{ color: '#fbbf24' }} />
               <div className="text-xs leading-relaxed">
-                <p className="font-semibold mb-1" style={{ color: '#fbbf24' }}>Port 38291 appears to be blocked outbound</p>
+                <p className="font-semibold mb-1" style={{ color: '#fbbf24' }}>{t('onboarding.network_sync.port_blocked_title')}</p>
                 <p style={{ color: 'rgba(238,240,255,0.60)' }}>
-                  The Irium network cannot be reached. Check your router or firewall — port{' '}
-                  <span className="font-mono">38291</span> must be open for outbound TCP connections.
+                  {t('onboarding.network_sync.port_blocked_body_before')}{' '}
+                  <span className="font-mono">38291</span> {t('onboarding.network_sync.port_blocked_body_after')}
                 </p>
                 <button
                   onClick={handleRetry}
@@ -1101,7 +1098,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
                   className="btn-secondary mt-3 px-3 py-1.5 text-xs flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {retrying ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                  {retrying ? 'Restarting node…' : 'Retry connection'}
+                  {retrying ? t('onboarding.network_sync.restarting_node') : t('onboarding.network_sync.retry_connection')}
                 </button>
               </div>
             </div>
@@ -1122,12 +1119,12 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
             <div className="flex items-start gap-2">
               <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" style={{ color: '#fbbf24' }} />
               <div className="text-xs leading-relaxed flex-1">
-                <p className="font-semibold mb-1" style={{ color: '#fbbf24' }}>Still connecting to peers…</p>
+                <p className="font-semibold mb-1" style={{ color: '#fbbf24' }}>{t('onboarding.network_sync.still_connecting_title')}</p>
                 <p style={{ color: 'rgba(238,240,255,0.60)' }}>
-                  The node is reaching out to the Irium network. This usually completes within 30 seconds — hang tight.
+                  {t('onboarding.network_sync.still_connecting_body')}
                 </p>
                 <p className="font-mono mt-1" style={{ color: 'rgba(238,240,255,0.35)', fontSize: 10 }}>
-                  Connecting for {secondsSinceStart}s…
+                  {t('onboarding.network_sync.connecting_for', { seconds: secondsSinceStart })}
                 </p>
                 <button
                   onClick={handleRetry}
@@ -1135,12 +1132,12 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
                   className="btn-secondary mt-3 px-3 py-1.5 text-xs flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {retrying ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                  {retrying ? 'Restarting node…' : 'Retry connection'}
+                  {retrying ? t('onboarding.network_sync.restarting_node') : t('onboarding.network_sync.retry_connection')}
                 </button>
 
                 <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(251,191,36,0.18)' }}>
                   <p className="text-[11px] mb-1.5" style={{ color: 'rgba(238,240,255,0.55)' }}>
-                    Add a peer manually
+                    {t('onboarding.network_sync.add_peer_manually')}
                   </p>
                   <div className="flex items-center gap-2">
                     <input
@@ -1165,12 +1162,12 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
                       style={{ padding: '6px 12px' }}
                     >
                       {addPeerStatus.kind === 'pending' && <Loader2 size={12} className="animate-spin" />}
-                      Add Peer
+                      {t('onboarding.network_sync.add_peer_button')}
                     </button>
                   </div>
                   {addPeerStatus.kind === 'ok' && (
                     <p className="mt-1.5 text-[11px] font-mono" style={{ color: '#34d399' }}>
-                      ✓ added {addPeerStatus.addr}
+                      ✓ {t('onboarding.network_sync.added_peer', { addr: addPeerStatus.addr })}
                     </p>
                   )}
                   {addPeerStatus.kind === 'err' && (
@@ -1196,7 +1193,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
             {syncCountdown !== null ? (
               <>
                 <Loader2 size={14} className="animate-spin" />
-                Continuing in {syncCountdown}s…
+                {t('onboarding.network_sync.continuing_in', { seconds: syncCountdown })}
               </>
             ) : (
               <>{t('onboarding.wallet_create.continue_to_wallet')} <ArrowRight size={15} /></>
@@ -1206,7 +1203,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
           <>
             {(running || nodeStarted) && (
               <div className="flex items-center gap-2 text-xs" style={{ color: 'rgba(238,240,255,0.35)' }}>
-                <Loader2 size={12} className="animate-spin" /> Syncing in background…
+                <Loader2 size={12} className="animate-spin" /> {t('onboarding.network_sync.syncing_background')}
               </div>
             )}
             <button
@@ -1214,7 +1211,7 @@ function StepNetworkSync({ onNext }: { onNext: () => void }) {
               style={{ color: 'rgba(238,240,255,0.35)' }}
               onClick={onNext}
             >
-              Continue anyway →
+              {t('onboarding.network_sync.continue_anyway')}
             </button>
           </>
         )}
@@ -1263,7 +1260,7 @@ function StepWalletSetup({
       setConfirmPass('');
       setFlow('set_password');
     } catch (e) {
-      toast.error(`Failed to create wallet: ${e}`);
+      toast.error(`${t('onboarding.wallet_setup_errors.failed_create')}: ${e}`);
       setFlow('choose');
     }
   };
@@ -1278,7 +1275,7 @@ function StepWalletSetup({
       return;
     }
     if (!pendingWallet) {
-      toast.error('No wallet pending encryption');
+      toast.error(t('onboarding.wallet_setup_errors.no_wallet_pending'));
       setFlow('choose');
       return;
     }
@@ -1291,7 +1288,7 @@ function StepWalletSetup({
       setConfirmPass('');
       onCreated(r);
     } catch (e) {
-      toast.error(`Failed to set wallet password: ${String(e)}`);
+      toast.error(`${t('onboarding.wallet_setup_errors.failed_set_password')}: ${String(e)}`);
       setFlow('set_password');
     }
   };
@@ -1342,7 +1339,7 @@ function StepWalletSetup({
       setRestoredAddresses(addrs);
       setFlow('restored');
     } catch (e) {
-      toast.error(`Import failed: ${String(e)}`);
+      toast.error(`${t('onboarding.wallet_setup_errors.import_failed')}: ${String(e)}`);
       setFlow('import_form');
     }
   };
@@ -1387,7 +1384,7 @@ function StepWalletSetup({
                 type="button"
                 onClick={() => setShowPass(!showPass)}
                 className="absolute right-2 top-2 text-white/40 hover:text-white/80"
-                aria-label={showPass ? 'hide' : 'show'}
+                aria-label={showPass ? t('onboarding.wallet_password.hide') : t('onboarding.wallet_password.show')}
               >
                 {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -1436,7 +1433,7 @@ function StepWalletSetup({
               {t('onboarding.wallet_password.encrypting', 'Encrypting wallet…')}
             </p>
             <p className="text-xs text-center" style={{ color: 'rgba(238,240,255,0.40)' }}>
-              Applying PBKDF2-derived key to your wallet file.
+              {t('onboarding.wallet_password.encrypting_sub')}
             </p>
           </div>
         </div>
@@ -1460,7 +1457,7 @@ function StepWalletSetup({
           <div>
             <p className="font-display font-semibold text-white text-center mb-1">{t('onboarding.wallet_create.generating')}</p>
             <p className="text-xs text-center" style={{ color: 'rgba(238,240,255,0.40)' }}>
-              Creating BIP32 HD wallet with 24-word seed phrase…
+              {t('onboarding.wallet_create.generating_sub')}
             </p>
           </div>
         </div>
@@ -1487,7 +1484,7 @@ function StepWalletSetup({
           <div>
             <h2 className="font-display font-bold text-2xl gradient-text leading-none">{t('onboarding.wallet_restored')}</h2>
             <p className="text-xs mt-1.5" style={{ color: 'rgba(238,240,255,0.50)' }}>
-              Your wallet has been imported successfully.
+              {t('onboarding.wallet_restored_sub')}
             </p>
           </div>
         </div>
@@ -1496,7 +1493,7 @@ function StepWalletSetup({
         {primaryAddr ? (
           <div className="panel p-4 mb-3">
             <p className="text-xs font-display font-bold mb-2 uppercase" style={{ color: 'rgba(110,198,255,0.55)', letterSpacing: '0.12em' }}>
-              Primary Address
+              {t('onboarding.restored.primary_address')}
             </p>
             <div className="flex items-center gap-2">
               <code
@@ -1518,7 +1515,7 @@ function StepWalletSetup({
         ) : (
           <div className="panel p-4 mb-3">
             <p className="text-xs" style={{ color: 'rgba(238,240,255,0.45)' }}>
-              Address will appear on the Dashboard once the node finishes syncing.
+              {t('onboarding.restored.address_pending')}
             </p>
           </div>
         )}
@@ -1527,7 +1524,7 @@ function StepWalletSetup({
         {restoredAddresses.length > 1 && (
           <div className="panel p-4 mb-3">
             <p className="text-xs mb-2" style={{ color: 'rgba(238,240,255,0.40)' }}>
-              {restoredAddresses.length - 1} additional address{restoredAddresses.length > 2 ? 'es' : ''} found
+              {t('onboarding.restored.additional_addresses', { count: restoredAddresses.length - 1 })}
             </p>
             {restoredAddresses.slice(1).map((addr) => (
               <p
@@ -1548,7 +1545,7 @@ function StepWalletSetup({
         >
           <Shield size={13} className="flex-shrink-0 mt-0.5" style={{ color: '#60a5fa' }} />
           <p className="text-xs leading-relaxed" style={{ color: 'rgba(148,187,233,0.80)' }}>
-            Your balance and transaction history will load automatically on the Dashboard as the node syncs.
+            {t('onboarding.restored.balance_will_load')}
           </p>
         </div>
 
@@ -1566,7 +1563,7 @@ function StepWalletSetup({
           }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          Continue to Dashboard <ArrowRight size={15} />
+          {t('onboarding.restored.continue_to_dashboard')} <ArrowRight size={15} />
         </motion.button>
       </motion.div>
     );
@@ -1576,24 +1573,24 @@ function StepWalletSetup({
     const TABS: { id: ImportTab; label: string; icon: React.ElementType; placeholder: string; hint: string }[] = [
       {
         id:          'mnemonic',
-        label:       'Seed Phrase',
+        label:       t('onboarding.import_form.tab_mnemonic_label'),
         icon:        FileText,
-        placeholder: 'word1 word2 word3 … word24',
-        hint:        'BIP32 mnemonic — 12 or 24 space-separated words',
+        placeholder: t('onboarding.import_form.mnemonic_placeholder'),
+        hint:        t('onboarding.import_form.mnemonic_hint'),
       },
       {
         id:          'wif',
-        label:       'WIF Key',
+        label:       t('onboarding.import_form.tab_wif_label'),
         icon:        Key,
-        placeholder: '5Jxx… or Kxx… or Lxx…',
-        hint:        'Wallet Import Format (Base58Check-encoded private key)',
+        placeholder: t('onboarding.import_form.wif_placeholder'),
+        hint:        t('onboarding.import_form.wif_hint'),
       },
       {
         id:          'privkey',
-        label:       'Private Key',
+        label:       t('onboarding.import_form.tab_privkey_label'),
         icon:        Lock,
-        placeholder: '0x1a2b3c4d… (64 hex chars)',
-        hint:        'Raw 256-bit private key in hexadecimal',
+        placeholder: t('onboarding.import_form.privkey_placeholder'),
+        hint:        t('onboarding.import_form.privkey_hint'),
       },
     ];
 
@@ -1603,7 +1600,7 @@ function StepWalletSetup({
       <motion.div key="import" {...fadeIn}>
         <h2 className="font-display font-bold text-2xl mb-1.5 gradient-text">{t('onboarding.steps.import_wallet')}</h2>
         <p className="text-sm mb-5" style={{ color: 'rgba(238,240,255,0.50)' }}>
-          Choose your restore method below.
+          {t('onboarding.import_form.subtitle')}
         </p>
 
         {/* Tab row */}
@@ -1654,7 +1651,7 @@ function StepWalletSetup({
             onClick={() => setFlow('choose')}
             disabled={busy}
           >
-            ← Back
+            ← {t('onboarding.import_form.back')}
           </button>
           <button
             className="btn-primary flex items-center gap-2"
@@ -1662,7 +1659,7 @@ function StepWalletSetup({
             disabled={busy || !importValue.trim()}
           >
             {busy ? (
-              <><Loader2 size={14} className="animate-spin" /> Importing…</>
+              <><Loader2 size={14} className="animate-spin" /> {t('onboarding.import_form.importing')}</>
             ) : (
               <>{t('onboarding.import.import_button')} <ArrowRight size={15} /></>
             )}
@@ -1689,7 +1686,7 @@ function StepWalletSetup({
         <h2 className="font-display font-bold text-2xl gradient-text">{t('onboarding.wallet_setup')}</h2>
       </div>
       <p className="text-sm mb-7" style={{ color: 'rgba(238,240,255,0.50)' }}>
-        Create a fresh HD wallet or restore from an existing wallet.
+        {t('onboarding.wallet_setup_subtitle')}
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -1712,7 +1709,7 @@ function StepWalletSetup({
           <div>
             <div className="font-display font-bold text-white mb-1.5" style={{ fontSize: 15 }}>{t('onboarding.welcome.create_new')}</div>
             <div className="text-xs leading-relaxed" style={{ color: 'rgba(238,240,255,0.50)' }}>
-              Generate a fresh BIP32 HD wallet with a 24-word seed phrase.
+              {t('onboarding.choose.create_description')}
             </div>
           </div>
         </motion.button>
@@ -1736,7 +1733,7 @@ function StepWalletSetup({
           <div>
             <div className="font-display font-bold text-white mb-1.5" style={{ fontSize: 15 }}>{t('onboarding.welcome.import_existing')}</div>
             <div className="text-xs leading-relaxed" style={{ color: 'rgba(238,240,255,0.50)' }}>
-              Restore via seed phrase, WIF key, or raw private key.
+              {t('onboarding.choose.import_description')}
             </div>
           </div>
         </motion.button>
@@ -1757,36 +1754,36 @@ function StepWalletSetup({
 // and it isn't needed for backup or recovery anyway.
 type BackupField = {
   key: 'address' | 'wif' | 'mnemonic';
-  label: string;
+  labelKey: string;
   icon: React.ElementType;
   sensitive: boolean;
   color: string;
-  warning?: string;
+  warningKey?: string;
 };
 
 const BACKUP_FIELDS: BackupField[] = [
   {
     key: 'address',
-    label: 'Wallet Address',
+    labelKey: 'onboarding.backup.field_address_label',
     icon: WalletIcon,
     sensitive: false,
     color: '#a78bfa',
   },
   {
     key: 'wif',
-    label: 'WIF Key',
+    labelKey: 'onboarding.backup.field_wif_label',
     icon: Key,
     sensitive: true,
     color: '#ef4444',
-    warning: 'The WIF is your private key in portable format. Anyone with it controls funds at this address.',
+    warningKey: 'onboarding.backup.field_wif_warning',
   },
   {
     key: 'mnemonic',
-    label: 'Recovery Phrase (24 words)',
+    labelKey: 'onboarding.backup.field_mnemonic_label',
     icon: FileText,
     sensitive: true,
     color: '#ef4444',
-    warning: 'Write these 24 words in order. Cannot be recovered if lost.',
+    warningKey: 'onboarding.backup.field_mnemonic_warning',
   },
 ];
 
@@ -1805,6 +1802,7 @@ function BackupCard({
   confirmed: boolean;
   onConfirm: (v: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const Icon = field.icon;
   const isMnemonic = field.key === 'mnemonic';
@@ -1832,7 +1830,7 @@ function BackupCard({
           >
             <Icon size={13} style={{ color: field.color }} />
           </div>
-          <span className="font-display font-semibold text-sm text-white">{field.label}</span>
+          <span className="font-display font-semibold text-sm text-white">{t(field.labelKey)}</span>
         </div>
         <div className="flex items-center gap-1.5">
           {(revealed || !field.sensitive) && (
@@ -1842,7 +1840,7 @@ function BackupCard({
               style={{ color: 'rgba(238,240,255,0.40)' }}
             >
               <Copy size={11} />
-              <span>{copied ? 'Copied!' : 'Copy'}</span>
+              <span>{copied ? t('onboarding.backup.copied') : t('onboarding.backup.copy')}</span>
             </button>
           )}
           {field.sensitive && (
@@ -1851,14 +1849,14 @@ function BackupCard({
               className="btn-ghost text-xs py-1 px-2"
               style={{ color: revealed ? 'rgba(238,240,255,0.40)' : field.color }}
             >
-              {revealed ? <><EyeOff size={11} /> Hide</> : <><Eye size={11} /> Reveal</>}
+              {revealed ? <><EyeOff size={11} /> {t('onboarding.backup.hide')}</> : <><Eye size={11} /> {t('onboarding.backup.reveal')}</>}
             </button>
           )}
         </div>
       </div>
 
       {/* Warning */}
-      {field.warning && (
+      {field.warningKey && (
         <div
           className="flex items-start gap-2 mb-3 p-2.5 rounded-lg text-xs"
           style={{
@@ -1868,7 +1866,7 @@ function BackupCard({
           }}
         >
           <AlertTriangle size={11} className="flex-shrink-0 mt-0.5" />
-          <span>{field.warning}</span>
+          <span>{t(field.warningKey)}</span>
         </div>
       )}
 
@@ -1916,7 +1914,7 @@ function BackupCard({
               className="btn-secondary text-xs flex items-center gap-1.5"
               style={{ borderColor: `${field.color}30`, color: field.color }}
             >
-              <Eye size={12} /> Click to reveal
+              <Eye size={12} /> {t('onboarding.backup.click_to_reveal')}
             </button>
           </div>
         )}
@@ -1934,10 +1932,10 @@ function BackupCard({
         />
         <span className="text-xs leading-snug" style={{ color: 'rgba(238,240,255,0.50)' }}>
           {field.key === 'mnemonic'
-            ? 'I have written down my recovery phrase offline'
+            ? t('onboarding.backup.confirm_mnemonic')
             : field.key === 'wif'
-            ? 'I have securely stored my WIF key'
-            : 'I have saved my wallet address'}
+            ? t('onboarding.backup.confirm_wif')
+            : t('onboarding.backup.confirm_address')}
         </span>
       </label>
     </motion.div>
@@ -1985,8 +1983,8 @@ function StepBackupSecure({
     switch (key) {
       case 'address':  return walletData.address;
       case 'wif':      return wifLoading
-                         ? 'Loading…'
-                         : (wif || `(WIF read failed — use Security panel after launch${wifError ? `: ${wifError}` : ''})`);
+                         ? t('onboarding.backup.loading')
+                         : (wif || `${t('onboarding.backup.wif_read_failed')}${wifError ? `: ${wifError}` : ''}`);
       case 'mnemonic': return walletData.mnemonic;
     }
   };
@@ -2015,7 +2013,9 @@ function StepBackupSecure({
         <h2 className="font-display font-bold text-2xl gradient-text">{t('onboarding.steps.backup_secure')}</h2>
       </div>
       <p className="text-sm mb-4" style={{ color: 'rgba(238,240,255,0.45)' }}>
-        This information is shown <strong className="text-white">one time only</strong>. Store every item offline before continuing.
+        <span>{t('onboarding.backup.shown_once_before')} </span>
+        <strong className="text-white">{t('onboarding.backup.shown_once_emphasis')}</strong>
+        <span>{t('onboarding.backup.shown_once_after')}</span>
       </p>
 
       {/* Critical warning banner */}
@@ -2030,7 +2030,7 @@ function StepBackupSecure({
       >
         <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" style={{ color: '#f87171' }} />
         <p className="text-xs leading-relaxed" style={{ color: '#f87171' }}>
-          <strong>You will not be able to recover your wallet</strong> if you lose your recovery phrase or WIF key. Irium Core has no cloud backup. Write everything down now.
+          <strong>{t('onboarding.backup.critical_warning_strong')}</strong> {t('onboarding.backup.critical_warning_body')}
         </p>
       </motion.div>
 
@@ -2078,7 +2078,7 @@ function StepBackupSecure({
         ))}
       </div>
       <p className="text-xs mb-5" style={{ color: 'rgba(238,240,255,0.35)' }}>
-        {confirmed.size} of {BACKUP_FIELDS.length} items confirmed
+        {t('onboarding.backup.items_confirmed', { count: confirmed.size, total: BACKUP_FIELDS.length })}
       </p>
 
       {/* Launch button */}
@@ -2097,12 +2097,12 @@ function StepBackupSecure({
         } : {}}
         transition={{ duration: 2, repeat: Infinity }}
       >
-        Launch Dashboard <ArrowRight size={15} />
+        {t('onboarding.backup.launch_dashboard')} <ArrowRight size={15} />
       </motion.button>
 
       {!allConfirmed && (
         <p className="text-xs mt-2" style={{ color: 'rgba(238,240,255,0.30)' }}>
-          Confirm all 4 items to continue
+          {t('onboarding.backup.confirm_all_to_continue')}
         </p>
       )}
     </motion.div>
@@ -2111,6 +2111,7 @@ function StepBackupSecure({
 
 // ─── Welcome Screen ───────────────────────────────────────────────────────────
 function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
+  const { t } = useTranslation();
   return (
     <motion.div
       className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden app-bg"
@@ -2152,7 +2153,7 @@ function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.4 }}
         >
-          <span style={{ color: '#eef0ff' }}>Welcome to</span>{' '}
+          <span style={{ color: '#eef0ff' }}>{t('onboarding.welcome_screen.welcome_to')}</span>{' '}
           <span style={{ background: 'linear-gradient(135deg, #d4eeff 0%, #6ec6ff 50%, #a78bfa 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             Irium Core
           </span>
@@ -2165,7 +2166,7 @@ function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, duration: 0.4 }}
         >
-          Your full-node desktop wallet for the Irium blockchain. Send, receive, trade, and settle — all peer-to-peer, all on-chain.
+          {t('onboarding.welcome_screen.tagline')}
         </motion.p>
 
         <motion.p
@@ -2175,7 +2176,7 @@ function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.35, duration: 0.4 }}
         >
-          This setup wizard will configure your node, sync the chain, and create or restore your wallet.
+          {t('onboarding.welcome_screen.wizard_intro')}
         </motion.p>
 
         {/* Feature chips */}
@@ -2185,9 +2186,15 @@ function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4, duration: 0.4 }}
         >
-          {['Full Node', 'HD Wallet', 'P2P Trade', 'On-Chain Settlement', 'Privacy First'].map((f) => (
+          {[
+            'onboarding.welcome_screen.chip_full_node',
+            'onboarding.welcome_screen.chip_hd_wallet',
+            'onboarding.welcome_screen.chip_p2p_trade',
+            'onboarding.welcome_screen.chip_on_chain_settlement',
+            'onboarding.welcome_screen.chip_privacy_first',
+          ].map((fKey) => (
             <span
-              key={f}
+              key={fKey}
               className="text-xs px-3 py-1.5 rounded-full font-display font-semibold"
               style={{
                 background: 'rgba(110,198,255,0.10)',
@@ -2196,7 +2203,7 @@ function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
                 letterSpacing: '0.04em',
               }}
             >
-              {f}
+              {t(fKey)}
             </span>
           ))}
         </motion.div>
@@ -2210,7 +2217,7 @@ function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.4 }}
         >
-          Get Started <ArrowRight size={17} />
+          {t('onboarding.welcome_screen.get_started')} <ArrowRight size={17} />
         </motion.button>
       </div>
     </motion.div>
@@ -2219,7 +2226,6 @@ function WelcomeScreen({ onContinue }: { onContinue: () => void }) {
 
 // ─── Main Onboarding ──────────────────────────────────────────────────────────
 export default function Onboarding({ onComplete: onGateComplete }: { onComplete?: () => void } = {}) {
-  const { t } = useTranslation();
   const navigate   = useNavigate();
   const [showWelcome,  setShowWelcome]  = useState(true);
   const [step, setStep]               = useState(1);

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2, RefreshCw, Plus, Lock, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import type {
   ListOrdersResult,
@@ -27,14 +28,18 @@ function truncateAddr(addr: string): string {
   return `${addr.slice(0, 8)}…${addr.slice(-4)}`;
 }
 
-function relativeAgo(opened: number, tip: number): string {
-  if (!opened || !tip) return 'recent';
+function relativeAgo(
+  opened: number,
+  tip: number,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (!opened || !tip) return t('marketplace.pair_order_book.relative_recent');
   const diff = Math.max(0, tip - opened);
-  if (diff === 0) return 'just now';
-  if (diff < 60) return `${diff} blocks ago`;
+  if (diff === 0) return t('marketplace.pair_order_book.relative_just_now');
+  if (diff < 60) return t('marketplace.pair_order_book.relative_blocks_ago', { count: diff });
   const hours = Math.floor(diff / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  if (hours < 24) return t('marketplace.pair_order_book.relative_hours_ago', { count: hours });
+  return t('marketplace.pair_order_book.relative_days_ago', { count: Math.floor(hours / 24) });
 }
 
 export default function PairOrderBook({
@@ -44,6 +49,7 @@ export default function PairOrderBook({
   onCreateOrder,
   myAddresses,
 }: PairOrderBookProps) {
+  const { t } = useTranslation();
   const [orders, setOrders] = useState<SwapOrderRow[]>([]);
   const [totalOpen, setTotalOpen] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -114,17 +120,17 @@ export default function PairOrderBook({
             className="font-display font-semibold text-sm inline-flex items-center gap-2"
             style={{ color: 'var(--t1)' }}
           >
-            <span>{pair.label} order book</span>
+            <span>{t('marketplace.pair_order_book.header_title', { pair: pair.label })}</span>
             {refreshing && (
               <RefreshCw size={11} className="animate-spin" style={{ color: 'rgba(238,240,255,0.45)' }} />
             )}
           </h3>
           <p className="text-[11px]" style={{ color: 'rgba(238,240,255,0.45)' }}>
-            {totalOpen} open · {filtered.length} shown
+            {t('marketplace.pair_order_book.open_shown_summary', { open: totalOpen, shown: filtered.length })}
             {lastUpdated && (
               <>
                 {' '}
-                · updated <TimestampDisplay epoch={lastUpdated} format="time" />
+                · {t('marketplace.pair_order_book.updated_label')} <TimestampDisplay epoch={lastUpdated} format="time" />
               </>
             )}
           </p>
@@ -135,7 +141,7 @@ export default function PairOrderBook({
           className="btn-primary inline-flex items-center gap-1.5"
         >
           <Plus size={13} />
-          New swap
+          {t('marketplace.pair_order_book.new_swap')}
         </button>
       </div>
 
@@ -148,7 +154,11 @@ export default function PairOrderBook({
           {(['both', 'sell_irm', 'buy_irm'] as DirectionFilter[]).map((d) => {
             const active = d === direction;
             const label =
-              d === 'both' ? 'Both' : d === 'sell_irm' ? `Sell IRM` : `Buy IRM`;
+              d === 'both'
+                ? t('marketplace.pair_order_book.direction_both')
+                : d === 'sell_irm'
+                ? t('marketplace.pair_order_book.direction_sell_irm')
+                : t('marketplace.pair_order_book.direction_buy_irm');
             return (
               <button
                 key={d}
@@ -172,9 +182,9 @@ export default function PairOrderBook({
           onChange={(e) => setSort(e.target.value as SwapSortKey)}
           style={{ padding: '4px 8px' }}
         >
-          <option value="price_asc" style={{ background: '#0f0f23' }}>Best price first</option>
-          <option value="price_desc" style={{ background: '#0f0f23' }}>Highest price first</option>
-          <option value="recent" style={{ background: '#0f0f23' }}>Newest first</option>
+          <option value="price_asc" style={{ background: '#0f0f23' }}>{t('marketplace.pair_order_book.sort_price_asc')}</option>
+          <option value="price_desc" style={{ background: '#0f0f23' }}>{t('marketplace.pair_order_book.sort_price_desc')}</option>
+          <option value="recent" style={{ background: '#0f0f23' }}>{t('marketplace.pair_order_book.sort_recent')}</option>
         </select>
 
         <label className="inline-flex items-center gap-1.5 text-[11px]" style={{ color: 'rgba(238,240,255,0.65)' }}>
@@ -183,7 +193,7 @@ export default function PairOrderBook({
             checked={hideMine}
             onChange={(e) => setHideMine(e.target.checked)}
           />
-          Hide my orders
+          {t('marketplace.pair_order_book.hide_my_orders')}
         </label>
       </div>
 
@@ -194,7 +204,7 @@ export default function PairOrderBook({
           style={{ color: 'rgba(238,240,255,0.55)' }}
         >
           <Loader2 size={14} className="animate-spin mr-2" />
-          Loading {pair.label} orders…
+          {t('marketplace.pair_order_book.loading_orders', { pair: pair.label })}
         </div>
       ) : error ? (
         <div
@@ -209,7 +219,7 @@ export default function PairOrderBook({
         </div>
       ) : filtered.length === 0 ? (
         <div className="py-10 text-center text-xs" style={{ color: 'rgba(238,240,255,0.45)' }}>
-          No open {pair.label} orders. Be the first — post one with the New swap button above.
+          {t('marketplace.pair_order_book.empty_state', { pair: pair.label })}
         </div>
       ) : (
         <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
@@ -251,7 +261,9 @@ export default function PairOrderBook({
                       }}
                     >
                       <Icon size={10} />
-                      {isSell ? 'Sells IRM' : 'Buys IRM'}
+                      {isSell
+                        ? t('marketplace.pair_order_book.side_sells_irm')
+                        : t('marketplace.pair_order_book.side_buys_irm')}
                     </span>
                     <span style={{ color: 'rgba(238,240,255,0.35)' }}>
                       #{row.order_id.slice(0, 8) || '—'}
@@ -265,7 +277,7 @@ export default function PairOrderBook({
                           border: '1px solid rgba(167,139,250,0.25)',
                         }}
                       >
-                        Yours
+                        {t('marketplace.pair_order_book.badge_yours')}
                       </span>
                     )}
                   </div>
@@ -274,7 +286,7 @@ export default function PairOrderBook({
                     style={{ color: '#22c55e' }}
                   >
                     <Lock size={10} />
-                    Escrow protected
+                    {t('marketplace.pair_order_book.escrow_protected')}
                   </span>
                 </div>
 
@@ -301,7 +313,10 @@ export default function PairOrderBook({
                     {row.implied_quote_per_irm_human}
                   </span>
                   <span>
-                    Maker {truncateAddr(row.maker_iriumd_address)} · {relativeAgo(row.opened_at_height, tipHeight)}
+                    {t('marketplace.pair_order_book.maker_line', {
+                      address: truncateAddr(row.maker_iriumd_address),
+                      ago: relativeAgo(row.opened_at_height, tipHeight, t),
+                    })}
                   </span>
                 </div>
 
@@ -309,8 +324,10 @@ export default function PairOrderBook({
                   className="mt-1 text-[10px]"
                   style={{ color: 'rgba(238,240,255,0.40)' }}
                 >
-                  Needs {row.confirmations_required} confirmation
-                  {row.confirmations_required === 1 ? '' : 's'} on the {pair.quote.network ?? pair.quote.name} side
+                  {t('marketplace.pair_order_book.needs_confirmations', {
+                    count: row.confirmations_required,
+                    network: pair.quote.network ?? pair.quote.name,
+                  })}
                 </div>
               </button>
             );

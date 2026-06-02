@@ -152,7 +152,9 @@
       "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
       "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
       "rpc_token_test_remote": "Test remote",
-      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated",
+      "hide_token": "토큰 숨기기",
+      "show_token": "토큰 표시"
     },
     "buttons": {
       "test_connection": "테스트 연결",
@@ -195,7 +197,9 @@
       "onboarding_reset": "온보딩 재설정 - 마법사를 보려면 앱을 다시 시작하세요.",
       "update_check_internet": "업데이트를 확인할 수 없습니다. 인터넷 연결을 확인하세요.",
       "connection_failed": "연결 실패",
-      "update_failed": "업데이트 실패"
+      "update_failed": "업데이트 실패",
+      "metrics_http_error": "상태는 OK이지만 /metrics가 HTTP {{status}}를 반환했습니다",
+      "metrics_unreachable": "상태는 OK이지만 /metrics에 도달할 수 없습니다: {{error}}"
     },
     "page_subtitle": "노드 연결, 지갑 경로 및 디스플레이 기본 설정을 구성합니다.",
     "update_banner": {
@@ -261,7 +265,14 @@
       "retry": "다시 해 보다",
       "external_ip_label": "외부 IP",
       "detecting_paragraph": "인바운드 피어가 연결 가능성을 확인하는 데 최대 60초를 기다립니다. PEX는 시작 후 주소를 다른 노드에 전파하는 데 시간이 걸립니다.",
-      "inactive_paragraph": "UPnP가 실패했으며 인바운드 피어가 도착하지 않았습니다. 라우터(TCP 38291)에서 수동 포트 전달을 구성하거나 UPnP를 활성화한 다음 재시도를 클릭하세요. 아웃바운드 연결은 이 상태에서도 계속 작동합니다."
+      "inactive_paragraph": "UPnP가 실패했으며 인바운드 피어가 도착하지 않았습니다. 라우터(TCP 38291)에서 수동 포트 전달을 구성하거나 UPnP를 활성화한 다음 재시도를 클릭하세요. 아웃바운드 연결은 이 상태에서도 계속 작동합니다.",
+      "diag_chosen_lan_ip": "선택된 LAN IP",
+      "diag_router_ip": "라우터 IP",
+      "diag_control_url": "제어 URL",
+      "diag_external_ip": "외부 IP",
+      "diag_private_double_nat": "(사설 — 이중 NAT)",
+      "diag_add_port_mapping_tries": "AddPortMapping 시도 횟수",
+      "diag_last_fault": "마지막 오류"
     },
     "security_info": {
       "wallet_local": "Irium Core는 지갑 파일을 로컬에 저장합니다. 개인 키는 컴퓨터를 떠나지 않습니다. 지갑 파일이 암호화되어 있습니다. 항상 시드 문구를 백업하고 오프라인으로 유지하세요.",
@@ -325,11 +336,14 @@
       "reset_state_success": "상태가 초기화되었습니다 — 백업: {{path}}",
       "reset_state_no_backup": "백업할 기존 상태가 없습니다 — 새 상태가 생성되었습니다",
       "reset_state_rebuilding": "node 재시작 중 — 로컬 block에서 UTXO 세트 재구축 (5~15분)",
-      "reset_state_failed": "초기화 실패: {{reason}}"
+      "reset_state_failed": "초기화 실패: {{reason}}",
+      "external_ip_placeholder": "예: 203.0.113.42"
     },
     "developer_info": {
       "reset_onboarding": "온보딩 재설정",
-      "reset_onboarding_description": "다음 실행 시 첫 실행 설정 마법사를 다시 표시합니다."
+      "reset_onboarding_description": "다음 실행 시 첫 실행 설정 마법사를 다시 표시합니다.",
+      "show_legacy_settlement": "레거시 Settlement UI 표시",
+      "show_legacy_settlement_description": "새 SafeTrade / PayForWork / Deposit 플로우 대신 원래의 템플릿 그리드 Settlement 페이지를 사용합니다. 다음 /settlement 탐색 시 적용됩니다."
     },
     "action_bar": {
       "are_you_sure": "확실합니까?",
@@ -469,7 +483,27 @@
       "rename_wallet_file": "지갑 파일 이름 바꾸기",
       "delete_wallet_file": "이 지갑 파일을 영구적으로 삭제하세요.",
       "manage_wallets": "지갑 관리",
-      "manage_description": "지갑 파일, 가져오기, 숨겨진 주소"
+      "manage_description": "지갑 파일, 가져오기, 숨겨진 주소",
+      "manage_button": "관리",
+      "copy_address": "주소 복사",
+      "add_address_button": "주소 추가",
+      "generating": "생성 중…",
+      "empty_state": "아직 주소가 없습니다. Manage를 열어 추가하세요.",
+      "add_address_confirm_title": "새 주소를 추가하시겠습니까?",
+      "add_address_confirm_body": "이렇게 하면 지갑 시드에서 다음 주소가 도출됩니다. 일단 생성된 주소는 지갑 파일에서 제거할 수 없으며, 보이는 목록에서만 숨길 수 있습니다.",
+      "set_primary_button": "기본으로 설정",
+      "primary_button_short": "기본",
+      "export_wif_short_tooltip": "WIF 내보내기",
+      "wif_short": "WIF",
+      "qr_short": "QR",
+      "hide_button_short": "숨기기",
+      "no_addresses_panel": "아직 주소가 없습니다.",
+      "panel_description": "주소는 지갑 시드에서 도출되며 영구적으로 삭제할 수 없습니다. Hide를 사용하여 보이지 않게 하세요.",
+      "label_placeholder_primary": "예: 기본 · 채굴",
+      "label_placeholder_other": "예: 채굴",
+      "edit_label": "라벨 편집",
+      "add_custom_label": "사용자 지정 라벨 추가",
+      "address_qr_label": "주소 QR"
     },
     "send": {
       "title": "IRM 보내기",
@@ -499,12 +533,44 @@
         "unconfirmed": "귀하의 자금이 아직 확인되지 않았습니다. 보내기 전에 최소 1번의 확인을 기다리세요.",
         "double_spend": "이 거래는 대기 중인 다른 거래와 충돌합니다. 잠시 후 다시 시도해 주세요.",
         "generic": "거래를 브로드캐스트할 수 없습니다. 노드가 온라인인지 확인하고 다시 시도하십시오.",
-        "fallback": "거래가 실패했습니다. 다시 시도해 주세요."
-      }
+        "fallback": "거래가 실패했습니다. 다시 시도해 주세요.",
+        "insufficient_for_fee": "네트워크 수수료에 충분한 자금이 없습니다. 주소 잔액 {{balance}} sats; 최소 수수료 {{fee}} sats.",
+        "cannot_compute_max": "최대값을 계산할 수 없음 — {{reason}}",
+        "node_still_syncing": "노드가 아직 동기화 중입니다 ({{persisted}}/{{height}} 블록). 이 대화 상자를 닫고 동기화가 완료될 때까지 기다린 후 다시 시도하세요.",
+        "not_accepted_mempool": "노드 멤풀이 거래를 수락하지 않았습니다"
+      },
+      "button_label": "보내기",
+      "node_offline_tooltip": "송금하려면 노드가 온라인이어야 합니다",
+      "node_syncing_tooltip": "노드 동기화 중 — 송금 전에 기다려 주세요",
+      "max_button": "최대",
+      "no_spendable_funds_suffix": " — 사용 가능한 자금 없음",
+      "no_spendable_in_wallet": "이 지갑에 사용 가능한 자금이 없습니다.",
+      "estimated_fee_25k": "예상 수수료: ~25,000 sats",
+      "estimated_fee_label": "예상 수수료",
+      "estimated_fee_value_25k": "~25,000 sats",
+      "amount_sats_label": "금액 (sats)",
+      "confirm_send_prefix": "보내기",
+      "confirm_send_to_suffix": "받는 곳:",
+      "back_button": "← 뒤로",
+      "transaction_sent_title": "거래 전송됨",
+      "transaction_sent_subtitle": "다음 블록에 거래가 나타날 것입니다",
+      "transaction_sent_explanation": "거래는 본인의 프라이빗 키로 암호학적으로 서명되어 네트워크에 브로드캐스트됩니다. 다음에 채굴되는 블록에 포함되면 영구적으로 보호됩니다.",
+      "status_signed": "서명됨",
+      "private_key_verified": "프라이빗 키 검증됨",
+      "status_confirming": "확인 중",
+      "next_mined_block": "다음 채굴 블록",
+      "transaction_id_label": "거래 ID",
+      "copy_transaction_id": "거래 ID 복사",
+      "view_in_explorer": "Explorer에서 보기"
     },
     "receive": {
       "title": "IRM 수신",
-      "scan_qr_hint": "이 QR 코드를 스캔하거나 아래 주소를 복사하세요."
+      "scan_qr_hint": "이 QR 코드를 스캔하거나 아래 주소를 복사하세요.",
+      "button_label": "받기",
+      "send_to_this_address": "이 주소로 IRM을 보내세요:",
+      "no_address_short": "주소 없음",
+      "no_address_available": "사용 가능한 주소 없음",
+      "copy_address_button": "주소 복사"
     },
     "security": {
       "section_title": "보안",
@@ -519,7 +585,16 @@
       "seed_modal_title": "복구 문구",
       "seed_modal_warning": "이것을 종이에 적어보세요. 이 24개 단어를 아는 사람은 누구나 귀하의 자금을 사용할 수 있습니다.",
       "wif_label": "WIF 개인 키",
-      "backup_warning": "이 파일에는 모든 개인 키가 포함되어 있습니다. 안전하게 보관하세요."
+      "backup_warning": "이 파일에는 모든 개인 키가 포함되어 있습니다. 안전하게 보관하세요.",
+      "backup_subsection": "백업",
+      "restore_subsection": "복원",
+      "export_wif_dialog_title": "WIF 키 내보내기",
+      "export_wif_private_key_dialog_title": "WIF 프라이빗 키 내보내기",
+      "text_file_filter": "텍스트",
+      "backup_dialog_title": "지갑 백업 저장",
+      "select_backup_dialog_title": "지갑 백업 파일 선택",
+      "backup_filter_name": "지갑 백업",
+      "all_files_filter": "모든 파일"
     },
     "transactions": {
       "section_title": "업무",
@@ -529,7 +604,17 @@
       "confirmations": "{{count}} 확인",
       "pending": "보류 중",
       "received": "받았다",
-      "sent": "전송된"
+      "sent": "전송된",
+      "confirmed": "확정됨",
+      "for_address": "{{address}}에 대해",
+      "mempool_awaiting": "멤풀 · 확인 대기 중",
+      "miner_label": "채굴자: {{address}}",
+      "fee_label": "수수료: {{amount}} sats",
+      "txid_label": "TXID: {{txid}}",
+      "conf_short": "확인 {{count}}회",
+      "block_number": "블록 #{{height}}",
+      "open_in_explorer": "Explorer에서 열기",
+      "copy_txid": "TXID 복사"
     },
     "toasts": {
       "send_success": "보냄 — txid {{txid}}",
@@ -565,7 +650,13 @@
       "wif_copied": "WIF가 복사되었습니다.",
       "name_invalid_chars": "지갑 이름은 다음을 포함할 수 없습니다: / \\ : * ? \" < > |",
       "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
-      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up.",
+      "node_syncing_wait": "노드 동기화 중 — {{persisted}}/{{height}} 블록. 기다려 주세요.",
+      "failed_add_address": "주소 추가 실패: {{reason}}",
+      "no_recovery_data": "지갑에서 복구 데이터를 찾을 수 없습니다",
+      "wallet_deleted": "{{name}} 삭제됨",
+      "seed_copied": "시드 복사됨",
+      "invalid_wallet_path": "지갑 바이너리가 잘못된 경로를 반환했습니다: {{path}}"
     },
     "encryption": {
       "migration_title": "Encrypt your wallet",
@@ -588,6 +679,120 @@
       "needs_migration_status": "Wallet on disk uses the legacy unencrypted format and must be encrypted before use.",
       "plaintext_backup_warning": "Plaintext backup file(s) detected at {{paths}}. Delete after verifying the migration succeeded.",
       "recover_link": "Forgot your password? Recover with seed phrase"
+    },
+    "no_wallet_loaded": "로드된 지갑이 없음 — 아래에서 생성하거나 가져오세요",
+    "balance_label": "잔액",
+    "balance_label_for_address": "잔액 · 주소 {{index}}",
+    "satoshis_amount": "{{amount}} satoshis",
+    "unconfirmed": "미확인",
+    "wallet_wide": "(지갑 전체)",
+    "syncing_tooltip": "송금하기 전에 노드 동기화가 완료될 때까지 기다리세요. 지금 송금하면 UTXO 세트가 아직 재구성되는 중이므로 서명 검증 오류로 실패할 수 있습니다.",
+    "syncing_progress": "동기화 중…",
+    "gaps_count": "{{count}}개 갭",
+    "common": {
+      "cancel": "취소",
+      "done": "완료",
+      "reveal": "표시",
+      "hide": "숨기기",
+      "copy": "복사",
+      "delete": "삭제",
+      "loading": "로딩 중…"
+    },
+    "seed": {
+      "recovery_phrase_title": "복구 문구",
+      "wallet_seed_title": "지갑 시드",
+      "recovery_phrase_warning": "복구 문구를 절대 공유하지 마세요. 이 24단어를 가진 사람은 누구나 모든 자금에 접근할 수 있습니다. 오프라인으로 안전하게 보관하세요.",
+      "wallet_seed_warning": "지갑 시드를 절대 공유하지 마세요. 이 16진수 값은 모든 자금에 대한 전체 접근 권한을 부여합니다. 오프라인으로 안전하게 보관하세요.",
+      "custom_seed_hint": "이 지갑은 사용자 지정 시드를 사용합니다. 복원하려면 이 16진수 시드를 백업하세요.",
+      "copy_phrase": "문구 복사",
+      "copy_seed": "시드 복사"
+    },
+    "restore": {
+      "title": "백업에서 복원",
+      "warning_body": "이렇게 하면 현재 지갑 데이터가 덮어쓰여집니다. 계속하기 전에 WIF 키나 백업 파일이 있는지 확인하세요. 복원이 완료되면 새 지갑 상태가 정상적으로 인식되도록 노드가 자동으로 재시작됩니다.",
+      "restore_button": "지갑 복원"
+    },
+    "create_modal": {
+      "create_title": "지갑 생성",
+      "import_title": "지갑 가져오기",
+      "create_new_tab": "새로 만들기",
+      "import_tab": "가져오기",
+      "generate_description": "24단어 복구 문구로 새 BIP39 지갑을 생성합니다.",
+      "creating": "생성 중…",
+      "create_new_wallet_button": "새 지갑 생성",
+      "save_warning": "24단어 복구 문구를 오프라인으로 저장하세요 — 전체 지갑을 복원할 수 있습니다. WIF 키는 단일 주소만 백업합니다. 둘 다 분실 시 복구할 수 없습니다.",
+      "address_label": "주소",
+      "recovery_phrase_label": "복구 문구 (24단어)",
+      "recovery_phrase_hint": "(둘 중 하나의 문구로 지갑을 복원할 수 있습니다)",
+      "wif_label": "WIF 키",
+      "wif_hint": "(휴대 가능한 형식의 프라이빗 키)",
+      "loading_wif": "WIF 로딩 중…",
+      "export_wif_to_file": "WIF를 파일로 내보내기",
+      "saved_confirmation": "복구 문구와 WIF 키를 안전하게 저장했습니다.",
+      "import_notice_lead": "새 지갑을 가져옵니다. 현재 지갑은 그대로 유지되며 다음에서 다시 전환할 수 있습니다",
+      "seed_phrase_method": "시드 문구",
+      "wif_key_method": "WIF 키",
+      "seed_phrase_input_label": "시드 문구 (12 또는 24단어)",
+      "seed_phrase_placeholder": "word1 word2 word3 …",
+      "bip39_hint": "공백으로 구분된 BIP39 복구 문구.",
+      "wif_placeholder": "5J… 또는 K… 또는 L…",
+      "wif_format_hint": "WIF — 5, K 또는 L로 시작합니다.",
+      "import_button": "가져오기"
+    },
+    "new_address": {
+      "title": "새 주소",
+      "derived_lead": "지갑의 BIP32 시드에서 새 주소가 도출되었습니다. 본인의",
+      "derived_emphasis": "복구 문구는 변경되지 않았습니다",
+      "derived_trail": "— 이 주소는 기존 주소와 동일한 지갑 파일을 공유합니다.",
+      "copy_address": "주소 복사",
+      "wif_private_key_label": "WIF 프라이빗 키",
+      "wif_warning": "이 WIF를 가진 사람은 누구나 이 주소의 자금을 사용할 수 있습니다. 오프라인으로 보관하세요.",
+      "copy_wif": "WIF 복사",
+      "recovery_reminder_lead": "이 주소는 지갑 복구 문구를 공유합니다. 보려면 다음으로 이동하세요",
+      "recovery_reminder_path": "Security → Show Recovery Phrase"
+    },
+    "files": {
+      "section_title": "지갑 파일",
+      "section_description": "각 파일에는 자체 시드가 있습니다. 다른 지갑을 로드하려면 전환하세요.",
+      "no_files_found": "~/.irium/에서 지갑 파일을 찾을 수 없습니다",
+      "rename_placeholder": "wallet-name",
+      "active_badge": "활성",
+      "switch_button": "전환",
+      "create_new_wallet_file": "새 지갑 파일 생성",
+      "create_new_advanced_hint": "(고급 — 별도 시드)",
+      "create_new_description": "자체 시드를 가진 별도의 지갑 파일을 생성합니다. 현재 지갑은 디스크에 남아 있으며 이 목록에서 다시 전환할 수 있습니다."
+    },
+    "hidden": {
+      "section_title": "숨겨진 주소",
+      "still_in_file": "(여전히 지갑 파일에 있음)",
+      "description": "주소는 지갑 파일에서 영구적으로 삭제할 수 없습니다. 숨겨진 주소는 보이지 않게 되지만 복구 가능한 상태로 남아 있습니다 — Unhide를 클릭하여 다시 표시하세요.",
+      "unhide_button": "숨기기 해제"
+    },
+    "delete_file": {
+      "confirm_title": "이 지갑 파일을 영구적으로 삭제하시겠습니까?",
+      "address_count": "주소 {{count}}개",
+      "address_count_one": "주소 {{count}}개",
+      "warning_label": "경고:",
+      "warning_funds_lead": "이 지갑에는 자금이 있습니다. 백업 없이 삭제하면 다음 자금이 영구적으로 손실됩니다:",
+      "warning_funds_trail": ". 진행하기 전에 WIF 키나 시드 문구를 내보냈는지 확인하세요.",
+      "warning_unknown_lead": "잔액을 확인할 수 없습니다 — 노드가 오프라인일 수 있습니다. 이 지갑에 자금이 있었고 시드 문구나 WIF 키를 백업하지 않은 경우, 삭제하면",
+      "warning_unknown_emphasis": "영구적으로 손실",
+      "warning_unknown_trail": "됩니다.",
+      "warning_zero_lead": "디스크에서 파일이 삭제됩니다. 이 지갑의 시드 문구나 WIF 키를 백업하지 않은 경우, 그 안의 모든 자금이",
+      "warning_zero_emphasis": "영구적으로 손실",
+      "warning_zero_trail": "됩니다. 이 작업은 되돌릴 수 없습니다.",
+      "type_prompt_prefix": "다음을 입력하세요",
+      "type_prompt_word": "DELETE",
+      "type_prompt_suffix": "확인하려면",
+      "deleting": "삭제 중…",
+      "delete_forever": "영구 삭제"
+    },
+    "hide_address": {
+      "confirm_title": "이 주소를 숨기시겠습니까?",
+      "body_lead": "주소는 지갑 파일에 남아 있습니다 — 보이는 목록만 업데이트됩니다. 나중에 Hidden Addresses 섹션에서",
+      "body_emphasis": "숨기기 해제",
+      "body_trail": "할 수 있습니다.",
+      "confirm_button": "주소 숨기기"
     }
   },
   "agreements": {
@@ -621,7 +826,18 @@
       "share_text": "텍스트 공유",
       "delete": "삭제",
       "submitting": "제출 중…",
-      "sign": "징후"
+      "sign": "징후",
+      "fund_escrow": "에스크로 자금 예치",
+      "release_to_counterparty": "상대방에게 해제",
+      "submit_proof": "증빙 제출",
+      "refund": "환불",
+      "agreement_expired": "계약 만료됨",
+      "create_and_submit_proof": "증빙 생성 및 제출",
+      "confirm_release": "해제 확인",
+      "confirm_fund": "자금 예치 확인",
+      "confirm_open_dispute": "분쟁 개시 확인",
+      "use_this_invoice": "이 송장 사용 →",
+      "verify_signature_file": "서명 파일 검증…"
     },
     "proof_modal": {
       "title": "증거 제출",
@@ -634,7 +850,15 @@
       "evidence_summary": "증거 요약",
       "evidence_placeholder": "예를 들어 은행 송금을 통해 50달러를 수령했습니다. 참조 번호는 #12345입니다.",
       "submit_button": "증거 제출",
-      "submitting": "제출 중…"
+      "submitting": "제출 중…",
+      "intro": "앱 내에서 서명된 증빙을 생성하거나 이미 가지고 있는 것을 업로드하세요.",
+      "mode_create": "증거에서 생성",
+      "mode_upload": "파일 업로드",
+      "mode_create_sub": "앱 내에서 생성",
+      "mode_upload_sub": "기존 파일 사용",
+      "upload_note_prefix": "이미 증빙 파일이 있는 경우에만 이 탭을 사용하세요 — 예를 들어 상대방이나 증명자가 서명해 준 파일이거나, 다음을 통해 생성한 파일입니다",
+      "upload_note_middle": "본인의 증빙을 제출하는 경우, 위의",
+      "upload_note_suffix": "탭을 사용하세요 — 앱을 벗어나지 않고 증빙을 생성하고 제출합니다."
     },
     "toasts": {
       "agreement_signed": "계약이 체결되었습니다.",
@@ -663,7 +887,9 @@
       "signature_valid": "유효한 서명(서명자 {{signer}})",
       "signature_invalid": "잘못된 서명: {{reason}}",
       "agreement_signed_short": "계약이 체결되었습니다.",
-      "sign_failed": "서명 실패"
+      "sign_failed": "서명 실패",
+      "cleanup_removed": "{{count}}건의 계약을 제거했습니다",
+      "cleanup_removed_with_failures": "{{count}}건의 계약을 제거했습니다 ({{failed}}건 실패)"
     },
     "refund": {
       "blocked_default": "환불 자격 여부를 알 수 없음",
@@ -685,13 +911,26 @@
       "share_text": "본 계약의 일반 텍스트 요약을 클립보드에 복사하세요.",
       "delete_local": "지역 상점에서 이 계약을 삭제하십시오. 상대방의 사본은 영향을 받지 않습니다.",
       "save_friendly_name": "이 계약의 이름을 저장하세요(로컬에 저장됨).",
-      "verify_signature_file": "본 계약에 대해 서명 파일(.sig 또는 .json)을 확인하세요."
+      "verify_signature_file": "본 계약에 대해 서명 파일(.sig 또는 .json)을 확인하세요.",
+      "cleanup_old_test_data": "ID에 test / gossip / demo / pr이 포함된 계약을 로컬 저장소에서 제거합니다",
+      "node_offline_sign": "서명하려면 노드가 온라인이어야 합니다",
+      "sign_to_confirm": "참여를 확인하려면 이 계약에 서명하세요",
+      "node_offline_fund": "에스크로에 자금을 예치하려면 노드가 온라인이어야 합니다",
+      "fund_escrow_action": "계약 금액을 HTLC 에스크로에 잠급니다",
+      "node_offline_release": "자금을 해제하려면 노드가 온라인이어야 합니다",
+      "release_to_counterparty": "상대방에게 자금 해제",
+      "node_offline_dispute": "분쟁을 개시하려면 노드가 온라인이어야 합니다",
+      "mark_disputed": "이 계약을 분쟁 상태로 표시 — 정산을 위해 조정자 증명이 필요합니다",
+      "node_offline_refund": "환불하려면 노드가 온라인이어야 합니다",
+      "view_audit": "전체 온체인 감사 기록 보기"
     },
     "buttons": {
       "import_invoice": "송장 가져오기",
       "import_pack": "가져오기 팩",
       "browse": "먹다",
-      "delete_agreement": "계약 삭제"
+      "delete_agreement": "계약 삭제",
+      "cleanup_old_test_data": "오래된 테스트 데이터 정리 ({{count}})",
+      "export_pack": "팩 내보내기"
     },
     "page_views": {
       "agreements": "계약",
@@ -744,12 +983,19 @@
       "seller": "파는 사람",
       "signer_wallet": "서명자 지갑 주소",
       "role": "역할:",
-      "reason": "이유:"
+      "reason": "이유:",
+      "agreement_short": "계약",
+      "signer_prefix": "서명자"
     },
     "placeholders": {
       "your_wallet_address": "지갑 주소",
       "secret_preimage": "선택 사항 · 64자 16진수",
-      "dispute_reason": "무엇이 잘못되었는지 설명하세요. 이는 해결 프로그램과 공유됩니다."
+      "dispute_reason": "무엇이 잘못되었는지 설명하세요. 이는 해결 프로그램과 공유됩니다.",
+      "output_pack_path": "/path/to/output.pack.json",
+      "proof_json_path": "/path/to/proof.json",
+      "pack_json_path": "/path/to/agreement.pack.json",
+      "invoice_json_path": "/path/to/invoice.json",
+      "hash_64_hex": "64자 16진수"
     },
     "modals": {
       "submit_proof_title": "증거 제출",
@@ -757,16 +1003,117 @@
       "import_invoice_title": "송장 가져오기",
       "open_dispute_title": "공개 분쟁?",
       "audit_title": "계약 감사",
-      "sign_title": "계약서 서명"
+      "sign_title": "계약서 서명",
+      "delete_confirm_prefix": "계약 삭제",
+      "delete_confirm_body": "로컬 저장소에서만 계약이 제거됩니다. 상대방의 복사본에는 영향을 주지 않습니다. 자금이 예치되지 않은(개시/대기) 계약만 삭제할 수 있습니다.",
+      "cleanup_title": "오래된 테스트 데이터 정리",
+      "cleanup_found": "ID에 test, gossip, demo 또는 pr이 포함된 계약 {{count}}건을 찾았습니다.",
+      "cleanup_disclaimer": "로컬 저장소에서만 제거됩니다. 상대방의 복사본에는 영향을 주지 않습니다. 활성 온체인 HTLC는 그대로 유지되며 자금은 별도로 해제하거나 환불해야 합니다.",
+      "cleanup_remove_count": "{{count}}건 제거",
+      "release_funds_title": "자금을 해제하시겠습니까?",
+      "release_funds_body_prefix": "다음 금액을 해제합니다:",
+      "release_funds_body_suffix": "판매자에게.",
+      "fund_escrow_title": "에스크로에 자금을 예치하시겠습니까?",
+      "fund_escrow_body_prefix": "다음 금액을 잠급니다:",
+      "fund_escrow_body_suffix": "HTLC 에스크로에 예치됩니다. 증빙 수락 시 상대방에게 자금이 해제되거나, 타임아웃 높이 이후 환불됩니다.",
+      "import_pack_format_prefix": "허용된 형식:",
+      "import_pack_format_suffix": "— Party A가 내보낸 파일",
+      "import_invoice_subtitle": "Settlement 페이지에서 새 계약을 미리 채울 송장 JSON을 선택하세요."
     },
     "audit": {
-      "fetching": "감사 기록을 가져오는 중…"
+      "fetching": "감사 기록을 가져오는 중…",
+      "no_data": "Audit RPC가 데이터를 반환하지 않았습니다",
+      "show_raw_json": "원본 JSON 보기",
+      "hide_raw_json": "원본 JSON 숨기기"
     },
     "empty": {
       "no_signatures": "아직 확인된 서명이 없습니다. 위의 버튼을 사용하여 확인하세요.",
       "no_wallet_addresses": "지갑 주소 없음",
       "no_disputes": "분쟁이 없습니다.",
-      "disputes_offline": "(노드가 오프라인입니다. 분쟁 목록을 사용할 수 없습니다.)"
+      "disputes_offline": "(노드가 오프라인입니다. 분쟁 목록을 사용할 수 없습니다.)",
+      "no_agreements_found": "계약을 찾을 수 없습니다",
+      "with_status": "다음 상태로",
+      "matching": "일치하는",
+      "go_to_settlement_cta": "Settlement으로 이동하여 첫 계약을 생성하세요 →"
+    },
+    "scope": {
+      "my": "내 계약",
+      "all": "전체"
+    },
+    "dialog_titles": {
+      "save_agreement_pack": "계약 팩 저장",
+      "select_proof_file": "증빙 파일 선택 (.json)",
+      "select_pack_file": "계약 팩 선택 (.pack.json)",
+      "select_invoice_file": "송장 JSON 선택",
+      "select_signature_file": "서명 파일 선택"
+    },
+    "timeline": {
+      "created": "생성됨",
+      "funded": "자금 예치됨",
+      "proof_submitted": "증빙 제출됨",
+      "released": "해제됨",
+      "refunded": "환불됨"
+    },
+    "detail_labels": {
+      "template": "템플릿",
+      "created": "생성됨",
+      "deadline": "마감 시간",
+      "proof_status": "증빙 상태",
+      "release_eligible": "해제 가능",
+      "kind": "종류",
+      "threshold": "임계값",
+      "attestors": "증명자",
+      "parties": "당사자",
+      "amount": "금액",
+      "payer": "지불자",
+      "payee": "수취인",
+      "outcome": "결과",
+      "satisfied": "충족됨",
+      "reason": "사유"
+    },
+    "detail_values": {
+      "none": "없음",
+      "party": "당사자",
+      "parties": "당사자"
+    },
+    "sections": {
+      "policy": "정책",
+      "proofs": "증빙",
+      "timeline": "타임라인 (이벤트 {{count}}건)",
+      "proofs_count": "증빙 ({{count}})",
+      "funding_legs": "자금 예치 ({{count}}건)",
+      "linked_transactions": "연결된 거래 ({{count}})"
+    },
+    "warnings": {
+      "proof_finality_body": "해제하기 전에 블록 확인을 더 기다리세요 — 체인 재구성으로 증빙이 롤백될 수 있습니다.",
+      "open_dispute_body": "분쟁을 개시하면 조정자가 양측 증거를 검토해야 합니다. 진행하기 전에 정당한 사유와 뒷받침할 증빙이 있는지 확인하세요. 이 작업은 되돌릴 수 없습니다."
+    },
+    "helpers": {
+      "sign_confirms_participation": "서명은 참여를 확인합니다. 자금 예치 전에 양측 모두 서명해야 합니다.",
+      "sign_modal_body": "지갑 키로 이 계약에 서명하면 참여가 확인됩니다. 자금 예치 전에 양측 모두 서명해야 합니다.",
+      "no_hash_on_file": "이 계약에 대한 해시가 저장되어 있지 않습니다 — 상대방이 공유한 해시를 붙여넣으세요.",
+      "no_file_selected": "선택된 파일이 없습니다",
+      "secret_auto_loaded": "로컬 agreement-secrets 저장소에서 자동 로드됨",
+      "secret_required_hint": "이 계약을 직접 생성하지 않은 경우 필요합니다. 지갑이 자동으로 도출하는 경우 비워두세요.",
+      "use_invoice_hint": "Use This Invoice를 클릭하면 OTC 템플릿이 미리 채워진 채로 Settlement로 이동합니다. 계약을 생성하기 전에 템플릿을 변경하고 필드를 편집한 후 확인할 수 있습니다.",
+      "signer_unknown": "알 수 없음",
+      "rejected": "거부됨",
+      "role_buyer_suffix": "(구매자)",
+      "role_seller_suffix": "(판매자)",
+      "signer_not_party": "이 주소는 구매자나 판매자가 아닙니다 — 당사자 역할 없이 서명이 기록됩니다."
+    },
+    "form_errors": {
+      "hash_required": "계약 해시가 필요합니다",
+      "proof_type_required": "증빙 유형을 선택하세요",
+      "attested_by_required": "증명자 주소가 필요합니다",
+      "evidence_required": "증거 요약에 발생한 내용을 기술하세요",
+      "secret_must_be_64_hex": "정확히 64자 16진수(0-9, a-f)여야 합니다."
+    },
+    "disputes": {
+      "opened_prefix": "개시됨",
+      "resolved_prefix": "· 해결됨",
+      "open_this_agreement": "이 계약 열기",
+      "agreement_not_in_list": "계약이 현재 목록에 없습니다 — Agreements 뷰를 새로고침해 보세요"
     }
   },
   "settlement": {
@@ -971,14 +1318,72 @@
       "confirm_large_amount": "{{amount}} IRM를 에스크로에 잠그려고 합니다.\n\n이것은 많은 금액입니다. 소수점을 올바르게 입력했는지 확인하세요.",
       "remote_label": "원격",
       "remote_tooltip": "이 제안은 다른 판매자가 제공한 것이므로 현지 상점에서 삭제할 수 없습니다.",
-      "delete_tooltip": "지역 매장에서 이 제안을 삭제하세요."
+      "delete_tooltip": "지역 매장에서 이 제안을 삭제하세요.",
+      "modal_title": "판매 주문 생성",
+      "modal_subtitle": "오더북에 오퍼를 게시하세요 — 구매자가 받는 순간 IRM이 잠깁니다.",
+      "post_offer_button": "오퍼 게시",
+      "lock_info_prefix": "구매자가 응찰하는 순간 IRM이 잠깁니다. 이후 구매자의 오프체인 결제를 받고 다음을 클릭하세요",
+      "confirm_received_label": "수령 확인",
+      "lock_info_suffix": "그러면 해제됩니다. 또는 결제가 되지 않으면 분쟁을 개시하세요.",
+      "amount_to_sell_label": "판매할 IRM 수량",
+      "price_per_irm_label": "IRM당 가격 (USDT)",
+      "buyer_pays_total_prefix": "구매자가 지불할 총액:",
+      "buyer_pays_total_amount": "{{amount}} USDT",
+      "payment_method_label": "결제 수단",
+      "your_payment_details_label": "결제 정보",
+      "payment_details_placeholder": "예: IBAN DE89 3704 0044 0532 0130 00 또는 PayPal: seller@example.com",
+      "payment_details_helper": "구매자가 오퍼를 받은 후 이 정보를 확인할 수 있습니다.",
+      "payment_options": {
+        "bank_transfer": "은행 송금",
+        "paypal": "PayPal",
+        "usdt_trc20": "USDT (TRC-20)",
+        "usdt_erc20": "USDT (ERC-20)",
+        "sepa": "SEPA",
+        "cash": "현금",
+        "other": "기타"
+      },
+      "errors": {
+        "positive_irm_amount": "양수의 IRM 수량을 입력하세요",
+        "positive_usdt_price": "양수의 USDT 가격(IRM당)을 입력하세요",
+        "select_payment_method": "결제 수단을 선택하세요",
+        "payment_details_required": "구매자가 결제할 수 있도록 결제 정보를 입력하세요"
+      },
+      "toasts": {
+        "offer_posted": "오퍼가 게시되었습니다. 구매자가 응찰하는 순간 IRM이 잠깁니다."
+      }
     },
     "take_offer": {
       "title": "제안을 받아들이다",
       "completed_trades": "완료된 거래",
       "take_button": "제안을 받아들이다",
       "taking": "취득…",
-      "title_modal": "이 제안을 받아보세요"
+      "title_modal": "이 제안을 받아보세요",
+      "set_buyer_address_first": "먼저 구매자 주소를 설정하세요",
+      "error_agreement_id_missing": "오퍼는 체결되었으나 응답에서 계약 ID가 누락되었습니다",
+      "irm_locked_send_payment": "IRM이 이제 에스크로에 잠겼습니다. 오프체인 결제를 보내세요.",
+      "dispute_reason_buyer_cancelled": "구매자가 결제 전에 취소함",
+      "dispute_opened_refund_hint": "분쟁이 개시되었습니다. 타임아웃 후 Agreements 페이지에서 환불을 청구할 수 있습니다.",
+      "enter_payment_reference": "판매자가 결제를 확인할 수 있도록 거래 ID나 메모를 입력하세요",
+      "payment_reported_seller_notified": "결제가 보고되었습니다. 판매자에게 알림이 전송되었습니다.",
+      "step_of_two": "{{step}}/2 단계",
+      "step1_intro": "확인하면 판매자의 IRM이 에스크로에 잠깁니다. 이후 오프체인 결제를 보내고 거래를 보고할 마감 시간이 있습니다.",
+      "you_receive": "받을 금액:",
+      "payment_method": "결제 수단:",
+      "seller": "판매자:",
+      "buyer_you": "구매자 (본인):",
+      "not_set": "- 설정되지 않음 -",
+      "cancel": "취소",
+      "confirm_take": "받기 확인",
+      "irm_locked_in_escrow": "IRM이 에스크로에 잠김",
+      "step2_intro": "판매자의 IRM이 잠겼습니다. 오프체인 결제를 보낸 후 아래에 거래 참조 번호를 입력하고 \"결제를 보냈습니다\"를 클릭하세요.",
+      "sellers_payment_details": "판매자 결제 정보",
+      "no_payment_details": "오퍼에 세부 정보가 없습니다. 결제 안내를 위해 판매자에게 직접 연락하세요.",
+      "your_transaction_reference": "거래 참조 번호",
+      "payment_reference_placeholder": "은행 송금 참조, PayPal txid, 블록체인 txid 등.",
+      "payment_reference_hint": "판매자가 이를 그대로 확인합니다. 결제 도착을 확인할 수 있는 것이면 무엇이든 가능합니다 - 참조 번호, 거래 ID, 송금인 이름 등.",
+      "cancel_opens_dispute_warning": "여기서 취소하면 분쟁이 개시됩니다. Agreements 페이지에서 타임아웃 후 환불을 청구할 수 있습니다.",
+      "cancel_and_dispute": "취소 및 분쟁",
+      "i_have_sent_payment": "결제를 보냈습니다"
     },
     "feeds": {
       "discover_button": "피드 탐색",
@@ -1026,7 +1431,189 @@
     },
     "swap": {
       "fuel_banner_title": "IRM은 정산 계층을 구동합니다.",
-      "fuel_banner_body": "BTC, LTC 또는 DOGE를 IRM으로 교환하여 신뢰 없는 거래를 시작하세요."
+      "fuel_banner_body": "BTC, LTC 또는 DOGE를 IRM으로 교환하여 신뢰 없는 거래를 시작하세요.",
+      "pair_not_available": "이 페어는 아직 사용할 수 없습니다",
+      "own_order_hint": "본인의 주문입니다. 오른쪽의 My Swaps 패널을 사용하여 취소하세요.",
+      "not_available_yet": "아직 사용할 수 없음",
+      "how_it_works_title": "{{pair}} 스왑 작동 방식",
+      "how_it_works_step1": "왼쪽의 오더북에서 주문을 선택하거나 직접 게시하세요.",
+      "how_it_works_step2": "주문이 체결되는 순간 판매자의 IRM이 에스크로에 잠깁니다.",
+      "how_it_works_step3": "구매자가 판매자의 주소로 {{quote}}을(를) 보냅니다.",
+      "how_it_works_step4": "결제가 확인되면 IRM이 구매자에게 자동으로 해제됩니다."
+    },
+    "header": {
+      "subtitle_otc": "P2P OTC 거래. IRM을 에스크로에 잠그고 무엇이든 교환하세요.",
+      "subtitle_swap": "IRM과 다른 체인 간의 원자적 스왑. 신뢰 불필요. 브릿지 없음.",
+      "advanced_flows": "고급 플로우",
+      "advanced_flows_tooltip": "하위 레벨 정산 플로우를 엽니다."
+    },
+    "mode_tabs": {
+      "otc": "OTC P2P",
+      "swap": "스팟 스왑"
+    },
+    "my_trades": {
+      "title": "내 거래",
+      "tab_active": "진행 중",
+      "tab_completed": "완료됨",
+      "tab_all": "전체",
+      "empty_active": "진행 중인 거래가 없습니다. 오더북에서 오퍼를 받아 시작하세요.",
+      "empty_completed": "아직 완료된 거래가 없습니다.",
+      "empty_all": "아직 거래가 없습니다. 오더북에서 오퍼를 받아 시작하세요.",
+      "side_buy": "매수",
+      "side_sell": "매도"
+    },
+    "trade_status": {
+      "released": "해제됨",
+      "refunded": "환불됨",
+      "expired": "만료됨",
+      "cancelled": "취소됨",
+      "disputed": "분쟁 중",
+      "confirming": "확인 중",
+      "locked": "잠김",
+      "proposed": "제안됨",
+      "drafting": "작성 중"
+    },
+    "order_book": {
+      "title": "오더북",
+      "create_order": "주문 생성",
+      "offers_count_one": "오퍼",
+      "offers_count_other": "오퍼",
+      "offers_count": "오퍼",
+      "hidden_tooltip_one": "{{count}}개 오퍼가 호가가 없어 숨겨졌습니다",
+      "hidden_tooltip_other": "{{count}}개 오퍼가 호가가 없어 숨겨졌습니다",
+      "hidden_tooltip": "{{count}}개 오퍼가 호가가 없어 숨겨졌습니다",
+      "hidden_suffix": "{{count}}개 숨김",
+      "show_taken": "체결된 것 표시",
+      "sort": {
+        "price_asc": "가격 ↑",
+        "price_desc": "가격 ↓",
+        "newest": "최신순",
+        "best_rep": "최고 평판"
+      },
+      "updated_ago": "업데이트 {{time}}",
+      "refreshing": "새로고침 중…",
+      "refreshing_lower": "새로고침 중…",
+      "empty_prefix": "오더북에 아직 오퍼가 없습니다. 다음을 클릭하여",
+      "empty_suffix": "첫 번째를 게시하세요.",
+      "col_amount_irm": "IRM 수량",
+      "col_price_per_irm": "IRM당 가격",
+      "col_total": "총액",
+      "col_payment": "결제",
+      "col_seller": "판매자",
+      "col_rep": "평판",
+      "col_age": "경과 시간",
+      "rep_tooltip": "5점 만점에 {{stars}}점, {{completed}}건 완료",
+      "no_reputation": "평판 없음",
+      "taken": "체결됨",
+      "take": "받기"
+    },
+    "pair_order_book": {
+      "header_title": "{{pair}} 오더북",
+      "open_shown_summary": "{{open}}건 진행 중 · {{shown}}건 표시됨",
+      "updated_label": "업데이트",
+      "new_swap": "새 스왑",
+      "direction_both": "양방향",
+      "direction_sell_irm": "IRM 매도",
+      "direction_buy_irm": "IRM 매수",
+      "sort_price_asc": "낮은 가격부터",
+      "sort_price_desc": "높은 가격부터",
+      "sort_recent": "최신순",
+      "hide_my_orders": "내 주문 숨기기",
+      "loading_orders": "{{pair}} 주문 로딩 중…",
+      "empty_state": "진행 중인 {{pair}} 주문이 없습니다. 위의 New swap 버튼으로 첫 주문을 게시하세요.",
+      "side_sells_irm": "IRM 매도",
+      "side_buys_irm": "IRM 매수",
+      "badge_yours": "내 것",
+      "escrow_protected": "에스크로 보호",
+      "maker_line": "메이커 {{address}} · {{ago}}",
+      "needs_confirmations": "{{network}} 측에서 {{count}}회 확인 필요",
+      "needs_confirmations_plural": "{{network}} 측에서 {{count}}회 확인 필요",
+      "relative_recent": "최근",
+      "relative_just_now": "방금 전",
+      "relative_blocks_ago": "{{count}}블록 전",
+      "relative_blocks_ago_one": "{{count}}블록 전",
+      "relative_hours_ago": "{{count}}시간 전",
+      "relative_days_ago": "{{count}}일 전"
+    },
+    "resolver_picker": {
+      "title": "조정자 선택",
+      "intro": "조정자는 구매자와 판매자가 합의에 이르지 못할 때 누가 IRM을 받을지 결정하는 검증된 제3자입니다. 조정자는 분쟁 금액에서 차감되는 소액의 수수료를 받습니다.",
+      "nominated_section_title": "이 거래에 지명된 조정자",
+      "primary_label": "주요",
+      "fallback_label": "예비",
+      "fee_with_value": "수수료: {{value}}",
+      "no_nominated_notice": "이 거래는 지명된 조정자 없이 생성되었습니다. 아래의 조정자가 조치를 취하려면 먼저 양측이 지갑의 조정자 재지명 플로우에서 새 지명을 공동 서명해야 합니다.",
+      "available_section_title": "사용 가능한 조정자",
+      "registry_unreachable": "이 노드에서 조정자 레지스트리 엔드포인트에 도달할 수 없습니다 ({{error}}). 지갑의 조정자 재지명 플로우를 사용하여 resolver-list CLI로 직접 후보를 검색하세요.",
+      "empty_registry_before": "이 노드에 아직 등록된 조정자가 없습니다. 조정자는 주소가 최근 코인베이스 출력에 나타난 후 다음을 호출하여 등록합니다",
+      "empty_registry_after": ".",
+      "unnamed_resolver": "이름 없는 조정자",
+      "no_reputation_yet": "아직 평판 없음",
+      "agreements_hint": "Agreements 페이지를 사용하여 조정자에게 추가 증거를 제출하고 분쟁 해결 과정을 지켜보세요. 양측은 조정자가 결정하기 전까지 언제든지 증거를 제출할 수 있습니다.",
+      "close": "닫기"
+    },
+    "seller_review": {
+      "toast_released": "IRM이 해제되었습니다. 이제 구매자가 자금을 보유합니다.",
+      "dispute_reason": "판매자가 오프체인 결제를 받지 못함",
+      "toast_dispute_opened": "분쟁이 개시되었습니다. 조정자가 증거를 검토합니다.",
+      "empty_state": "대기 중인 수신 거래가 없습니다. 구매자가 오퍼를 받고 결제를 보고하면 여기에 표시됩니다.",
+      "section_title": "검증할 수신 거래",
+      "waiting_count": "{{count}}건 대기",
+      "status_releasing": "해제 중",
+      "status_funded": "자금 예치됨",
+      "buyer_label": "구매자:",
+      "buyer_claims_paid": "구매자가 {{time}}에 결제를 보냈다고 보고",
+      "no_reference": "(거래 참조 번호 제공되지 않음)",
+      "no_payment_yet": "구매자가 아직 결제 보고를 하지 않았습니다. 기다리거나 마감 시간이 지난 경우 분쟁을 개시하세요.",
+      "open_dispute_button": "결제 없음 - 분쟁 개시",
+      "confirm_release_button": "수령 확인 및 해제",
+      "loading_trades": "거래 로딩 중...",
+      "time_ago_seconds": "{{count}}초 전",
+      "time_ago_minutes": "{{count}}분 전",
+      "time_ago_hours": "{{count}}시간 전",
+      "time_ago_days": "{{count}}일 전"
+    },
+    "take_swap": {
+      "buy_irm": "IRM 매수",
+      "sell_irm": "IRM 매도",
+      "toast_no_wallet": "활성 Irium 지갑 주소가 없습니다. 먼저 지갑을 여세요.",
+      "toast_min_blocks": "환불 마감 시간은 최소 10블록 이상이어야 합니다",
+      "toast_locked_buyer": "주문이 잠겼습니다. {{code}} 결제를 보내고 보고하세요.",
+      "toast_locked_seller": "주문이 잠겼습니다. 판매자의 IRM이 에스크로에 있습니다.",
+      "toast_need_ref": "판매자가 {{code}} 결제를 확인할 수 있도록 거래 ID나 메모를 입력하세요",
+      "toast_payment_reported": "결제가 보고되었습니다. 판매자에게 알림이 전송되었습니다.",
+      "toast_dispute_info": "분쟁은 Agreements 페이지에서 개시할 수 있습니다. 여기서는 일단 취소하고 그쪽에서 다시 확인하세요.",
+      "modal_title": "{{pair}}에서 {{label}}",
+      "step_of_2": "{{step}}/2 단계",
+      "intro_buyer": "확인하면 판매자의 IRM이 에스크로에 잠깁니다. 그런 다음 표시된 주소로 {{code}}을(를) 보냅니다.",
+      "intro_seller": "확인하면 본인의 IRM으로 매칭되는 에스크로가 생성됩니다. 구매자가 본인 주소로 {{code}}을(를) 보냅니다.",
+      "you_receive": "받을 금액",
+      "you_pay": "지불할 금액",
+      "you_send": "보낼 금액",
+      "price": "가격",
+      "maker": "메이커",
+      "maker_foreign_address": "메이커 {{code}} 주소",
+      "needs": "필요",
+      "confirmation_one": "{{code}} 확인 {{count}}회",
+      "confirmation_other": "{{code}} 확인 {{count}}회",
+      "refund_deadline_label": "환불 마감 시간 (Irium 블록)",
+      "refund_deadline_hint": "이 마감 시간까지 결제가 확인되지 않으면 자금이 환불될 수 있습니다.",
+      "cancel": "취소",
+      "confirm_action": "{{label}} 확인",
+      "escrow_locked": "에스크로 잠김",
+      "escrow_locked_buyer": "아래 주소로 {{code}} 결제를 보내세요. 결제가 확인되면 IRM이 본인 지갑으로 자동 해제됩니다.",
+      "escrow_locked_seller": "본인의 IRM이 에스크로에 있습니다. 구매자가 본인 주소로 {{code}}을(를) 보냅니다. 결제가 확인되면 IRM이 구매자에게 해제되고 구매자 플로우는 자동으로 종료됩니다.",
+      "send_to_label": "{{code}}을(를) 보낼 주소",
+      "exact_amount_label": "정확한 {{code}} 금액",
+      "required_memo_label": "필수 결제 메모",
+      "memo_hint": "대부분의 {{name}} 지갑은 이를 결제의 추가 데이터 필드로 포함합니다. 이는 결제를 이 거래에 연결하여 IRM이 자동으로 해제될 수 있게 합니다.",
+      "tx_reference_label": "거래 참조 번호",
+      "tx_reference_placeholder": "{{code}} 거래 ID 또는 메모",
+      "tx_reference_hint": "판매자가 이를 그대로 확인합니다. 결제 확인에 사용할 수 있는 것이면 무엇이든 가능합니다.",
+      "cancel_warning": "지금 취소하면 위의 환불 마감 시간까지 자금이 잠긴 상태로 유지됩니다.",
+      "cancel_and_dispute": "취소 및 분쟁",
+      "i_have_sent": "{{code}}을(를) 보냈습니다",
+      "watching_escrow": "에스크로 감시 중"
     }
   },
   "miner": {
@@ -1047,7 +1634,11 @@
       "uptime": "가동 시간",
       "difficulty": "어려움",
       "temperature": "온도",
-      "power": "힘"
+      "power": "힘",
+      "est_daily_irm": "예상 일일 IRM",
+      "na_linux_only": "해당 없음 (Linux 전용)",
+      "pool_difficulty": "풀 난이도",
+      "pool_hashrate": "풀 해시레이트"
     },
     "buttons": {
       "start_mining": "채굴 시작",
@@ -1056,7 +1647,23 @@
       "connect_pool": "풀에 연결",
       "disconnect": "연결 끊기",
       "confirm_disconnect": "연결 해제를 확인하시겠습니까?",
-      "detect_gpus": "GPU 감지"
+      "detect_gpus": "GPU 감지",
+      "view_wallet": "지갑 보기",
+      "starting": "시작 중…",
+      "connecting": "연결 중…",
+      "start_gpu_mining": "GPU 채굴 시작",
+      "stop_gpu": "GPU 중지",
+      "scanning": "스캔 중…",
+      "yes": "예",
+      "no": "아니오",
+      "close": "닫기",
+      "done": "완료",
+      "ok": "확인",
+      "start": "시작",
+      "stop": "중지",
+      "refresh": "새로고침",
+      "view_pool_stats": "풀 통계 보기",
+      "view_pool_stats_tooltip": "공용 풀의 실시간 채굴자 통계를 Block Explorer에서 엽니다"
     },
     "fields": {
       "mining_address_label": "채굴 주소",
@@ -1080,21 +1687,49 @@
       "intensity_label": "강도 — {{value}}%",
       "intensity_mac_note": "GPU 감시가 배치 중간에 커널을 종료하는 것을 방지하기 위해 macOS에서는 강도가 50%로 제한되었습니다. GPU 마이너는 감시 장치 정지를 자동으로 감지하고 어쨌든 발견하면 완전히 중지합니다.",
       "pool_preset": "풀 프리셋",
-      "stratum_worker_use_wallet": "Use my wallet"
+      "stratum_worker_use_wallet": "Use my wallet",
+      "intensity_hint": "강도가 높을수록 해시레이트와 전력 소비가 증가합니다",
+      "core_active_tooltip": "코어 {{n}} (활성)",
+      "core_idle_tooltip": "코어 {{n}} (유휴)",
+      "stratum_worker_placeholder": "walletAddress.workerName",
+      "stratum_worker_autofill_tooltip": "자동 입력: {{address}}.rig1",
+      "stratum_password_hint": "비워두면 \"x\"가 사용됩니다 (대부분의 풀의 기본값)"
     },
     "found_blocks": {
       "section_title": "발견된 블록",
       "empty": "이 세션에는 아직 블록이 없습니다.",
-      "open_in_explorer_tooltip": "탐색기에서 이 블록을 엽니다."
+      "open_in_explorer_tooltip": "탐색기에서 이 블록을 엽니다.",
+      "hide_orphans_tooltip": "다른 채굴자가 가져간 블록 숨기기",
+      "reveal_orphans_tooltip_one": "고아 후보 {{count}}개 표시",
+      "reveal_orphans_tooltip_other": "고아 후보 {{count}}개 표시",
+      "hide_orphans_button": "고아 숨기기 ({{count}})",
+      "show_orphans_button": "고아 표시 ({{count}})",
+      "all_orphaned": "아직 확정된 블록이 없습니다 — 지금까지의 모든 후보가 고아 처리되었습니다.",
+      "orphaned_tooltip": "고아 — 다른 채굴자에게 패배",
+      "orphaned_long_tooltip": "이 높이의 정식 블록은 다른 주소가 채굴했습니다 — 후보는 기록했지만 경쟁에서 졌습니다.",
+      "orphaned_badge": "고아",
+      "block_height_tooltip": "블록 높이 {{height}}",
+      "won_by_another": "다른 채굴자가 획득",
+      "hash_unavailable": "이 채굴자 빌드에서 해시를 사용할 수 없음",
+      "reward_not_indexed_tooltip": "노드가 아직 보상을 인덱싱하지 않음 — 성숙되면 값이 채워집니다",
+      "reward_unknown_tooltip": "보상 알 수 없음 — 채굴자 stdout이 보고하지 않음",
+      "estimate_marker": "~ 추정"
     },
     "shares": {
       "accepted": "수락됨",
       "rejected": "거부됨",
-      "ratio": "비율"
+      "ratio": "비율",
+      "last_share": "마지막 쉐어"
     },
     "asic_info": {
       "headline": "Stratum을 통해 ASIC 또는 GPU를 채굴 풀에 연결하세요",
-      "after_install": "설치 후 Irium Core를 다시 시작하십시오."
+      "after_install": "설치 후 Irium Core를 다시 시작하십시오.",
+      "external_title": "외부 ASIC 또는 GPU로 풀 채굴",
+      "external_body_before_url": "ASIC 또는 GPU 채굴 소프트웨어를 위의 풀 URL로 직접 가리키게 하세요 (예: ",
+      "external_body_after_url": "). Irium Core는 여기에 표시된 풀 측 쉐어 통계를 모니터링하며, 하드웨어의 로컬 해시레이트는 채굴자 자체에서 보고합니다.",
+      "connect_button_intro_before": "아래의 ",
+      "connect_button_intro_middle": " 버튼은 번들된 ",
+      "connect_button_intro_after": " 사이드카를 통해 CPU로 풀 채굴을 시작합니다 — 이 머신의 CPU 해시레이트도 풀에 기여하고 싶을 때만 유용합니다. 외부 ASIC에는 이 버튼이 필요하지 않습니다."
     },
     "toasts": {
       "miner_started": "CPU 채굴이 시작되었습니다",
@@ -1114,17 +1749,42 @@
       "connecting_to_pool": "수영장에 연결 중…",
       "pool_disconnected_reconnecting": "풀 연결 끊김 — 다시 연결 중…",
       "pool_connection_lost": "풀 연결이 끊어졌습니다. 다시 연결해 주세요.",
-      "pool_error": "풀 오류: {{message}}"
+      "pool_error": "풀 오류: {{message}}",
+      "no_device_selected": "선택된 장치가 없음 — 기본 장치 0 사용",
+      "solo_listening_on": "솔로 Stratum이 {{addr}}에서 수신 중",
+      "solo_failed_start": "솔로 Stratum 시작 실패",
+      "solo_stopped": "솔로 Stratum 중지됨",
+      "solo_failed_stop": "솔로 Stratum 중지 실패",
+      "copied": "복사됨"
     },
     "page_subtitle": "SHA-256d · CPU · GPU · ASIC 풀 지원",
     "tooltips": {
       "copy_address": "주소 복사",
-      "copy_full_hash": "전체 해시 복사"
+      "copy_full_hash": "전체 해시 복사",
+      "copy": "복사"
     },
     "pool_configuration": "풀 구성",
     "opencl": {
       "detected_title": "OpenCL 하드웨어 감지됨",
-      "none_detected": "OpenCL 지원 GPU가 감지되지 않음"
+      "none_detected": "OpenCL 지원 GPU가 감지되지 않음",
+      "no_gpu_idle_message": "호환되는 GPU가 감지되지 않음 — 아래 구성 참조",
+      "select_platform": "플랫폼을 선택하고 채굴을 시작하세요",
+      "no_compatible_gpu": "호환되는 GPU가 감지되지 않음",
+      "install_drivers_before": "GPU 채굴에는 OpenCL 런타임이 필요합니다. GPU 제조사 드라이버(NVIDIA, AMD 또는 Intel OpenCL SDK)를 설치한 후 클릭하세요 ",
+      "install_drivers_after": ".",
+      "supports_pool_and_solo": "활성화되면 GPU 채굴자는 풀(Stratum)과 솔로(직접 노드 RPC) 채굴을 모두 지원합니다.",
+      "read_docs": "GPU 채굴자 문서 읽기",
+      "no_platforms_found": "OpenCL 플랫폼을 찾을 수 없습니다.",
+      "install_icd_before": "GPU 드라이버와 ICD 로더를 설치한 후 다시 클릭하세요 ",
+      "install_icd_after": ".",
+      "platform_n": "플랫폼 {{n}}",
+      "discrete_gpu": "외장 GPU",
+      "device_n": "장치 {{n}}",
+      "fix_intro": "해결하려면 GPU용 OpenCL 드라이버를 설치하세요:",
+      "fix_nvidia": "nvidia.com에서 GPU 드라이버를 재설치하세요",
+      "fix_amd": "amd.com에서 AMD Software Adrenalin을 설치하세요",
+      "fix_intel": "intel.com에서 Intel Graphics Driver를 설치하세요",
+      "scanning": "OpenCL 장치 스캔 중…"
     },
     "unexpected_exit": {
       "title": "Miner stopped unexpectedly",
@@ -1133,6 +1793,75 @@
       "restart_cpu": "Restart CPU Miner",
       "restart_gpu": "Restart GPU Miner",
       "dismiss": "Dismiss"
+    },
+    "activity": {
+      "share_accepted": "쉐어 수락됨",
+      "share_rejected": "쉐어 거부됨",
+      "share_rejected_with_detail": "쉐어 거부됨 — {{detail}}",
+      "pool_error": "풀 오류",
+      "pool_error_with_detail": "풀 오류 — {{detail}}",
+      "mining_active": "채굴 활성",
+      "block_hash_marker": "· 블록 #{{height}}",
+      "section_title": "최근 활동",
+      "last_count": "최근 {{count}}건",
+      "waiting_for_first_share": "첫 쉐어 대기 중…"
+    },
+    "status": {
+      "loading": "로딩 중…",
+      "mining_active": "채굴 활성",
+      "mining_active_syncing": "채굴 활성 — 블록 동기화 중…",
+      "cpu_idle": "CPU 유휴",
+      "gpu_active": "GPU 활성",
+      "gpu_idle": "GPU 유휴",
+      "pool_connected": "풀 연결됨",
+      "pool_disconnected": "풀 연결 끊김",
+      "live_badge": "라이브",
+      "syncing_badge": "동기화 중"
+    },
+    "sync": {
+      "node_syncing_height": "노드 동기화 중 — 높이 {{localHeight}} / 네트워크 {{networkTip}}",
+      "warming_up_header": "채굴자 워밍업 중 — 첫 쉐어 속도 대기 중…",
+      "node_syncing_body": "노드가 아직 네트워크 팁을 따라잡고 있습니다. 채굴은 활성화되어 있지만 로컬 체인이 일치할 때까지 쉐어가 수락되지 않습니다. 보통 몇 분 이내에 완료됩니다.",
+      "warming_up_body": "채굴자 사이드카가 시작되었습니다. 첫 해시레이트 측정값은 1-3초 내에 표시됩니다 — 별도 조치가 필요하지 않습니다."
+    },
+    "block_info": {
+      "mining_block_n": "블록 #{{height}} 채굴 중",
+      "previous_block": "이전 블록",
+      "last_confirmed_block": "마지막 확정 블록",
+      "network_difficulty": "네트워크 난이도"
+    },
+    "solo": {
+      "title": "솔로 Stratum 브릿지",
+      "subtitle": "자체 iriumd에 대해 ASIC을 운영하세요. 풀 수수료 없음, 풀 의존성 없음.",
+      "listening": "수신 중",
+      "stopped": "중지됨",
+      "listen_address_label": "수신 주소",
+      "listen_default_before": "기본값 ",
+      "listen_default_after": "은 모든 인터페이스에 바인딩되어 LAN의 ASIC이 접근할 수 있게 합니다.",
+      "asic_connection_string": "ASIC 연결 문자열",
+      "bullet_replace_host_before": "• ",
+      "bullet_replace_host_after": "을 본인 머신의 LAN IP (또는 VPS IP)로 바꾸세요.",
+      "bullet_worker_username_before": "• 워커 사용자명: 본인의 Q-주소 뒤에 ",
+      "bullet_worker_username_after": "을 붙입니다. 비밀번호: 임의의 문자열.",
+      "bullet_bridge_serves_before": "• 브릿지가 로컬 iriumd에서 ",
+      "bullet_bridge_serves_middle": " 및 ",
+      "bullet_bridge_serves_after": "를 제공합니다."
+    },
+    "found_block_banner": {
+      "title": "블록 #{{height}} 채굴 성공!",
+      "body": "{{kind}} 채굴자가 네트워크 경쟁에서 방금 승리했습니다 — 50 IRM이 전달되며 100블록 후 성숙됩니다.",
+      "dismiss_aria": "닫기"
+    },
+    "tabs_v2": {
+      "cpu": "CPU 채굴자",
+      "gpu": "GPU 채굴자",
+      "stratum": "풀 / Stratum",
+      "solo": "솔로 Stratum"
+    },
+    "pool_presets": {
+      "irium_official_cpu_gpu": "Irium 공식 풀 (CPU/GPU)",
+      "irium_official_asic": "Irium 공식 풀 (ASIC)",
+      "custom": "사용자 지정"
     }
   },
   "onboarding": {
@@ -1162,7 +1891,8 @@
       "generating": "지갑 생성 중…",
       "show_recovery": "복구 문구 표시",
       "i_wrote_it_down": "나는 그것을 적어 두었다",
-      "continue_to_wallet": "월렛으로 계속"
+      "continue_to_wallet": "월렛으로 계속",
+      "generating_sub": "24단어 시드 문구로 BIP32 HD 지갑 생성 중…"
     },
     "import": {
       "tab_mnemonic": "복구 문구",
@@ -1199,6 +1929,153 @@
       "too_short": "Password must be at least 4 characters",
       "required": "Password is required",
       "continue": "Continue"
+    },
+    "splash": {
+      "subtitle_full_node": "풀 노드 데스크톱 지갑",
+      "status_initializing": "런타임 초기화 중…",
+      "status_loading_crypto": "암호화 모듈 로딩 중…",
+      "status_verifying_binary": "바이너리 무결성 검증 중…",
+      "status_establishing_context": "보안 컨텍스트 설정 중…",
+      "status_ready": "준비됨"
+    },
+    "rail": {
+      "system_check": "시스템 점검",
+      "bootstrap": "부트스트랩",
+      "network_sync": "네트워크 동기화",
+      "wallet_setup": "지갑 설정",
+      "backup_secure": "백업 및 보안"
+    },
+    "binary_check": {
+      "subtitle": "필요한 노드 바이너리가 이 머신에 있는지 확인합니다.",
+      "iriumd_desc": "풀 노드 데몬",
+      "irium_wallet_desc": "지갑 및 마켓플레이스 CLI",
+      "irium_miner_desc": "CPU 채굴자",
+      "all_verified": "모든 바이너리가 검증되었습니다. 계속합니다…",
+      "missing_binaries": "바이너리 누락. 실행 파일을 src-tauri/binaries/에 배치하세요",
+      "retry": "재시도",
+      "skip_advanced": "건너뛰기 (고급)"
+    },
+    "bootstrap": {
+      "subtitle": "시드 노드, 신뢰 앵커, 제네시스 블록을 구성하고 있습니다.",
+      "creating_data_dir": "데이터 디렉터리 생성 중…",
+      "writing_seedlist": "부트스트랩 seedlist.txt 작성 중…",
+      "writing_static_peers": "static_peers.txt 작성 중…",
+      "installing_anchors": "제네시스 anchors.json 설치 중…",
+      "installing_trust_signatures": "신뢰 서명 설치 중…",
+      "complete": "부트스트랩 구성이 완료되었습니다.",
+      "error_prefix": "오류",
+      "skip_continue": "건너뛰기 (계속 진행)"
+    },
+    "network_sync": {
+      "subtitle": "로컬 블록체인 데이터를 로드하고 Irium P2P 네트워크에 연결합니다.",
+      "port_in_use_message": "포트 38291이 이미 사용 중입니다. 다른 Irium 노드가 백그라운드에서 실행 중일 수 있습니다. 시스템 트레이에서 기존 Irium Core 인스턴스를 확인하거나, 작업 관리자를 열고 iriumd.exe 프로세스를 종료한 후 앱을 재시작하세요.",
+      "add_peer_format_error": "IP:PORT 형식을 사용하세요 (예: 1.2.3.4:38291)",
+      "add_peer_rejected": "노드가 주소를 거부했습니다",
+      "add_peer_unreachable": "노드에 연결할 수 없습니다",
+      "starting_iriumd": "iriumd 시작 중…",
+      "loading_blockchain_data": "블록체인 데이터 로딩 중…",
+      "starting_node": "노드 시작 중…",
+      "discovering": "검색 중…",
+      "searching_for_peers": "Irium 네트워크에서 피어 검색 중",
+      "checking_connectivity": "네트워크 연결 확인 중…",
+      "network_reachable": "네트워크 연결 가능 — 노드 시작 중…",
+      "port_blocked_title": "포트 38291이 아웃바운드로 차단된 것으로 보입니다",
+      "port_blocked_body_before": "Irium 네트워크에 연결할 수 없습니다. 라우터나 방화벽을 확인하세요 — 포트",
+      "port_blocked_body_after": "이 아웃바운드 TCP 연결에 대해 열려 있어야 합니다.",
+      "restarting_node": "노드 재시작 중…",
+      "retry_connection": "연결 재시도",
+      "still_connecting_title": "피어에 계속 연결 중…",
+      "still_connecting_body": "노드가 Irium 네트워크에 연결을 시도 중입니다. 보통 30초 이내에 완료됩니다 — 잠시만 기다려 주세요.",
+      "connecting_for": "{{seconds}}초 동안 연결 중…",
+      "add_peer_manually": "피어 수동 추가",
+      "add_peer_button": "피어 추가",
+      "added_peer": "{{addr}} 추가됨",
+      "continuing_in": "{{seconds}}초 후 계속됨…",
+      "syncing_background": "백그라운드에서 동기화 중…",
+      "continue_anyway": "계속 진행 →"
+    },
+    "wallet_setup_subtitle": "새로운 HD 지갑을 생성하거나 기존 지갑에서 복원하세요.",
+    "wallet_setup_errors": {
+      "failed_create": "지갑 생성 실패",
+      "no_wallet_pending": "암호화 대기 중인 지갑이 없습니다",
+      "failed_set_password": "지갑 비밀번호 설정 실패",
+      "import_failed": "가져오기 실패"
+    },
+    "wallet_password": {
+      "title": "지갑 비밀번호 설정",
+      "subtitle": "지갑 파일을 암호화합니다. 계속하기 전에 필요합니다.",
+      "placeholder": "강력한 비밀번호를 선택하세요 (8자 이상)",
+      "confirm_placeholder": "비밀번호 확인",
+      "warning": "이 비밀번호는 잊어버리면 복구할 수 없습니다. 적어서 안전하게 보관하세요. 시드 문구는 이 비밀번호 없이 지갑을 복원할 수 있는 유일한 방법입니다.",
+      "continue": "암호화 및 계속",
+      "too_short": "비밀번호는 최소 8자 이상이어야 합니다",
+      "mismatch": "비밀번호가 일치하지 않습니다",
+      "encrypting": "지갑 암호화 중…",
+      "encrypting_sub": "지갑 파일에 PBKDF2 도출 키를 적용 중입니다.",
+      "hide": "숨기기",
+      "show": "표시"
+    },
+    "wallet_restored_sub": "지갑을 성공적으로 가져왔습니다.",
+    "restored": {
+      "primary_address": "기본 주소",
+      "address_pending": "노드 동기화가 완료되면 대시보드에 주소가 표시됩니다.",
+      "additional_addresses": "추가 주소 {{count}}개 발견됨",
+      "balance_will_load": "노드가 동기화됨에 따라 대시보드에 잔액과 거래 내역이 자동으로 로드됩니다.",
+      "continue_to_dashboard": "대시보드로 계속"
+    },
+    "import_form": {
+      "subtitle": "아래에서 복원 방법을 선택하세요.",
+      "tab_mnemonic_label": "시드 문구",
+      "tab_wif_label": "WIF 키",
+      "tab_privkey_label": "프라이빗 키",
+      "mnemonic_placeholder": "word1 word2 word3 … word24",
+      "mnemonic_hint": "BIP32 니모닉 — 공백으로 구분된 12 또는 24단어",
+      "wif_placeholder": "5Jxx… 또는 Kxx… 또는 Lxx…",
+      "wif_hint": "WIF (Base58Check로 인코딩된 프라이빗 키)",
+      "privkey_placeholder": "0x1a2b3c4d… (64자 16진수)",
+      "privkey_hint": "원시 256비트 프라이빗 키 (16진수)",
+      "back": "뒤로",
+      "importing": "가져오는 중…"
+    },
+    "choose": {
+      "create_description": "24단어 시드 문구로 새 BIP32 HD 지갑을 생성합니다.",
+      "import_description": "시드 문구, WIF 키 또는 원시 프라이빗 키로 복원합니다."
+    },
+    "backup": {
+      "field_address_label": "지갑 주소",
+      "field_wif_label": "WIF 키",
+      "field_mnemonic_label": "복구 문구 (24단어)",
+      "field_wif_warning": "WIF는 휴대 가능한 형식의 프라이빗 키입니다. 이를 가진 사람은 누구나 이 주소의 자금을 통제합니다.",
+      "field_mnemonic_warning": "이 24단어를 순서대로 적어두세요. 분실 시 복구할 수 없습니다.",
+      "copy": "복사",
+      "copied": "복사됨!",
+      "hide": "숨기기",
+      "reveal": "표시",
+      "click_to_reveal": "클릭하여 표시",
+      "confirm_address": "지갑 주소를 저장했습니다",
+      "confirm_wif": "WIF 키를 안전하게 보관했습니다",
+      "confirm_mnemonic": "복구 문구를 오프라인으로 적어두었습니다",
+      "loading": "로딩 중…",
+      "wif_read_failed": "(WIF 읽기 실패 — 실행 후 Security 패널을 사용하세요",
+      "shown_once_before": "이 정보는 다음만 표시됩니다",
+      "shown_once_emphasis": "한 번만",
+      "shown_once_after": ". 계속하기 전에 모든 항목을 오프라인으로 저장하세요.",
+      "critical_warning_strong": "지갑을 복구할 수 없습니다",
+      "critical_warning_body": "복구 문구나 WIF 키를 분실하면 복구할 수 없습니다. Irium Core에는 클라우드 백업이 없습니다. 지금 모든 것을 적어두세요.",
+      "items_confirmed": "{{count}}/{{total}} 항목 확인됨",
+      "launch_dashboard": "대시보드 실행",
+      "confirm_all_to_continue": "계속하려면 4개 항목 모두 확인하세요"
+    },
+    "welcome_screen": {
+      "welcome_to": "환영합니다",
+      "tagline": "Irium 블록체인을 위한 풀 노드 데스크톱 지갑입니다. 송금, 수신, 거래, 정산 — 모두 P2P, 모두 온체인.",
+      "wizard_intro": "이 설정 마법사가 노드를 구성하고 체인을 동기화하며 지갑을 생성 또는 복원합니다.",
+      "chip_full_node": "풀 노드",
+      "chip_hd_wallet": "HD 지갑",
+      "chip_p2p_trade": "P2P 거래",
+      "chip_on_chain_settlement": "온체인 정산",
+      "chip_privacy_first": "프라이버시 우선",
+      "get_started": "시작하기"
     }
   },
   "reputation": {
@@ -1426,7 +2303,26 @@
       "hashrate_avg_window": "평균 {{minutes}}분",
       "confidence_low": "낮은 신뢰도",
       "confidence_medium": "중간 신뢰도",
-      "confidence_high": "높은 신뢰도"
+      "confidence_high": "높은 신뢰도",
+      "asic_port_with_443": "포트 {{port}} + 443",
+      "active_miners": "활성 채굴자",
+      "worker_count_one": "워커 {{count}}개",
+      "worker_count_other": "워커 {{count}}개",
+      "your_miners_pinned": "내 채굴자는 상단에 고정",
+      "hide_offline": "오프라인 숨기기 ({{count}})",
+      "show_offline": "오프라인 채굴자 표시 ({{count}})",
+      "no_miners_reporting": "보고 중인 활성 채굴자가 없습니다.",
+      "col_worker": "워커",
+      "col_accepted": "수락됨",
+      "col_rejected_15m": "거부 (15분)",
+      "col_rejected_15m_tooltip": "최근 15분간의 거부된 쉐어만 집계합니다. 누적 카운트(Stratum 재시작 이후)는 워커가 복구된 후에도 오래된 워밍업 폭증 합계를 계속 표시했습니다.",
+      "col_reject_pct_15m": "거부율 (15분)",
+      "col_reject_pct_15m_tooltip": "최근 15분간의 롤링 거부율입니다. 재시작 이후 누적 비율은 워커가 복구된 후에도 재시작 후 워밍업 폭증에 계속 묶여 있었습니다.",
+      "col_hashrate_15m": "해시레이트 (15분)",
+      "col_blocks": "블록",
+      "col_blocks_tooltip": "이 워커가 풀에서 찾은 블록입니다. stats-proxy로 채워지며, 프록시가 워커별 블록 크레딧을 백필하기 전까지는 '—'로 표시됩니다.",
+      "col_last_share": "마지막 쉐어",
+      "yours_badge": "내 것"
     },
     "richlist": {
       "title": "상단 IRM 홀더",
@@ -1464,7 +2360,8 @@
       "load_more_loading": "상위 500개 로드 중…",
       "load_error": "리치 목록을 로드하지 못했습니다: {{reason}}",
       "empty": "아직 체인에 P2PKH 잔액이 없습니다.",
-      "node_offline_hint": "부자 목록을 로드하려면 대시보드에서 노드를 시작하세요."
+      "node_offline_hint": "부자 목록을 로드하려면 대시보드에서 노드를 시작하세요.",
+      "sr_total_supply": "스크린 리더용 총 공급량 {{total}} IRM 컨텍스트"
     },
     "solo_pool": {
       "title": "Solo Pool",
@@ -1503,6 +2400,61 @@
       "blocks_per_day_suffix": "block/일",
       "irm_per_day_suffix": "IRM/일",
       "disclaimer": "추정치일 뿐 — 실제 수익은 운, 풀 수수료, 난이도 변화에 따라 달라집니다. 계산기는 실시간 네트워크 해시레이트를 사용하며 60초마다 갱신됩니다."
+    },
+    "mining_overview": {
+      "title": "네트워크 채굴 개요",
+      "subtitle": "네트워크, 풀, 본인 채굴을 한 화면에 표시합니다. 30초마다 새로고침됩니다.",
+      "network_summary": "네트워크 요약",
+      "pool_mining": "풀 채굴",
+      "your_mining": "내 채굴",
+      "network_hashrate": "네트워크 해시레이트",
+      "difficulty": "난이도",
+      "avg_block_time": "평균 블록 시간",
+      "est_active_miners": "예상 활성 채굴자",
+      "network_wide_estimate": "네트워크 전체 추정",
+      "pool_hashrate": "풀 해시레이트",
+      "estimate_sub": "추정",
+      "active_pool_miners": "활성 풀 채굴자",
+      "pool_blocks_found": "풀이 찾은 블록",
+      "all_time": "전체 기간",
+      "pool_share": "풀 / 네트워크",
+      "share_of_network_hashrate": "네트워크 해시레이트 점유율",
+      "your_hashrate": "내 해시레이트",
+      "collecting": "수집 중…",
+      "pool_workers_one": "풀 워커 {{count}}개",
+      "pool_workers_other": "풀 워커 {{count}}개",
+      "mode": "모드",
+      "mode_pool": "풀",
+      "mode_solo": "솔로",
+      "not_mining": "채굴 중이 아님",
+      "connected_via_stratum": "Stratum으로 연결됨",
+      "direct_to_local_node": "로컬 노드에 직접 연결",
+      "on_pool": "pool.iriumlabs.org",
+      "on_solo_bridge": "솔로 Stratum 브릿지",
+      "accepted_shares": "수락된 쉐어",
+      "none": "없음",
+      "pool_lifetime": "풀, 누적",
+      "last_share": "마지막 쉐어",
+      "blocks_you_found": "내가 찾은 블록",
+      "from_pool_worker": "풀 워커 기준",
+      "this_session": "이 세션"
+    },
+    "relative_time": {
+      "just_now": "방금 전",
+      "seconds_ago_one": "{{count}}초 전",
+      "seconds_ago_other": "{{count}}초 전",
+      "minutes_ago_one": "{{count}}분 전",
+      "minutes_ago_other": "{{count}}분 전",
+      "hours_ago_one": "{{count}}시간 전",
+      "hours_ago_other": "{{count}}시간 전",
+      "days_ago_one": "{{count}}일 전",
+      "days_ago_other": "{{count}}일 전"
+    },
+    "founder_card": {
+      "title": "창립자 베스팅 주소",
+      "description": "이 주소는 제네시스 시점에 CLTV 타임락으로 잠긴 3,500,000 IRM을 보유합니다. 잠긴 자금은 사용 가능한 잔액으로 계산되지 않는 특수 스크립트를 사용하므로 잔액이 0으로 표시됩니다.",
+      "unlocks_at": "블록 #{{height}}에서 해제됨",
+      "blocks_remaining": "(약 {{count}}블록 남음)"
     }
   },
   "help": {
@@ -2146,7 +3098,10 @@
       "errors": {
         "buyer_required": "구매자의 Irium 주소를 입력하세요.",
         "amount_required": "잠그려는 IRM 금액을 입력하세요.",
-        "receiving_required": "그 대가로 무엇을 기대하는지 구매자에게 알려주세요."
+        "receiving_required": "그 대가로 무엇을 기대하는지 구매자에게 알려주세요.",
+        "no_agreement_id": "계약 생성에서 ID가 반환되지 않았습니다",
+        "fund_after_create_failed": "계약은 생성되었으나 자금 예치가 실패했습니다. Agreements 페이지를 열어 재시도하세요.",
+        "payment_ref_required": "판매자가 결제를 확인할 수 있도록 거래 참조 번호를 입력하세요."
       },
       "review": {
         "you_lock": "당신이 잠금",
@@ -2154,7 +3109,14 @@
         "deadline": "마감",
         "deadline_value": "{{hours}}시간 내에 지불하지 않으면 IRM이 자동으로 돌아옵니다.",
         "lock_funds": "자금 잠금",
-        "tx_note": "이는 Irium 블록체인에 거래를 생성합니다."
+        "tx_note": "이는 Irium 블록체인에 거래를 생성합니다.",
+        "you_lock_short": "잠그는 금액",
+        "buyer_pays_you": "구매자가 지불할 금액",
+        "payment_deadline": "결제 마감 시간",
+        "hours_from_now": "지금부터 {{hours}}시간",
+        "buyer_address": "구매자 주소",
+        "lock_my_irm": "내 IRM 잠그기",
+        "tx_broadcast_note": "블록체인 거래가 브로드캐스트됩니다. 확인까지 잠시 걸릴 수 있습니다."
       },
       "share": {
         "title": "구매자와 공유",
@@ -2174,7 +3136,25 @@
         "receiving_placeholder": "예: 200 USDT, 은행 송금, 현금",
         "deadline_label": "이 거래를 얼마나 오래 열어두시겠습니까?",
         "deadline_helper": "이 시간 안에 지불하지 않으면 IRM이 자동으로 돌아옵니다.",
-        "release_button": "지불 받음 — 구매자에게 자금 해제"
+        "release_button": "지불 받음 — 구매자에게 자금 해제",
+        "buyer_address_short_label": "구매자 주소",
+        "buyer_address_helper": "구매자의 결제를 확인했을 때 IRM을 받을 주소입니다.",
+        "amount_label_short": "판매할 IRM 수량",
+        "amount_helper_short": "구매자의 결제를 확인할 때까지 에스크로에 보관됩니다.",
+        "receiving_label_short": "대가로 받을 것",
+        "receiving_placeholder_detailed": "예: 50 USDT, SEPA 은행 송금",
+        "deadline_label_short": "구매자의 결제 마감 시간",
+        "deadline_helper_refund": "마감 시간까지 결제가 도착하지 않으면 환불을 청구할 수 있습니다.",
+        "locked_hero_title": "IRM이 이제 잠기고 보호됩니다",
+        "locked_hero_body": "구매자는 본인의 확인 없이 가져갈 수 없습니다. 아래 거래 코드를 공유하여 참여하게 한 후 결제를 기다리세요.",
+        "share_code_title": "이 거래 코드를 공유하세요",
+        "share_code_body": "구매자가 이 코드를 자신의 지갑에 붙여넣어 거래에 참여합니다.",
+        "header1_title": "매도 거래 설정",
+        "header1_subtitle": "구매자가 누구인지, IRM을 얼마나 판매할지 알려주세요.",
+        "header2_title": "검토 및 잠금",
+        "header2_subtitle": "세부 정보를 확인하세요. 잠그면 IRM이 에스크로로 전송됩니다.",
+        "header3_title": "거래가 활성화되었습니다",
+        "header3_subtitle": "구매자와 거래 코드를 공유하고 결제를 기다리세요."
       },
       "buying": {
         "step2_title": "판매자의 거래 코드 붙여넣기",
@@ -2193,12 +3173,42 @@
         "status_waiting": "판매자의 지불 수령 확인을 기다리는 중.",
         "status_releasing": "지불 확인됨 — IRM이 오고 있습니다.",
         "status_complete": "완료 — IRM이 wallet에 도착했습니다.",
-        "view_agreements": "agreement에서 보기"
+        "view_agreements": "agreement에서 보기",
+        "review_commit_intro": "아래의 거래 세부 정보를 확인하세요. 계속하면 이 거래에 응찰합니다. 이 단계 후 판매자에게 오프체인 결제를 보내고 다음 화면에서 보고하세요.",
+        "seller_is_locking": "판매자가 잠그는 금액",
+        "seller_short_label": "판매자",
+        "details_did_not_load": "거래 세부 정보를 로드하지 못했습니다. 계속할 수 있지만 결제 전에 판매자와 IRM 수량을 확인하세요.",
+        "continue_and_link": "계속 및 연결",
+        "trade_complete_title": "거래 완료",
+        "trade_complete_body": "IRM이 지갑에 도착했습니다.",
+        "seller_locked_for_you_title": "판매자의 IRM이 잠겼습니다",
+        "seller_locked_for_you_body": "판매자에게 오프체인 결제를 보낸 후 아래에 거래 참조 번호를 보고하세요.",
+        "report_payment_title": "결제 보고",
+        "report_payment_body": "오프체인 결제를 보낸 후, 판매자가 도착 여부를 확인할 수 있는 참조 번호(은행 송금 참조, PayPal 거래 ID 등)를 붙여넣으세요.",
+        "report_payment_placeholder": "은행 송금 참조, PayPal txid, 블록체인 txid 등.",
+        "cancel_open_dispute": "취소 및 분쟁 개시",
+        "payment_reported": "결제 보고됨",
+        "i_have_sent_payment": "결제를 보냈습니다",
+        "header1_title": "판매자의 거래 코드 붙여넣기",
+        "header1_subtitle": "판매자가 IRM을 잠근 후 코드를 보냈을 것입니다.",
+        "header2_title": "거래 검토",
+        "header2_subtitle": "금액과 판매자가 예상과 일치하는지 확인하세요.",
+        "header3_title": "거래가 활성화되었습니다",
+        "header3_subtitle": "오프체인 결제를 보낸 후, 판매자가 IRM을 해제할 수 있도록 보고하세요."
       },
       "fuel_banner_title": "정산을 생성하려면 IRM이 필요합니다.",
       "fuel_banner_prefix": "이동",
       "fuel_banner_link": "마켓플레이스 → 스팟 스왑",
-      "fuel_banner_suffix": "먼저 IRM을 획득하려면."
+      "fuel_banner_suffix": "먼저 IRM을 획득하려면.",
+      "toast_buyer_linked": "거래에 본인 측이 연결되었습니다. 판매자에게 오프체인 결제를 보내세요.",
+      "toast_payment_reported": "결제가 보고되었습니다. 판매자의 확인을 기다리는 중입니다.",
+      "toast_dispute_opened": "분쟁이 개시되었습니다. 조정자가 증거를 검토합니다.",
+      "dispute_reason_buyer": "구매자가 거래를 완료할 수 없음",
+      "choose_selling_title": "IRM을 판매합니다",
+      "choose_selling_body": "IRM을 에스크로에 잠급니다. 구매자가 오프체인으로 결제하면 해제합니다.",
+      "choose_buying_title": "IRM을 구매합니다",
+      "choose_buying_body": "판매자의 거래 코드를 붙여넣으세요. 결제를 보낸 후 확인하면 IRM을 받습니다.",
+      "view_resolvers": "사용 가능한 조정자 보기"
     },
     "pay_for_work": {
       "step1_title": "단일 지불 또는 마일스톤별?",
@@ -2250,7 +3260,12 @@
       "claim_refund": "환불 청구",
       "toast_released": "지불이 도급업자에게 해제되었습니다.",
       "toast_release_pending": "완료를 기록했습니다. 다음 몇 개의 block 확인 후 자금이 해제됩니다.",
-      "toast_refunded": "환불을 청구했습니다 — 자금이 wallet으로 돌아갑니다."
+      "toast_refunded": "환불을 청구했습니다 — 자금이 wallet으로 돌아갑니다.",
+      "toast_fund_failed": "계약은 생성되었으나 자금 예치가 실패했습니다. Agreements 페이지에서 자금 예치를 재시도하세요.",
+      "which_milestone": "어떤 마일스톤인가요?",
+      "milestone_option": "마일스톤 {{index}}/{{total}}",
+      "milestone_helper": "완료로 표시하면 이 마일스톤의 잠긴 IRM 몫이 해제됩니다. 도급인은 마일스톤당 총액의 1/{{count}}를 받습니다.",
+      "mark_complete_milestone": "완료로 표시 — 결제 해제 (마일스톤 {{index}})"
     },
     "deposit": {
       "step1_title": "예치금 설정",

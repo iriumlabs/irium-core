@@ -152,7 +152,9 @@
       "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
       "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
       "rpc_token_test_remote": "Test remote",
-      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated",
+      "hide_token": "Token'ı gizle",
+      "show_token": "Token'ı göster"
     },
     "buttons": {
       "test_connection": "Bağlantıyı test edin",
@@ -195,7 +197,9 @@
       "onboarding_reset": "İlk katılım sıfırlaması — sihirbazı görmek için uygulamayı yeniden başlatın",
       "update_check_internet": "Güncellemeler kontrol edilemedi. İnternet bağlantınızı kontrol edin.",
       "connection_failed": "Bağlantı başarısız oldu",
-      "update_failed": "Güncelleme başarısız oldu"
+      "update_failed": "Güncelleme başarısız oldu",
+      "metrics_http_error": "Durum OK, ancak /metrics HTTP {{status}} döndürdü",
+      "metrics_unreachable": "Durum OK, ancak /metrics erişilemez: {{error}}"
     },
     "page_subtitle": "Düğüm bağlantınızı, cüzdan yollarınızı ve görüntüleme tercihlerinizi yapılandırın.",
     "update_banner": {
@@ -261,7 +265,14 @@
       "retry": "Yeniden dene",
       "external_ip_label": "Harici IP",
       "detecting_paragraph": "Gelen bir eşin erişilebilirliği onaylaması 60 saniyeye kadar bekleniyor. PEX'in başlangıçtan sonra adresinizi diğer düğümlere yayması için biraz zamana ihtiyacı var.",
-      "inactive_paragraph": "UPnP başarısız oldu ve hiçbir gelen eş gelmedi. Yönlendiricinizde (TCP 38291) manuel bağlantı noktası yönlendirmeyi yapılandırın veya UPnP'yi etkinleştirin ve ardından Yeniden Dene'ye tıklayın. Giden bağlantılar bu durumda çalışmaya devam eder."
+      "inactive_paragraph": "UPnP başarısız oldu ve hiçbir gelen eş gelmedi. Yönlendiricinizde (TCP 38291) manuel bağlantı noktası yönlendirmeyi yapılandırın veya UPnP'yi etkinleştirin ve ardından Yeniden Dene'ye tıklayın. Giden bağlantılar bu durumda çalışmaya devam eder.",
+      "diag_chosen_lan_ip": "Seçilen LAN IP",
+      "diag_router_ip": "Yönlendirici IP",
+      "diag_control_url": "Kontrol URL",
+      "diag_external_ip": "Harici IP",
+      "diag_private_double_nat": "(özel — çift NAT)",
+      "diag_add_port_mapping_tries": "AddPortMapping denemeleri",
+      "diag_last_fault": "Son hata"
     },
     "security_info": {
       "wallet_local": "Irium Core, cüzdan dosyanızı yerel olarak saklar. Özel anahtarlarınız makinenizden asla ayrılmaz. M-cüzdan dosyası şifrelenmiştir. Her zaman tohum ifadenizi yedekleyin ve çevrimdışı tutun.",
@@ -325,11 +336,14 @@
       "reset_state_success": "Durum sıfırlandı — yedek {{path}} konumunda",
       "reset_state_no_backup": "Yedeklenecek mevcut durum yok — yeni durum oluşturuldu",
       "reset_state_rebuilding": "node yeniden başlatılıyor — yerel block'lardan UTXO seti yeniden oluşturuluyor (5-15 dk)",
-      "reset_state_failed": "Sıfırlama başarısız: {{reason}}"
+      "reset_state_failed": "Sıfırlama başarısız: {{reason}}",
+      "external_ip_placeholder": "ör. 203.0.113.42"
     },
     "developer_info": {
       "reset_onboarding": "İlk katılımı sıfırla",
-      "reset_onboarding_description": "Bir sonraki başlatmada ilk çalıştırma kurulum sihirbazını tekrar göster"
+      "reset_onboarding_description": "Bir sonraki başlatmada ilk çalıştırma kurulum sihirbazını tekrar göster",
+      "show_legacy_settlement": "Eski mutabakat arayüzünü göster",
+      "show_legacy_settlement_description": "Yeni SafeTrade / PayForWork / Deposit akışları yerine orijinal şablon-ızgaralı Mutabakat sayfasını kullanın. Sonraki /settlement gezintisinde etkili olur."
     },
     "action_bar": {
       "are_you_sure": "Emin misin?",
@@ -469,7 +483,27 @@
       "rename_wallet_file": "M-cüzdan dosyasını yeniden adlandırın",
       "delete_wallet_file": "Bu cüzdan dosyasını kalıcı olarak sil",
       "manage_wallets": "Cüzdanları yönet",
-      "manage_description": "Cüzdan dosyaları, içe aktarma, gizli adresler"
+      "manage_description": "Cüzdan dosyaları, içe aktarma, gizli adresler",
+      "manage_button": "Yönet",
+      "copy_address": "Adresi kopyala",
+      "add_address_button": "Adres Ekle",
+      "generating": "Oluşturuluyor…",
+      "empty_state": "Henüz adres yok. Bir tane eklemek için Yönet'i açın.",
+      "add_address_confirm_title": "Yeni bir adres eklensin mi?",
+      "add_address_confirm_body": "Bu işlem, cüzdan tohumunuzdan bir sonraki adresi türetir. Adresler oluşturulduktan sonra cüzdan dosyasından kaldırılamaz — yalnızca görünen listeden gizlenebilir.",
+      "set_primary_button": "Birincil Yap",
+      "primary_button_short": "Birincil",
+      "export_wif_short_tooltip": "WIF'i Dışa Aktar",
+      "wif_short": "WIF",
+      "qr_short": "QR",
+      "hide_button_short": "Gizle",
+      "no_addresses_panel": "Henüz adres yok.",
+      "panel_description": "Adresler cüzdan tohumunuzdan türetilir ve kalıcı olarak silinemez. Görünümden kaldırmak için Gizle'yi kullanın.",
+      "label_placeholder_primary": "ör. Birincil · Madencilik",
+      "label_placeholder_other": "ör. Madencilik",
+      "edit_label": "Etiketi düzenle",
+      "add_custom_label": "Özel etiket ekle",
+      "address_qr_label": "Adres QR"
     },
     "send": {
       "title": "IRM'ı gönder",
@@ -499,12 +533,44 @@
         "unconfirmed": "Paranız henüz onaylanmadı. Göndermeden önce en az 1 onay bekleyin.",
         "double_spend": "Bu işlem, bekleyen başka bir işlemle çakışıyor. Lütfen bekleyin ve tekrar deneyin.",
         "generic": "İşlem yayınlanamadı. Lütfen düğümün çevrimiçi olup olmadığını kontrol edin ve tekrar deneyin.",
-        "fallback": "İşlem başarısız oldu. Lütfen tekrar deneyin."
-      }
+        "fallback": "İşlem başarısız oldu. Lütfen tekrar deneyin.",
+        "insufficient_for_fee": "Ağ ücreti için yetersiz bakiye. Adres bakiyesi {{balance}} sat; minimum ücret {{fee}} sat.",
+        "cannot_compute_max": "Maks hesaplanamadı — {{reason}}",
+        "node_still_syncing": "Düğüm hâlâ senkronize ediliyor ({{persisted}}/{{height}} blok). Lütfen bu pencereyi kapatın, senkronizasyon tamamlanana kadar bekleyin ve tekrar deneyin.",
+        "not_accepted_mempool": "İşlem düğüm mempool'u tarafından kabul edilmedi"
+      },
+      "button_label": "Gönder",
+      "node_offline_tooltip": "Göndermek için düğüm çevrimiçi olmalıdır",
+      "node_syncing_tooltip": "Düğüm senkronize ediliyor — göndermeden önce lütfen bekleyin",
+      "max_button": "MAKS",
+      "no_spendable_funds_suffix": " — Harcanabilir fon yok",
+      "no_spendable_in_wallet": "Bu cüzdanda harcanabilir fon yok.",
+      "estimated_fee_25k": "Tahmini ücret: ~25.000 sat",
+      "estimated_fee_label": "Tahmini ücret",
+      "estimated_fee_value_25k": "~25.000 sat",
+      "amount_sats_label": "Miktar (sat)",
+      "confirm_send_prefix": "Gönder",
+      "confirm_send_to_suffix": "alıcı",
+      "back_button": "← Geri",
+      "transaction_sent_title": "İşlem Gönderildi",
+      "transaction_sent_subtitle": "İşleminiz sonraki blokta görünecek",
+      "transaction_sent_explanation": "İşleminiz özel anahtarınızla kriptografik olarak imzalanmış ve ağa yayınlanmıştır. Sonraki madenciliği yapılan blokta yer aldığında kalıcı olarak güvence altına alınacaktır.",
+      "status_signed": "İMZALANDI",
+      "private_key_verified": "Özel anahtar doğrulandı",
+      "status_confirming": "ONAYLANIYOR",
+      "next_mined_block": "Sonraki madenciliği yapılan blok",
+      "transaction_id_label": "İşlem Kimliği",
+      "copy_transaction_id": "İşlem kimliğini kopyala",
+      "view_in_explorer": "Gezgin'de Görüntüle"
     },
     "receive": {
       "title": "IRM'ı alın",
-      "scan_qr_hint": "Bu QR kodunu tarayın veya aşağıdaki adresi kopyalayın"
+      "scan_qr_hint": "Bu QR kodunu tarayın veya aşağıdaki adresi kopyalayın",
+      "button_label": "Al",
+      "send_to_this_address": "IRM'i bu adrese gönderin:",
+      "no_address_short": "Adres yok",
+      "no_address_available": "Kullanılabilir adres yok",
+      "copy_address_button": "Adresi Kopyala"
     },
     "security": {
       "section_title": "Güvenlik",
@@ -519,7 +585,16 @@
       "seed_modal_title": "Kurtarma ifadeniz",
       "seed_modal_warning": "Bunu kağıda yazın. Bu 24 kelimeyi bilen herkes paranızı harcayabilir.",
       "wif_label": "WIF özel anahtarı",
-      "backup_warning": "Bu dosya tüm özel anahtarlarınızı içerir. Güvenli bir şekilde saklayın."
+      "backup_warning": "Bu dosya tüm özel anahtarlarınızı içerir. Güvenli bir şekilde saklayın.",
+      "backup_subsection": "Yedekleme",
+      "restore_subsection": "Geri Yükleme",
+      "export_wif_dialog_title": "WIF Anahtarını Dışa Aktar",
+      "export_wif_private_key_dialog_title": "WIF Özel Anahtarını Dışa Aktar",
+      "text_file_filter": "Metin",
+      "backup_dialog_title": "Cüzdan Yedeğini Kaydet",
+      "select_backup_dialog_title": "Cüzdan Yedek Dosyasını Seç",
+      "backup_filter_name": "Cüzdan Yedeği",
+      "all_files_filter": "Tüm Dosyalar"
     },
     "transactions": {
       "section_title": "İşlemler",
@@ -529,7 +604,17 @@
       "confirmations": "{{count}} onaylar",
       "pending": "Askıda olması",
       "received": "Kabul edilmiş",
-      "sent": "Gönderilmiş"
+      "sent": "Gönderilmiş",
+      "confirmed": "Onaylandı",
+      "for_address": "{{address}} için",
+      "mempool_awaiting": "Mempool · onay bekliyor",
+      "miner_label": "Madenci: {{address}}",
+      "fee_label": "Ücret: {{amount}} sat",
+      "txid_label": "TXID: {{txid}}",
+      "conf_short": "{{count}} onay",
+      "block_number": "Blok #{{height}}",
+      "open_in_explorer": "Gezgin'de Aç",
+      "copy_txid": "TXID'yi kopyala"
     },
     "toasts": {
       "send_success": "Gönderildi — txid {{txid}}",
@@ -565,7 +650,13 @@
       "wif_copied": "WIF kopyalandı",
       "name_invalid_chars": "Cüzdan adı şunları içeremez: / \\ : * ? \" < > |",
       "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
-      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up.",
+      "node_syncing_wait": "Düğüm senkronize ediliyor — {{persisted}}/{{height}} blok. Lütfen bekleyin.",
+      "failed_add_address": "Adres eklenemedi: {{reason}}",
+      "no_recovery_data": "Cüzdanda kurtarma verisi bulunamadı",
+      "wallet_deleted": "{{name}} silindi",
+      "seed_copied": "Tohum kopyalandı",
+      "invalid_wallet_path": "Cüzdan ikili dosyası geçersiz yol döndürdü: {{path}}"
     },
     "encryption": {
       "migration_title": "Encrypt your wallet",
@@ -588,6 +679,120 @@
       "needs_migration_status": "Wallet on disk uses the legacy unencrypted format and must be encrypted before use.",
       "plaintext_backup_warning": "Plaintext backup file(s) detected at {{paths}}. Delete after verifying the migration succeeded.",
       "recover_link": "Forgot your password? Recover with seed phrase"
+    },
+    "no_wallet_loaded": "Cüzdan yüklenmedi — aşağıda bir tane oluşturun veya içe aktarın",
+    "balance_label": "Bakiye",
+    "balance_label_for_address": "Bakiye · Adres {{index}}",
+    "satoshis_amount": "{{amount}} satoshi",
+    "unconfirmed": "onaylanmamış",
+    "wallet_wide": "(cüzdan geneli)",
+    "syncing_tooltip": "Göndermeden önce düğümün senkronizasyonu bitirmesini bekleyin. Şimdi göndermek, UTXO seti hâlâ yeniden oluşturulduğu için imza doğrulama hatasıyla başarısız olabilir.",
+    "syncing_progress": "Senkronize ediliyor…",
+    "gaps_count": "{{count}} boşluk",
+    "common": {
+      "cancel": "İptal",
+      "done": "Tamam",
+      "reveal": "Göster",
+      "hide": "Gizle",
+      "copy": "Kopyala",
+      "delete": "Sil",
+      "loading": "Yükleniyor…"
+    },
+    "seed": {
+      "recovery_phrase_title": "Kurtarma İfadesi",
+      "wallet_seed_title": "Cüzdan Tohumu",
+      "recovery_phrase_warning": "Kurtarma ifadenizi asla paylaşmayın. Bu 24 kelimeye sahip olan herkes tüm fonlarınıza erişebilir. Çevrimdışı güvenli bir şekilde saklayın.",
+      "wallet_seed_warning": "Cüzdan tohumunuzu asla paylaşmayın. Bu hex değer tüm fonlara tam erişim sağlar. Çevrimdışı güvenli bir şekilde saklayın.",
+      "custom_seed_hint": "Bu cüzdan özel bir tohum kullanır. Geri yüklemek için bu hex tohumu yedekleyin.",
+      "copy_phrase": "İfadeyi Kopyala",
+      "copy_seed": "Tohumu Kopyala"
+    },
+    "restore": {
+      "title": "Yedekten Geri Yükle",
+      "warning_body": "Bu işlem mevcut cüzdan verilerinizin üzerine yazar. Devam etmeden önce WIF anahtarınıza veya yedek dosyanıza sahip olduğunuzdan emin olun. Yeni cüzdan durumunun temiz bir şekilde yüklenmesi için geri yükleme tamamlandığında düğüm otomatik olarak yeniden başlatılır.",
+      "restore_button": "Cüzdanı Geri Yükle"
+    },
+    "create_modal": {
+      "create_title": "Cüzdan Oluştur",
+      "import_title": "Cüzdan İçe Aktar",
+      "create_new_tab": "Yeni Oluştur",
+      "import_tab": "İçe Aktar",
+      "generate_description": "24 kelimelik kurtarma ifadesiyle yeni bir BIP39 cüzdan oluşturun.",
+      "creating": "Oluşturuluyor…",
+      "create_new_wallet_button": "Yeni Cüzdan Oluştur",
+      "save_warning": "24 kelimelik kurtarma ifadenizi çevrimdışı kaydedin — tüm cüzdanınızı geri yükleyebilir. WIF anahtarınız tek bir adresi yedekler. İkisi de kaybedilirse kurtarılamaz.",
+      "address_label": "Adres",
+      "recovery_phrase_label": "Kurtarma İfadesi (24 kelime)",
+      "recovery_phrase_hint": "(herhangi bir ifade cüzdanınızı geri yükler)",
+      "wif_label": "WIF Anahtarı",
+      "wif_hint": "(taşınabilir formattaki özel anahtarınız)",
+      "loading_wif": "WIF yükleniyor…",
+      "export_wif_to_file": "WIF'i Dosyaya Dışa Aktar",
+      "saved_confirmation": "Kurtarma ifademi ve WIF anahtarımı güvenli bir şekilde kaydettim.",
+      "import_notice_lead": "Bu işlem yeni bir cüzdan içe aktarır. Mevcut cüzdanınız dokunulmadan kalır ve şuradan geri dönülebilir:",
+      "seed_phrase_method": "Kurtarma İfadesi",
+      "wif_key_method": "WIF Anahtarı",
+      "seed_phrase_input_label": "Kurtarma İfadesi (12 veya 24 kelime)",
+      "seed_phrase_placeholder": "kelime1 kelime2 kelime3 …",
+      "bip39_hint": "Boşluklarla ayrılmış BIP39 kurtarma ifadesi.",
+      "wif_placeholder": "5J… veya K… veya L…",
+      "wif_format_hint": "Wallet Import Format — 5, K veya L ile başlar.",
+      "import_button": "İçe Aktar"
+    },
+    "new_address": {
+      "title": "Yeni Adres",
+      "derived_lead": "Cüzdanınızın BIP32 tohumundan yeni bir adres türetildi.",
+      "derived_emphasis": "kurtarma ifadeniz değişmedi",
+      "derived_trail": "— bu adres mevcut adreslerinizle aynı cüzdan dosyasını paylaşır.",
+      "copy_address": "Adresi kopyala",
+      "wif_private_key_label": "WIF Özel Anahtarı",
+      "wif_warning": "Bu WIF'e sahip olan herkes bu adresteki fonları harcayabilir. Çevrimdışı saklayın.",
+      "copy_wif": "WIF'i kopyala",
+      "recovery_reminder_lead": "Bu adres cüzdan kurtarma ifadenizi paylaşır. Görüntülemek için şuraya gidin:",
+      "recovery_reminder_path": "Güvenlik → Kurtarma İfadesini Göster"
+    },
+    "files": {
+      "section_title": "Cüzdan Dosyaları",
+      "section_description": "Her dosyanın kendi tohumu vardır. Farklı bir cüzdan yüklemek için geçiş yapın.",
+      "no_files_found": "~/.irium/ içinde cüzdan dosyası bulunamadı",
+      "rename_placeholder": "cuzdan-adi",
+      "active_badge": "Aktif",
+      "switch_button": "Geçiş Yap",
+      "create_new_wallet_file": "Yeni Cüzdan Dosyası Oluştur",
+      "create_new_advanced_hint": "(gelişmiş — ayrı tohum)",
+      "create_new_description": "Kendi tohumuyla ayrı bir cüzdan dosyası oluşturur. Mevcut cüzdanınız diskte kalır ve bu listeden geri dönülebilir."
+    },
+    "hidden": {
+      "section_title": "Gizli Adresler",
+      "still_in_file": "(hâlâ cüzdan dosyasında)",
+      "description": "Adresler cüzdan dosyasından kalıcı olarak silinemez. Gizli adresler görünümden kaldırılır ancak kurtarılabilir kalır — geri getirmek için Göster'e tıklayın.",
+      "unhide_button": "Göster"
+    },
+    "delete_file": {
+      "confirm_title": "Bu cüzdan dosyası kalıcı olarak silinsin mi?",
+      "address_count": "{{count}} adres",
+      "address_count_one": "{{count}} adres",
+      "warning_label": "UYARI:",
+      "warning_funds_lead": "Bu cüzdan fon içerir. Yedek olmadan silmek şu fonların kalıcı kaybı anlamına gelir:",
+      "warning_funds_trail": ". Devam etmeden önce WIF anahtarlarınızı veya kurtarma ifadenizi dışa aktardığınızdan emin olun.",
+      "warning_unknown_lead": "Bakiye doğrulanamadı — düğüm çevrimdışı olabilir. Bu cüzdan fon içeriyorsa ve kurtarma ifadesini veya WIF anahtarlarını yedeklemediyseniz silmek onları",
+      "warning_unknown_emphasis": "kalıcı olarak kaybedecektir",
+      "warning_unknown_trail": ".",
+      "warning_zero_lead": "Bu işlem dosyayı diskten siler. Bu cüzdan için kurtarma ifadesini veya WIF anahtarlarını yedeklemediyseniz içindeki tüm fonlar",
+      "warning_zero_emphasis": "kalıcı olarak kaybedilecektir",
+      "warning_zero_trail": ". Bu geri alınamaz.",
+      "type_prompt_prefix": "Yazın:",
+      "type_prompt_word": "DELETE",
+      "type_prompt_suffix": "onaylamak için",
+      "deleting": "Siliniyor…",
+      "delete_forever": "Kalıcı olarak sil"
+    },
+    "hide_address": {
+      "confirm_title": "Bu adres gizlensin mi?",
+      "body_lead": "Adres cüzdan dosyasında kalır — yalnızca görünen liste güncellenir. Daha sonra",
+      "body_emphasis": "göster",
+      "body_trail": "ile Gizli Adresler bölümünden geri getirebilirsiniz.",
+      "confirm_button": "Adresi gizle"
     }
   },
   "agreements": {
@@ -621,7 +826,18 @@
       "share_text": "Metni Paylaş",
       "delete": "Silmek",
       "submitting": "Gönderiliyor…",
-      "sign": "İmza"
+      "sign": "İmza",
+      "fund_escrow": "Emaneti Fonla",
+      "release_to_counterparty": "Karşı Tarafa Serbest Bırak",
+      "submit_proof": "Kanıt Gönder",
+      "refund": "İade Et",
+      "agreement_expired": "Anlaşmanın Süresi Doldu",
+      "create_and_submit_proof": "Kanıt Oluştur ve Gönder",
+      "confirm_release": "Serbest Bırakmayı Onayla",
+      "confirm_fund": "Fonlamayı Onayla",
+      "confirm_open_dispute": "Uyuşmazlık Açmayı Onayla",
+      "use_this_invoice": "Bu Faturayı Kullan →",
+      "verify_signature_file": "Bir İmza Dosyasını Doğrula…"
     },
     "proof_modal": {
       "title": "Kanıt gönder",
@@ -634,7 +850,15 @@
       "evidence_summary": "Kanıt Özeti",
       "evidence_placeholder": "örneğin 50$'lık ödeme banka havalesi yoluyla alındı, referans numarası 12345.",
       "submit_button": "Kanıt gönder",
-      "submitting": "Gönderiliyor…"
+      "submitting": "Gönderiliyor…",
+      "intro": "Uygulama içinde imzalı bir kanıt oluşturun veya hazır olanını yükleyin.",
+      "mode_create": "Kanıttan Oluştur",
+      "mode_upload": "Dosya Yükle",
+      "mode_create_sub": "Uygulama içinde oluştur",
+      "mode_upload_sub": "Mevcut dosyayı kullan",
+      "upload_note_prefix": "Bu sekmeyi yalnızca elinizde hazır bir kanıt dosyası varsa kullanın — örneğin karşı taraf veya bir onaylayan tarafından sizin için imzalanmış ya da şununla üretilmiş bir dosya:",
+      "upload_note_middle": "Kendi kanıtınızı gönderiyorsanız yukarıdaki",
+      "upload_note_suffix": "sekmesini kullanın — kanıtı uygulamadan çıkmadan oluşturur ve gönderir."
     },
     "toasts": {
       "agreement_signed": "Anlaşma imzalandı.",
@@ -663,7 +887,9 @@
       "signature_valid": "İmza geçerli (imzalayan {{signer}})",
       "signature_invalid": "İmza geçersiz: {{reason}}",
       "agreement_signed_short": "Anlaşma imzalandı.",
-      "sign_failed": "İmza başarısız oldu"
+      "sign_failed": "İmza başarısız oldu",
+      "cleanup_removed": "{{count}} anlaşma kaldırıldı",
+      "cleanup_removed_with_failures": "{{count}} anlaşma kaldırıldı ({{failed}} başarısız)"
     },
     "refund": {
       "blocked_default": "Geri ödeme uygunluğu bilinmiyor",
@@ -685,13 +911,26 @@
       "share_text": "Bu sözleşmenin düz metin özetini panoya kopyalayın",
       "delete_local": "Bu sözleşmeyi yerel mağazanızdan silin. Karşı tarafın kopyası etkilenmez.",
       "save_friendly_name": "Bu sözleşme için kolay bir ad kaydedin (yerel olarak depolanır)",
-      "verify_signature_file": "Bu sözleşmeye uygun bir imza dosyasını (.sig veya .json) doğrulayın"
+      "verify_signature_file": "Bu sözleşmeye uygun bir imza dosyasını (.sig veya .json) doğrulayın",
+      "cleanup_old_test_data": "Yerel deponuzdan kimliğinde test / gossip / demo / pr geçen anlaşmaları kaldırır",
+      "node_offline_sign": "İmzalamak için düğüm çevrimiçi olmalıdır",
+      "sign_to_confirm": "Katılımınızı onaylamak için bu anlaşmayı imzalayın",
+      "node_offline_fund": "Emanetin fonlanması için düğüm çevrimiçi olmalıdır",
+      "fund_escrow_action": "Anlaşma tutarını HTLC emanetine kilitleyin",
+      "node_offline_release": "Fonları serbest bırakmak için düğüm çevrimiçi olmalıdır",
+      "release_to_counterparty": "Fonları karşı tarafa serbest bırakın",
+      "node_offline_dispute": "Uyuşmazlık açmak için düğüm çevrimiçi olmalıdır",
+      "mark_disputed": "Bu anlaşmayı uyuşmazlıklı olarak işaretle — çözüm için hakem onayı gerekir",
+      "node_offline_refund": "İade için düğüm çevrimiçi olmalıdır",
+      "view_audit": "Zincir üzerindeki tam denetim kaydını görüntüle"
     },
     "buttons": {
       "import_invoice": "Faturayı İthalat",
       "import_pack": "Paketi İçe Aktar",
       "browse": "Göz at",
-      "delete_agreement": "Sözleşmeyi Sil"
+      "delete_agreement": "Sözleşmeyi Sil",
+      "cleanup_old_test_data": "Eski test verilerini temizle ({{count}})",
+      "export_pack": "Paketi Dışa Aktar"
     },
     "page_views": {
       "agreements": "Anlaşmalar",
@@ -744,12 +983,19 @@
       "seller": "Satıcı",
       "signer_wallet": "İmzalayanın cüzdan adresi",
       "role": "Rol:",
-      "reason": "Sebep:"
+      "reason": "Sebep:",
+      "agreement_short": "Anlaşma",
+      "signer_prefix": "imzalayan"
     },
     "placeholders": {
       "your_wallet_address": "Cüzdan adresiniz",
       "secret_preimage": "İsteğe bağlı · 64 karakterli altıgen",
-      "dispute_reason": "Neyin yanlış gittiğini açıklayın; bu, çözümleyiciyle paylaşılır."
+      "dispute_reason": "Neyin yanlış gittiğini açıklayın; bu, çözümleyiciyle paylaşılır.",
+      "output_pack_path": "/yol/cikti.pack.json",
+      "proof_json_path": "/yol/proof.json",
+      "pack_json_path": "/yol/agreement.pack.json",
+      "invoice_json_path": "/yol/invoice.json",
+      "hash_64_hex": "64 karakter hex"
     },
     "modals": {
       "submit_proof_title": "Kanıt Gönder",
@@ -757,16 +1003,117 @@
       "import_invoice_title": "Faturayı İthalat",
       "open_dispute_title": "Anlaşmazlık Açılsın mı?",
       "audit_title": "Anlaşma Denetimi",
-      "sign_title": "Sözleşme İmzala"
+      "sign_title": "Sözleşme İmzala",
+      "delete_confirm_prefix": "Anlaşmayı sil",
+      "delete_confirm_body": "Bu işlem anlaşmayı yalnızca yerel deponuzdan kaldırır. Karşı tarafın kopyası etkilenmez. Yalnızca fonlanmamış (açık/beklemede) anlaşmalar silinebilir.",
+      "cleanup_title": "Eski test verilerini temizle",
+      "cleanup_found": "Kimliğinde test, gossip, demo veya pr geçen {{count}} anlaşma bulundu.",
+      "cleanup_disclaimer": "Bu işlem onları yalnızca yerel deponuzdan kaldırır. Karşı tarafın kopyası etkilenmez. Zincir üzerindeki aktif HTLC'lere dokunulmaz — fonların ayrıca serbest bırakılması veya iade edilmesi gerekir.",
+      "cleanup_remove_count": "{{count}} kaldır",
+      "release_funds_title": "Fonlar serbest bırakılsın mı?",
+      "release_funds_body_prefix": "Bu işlem şunu serbest bırakacak:",
+      "release_funds_body_suffix": "satıcıya.",
+      "fund_escrow_title": "Emanet fonlansın mı?",
+      "fund_escrow_body_prefix": "Bu işlem şunu kilitleyecek:",
+      "fund_escrow_body_suffix": "HTLC emanetine. Kanıtın kabulü üzerine fonlar karşı tarafa serbest bırakılır veya zaman aşımı yüksekliğinden sonra iade edilir.",
+      "import_pack_format_prefix": "Kabul edilen format:",
+      "import_pack_format_suffix": "— A Tarafı tarafından dışa aktarıldı",
+      "import_invoice_subtitle": "Mutabakat sayfasında yeni bir anlaşmayı önceden doldurmak için bir fatura JSON'u seçin."
     },
     "audit": {
-      "fetching": "Denetim kaydı getiriliyor…"
+      "fetching": "Denetim kaydı getiriliyor…",
+      "no_data": "Denetim RPC veri döndürmedi",
+      "show_raw_json": "Ham JSON'u göster",
+      "hide_raw_json": "Ham JSON'u gizle"
     },
     "empty": {
       "no_signatures": "Henüz doğrulanmış bir imza yok. Birini doğrulamak için yukarıdaki düğmeyi kullanın.",
       "no_wallet_addresses": "Cüzdan adresi yok",
       "no_disputes": "Anlaşmazlık yok.",
-      "disputes_offline": "(Düğüm çevrimdışı; anlaşmazlık listesi kullanılamayabilir.)"
+      "disputes_offline": "(Düğüm çevrimdışı; anlaşmazlık listesi kullanılamayabilir.)",
+      "no_agreements_found": "Anlaşma bulunamadı",
+      "with_status": "şu durumla",
+      "matching": "eşleşen",
+      "go_to_settlement_cta": "İlk anlaşmanızı oluşturmak için Mutabakat sayfasına gidin →"
+    },
+    "scope": {
+      "my": "Anlaşmalarım",
+      "all": "Tümü"
+    },
+    "dialog_titles": {
+      "save_agreement_pack": "Anlaşma Paketini Kaydet",
+      "select_proof_file": "Kanıt Dosyası Seç (.json)",
+      "select_pack_file": "Anlaşma Paketi Seç (.pack.json)",
+      "select_invoice_file": "Fatura JSON Seç",
+      "select_signature_file": "İmza Dosyası Seç"
+    },
+    "timeline": {
+      "created": "Oluşturuldu",
+      "funded": "Fonlandı",
+      "proof_submitted": "Kanıt Gönderildi",
+      "released": "Serbest Bırakıldı",
+      "refunded": "İade Edildi"
+    },
+    "detail_labels": {
+      "template": "Şablon",
+      "created": "Oluşturuldu",
+      "deadline": "Son Tarih",
+      "proof_status": "Kanıt Durumu",
+      "release_eligible": "Serbest Bırakmaya Uygun",
+      "kind": "Tür",
+      "threshold": "Eşik",
+      "attestors": "Onaylayanlar",
+      "parties": "Taraflar",
+      "amount": "Miktar",
+      "payer": "Ödeyen",
+      "payee": "Alacaklı",
+      "outcome": "Sonuç",
+      "satisfied": "Karşılandı",
+      "reason": "Gerekçe"
+    },
+    "detail_values": {
+      "none": "yok",
+      "party": "taraf",
+      "parties": "taraf"
+    },
+    "sections": {
+      "policy": "Politika",
+      "proofs": "Kanıtlar",
+      "timeline": "Zaman Çizelgesi ({{count}} olay)",
+      "proofs_count": "Kanıtlar ({{count}})",
+      "funding_legs": "Fonlama ({{count}} adım)",
+      "linked_transactions": "Bağlı İşlemler ({{count}})"
+    },
+    "warnings": {
+      "proof_finality_body": "Serbest bırakmadan önce daha fazla blok onayı bekleyin — zincirdeki bir reorg kanıtı geri alabilir.",
+      "open_dispute_body": "Bir uyuşmazlık açmak, anlaşmanın her iki taraftan gelen kanıtları inceleyecek bir hakem gerektirmesi anlamına gelir. Devam etmeden önce iyi bir gerekçeniz ve destekleyici kanıtınız olduğundan emin olun. Bu işlem geri alınamaz."
+    },
+    "helpers": {
+      "sign_confirms_participation": "İmzalamak katılımınızı onaylar. Her iki taraf fonlamadan önce imzalamalıdır.",
+      "sign_modal_body": "Bu anlaşmayı cüzdan anahtarınızla imzalamak katılımınızı onaylar. Her iki taraf fonlamadan önce imzalamalıdır.",
+      "no_hash_on_file": "Bu anlaşma için kayıtlı hash yok — karşı tarafın paylaştığı hash'i yapıştırın.",
+      "no_file_selected": "Dosya seçilmedi",
+      "secret_auto_loaded": "Yerel anlaşma sırları deposundan otomatik yüklendi",
+      "secret_required_hint": "Bu anlaşmayı siz oluşturmadıysanız gereklidir. Cüzdanınız otomatik türetiyorsa boş bırakın.",
+      "use_invoice_hint": "Bu Faturayı Kullan'a tıklamak sizi OTC şablonu önceden doldurulmuş şekilde Mutabakat sayfasına götürür. Şablonu değiştirebilir, alanları düzenleyebilir ve anlaşmayı oluşturmadan önce onaylayabilirsiniz.",
+      "signer_unknown": "bilinmiyor",
+      "rejected": "reddedildi",
+      "role_buyer_suffix": "(alıcı)",
+      "role_seller_suffix": "(satıcı)",
+      "signer_not_party": "Bu adres alıcı veya satıcı değil — imza, taraf rolü olmaksızın kaydedilir."
+    },
+    "form_errors": {
+      "hash_required": "Anlaşma hash'i gerekli",
+      "proof_type_required": "Bir kanıt türü seçin",
+      "attested_by_required": "Onaylayan adresi gerekli",
+      "evidence_required": "Olanları Kanıt Özeti alanında açıklayın",
+      "secret_must_be_64_hex": "Tam olarak 64 hex karakter olmalı (0-9, a-f)."
+    },
+    "disputes": {
+      "opened_prefix": "açıldı",
+      "resolved_prefix": "· çözüldü",
+      "open_this_agreement": "Bu anlaşmayı aç",
+      "agreement_not_in_list": "Anlaşma mevcut listede yok — Anlaşmalar görünümünü yenilemeyi deneyin"
     }
   },
   "settlement": {
@@ -971,14 +1318,72 @@
       "confirm_large_amount": "{{amount}} IRM'ı emanete kilitlemek üzeresiniz.\n\nBu büyük bir miktar. Ondalık sayıyı doğru yazdığınızdan emin olun.",
       "remote_label": "uzak",
       "remote_tooltip": "Bu teklif başka bir satıcıya aittir ve yerel mağazanızdan silinemez.",
-      "delete_tooltip": "Bu teklifi yerel mağazanızdan silin"
+      "delete_tooltip": "Bu teklifi yerel mağazanızdan silin",
+      "modal_title": "Satış Emri Oluştur",
+      "modal_subtitle": "Emir defterine bir teklif gönderin — bir alıcı kabul ettiği anda IRM kilitlenir.",
+      "post_offer_button": "Teklifi Yayınla",
+      "lock_info_prefix": "Bir alıcı taahhütte bulunduğu anda IRM'iniz kilitlenir. Daha sonra alıcının zincir dışı ödemesini alırsınız ve şuna tıklarsınız:",
+      "confirm_received_label": "Alındı olarak onayla",
+      "lock_info_suffix": "serbest bırakmak için. Veya ödeme yapmazlarsa uyuşmazlık açın.",
+      "amount_to_sell_label": "Satılacak IRM miktarı",
+      "price_per_irm_label": "USDT cinsinden IRM başına fiyat",
+      "buyer_pays_total_prefix": "Alıcının toplam ödeyeceği tutar:",
+      "buyer_pays_total_amount": "{{amount}} USDT",
+      "payment_method_label": "Ödeme yöntemi",
+      "your_payment_details_label": "Ödeme bilgileriniz",
+      "payment_details_placeholder": "ör. IBAN TR89 0006 4000 0011 2233 4455 66 veya PayPal: satici@ornek.com",
+      "payment_details_helper": "Alıcı, teklifi aldıktan sonra bu bilgileri görür.",
+      "payment_options": {
+        "bank_transfer": "Banka havalesi",
+        "paypal": "PayPal",
+        "usdt_trc20": "USDT (TRC-20)",
+        "usdt_erc20": "USDT (ERC-20)",
+        "sepa": "SEPA",
+        "cash": "Nakit",
+        "other": "Diğer"
+      },
+      "errors": {
+        "positive_irm_amount": "Pozitif bir IRM miktarı girin",
+        "positive_usdt_price": "IRM başına pozitif bir USDT fiyatı girin",
+        "select_payment_method": "Bir ödeme yöntemi seçin",
+        "payment_details_required": "Alıcının nasıl ödeme yapacağını bilmesi için ödeme bilgilerinizi girin"
+      },
+      "toasts": {
+        "offer_posted": "Teklif yayınlandı. Bir alıcı taahhütte bulunduğu anda IRM kilitlenir."
+      }
     },
     "take_offer": {
       "title": "Teklif Al",
       "completed_trades": "Tamamlanan işlemler",
       "take_button": "Teklif al",
       "taking": "Alınıyor…",
-      "title_modal": "Bu Teklifi Alın"
+      "title_modal": "Bu Teklifi Alın",
+      "set_buyer_address_first": "Önce alıcı adresinizi belirleyin",
+      "error_agreement_id_missing": "Teklif alındı ancak yanıtta anlaşma kimliği eksik",
+      "irm_locked_send_payment": "IRM artık emanette kilitli. Zincir dışı ödemeyi gönderin.",
+      "dispute_reason_buyer_cancelled": "alıcı ödemeden önce iptal etti",
+      "dispute_opened_refund_hint": "Uyuşmazlık açıldı. Zaman aşımından sonra Anlaşmalar sayfasından iade talep edebilirsiniz.",
+      "enter_payment_reference": "Satıcının ödemenizi doğrulayabilmesi için bir işlem kimliği veya not girin",
+      "payment_reported_seller_notified": "Ödeme bildirildi. Satıcıya haber verildi.",
+      "step_of_two": "Adım {{step}} / 2",
+      "step1_intro": "Onaylamak satıcının IRM'ini emanete kilitler. Ardından zincir dışı ödemeyi gönderip işlemi bildirmek için bir son tarihiniz olur.",
+      "you_receive": "Aldığınız:",
+      "payment_method": "Ödeme yöntemi:",
+      "seller": "Satıcı:",
+      "buyer_you": "Alıcı (siz):",
+      "not_set": "- ayarlanmadı -",
+      "cancel": "İptal",
+      "confirm_take": "Almayı Onayla",
+      "irm_locked_in_escrow": "IRM emanette kilitli",
+      "step2_intro": "Satıcının IRM'i kilitli. Zincir dışı ödemeyi gönderin, ardından aşağıya işlem referansınızı girin ve \"Ödemeyi gönderdim\"e tıklayın.",
+      "sellers_payment_details": "Satıcının ödeme bilgileri",
+      "no_payment_details": "Teklifte ayrıntı yok. Ödeme talimatları için satıcıyla doğrudan iletişime geçin.",
+      "your_transaction_reference": "İşlem referansınız",
+      "payment_reference_placeholder": "Banka havalesi referansı, PayPal txid, blok zinciri txid vb.",
+      "payment_reference_hint": "Satıcı bunu tam olarak görür. Ödemenizin geldiğini onaylamak için kullanabilecekleri her şey işe yarar - referans numarası, işlem kimliği, gönderici adı vb.",
+      "cancel_opens_dispute_warning": "Burada iptal ederseniz bir uyuşmazlık açılır. Zaman aşımından sonra Anlaşmalar sayfasından iade talep edebilirsiniz.",
+      "cancel_and_dispute": "İptal et ve uyuşmazlık aç",
+      "i_have_sent_payment": "Ödemeyi gönderdim"
     },
     "feeds": {
       "discover_button": "Yayınları keşfedin",
@@ -1026,7 +1431,189 @@
     },
     "swap": {
       "fuel_banner_title": "IRM, Settlement katmanına güç verir.",
-      "fuel_banner_body": "Güven gerektirmeden işlem yapmaya başlamak için BTC, LTC veya DOGE'u IRM ile takas edin."
+      "fuel_banner_body": "Güven gerektirmeden işlem yapmaya başlamak için BTC, LTC veya DOGE'u IRM ile takas edin.",
+      "pair_not_available": "Bu çift henüz kullanılamıyor",
+      "own_order_hint": "Bu sizin kendi emrinizdir. İptal etmek için sağdaki Takaslarım panelini kullanın.",
+      "not_available_yet": "Henüz kullanılamıyor",
+      "how_it_works_title": "{{pair}} takasları nasıl çalışır",
+      "how_it_works_step1": "Soldaki defterden bir emir seçin veya kendinizinkini yayınlayın.",
+      "how_it_works_step2": "Emir alındığı anda satıcının IRM'i emanete kilitlenir.",
+      "how_it_works_step3": "Alıcı satıcının adresine {{quote}} gönderir.",
+      "how_it_works_step4": "Ödeme onaylandığında IRM otomatik olarak alıcıya serbest bırakılır."
+    },
+    "header": {
+      "subtitle_otc": "Eşler arası OTC. IRM'i emanete kilitleyin, her şeyle takas edin.",
+      "subtitle_swap": "IRM ile diğer zincirler arasında atomik takaslar. Güven gerektirmez. Köprü yoktur.",
+      "advanced_flows": "Gelişmiş akışlar",
+      "advanced_flows_tooltip": "Alt seviye mutabakat akışlarını açar."
+    },
+    "mode_tabs": {
+      "otc": "OTC P2P",
+      "swap": "Spot Takas"
+    },
+    "my_trades": {
+      "title": "İşlemlerim",
+      "tab_active": "Aktif",
+      "tab_completed": "Tamamlanan",
+      "tab_all": "Tümü",
+      "empty_active": "Aktif işlem yok. Başlamak için emir defterinden bir teklif alın.",
+      "empty_completed": "Henüz tamamlanan işlem yok.",
+      "empty_all": "Henüz işlem yok. Başlamak için emir defterinden bir teklif alın.",
+      "side_buy": "AL",
+      "side_sell": "SAT"
+    },
+    "trade_status": {
+      "released": "Serbest Bırakıldı",
+      "refunded": "iade edildi",
+      "expired": "süresi doldu",
+      "cancelled": "iptal edildi",
+      "disputed": "Uyuşmazlıklı",
+      "confirming": "Onaylanıyor",
+      "locked": "Kilitli",
+      "proposed": "Önerildi",
+      "drafting": "Taslak"
+    },
+    "order_book": {
+      "title": "Emir Defteri",
+      "create_order": "Emir Oluştur",
+      "offers_count_one": "teklif",
+      "offers_count_other": "teklif",
+      "offers_count": "teklif",
+      "hidden_tooltip_one": "Fiyat verilmediği için {{count}} teklif gizlendi",
+      "hidden_tooltip_other": "Fiyat verilmediği için {{count}} teklif gizlendi",
+      "hidden_tooltip": "Fiyat verilmediği için {{count}} teklif gizlendi",
+      "hidden_suffix": "{{count}} gizli",
+      "show_taken": "Alınanları göster",
+      "sort": {
+        "price_asc": "Fiyat ↑",
+        "price_desc": "Fiyat ↓",
+        "newest": "En Yeni",
+        "best_rep": "En İyi İtibar"
+      },
+      "updated_ago": "Güncellendi {{time}}",
+      "refreshing": "Yenileniyor…",
+      "refreshing_lower": "yenileniyor…",
+      "empty_prefix": "Defterde henüz teklif yok. İlkini yayınlamak için",
+      "empty_suffix": "tıklayın.",
+      "col_amount_irm": "Miktar IRM",
+      "col_price_per_irm": "Fiyat / IRM",
+      "col_total": "Toplam",
+      "col_payment": "Ödeme",
+      "col_seller": "Satıcı",
+      "col_rep": "İtibar",
+      "col_age": "Yaş",
+      "rep_tooltip": "5 üzerinden {{stars}}, {{completed}} tamamlandı",
+      "no_reputation": "İtibar yok",
+      "taken": "Alındı",
+      "take": "Al"
+    },
+    "pair_order_book": {
+      "header_title": "{{pair}} emir defteri",
+      "open_shown_summary": "{{open}} açık · {{shown}} görünen",
+      "updated_label": "güncellendi",
+      "new_swap": "Yeni takas",
+      "direction_both": "Her ikisi",
+      "direction_sell_irm": "IRM Sat",
+      "direction_buy_irm": "IRM Al",
+      "sort_price_asc": "Önce en iyi fiyat",
+      "sort_price_desc": "Önce en yüksek fiyat",
+      "sort_recent": "Önce en yeni",
+      "hide_my_orders": "Emirlerimi gizle",
+      "loading_orders": "{{pair}} emirleri yükleniyor…",
+      "empty_state": "Açık {{pair}} emri yok. İlk siz olun — yukarıdaki Yeni takas düğmesiyle bir tane yayınlayın.",
+      "side_sells_irm": "IRM Satar",
+      "side_buys_irm": "IRM Alır",
+      "badge_yours": "Sizinki",
+      "escrow_protected": "Emanet korumalı",
+      "maker_line": "Yapımcı {{address}} · {{ago}}",
+      "needs_confirmations": "{{network}} tarafında {{count}} onay gerekir",
+      "needs_confirmations_plural": "{{network}} tarafında {{count}} onay gerekir",
+      "relative_recent": "yakın zamanda",
+      "relative_just_now": "az önce",
+      "relative_blocks_ago": "{{count}} blok önce",
+      "relative_blocks_ago_one": "{{count}} blok önce",
+      "relative_hours_ago": "{{count}}s önce",
+      "relative_days_ago": "{{count}}g önce"
+    },
+    "resolver_picker": {
+      "title": "Hakem seçimi",
+      "intro": "Hakem, alıcı ve satıcı anlaşamadığında IRM'in kime gideceğine karar veren doğrulanmış bir üçüncü taraftır. Hakem, işlem sonuçlandığında uyuşmazlık tutarından kesilen küçük bir ücret kazanır.",
+      "nominated_section_title": "Bu işlem için aday gösterilen hakemler",
+      "primary_label": "Birincil",
+      "fallback_label": "Yedek",
+      "fee_with_value": "Ücret: {{value}}",
+      "no_nominated_notice": "Bu işlem aday gösterilen hakemler olmadan oluşturuldu. Aşağıdaki hakemlerden herhangi biri hareket edebilmeden önce her iki taraf cüzdanın hakem yeniden aday gösterme akışından yeni bir adaylığı birlikte imzalamalıdır.",
+      "available_section_title": "Kullanılabilir hakemler",
+      "registry_unreachable": "Hakem kayıt defteri uç noktası bu düğümde erişilebilir değil ({{error}}). Adayları doğrudan resolver-list CLI üzerinden keşfetmek için cüzdanınızdan hakem yeniden aday gösterme akışını kullanın.",
+      "empty_registry_before": "Bu düğümde henüz hiçbir hakem kayıt olmadı. Hakemler, adresleri yakın zamanda bir coinbase çıktısında göründükten sonra şunu çağırarak kayıt olur:",
+      "empty_registry_after": "adresleri yakın zamanda bir coinbase çıktısında göründükten sonra.",
+      "unnamed_resolver": "Adsız hakem",
+      "no_reputation_yet": "henüz itibar yok",
+      "agreements_hint": "Hakem'e ek kanıt göndermek ve uyuşmazlık çözümünü izlemek için Anlaşmalar sayfasını kullanın. Her iki taraf da hakem karar verene kadar herhangi bir zamanda kanıt gönderebilir.",
+      "close": "Kapat"
+    },
+    "seller_review": {
+      "toast_released": "IRM serbest bırakıldı. Alıcı artık fonlara sahip.",
+      "dispute_reason": "satıcı zincir dışı ödemeyi almadı",
+      "toast_dispute_opened": "Uyuşmazlık açıldı. Bir hakem kanıtları inceleyecek.",
+      "empty_state": "Sizi bekleyen gelen işlem yok. Bir alıcı tekliflerinizden birini alıp ödeme bildirdiğinde burada görünür.",
+      "section_title": "Doğrulanacak gelen işlemler",
+      "waiting_count": "{{count}} bekleyen",
+      "status_releasing": "Serbest bırakılıyor",
+      "status_funded": "Fonlandı",
+      "buyer_label": "Alıcı:",
+      "buyer_claims_paid": "Alıcı, ödemenin {{time}} gönderildiğini iddia ediyor",
+      "no_reference": "(işlem referansı sağlanmadı)",
+      "no_payment_yet": "Alıcı henüz ödeme gönderdiğini bildirmedi. Bekleyin veya son tarih geçtiyse uyuşmazlık açın.",
+      "open_dispute_button": "Ödeme yok - uyuşmazlık aç",
+      "confirm_release_button": "Alındı olarak onayla ve serbest bırak",
+      "loading_trades": "İşlemler yükleniyor...",
+      "time_ago_seconds": "{{count}}sn önce",
+      "time_ago_minutes": "{{count}}dk önce",
+      "time_ago_hours": "{{count}}sa önce",
+      "time_ago_days": "{{count}}g önce"
+    },
+    "take_swap": {
+      "buy_irm": "IRM Al",
+      "sell_irm": "IRM Sat",
+      "toast_no_wallet": "Aktif Irium cüzdan adresi yok. Önce bir cüzdan açın.",
+      "toast_min_blocks": "İade son tarihi en az 10 blok olmalıdır",
+      "toast_locked_buyer": "Emir kilitlendi. {{code}} ödemesini gönderin ve bildirin.",
+      "toast_locked_seller": "Emir kilitlendi. Satıcının IRM'i emanette.",
+      "toast_need_ref": "Satıcının {{code}} ödemenizi doğrulayabilmesi için bir işlem kimliği veya not girin",
+      "toast_payment_reported": "Ödeme bildirildi. Satıcıya haber verildi.",
+      "toast_dispute_info": "Anlaşmalar sayfasından bir uyuşmazlık açılabilir. Şimdilik burada iptal edin ve oradan tekrar ziyaret edin.",
+      "modal_title": "{{pair}} üzerinde {{label}}",
+      "step_of_2": "Adım {{step}} / 2",
+      "intro_buyer": "Onaylamak satıcının IRM'ini emanete kilitleyecektir. Ardından bir sonraki ekranda gösterilen adrese {{code}} gönderirsiniz.",
+      "intro_seller": "Onaylamak IRM'iniz ile eşleşen bir emanet oluşturacaktır. Alıcı, adresinize {{code}} gönderecektir.",
+      "you_receive": "Aldığınız",
+      "you_pay": "Ödediğiniz",
+      "you_send": "Gönderdiğiniz",
+      "price": "Fiyat",
+      "maker": "Yapımcı",
+      "maker_foreign_address": "Yapımcı {{code}} adresi",
+      "needs": "Gerekir",
+      "confirmation_one": "{{count}} {{code}} onayı",
+      "confirmation_other": "{{count}} {{code}} onayı",
+      "refund_deadline_label": "İade son tarihi (Irium blokları)",
+      "refund_deadline_hint": "Ödeme bu son tarihe kadar onaylanmazsa fonlarınız iade edilebilir.",
+      "cancel": "İptal",
+      "confirm_action": "{{label}}'ı Onayla",
+      "escrow_locked": "Emanet kilitli",
+      "escrow_locked_buyer": "{{code}} ödemesini aşağıdaki adrese gönderin. Ödemeniz onaylandığında IRM otomatik olarak cüzdanınıza serbest bırakılır.",
+      "escrow_locked_seller": "IRM'iniz emanette. Alıcı adresinize {{code}} gönderecek. Ödemeleri onaylandığında IRM onlara serbest bırakılır ve alıcı akışı kendi başına tamamlanır.",
+      "send_to_label": "{{code}} gönderilecek adres",
+      "exact_amount_label": "Tam {{code}} miktarı",
+      "required_memo_label": "Gerekli ödeme memosu",
+      "memo_hint": "Çoğu {{name}} cüzdanı bunu ödemede ek bir veri alanı olarak içerir. Ödemenizi bu işleme bağlar, böylece IRM otomatik olarak serbest bırakılabilir.",
+      "tx_reference_label": "İşlem referansınız",
+      "tx_reference_placeholder": "{{code}} işlem kimliği veya not",
+      "tx_reference_hint": "Satıcı bunu tam olarak görür. Ödemenizi onaylamak için kullanabilecekleri her şey işe yarar.",
+      "cancel_warning": "Şimdi iptal ederseniz, fonlarınız yukarıdaki iade son tarihine kadar kilitli kalır.",
+      "cancel_and_dispute": "İptal et ve uyuşmazlık aç",
+      "i_have_sent": "{{code}} gönderdim",
+      "watching_escrow": "Emanet izleniyor"
     }
   },
   "miner": {
@@ -1047,7 +1634,11 @@
       "uptime": "Çalışma süresi",
       "difficulty": "Zorluk",
       "temperature": "Sıcaklık",
-      "power": "Güç"
+      "power": "Güç",
+      "est_daily_irm": "Tah. Günlük IRM",
+      "na_linux_only": "Geçerli değil (yalnızca Linux)",
+      "pool_difficulty": "Havuz Zorluğu",
+      "pool_hashrate": "Havuz Hashrate"
     },
     "buttons": {
       "start_mining": "Madenciliğe başla",
@@ -1056,7 +1647,23 @@
       "connect_pool": "Havuza bağlan",
       "disconnect": "Bağlantıyı kes",
       "confirm_disconnect": "Bağlantının kesilmesi onaylansın mı?",
-      "detect_gpus": "GPU'ları tespit et"
+      "detect_gpus": "GPU'ları tespit et",
+      "view_wallet": "Cüzdanı görüntüle",
+      "starting": "Başlatılıyor…",
+      "connecting": "Bağlanıyor…",
+      "start_gpu_mining": "GPU Madenciliğini Başlat",
+      "stop_gpu": "GPU'yu Durdur",
+      "scanning": "Taranıyor…",
+      "yes": "Evet",
+      "no": "Hayır",
+      "close": "Kapat",
+      "done": "Tamam",
+      "ok": "Tamam",
+      "start": "Başlat",
+      "stop": "Durdur",
+      "refresh": "Yenile",
+      "view_pool_stats": "Havuz İstatistiklerini Görüntüle",
+      "view_pool_stats_tooltip": "Genel havuzun canlı madenci istatistiklerini Blok Gezgini'nde aç"
     },
     "fields": {
       "mining_address_label": "Madencilik Adresi",
@@ -1080,21 +1687,49 @@
       "intensity_label": "Yoğunluk — {{value}}%",
       "intensity_mac_note": "GPU gözlemcisinin toplu iş ortasında çekirdekleri öldürmesini önlemek için macOS'ta yoğunluk %50 ile sınırlandırıldı. GPU madenci, bekçi köpeği durmalarını otomatik olarak algılar ve yine de görürse temiz bir şekilde durur.",
       "pool_preset": "Havuz Ön Ayarı",
-      "stratum_worker_use_wallet": "Use my wallet"
+      "stratum_worker_use_wallet": "Use my wallet",
+      "intensity_hint": "Daha yüksek yoğunluk = daha fazla hashrate, daha fazla güç kullanımı",
+      "core_active_tooltip": "Çekirdek {{n}} (aktif)",
+      "core_idle_tooltip": "Çekirdek {{n}} (boşta)",
+      "stratum_worker_placeholder": "cuzdanAdresi.workerAdi",
+      "stratum_worker_autofill_tooltip": "Otomatik doldur: {{address}}.rig1",
+      "stratum_password_hint": "Çoğu havuzun varsayılanı olan \"x\" kullanmak için boş bırakın"
     },
     "found_blocks": {
       "section_title": "Bulunan Bloklar",
       "empty": "Bu oturumda henüz blok bulunamadı.",
-      "open_in_explorer_tooltip": "Bu bloğu Explorer'da aç"
+      "open_in_explorer_tooltip": "Bu bloğu Explorer'da aç",
+      "hide_orphans_tooltip": "Başka bir madenci tarafından kazanılan blokları gizle",
+      "reveal_orphans_tooltip_one": "{{count}} öksüz adayı göster",
+      "reveal_orphans_tooltip_other": "{{count}} öksüz adayı göster",
+      "hide_orphans_button": "Öksüzleri gizle ({{count}})",
+      "show_orphans_button": "Öksüzleri göster ({{count}})",
+      "all_orphaned": "Henüz onaylanmış blok yok — şimdiye kadarki tüm adaylar öksüz kaldı.",
+      "orphaned_tooltip": "Öksüz — başka bir madenci tarafından kazanıldı",
+      "orphaned_long_tooltip": "Bu yükseklikteki kanonik blok başka bir adres tarafından madenciliği yapıldı — adayımızı kaydettik ama yarışı kaybettik.",
+      "orphaned_badge": "öksüz",
+      "block_height_tooltip": "Blok yüksekliği {{height}}",
+      "won_by_another": "Başka bir madenci tarafından kazanıldı",
+      "hash_unavailable": "bu madenci yapısından hash mevcut değil",
+      "reward_not_indexed_tooltip": "Ödül henüz düğüm tarafından indekslenmedi — değer olgunlaştığında dolacak",
+      "reward_unknown_tooltip": "Ödül bilinmiyor — madenci stdout bunu raporlamıyor",
+      "estimate_marker": "~ tah"
     },
     "shares": {
       "accepted": "Kabul edildi",
       "rejected": "Reddedilmiş",
-      "ratio": "Oran"
+      "ratio": "Oran",
+      "last_share": "Son share"
     },
     "asic_info": {
       "headline": "ASIC veya GPU'nuzu Stratum aracılığıyla bir madencilik havuzuna bağlayın",
-      "after_install": "Kurulumdan sonra Irium Core'u yeniden başlatın."
+      "after_install": "Kurulumdan sonra Irium Core'u yeniden başlatın.",
+      "external_title": "Harici ASIC veya GPU ile havuz madenciliği",
+      "external_body_before_url": "ASIC veya GPU madencilik yazılımınızı doğrudan yukarıdaki havuz URL'sine yönlendirin (ör. ",
+      "external_body_after_url": "). Irium Core burada gösterilen havuz tarafı share istatistiklerini izler; donanımınızın yerel hashrate'i madenci tarafından raporlanır.",
+      "connect_button_intro_before": "Aşağıdaki ",
+      "connect_button_intro_middle": " düğmesi, paket halindeki ",
+      "connect_button_intro_after": " sidecar'ını kullanarak CPU'nuz aracılığıyla havuz madenciliğini başlatır — yalnızca bu makinenin de havuza CPU hashrate katkısı yapmasını istiyorsanız kullanışlıdır. Harici ASIC'lerin bu düğmeye ihtiyacı yoktur."
     },
     "toasts": {
       "miner_started": "CPU madencisi başlatıldı",
@@ -1114,17 +1749,42 @@
       "connecting_to_pool": "Havuza bağlanılıyor…",
       "pool_disconnected_reconnecting": "Havuzun bağlantısı kesildi — yeniden bağlanılıyor…",
       "pool_connection_lost": "Havuz bağlantısı kesildi. Lütfen yeniden bağlanın.",
-      "pool_error": "Havuz hatası: {{message}}"
+      "pool_error": "Havuz hatası: {{message}}",
+      "no_device_selected": "Cihaz seçilmedi — varsayılan cihaz 0 kullanılıyor",
+      "solo_listening_on": "Solo Stratum {{addr}} adresinde dinliyor",
+      "solo_failed_start": "Solo Stratum başlatılamadı",
+      "solo_stopped": "Solo Stratum durduruldu",
+      "solo_failed_stop": "Solo Stratum durdurulamadı",
+      "copied": "Kopyalandı"
     },
     "page_subtitle": "SHA-256d · CPU · GPU · ASIC havuzu desteği",
     "tooltips": {
       "copy_address": "Adresi kopyala",
-      "copy_full_hash": "Karmanın tamamını kopyala"
+      "copy_full_hash": "Karmanın tamamını kopyala",
+      "copy": "Kopyala"
     },
     "pool_configuration": "Havuz Yapılandırması",
     "opencl": {
       "detected_title": "OpenCL Donanımı Algılandı",
-      "none_detected": "OpenCL özellikli GPU algılanmadı"
+      "none_detected": "OpenCL özellikli GPU algılanmadı",
+      "no_gpu_idle_message": "Uyumlu GPU algılanmadı — aşağıdaki Yapılandırma bölümüne bakın",
+      "select_platform": "Bir platform seçin ve madenciliğe başlayın",
+      "no_compatible_gpu": "Uyumlu GPU algılanmadı",
+      "install_drivers_before": "GPU madenciliği bir OpenCL çalışma zamanı gerektirir. GPU üreticinizin sürücülerini (NVIDIA, AMD veya Intel OpenCL SDK) yükleyin ve şuna tıklayın: ",
+      "install_drivers_after": ".",
+      "supports_pool_and_solo": "Etkinleştirildikten sonra GPU madencisi hem havuz (Stratum) hem de solo (doğrudan düğüm RPC) madenciliğini destekler.",
+      "read_docs": "GPU Madenci dokümanlarını okuyun",
+      "no_platforms_found": "OpenCL platformu bulunamadı.",
+      "install_icd_before": "GPU sürücünüzü ve ICD yükleyicisini kurun, ardından tekrar şuna tıklayın: ",
+      "install_icd_after": " tekrar.",
+      "platform_n": "Platform {{n}}",
+      "discrete_gpu": "harici GPU",
+      "device_n": "Cihaz {{n}}",
+      "fix_intro": "Bunu düzeltmek için GPU'nuz için OpenCL sürücüsünü yükleyin:",
+      "fix_nvidia": "GPU sürücünüzü nvidia.com adresinden yeniden yükleyin",
+      "fix_amd": "AMD Software Adrenalin'i amd.com adresinden yükleyin",
+      "fix_intel": "Intel Graphics Driver'ı intel.com adresinden yükleyin",
+      "scanning": "OpenCL cihazları taranıyor…"
     },
     "unexpected_exit": {
       "title": "Miner stopped unexpectedly",
@@ -1133,6 +1793,75 @@
       "restart_cpu": "Restart CPU Miner",
       "restart_gpu": "Restart GPU Miner",
       "dismiss": "Dismiss"
+    },
+    "activity": {
+      "share_accepted": "Share kabul edildi",
+      "share_rejected": "Share reddedildi",
+      "share_rejected_with_detail": "Share reddedildi — {{detail}}",
+      "pool_error": "Havuz hatası",
+      "pool_error_with_detail": "Havuz hatası — {{detail}}",
+      "mining_active": "Madencilik Aktif",
+      "block_hash_marker": "· blok #{{height}}",
+      "section_title": "Son Etkinlik",
+      "last_count": "son {{count}}",
+      "waiting_for_first_share": "İlk share bekleniyor…"
+    },
+    "status": {
+      "loading": "Yükleniyor…",
+      "mining_active": "Madencilik Aktif",
+      "mining_active_syncing": "Madencilik Aktif — Bloklar senkronize ediliyor…",
+      "cpu_idle": "CPU Boşta",
+      "gpu_active": "GPU Aktif",
+      "gpu_idle": "GPU Boşta",
+      "pool_connected": "Havuza Bağlı",
+      "pool_disconnected": "Havuz Bağlantısı Kesildi",
+      "live_badge": "Canlı",
+      "syncing_badge": "Senkronize Ediliyor"
+    },
+    "sync": {
+      "node_syncing_height": "Düğüm senkronize ediliyor — yükseklik {{localHeight}} / ağ {{networkTip}}",
+      "warming_up_header": "Madenci ısınıyor — ilk share oranı bekleniyor…",
+      "node_syncing_body": "Düğüm hâlâ ağ ucuna yetişiyor. Madencilik etkin ancak yerel zincir eşleşene kadar hiçbir share kabul edilmeyecek. Bu genellikle birkaç dakika içinde tamamlanır.",
+      "warming_up_body": "Madenci sidecar başladı. İlk hashrate okuması 1-3 saniye içinde gelir — herhangi bir işlem yapmanız gerekmez."
+    },
+    "block_info": {
+      "mining_block_n": "#{{height}} numaralı blok madenciliği yapılıyor",
+      "previous_block": "Önceki blok",
+      "last_confirmed_block": "son onaylanmış blok",
+      "network_difficulty": "Ağ zorluğu"
+    },
+    "solo": {
+      "title": "Solo Stratum Köprüsü",
+      "subtitle": "Kendi iriumd'nize karşı bir ASIC çalıştırın. Havuz ücreti yok, havuz bağımlılığı yok.",
+      "listening": "Dinleniyor",
+      "stopped": "Durduruldu",
+      "listen_address_label": "Dinleme adresi",
+      "listen_default_before": "Varsayılan ",
+      "listen_default_after": " her arabirime bağlanır, böylece LAN'ınızdaki ASIC ona ulaşabilir.",
+      "asic_connection_string": "ASIC bağlantı dizesi",
+      "bullet_replace_host_before": "• ",
+      "bullet_replace_host_after": " kısmını makinenizin LAN IP'si (veya VPS IP'si) ile değiştirin.",
+      "bullet_worker_username_before": "• Worker kullanıcı adı: Q-adresinizin ardından ",
+      "bullet_worker_username_after": ". Parola: herhangi bir dize.",
+      "bullet_bridge_serves_before": "• Köprü, yerel iriumd'nizde ",
+      "bullet_bridge_serves_middle": " ve ",
+      "bullet_bridge_serves_after": " sunar."
+    },
+    "found_block_banner": {
+      "title": "#{{height}} numaralı blok madenciliği yapıldı!",
+      "body": "{{kind}} madenciniz ağ yarışını az önce kazandı — 50 IRM yolda (100 blokta olgunlaşır).",
+      "dismiss_aria": "Kapat"
+    },
+    "tabs_v2": {
+      "cpu": "CPU Madenci",
+      "gpu": "GPU Madenci",
+      "stratum": "Havuz / Stratum",
+      "solo": "Solo Stratum"
+    },
+    "pool_presets": {
+      "irium_official_cpu_gpu": "Irium Resmi Havuz (CPU/GPU)",
+      "irium_official_asic": "Irium Resmi Havuz (ASIC)",
+      "custom": "Özel"
     }
   },
   "onboarding": {
@@ -1162,7 +1891,8 @@
       "generating": "Cüzdan oluşturuluyor…",
       "show_recovery": "Kurtarma ifadesini göster",
       "i_wrote_it_down": "onu yazdım",
-      "continue_to_wallet": "Cüzdan'a devam et"
+      "continue_to_wallet": "Cüzdan'a devam et",
+      "generating_sub": "24 kelimelik kurtarma ifadesiyle BIP32 HD cüzdan oluşturuluyor…"
     },
     "import": {
       "tab_mnemonic": "Kurtarma ifadesi",
@@ -1199,6 +1929,153 @@
       "too_short": "Password must be at least 4 characters",
       "required": "Password is required",
       "continue": "Continue"
+    },
+    "splash": {
+      "subtitle_full_node": "TAM DÜĞÜM MASAÜSTÜ CÜZDAN",
+      "status_initializing": "Çalışma zamanı başlatılıyor…",
+      "status_loading_crypto": "Kriptografik modüller yükleniyor…",
+      "status_verifying_binary": "İkili dosya bütünlüğü doğrulanıyor…",
+      "status_establishing_context": "Güvenli bağlam oluşturuluyor…",
+      "status_ready": "Hazır"
+    },
+    "rail": {
+      "system_check": "Sistem Kontrolü",
+      "bootstrap": "Önyükleme",
+      "network_sync": "Ağ Senkronizasyonu",
+      "wallet_setup": "Cüzdan Kurulumu",
+      "backup_secure": "Yedekleme ve Güvenlik"
+    },
+    "binary_check": {
+      "subtitle": "Gerekli düğüm ikili dosyalarının bu makinede bulunduğu doğrulanıyor.",
+      "iriumd_desc": "Tam düğüm arka plan programı",
+      "irium_wallet_desc": "Cüzdan ve pazaryeri CLI'sı",
+      "irium_miner_desc": "CPU madenci",
+      "all_verified": "Tüm ikili dosyalar doğrulandı. Devam ediliyor…",
+      "missing_binaries": "Eksik ikili dosyalar. Çalıştırılabilirleri src-tauri/binaries/ dizinine yerleştirin",
+      "retry": "Yeniden Dene",
+      "skip_advanced": "Atla (gelişmiş)"
+    },
+    "bootstrap": {
+      "subtitle": "Tohum düğümleri, güven çapaları ve genesis bloğu yapılandırılıyor.",
+      "creating_data_dir": "Veri dizini oluşturuluyor…",
+      "writing_seedlist": "Önyükleme seedlist.txt yazılıyor…",
+      "writing_static_peers": "static_peers.txt yazılıyor…",
+      "installing_anchors": "Genesis anchors.json kuruluyor…",
+      "installing_trust_signatures": "Güven imzaları kuruluyor…",
+      "complete": "Önyükleme yapılandırması tamamlandı.",
+      "error_prefix": "Hata",
+      "skip_continue": "Atla (yine de devam et)"
+    },
+    "network_sync": {
+      "subtitle": "Yerel blok zinciri verileri yükleniyor ve Irium P2P ağına bağlanılıyor.",
+      "port_in_use_message": "38291 portu zaten kullanımda. Arka planda başka bir Irium düğümü çalışıyor olabilir. Sistem tepsinizde mevcut bir Irium Core örneği olup olmadığını kontrol edin veya Görev Yöneticisi'ni açıp iriumd.exe işlemlerini sonlandırın, ardından uygulamayı yeniden başlatın.",
+      "add_peer_format_error": "IP:PORT formatını kullanın (ör. 1.2.3.4:38291)",
+      "add_peer_rejected": "Düğüm adresi reddetti",
+      "add_peer_unreachable": "Düğüme ulaşılamadı",
+      "starting_iriumd": "iriumd başlatılıyor…",
+      "loading_blockchain_data": "Blok zinciri verileri yükleniyor…",
+      "starting_node": "Düğüm başlatılıyor…",
+      "discovering": "keşfediliyor…",
+      "searching_for_peers": "Irium ağında eşler aranıyor",
+      "checking_connectivity": "Ağ bağlantısı kontrol ediliyor…",
+      "network_reachable": "Ağa erişilebilir — düğüm başlatılıyor…",
+      "port_blocked_title": "38291 portu giden yönde engellenmiş görünüyor",
+      "port_blocked_body_before": "Irium ağına erişilemiyor. Yönlendiricinizi veya güvenlik duvarınızı kontrol edin —",
+      "port_blocked_body_after": "portu giden TCP bağlantıları için açık olmalıdır.",
+      "restarting_node": "Düğüm yeniden başlatılıyor…",
+      "retry_connection": "Bağlantıyı yeniden dene",
+      "still_connecting_title": "Hâlâ eşlere bağlanılıyor…",
+      "still_connecting_body": "Düğüm Irium ağına ulaşmaya çalışıyor. Bu genellikle 30 saniye içinde tamamlanır — lütfen bekleyin.",
+      "connecting_for": "{{seconds}}s'dir bağlanılıyor…",
+      "add_peer_manually": "Bir eşi manuel olarak ekle",
+      "add_peer_button": "Eş Ekle",
+      "added_peer": "{{addr}} eklendi",
+      "continuing_in": "{{seconds}}s içinde devam ediliyor…",
+      "syncing_background": "Arka planda senkronize ediliyor…",
+      "continue_anyway": "Yine de devam et →"
+    },
+    "wallet_setup_subtitle": "Yeni bir HD cüzdan oluşturun veya mevcut bir cüzdandan geri yükleyin.",
+    "wallet_setup_errors": {
+      "failed_create": "Cüzdan oluşturulamadı",
+      "no_wallet_pending": "Şifreleme bekleyen cüzdan yok",
+      "failed_set_password": "Cüzdan parolası ayarlanamadı",
+      "import_failed": "İçe aktarma başarısız"
+    },
+    "wallet_password": {
+      "title": "Bir cüzdan parolası belirleyin",
+      "subtitle": "Cüzdan dosyanızı şifreler. Devam etmeden önce gereklidir.",
+      "placeholder": "Güçlü bir parola seçin (8+ karakter)",
+      "confirm_placeholder": "Parolayı onaylayın",
+      "warning": "Bu parola unutulursa kurtarılamaz. Yazıp güvenli bir yerde saklayın. Kurtarma ifadeniz, bu parola olmadan cüzdanı geri yüklemenin tek yoludur.",
+      "continue": "Şifrele ve Devam Et",
+      "too_short": "Parola en az 8 karakter olmalıdır",
+      "mismatch": "Parolalar eşleşmiyor",
+      "encrypting": "Cüzdan şifreleniyor…",
+      "encrypting_sub": "Cüzdan dosyanıza PBKDF2 türetilmiş anahtar uygulanıyor.",
+      "hide": "gizle",
+      "show": "göster"
+    },
+    "wallet_restored_sub": "Cüzdanınız başarıyla içe aktarıldı.",
+    "restored": {
+      "primary_address": "Birincil Adres",
+      "address_pending": "Düğüm senkronizasyonu tamamlandığında adres Kontrol Panelinde görünecek.",
+      "additional_addresses": "{{count}} ek adres bulundu",
+      "balance_will_load": "Bakiyeniz ve işlem geçmişiniz, düğüm senkronize edildikçe Kontrol Panelinde otomatik olarak yüklenecek.",
+      "continue_to_dashboard": "Kontrol Paneline Devam Et"
+    },
+    "import_form": {
+      "subtitle": "Aşağıdan geri yükleme yönteminizi seçin.",
+      "tab_mnemonic_label": "Kurtarma İfadesi",
+      "tab_wif_label": "WIF Anahtarı",
+      "tab_privkey_label": "Özel Anahtar",
+      "mnemonic_placeholder": "kelime1 kelime2 kelime3 … kelime24",
+      "mnemonic_hint": "BIP32 mnemonik — boşlukla ayrılmış 12 veya 24 kelime",
+      "wif_placeholder": "5Jxx… veya Kxx… veya Lxx…",
+      "wif_hint": "Wallet Import Format (Base58Check kodlu özel anahtar)",
+      "privkey_placeholder": "0x1a2b3c4d… (64 hex karakter)",
+      "privkey_hint": "Ham 256-bit özel anahtar onaltılık biçimde",
+      "back": "Geri",
+      "importing": "İçe aktarılıyor…"
+    },
+    "choose": {
+      "create_description": "24 kelimelik kurtarma ifadesiyle yeni bir BIP32 HD cüzdan oluşturun.",
+      "import_description": "Kurtarma ifadesi, WIF anahtarı veya ham özel anahtar ile geri yükleyin."
+    },
+    "backup": {
+      "field_address_label": "Cüzdan Adresi",
+      "field_wif_label": "WIF Anahtarı",
+      "field_mnemonic_label": "Kurtarma İfadesi (24 kelime)",
+      "field_wif_warning": "WIF, özel anahtarınızın taşınabilir formatıdır. Bunu eline geçiren herkes bu adresteki fonları kontrol eder.",
+      "field_mnemonic_warning": "Bu 24 kelimeyi sırasıyla yazın. Kaybedilirse kurtarılamaz.",
+      "copy": "Kopyala",
+      "copied": "Kopyalandı!",
+      "hide": "Gizle",
+      "reveal": "Göster",
+      "click_to_reveal": "Göstermek için tıklayın",
+      "confirm_address": "Cüzdan adresimi kaydettim",
+      "confirm_wif": "WIF anahtarımı güvenli bir şekilde sakladım",
+      "confirm_mnemonic": "Kurtarma ifademi çevrimdışı olarak yazdım",
+      "loading": "Yükleniyor…",
+      "wif_read_failed": "(WIF okunamadı — başlattıktan sonra Güvenlik panelini kullanın",
+      "shown_once_before": "Bu bilgi",
+      "shown_once_emphasis": "yalnızca bir kez",
+      "shown_once_after": " gösterilir. Devam etmeden önce her bir öğeyi çevrimdışı saklayın.",
+      "critical_warning_strong": "Cüzdanınızı geri yükleyemezsiniz",
+      "critical_warning_body": "kurtarma ifadenizi veya WIF anahtarınızı kaybederseniz. Irium Core'un bulut yedeklemesi yoktur. Her şeyi şimdi yazın.",
+      "items_confirmed": "{{total}} öğenin {{count}} tanesi onaylandı",
+      "launch_dashboard": "Kontrol Panelini Başlat",
+      "confirm_all_to_continue": "Devam etmek için 4 öğenin tümünü onaylayın"
+    },
+    "welcome_screen": {
+      "welcome_to": "Hoş geldiniz:",
+      "tagline": "Irium blok zinciri için tam düğüm masaüstü cüzdanınız. Gönderin, alın, takas edin ve mutabakata varın — hepsi eşler arası, hepsi zincir üzerinde.",
+      "wizard_intro": "Bu kurulum sihirbazı düğümünüzü yapılandıracak, zinciri senkronize edecek ve cüzdanınızı oluşturacak veya geri yükleyecektir.",
+      "chip_full_node": "Tam Düğüm",
+      "chip_hd_wallet": "HD Cüzdan",
+      "chip_p2p_trade": "P2P İşlem",
+      "chip_on_chain_settlement": "Zincir Üzeri Mutabakat",
+      "chip_privacy_first": "Gizlilik Öncelikli",
+      "get_started": "Başlayın"
     }
   },
   "reputation": {
@@ -1426,7 +2303,26 @@
       "hashrate_avg_window": "{{minutes}}dk ortalama",
       "confidence_low": "Düşük güven",
       "confidence_medium": "Orta güven",
-      "confidence_high": "Yüksek güven"
+      "confidence_high": "Yüksek güven",
+      "asic_port_with_443": "portlar {{port}} + 443",
+      "active_miners": "Aktif Madenciler",
+      "worker_count_one": "{{count}} worker",
+      "worker_count_other": "{{count}} worker",
+      "your_miners_pinned": "Madencileriniz en üste sabitlendi",
+      "hide_offline": "Çevrimdışıları gizle ({{count}})",
+      "show_offline": "Çevrimdışı madencileri göster ({{count}})",
+      "no_miners_reporting": "Bildirim yapan aktif madenci yok.",
+      "col_worker": "Worker",
+      "col_accepted": "Kabul Edilen",
+      "col_rejected_15m": "Reddedilen (15dk)",
+      "col_rejected_15m_tooltip": "Yalnızca son 15 dakikadaki reddedilen share'ler. Birikimli sayım (stratum yeniden başlatıldığından beri) bir worker'ı, toparlanmasından sonra bile bayat ısınma-patlaması toplamıyla gösterik tutuyordu.",
+      "col_reject_pct_15m": "Red %'si (15dk)",
+      "col_reject_pct_15m_tooltip": "Son 15 dakikadaki kayan reddedilme oranı. Yeniden başlatmadan beri birikimli oran, bir worker'ı toparlanmasından sonra bile yeniden başlatma sonrası ısınma patlamasında takılı bırakıyordu.",
+      "col_hashrate_15m": "Hashrate (15dk)",
+      "col_blocks": "Bloklar",
+      "col_blocks_tooltip": "Bu worker'ın havuzda bulduğu bloklar. Stats-proxy tarafından doldurulur; proxy worker başına blok kredisini doldurana kadar '—' gösterir.",
+      "col_last_share": "Son Share",
+      "yours_badge": "sizin"
     },
     "richlist": {
       "title": "En İyi IRM Sahipleri",
@@ -1464,7 +2360,8 @@
       "load_more_loading": "İlk 500 yükleniyor…",
       "load_error": "Zengin liste yüklenemedi: {{reason}}",
       "empty": "Henüz zincirde P2PKH bakiyesi yok.",
-      "node_offline_hint": "Zengin listeyi yüklemek için Kontrol Panelindeki düğümü başlatın."
+      "node_offline_hint": "Zengin listeyi yüklemek için Kontrol Panelindeki düğümü başlatın.",
+      "sr_total_supply": "Ekran okuyucular için {{total}} IRM toplam arz bağlamı"
     },
     "solo_pool": {
       "title": "Solo Pool",
@@ -1503,6 +2400,61 @@
       "blocks_per_day_suffix": "block/gün",
       "irm_per_day_suffix": "IRM/gün",
       "disclaimer": "Yalnızca tahmin — gerçek kazançlar şansa, havuz ücretlerine ve zorluk değişikliklerine bağlıdır. Hesaplayıcı canlı ağ hashrate'ini kullanır, her 60 saniyede bir yenilenir."
+    },
+    "mining_overview": {
+      "title": "Ağ Madencilik Genel Bakış",
+      "subtitle": "Ağ, havuz ve kendi madenciliğinizin tek ekranlık görünümü. Her 30 saniyede bir yenilenir.",
+      "network_summary": "Ağ Özeti",
+      "pool_mining": "Havuz Madenciliği",
+      "your_mining": "Madenciliğiniz",
+      "network_hashrate": "Ağ Hashrate",
+      "difficulty": "Zorluk",
+      "avg_block_time": "Ort. Blok Süresi",
+      "est_active_miners": "Tah. Aktif Madenciler",
+      "network_wide_estimate": "ağ geneli tahmini",
+      "pool_hashrate": "Havuz Hashrate",
+      "estimate_sub": "tahmini",
+      "active_pool_miners": "Aktif Havuz Madencileri",
+      "pool_blocks_found": "Havuzda Bulunan Bloklar",
+      "all_time": "tüm zamanlar",
+      "pool_share": "Havuz / Ağ",
+      "share_of_network_hashrate": "ağ hashrate'inden pay",
+      "your_hashrate": "Hashrate'iniz",
+      "collecting": "toplanıyor…",
+      "pool_workers_one": "{{count}} havuz worker'ı",
+      "pool_workers_other": "{{count}} havuz worker'ı",
+      "mode": "Mod",
+      "mode_pool": "Havuz",
+      "mode_solo": "Solo",
+      "not_mining": "madencilik yapılmıyor",
+      "connected_via_stratum": "Stratum üzerinden bağlı",
+      "direct_to_local_node": "yerel düğüme doğrudan",
+      "on_pool": "pool.iriumlabs.org üzerinde",
+      "on_solo_bridge": "solo-stratum köprüsünde",
+      "accepted_shares": "Kabul Edilen Share'ler",
+      "none": "yok",
+      "pool_lifetime": "havuz, ömür boyu",
+      "last_share": "Son Share",
+      "blocks_you_found": "Bulduğunuz Bloklar",
+      "from_pool_worker": "havuz worker'ından",
+      "this_session": "bu oturum"
+    },
+    "relative_time": {
+      "just_now": "az önce",
+      "seconds_ago_one": "{{count}} saniye önce",
+      "seconds_ago_other": "{{count}} saniye önce",
+      "minutes_ago_one": "{{count}} dakika önce",
+      "minutes_ago_other": "{{count}} dakika önce",
+      "hours_ago_one": "{{count}} saat önce",
+      "hours_ago_other": "{{count}} saat önce",
+      "days_ago_one": "{{count}} gün önce",
+      "days_ago_other": "{{count}} gün önce"
+    },
+    "founder_card": {
+      "title": "Kurucu Hak Ediş Adresi",
+      "description": "Bu adres, başlangıçta CLTV zaman kilidi ile kilitlenmiş 3.500.000 IRM tutar. Kilitli fonlar harcanabilir bakiyeye sayılmayan özel bir betik kullandığı için bakiye 0 olarak gösterilir.",
+      "unlocks_at": "{{height}} numaralı blokta kilidi açılır",
+      "blocks_remaining": "(~{{count}} blok kaldı)"
     }
   },
   "help": {
@@ -2146,7 +3098,10 @@
       "errors": {
         "buyer_required": "Alıcının Irium adresini girin.",
         "amount_required": "Kilitlemek istediğiniz IRM miktarını girin.",
-        "receiving_required": "Alıcınıza karşılığında ne beklediğinizi söyleyin."
+        "receiving_required": "Alıcınıza karşılığında ne beklediğinizi söyleyin.",
+        "no_agreement_id": "Anlaşma oluşturma kimlik döndürmedi",
+        "fund_after_create_failed": "Anlaşma oluşturuldu ancak fonlama başarısız oldu. Yeniden denemek için Anlaşmalar sayfasını açın.",
+        "payment_ref_required": "Satıcının ödemenizi doğrulayabilmesi için bir işlem referansı girin."
       },
       "review": {
         "you_lock": "Kilitliyorsunuz",
@@ -2154,7 +3109,14 @@
         "deadline": "Son tarih",
         "deadline_value": "{{hours}} saat içinde ödenmezse, IRM'niz otomatik olarak geri döner.",
         "lock_funds": "Fonları Kilitle",
-        "tx_note": "Bu, Irium blok zincirinde bir işlem oluşturacak."
+        "tx_note": "Bu, Irium blok zincirinde bir işlem oluşturacak.",
+        "you_lock_short": "Kilitlediğiniz",
+        "buyer_pays_you": "Alıcı size öder",
+        "payment_deadline": "Ödeme son tarihi",
+        "hours_from_now": "Şu andan itibaren {{hours}} saat",
+        "buyer_address": "Alıcının adresi",
+        "lock_my_irm": "IRM'imi kilitle",
+        "tx_broadcast_note": "Bir blok zinciri işlemi yayınlanacak. Onaylanması biraz sürebilir."
       },
       "share": {
         "title": "Bunu alıcınızla paylaşın",
@@ -2174,7 +3136,25 @@
         "receiving_placeholder": "örn. 200 USDT, banka havalesi, nakit",
         "deadline_label": "Bu ticaret ne kadar süre açık kalmalı?",
         "deadline_helper": "Bu süre içinde ödemezlerse, IRM'niz otomatik olarak geri döner.",
-        "release_button": "Ödemeyi aldım — Fonları alıcıya serbest bırak"
+        "release_button": "Ödemeyi aldım — Fonları alıcıya serbest bırak",
+        "buyer_address_short_label": "Alıcının adresi",
+        "buyer_address_helper": "Alıcının ödediğini onayladığınızda IRM'i alan adres.",
+        "amount_label_short": "Satılacak IRM miktarı",
+        "amount_helper_short": "Alıcının ödemesini onaylayana kadar emanette tutulur.",
+        "receiving_label_short": "Karşılığında ne alacaksınız",
+        "receiving_placeholder_detailed": "ör. SEPA banka havalesi ile 50 USDT",
+        "deadline_label_short": "Alıcının ödeme yapması için son tarih",
+        "deadline_helper_refund": "Son tarihe kadar ödeme gelmezse iade talep edebilirsiniz.",
+        "locked_hero_title": "IRM'iniz artık kilitli ve korumalı",
+        "locked_hero_body": "Alıcı onayınız olmadan alamaz. Aşağıdaki işlem kodunu paylaşın ki katılabilsinler, ardından ödemelerini bekleyin.",
+        "share_code_title": "Bu işlem kodunu paylaşın",
+        "share_code_body": "Alıcı işleme katılmak için bu kodu cüzdanına yapıştırır.",
+        "header1_title": "Satış işleminizi ayarlayın",
+        "header1_subtitle": "Bize alıcının kim olduğunu ve ne kadar IRM satmak istediğinizi söyleyin.",
+        "header2_title": "İncele ve kilitle",
+        "header2_subtitle": "Ayrıntıları onaylayın. Kilitlemek IRM'i emanete gönderir.",
+        "header3_title": "İşleminiz canlı",
+        "header3_subtitle": "İşlem kodunu alıcıyla paylaşın ve ödemelerini bekleyin."
       },
       "buying": {
         "step2_title": "Satıcınızdan gelen ticaret kodunu yapıştırın",
@@ -2193,12 +3173,42 @@
         "status_waiting": "Satıcının ödemenin alındığını onaylaması bekleniyor.",
         "status_releasing": "Ödeme onaylandı — IRM yolda.",
         "status_complete": "Tamamlandı — IRM wallet'ınıza ulaştı.",
-        "view_agreements": "agreement'larda Görüntüle"
+        "view_agreements": "agreement'larda Görüntüle",
+        "review_commit_intro": "Aşağıdaki işlem ayrıntılarını onaylayın. Devam ederek bu işleme taahhütte bulunursunuz. Bu adımdan sonra zincir dışı ödemeyi satıcıya gönderin ve bir sonraki ekrandan bildirin.",
+        "seller_is_locking": "Satıcının kilitlediği",
+        "seller_short_label": "Satıcı",
+        "details_did_not_load": "İşlem ayrıntıları yüklenmedi. Devam edebilirsiniz, ancak ödeme yapmadan önce IRM miktarını satıcıyla doğrulayın.",
+        "continue_and_link": "Devam et ve bağla",
+        "trade_complete_title": "İşlem tamamlandı",
+        "trade_complete_body": "IRM cüzdanınıza ulaştı.",
+        "seller_locked_for_you_title": "Satıcının IRM'i sizin için kilitlendi",
+        "seller_locked_for_you_body": "Zincir dışı ödemeyi satıcıya gönderin, ardından aşağıda işlem referansınızı bildirin.",
+        "report_payment_title": "Ödemenizi bildirin",
+        "report_payment_body": "Zincir dışı ödemeyi gönderdikten sonra, satıcının ulaştığını onaylamak için kullanabileceği herhangi bir referansı yapıştırın - banka havalesi referansı, PayPal işlem kimliği vb.",
+        "report_payment_placeholder": "Banka havalesi referansı, PayPal txid, blok zinciri txid vb.",
+        "cancel_open_dispute": "İptal et ve uyuşmazlık aç",
+        "payment_reported": "Ödeme bildirildi",
+        "i_have_sent_payment": "Ödemeyi gönderdim",
+        "header1_title": "Satıcının işlem kodunu yapıştırın",
+        "header1_subtitle": "Satıcı IRM'i kilitledikten sonra size bir kod göndermiş olacak.",
+        "header2_title": "İşlemi inceleyin",
+        "header2_subtitle": "Miktarın ve satıcının beklediğinizle eşleştiğinden emin olun.",
+        "header3_title": "İşleminiz canlı",
+        "header3_subtitle": "Zincir dışı ödemeyi gönderin, ardından satıcının IRM'i serbest bırakabilmesi için bildirin."
       },
       "fuel_banner_title": "Bir settlement oluşturmak için IRM'ye ihtiyacınız var.",
       "fuel_banner_prefix": "Şuraya gidin:",
       "fuel_banner_link": "Marketplace → Spot Swap",
-      "fuel_banner_suffix": "önce IRM edinmek için."
+      "fuel_banner_suffix": "önce IRM edinmek için.",
+      "toast_buyer_linked": "Tarafınız artık işleme bağlı. Zincir dışı ödemeyi satıcıya gönderin.",
+      "toast_payment_reported": "Ödeme bildirildi. Satıcının onayı bekleniyor.",
+      "toast_dispute_opened": "Uyuşmazlık açıldı. Bir hakem kanıtları inceleyecek.",
+      "dispute_reason_buyer": "alıcı işlemi tamamlayamıyor",
+      "choose_selling_title": "IRM satıyorum",
+      "choose_selling_body": "IRM'inizi emanete kilitleyin. Alıcı size zincir dışı öder, sonra siz serbest bırakırsınız.",
+      "choose_buying_title": "IRM satın alıyorum",
+      "choose_buying_body": "Satıcının işlem kodunu yapıştırın. Onlara ödeme gönderin, ardından IRM almak için onaylayın.",
+      "view_resolvers": "Kullanılabilir hakemleri görüntüle"
     },
     "pay_for_work": {
       "step1_title": "Tek ödeme mi yoksa kilometre taşı ile mi?",
@@ -2250,7 +3260,12 @@
       "claim_refund": "İade Talep Et",
       "toast_released": "Ödeme yükleniciye serbest bırakıldı.",
       "toast_release_pending": "Tamamlama kaydedildi. Fonlar sonraki birkaç block onayından sonra serbest bırakılacak.",
-      "toast_refunded": "İade talep edildi — fonlar wallet'ınıza dönüyor."
+      "toast_refunded": "İade talep edildi — fonlar wallet'ınıza dönüyor.",
+      "toast_fund_failed": "Anlaşma oluşturuldu ancak fonlama başarısız oldu. Fonlamayı yeniden denemek için Anlaşmalar sayfanızda bulun.",
+      "which_milestone": "Hangi kilometre taşı?",
+      "milestone_option": "Kilometre taşı {{index}} / {{total}}",
+      "milestone_helper": "Tamamlandı Olarak İşaretle, bu kilometre taşının kilitli IRM payını serbest bırakır. Yüklenici kilometre taşı başına toplamın 1/{{count}}'ini alır.",
+      "mark_complete_milestone": "Tamamlandı Olarak İşaretle — Ödemeyi Serbest Bırak (kilometre taşı {{index}})"
     },
     "deposit": {
       "step1_title": "Depozitonuzu kurun",

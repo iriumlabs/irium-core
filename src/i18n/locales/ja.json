@@ -152,7 +152,9 @@
       "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
       "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
       "rpc_token_test_remote": "Test remote",
-      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated",
+      "hide_token": "トークンを非表示",
+      "show_token": "トークンを表示"
     },
     "buttons": {
       "test_connection": "テスト接続",
@@ -195,7 +197,9 @@
       "onboarding_reset": "オンボーディングのリセット — アプリを再起動してウィザードを表示します",
       "update_check_internet": "アップデートを確認できませんでした。インターネット接続を確認してください。",
       "connection_failed": "接続に失敗しました",
-      "update_failed": "アップデートに失敗しました"
+      "update_failed": "アップデートに失敗しました",
+      "metrics_http_error": "ステータス OK ですが、/metrics が HTTP {{status}} を返しました",
+      "metrics_unreachable": "ステータス OK ですが、/metrics に到達できません: {{error}}"
     },
     "page_subtitle": "ノード接続、ウォレットのパス、および表示設定を構成します。",
     "update_banner": {
@@ -261,7 +265,14 @@
       "retry": "リトライ",
       "external_ip_label": "外部IP",
       "detecting_paragraph": "受信ピアが到達可能性を確認するまで最大 60 秒待機します。 PEX は、開始後にアドレスを他のノードに伝達するのに少し時間がかかります。",
-      "inactive_paragraph": "UPnP が失敗し、受信ピアが到着しませんでした。ルーター (TCP 38291) で手動ポート転送を構成するか、UPnP を有効にして、「再試行」をクリックします。この状態でもアウトバウンド接続は引き続き機能します。"
+      "inactive_paragraph": "UPnP が失敗し、受信ピアが到着しませんでした。ルーター (TCP 38291) で手動ポート転送を構成するか、UPnP を有効にして、「再試行」をクリックします。この状態でもアウトバウンド接続は引き続き機能します。",
+      "diag_chosen_lan_ip": "選択された LAN IP",
+      "diag_router_ip": "ルーター IP",
+      "diag_control_url": "コントロール URL",
+      "diag_external_ip": "外部 IP",
+      "diag_private_double_nat": "(プライベート — 二重 NAT)",
+      "diag_add_port_mapping_tries": "AddPortMapping 試行回数",
+      "diag_last_fault": "最後のエラー"
     },
     "security_info": {
       "wallet_local": "Irium Core はウォレット ファイルをローカルに保存します。秘密鍵がマシンから離れることはありません。ウォレットファイルは暗号化されています。シード フレーズは常にバックアップし、オフラインに保管してください。",
@@ -325,11 +336,14 @@
       "reset_state_success": "状態をリセットしました — バックアップ先 {{path}}",
       "reset_state_no_backup": "バックアップする既存の状態がありません — 新しい状態を作成しました",
       "reset_state_rebuilding": "node再起動中 — ローカルblockからUTXOセットを再構築中(5〜15分)",
-      "reset_state_failed": "リセットに失敗しました: {{reason}}"
+      "reset_state_failed": "リセットに失敗しました: {{reason}}",
+      "external_ip_placeholder": "例: 203.0.113.42"
     },
     "developer_info": {
       "reset_onboarding": "オンボーディングをリセットする",
-      "reset_onboarding_description": "次回起動時に初回実行セットアップ ウィザードを再度表示する"
+      "reset_onboarding_description": "次回起動時に初回実行セットアップ ウィザードを再度表示する",
+      "show_legacy_settlement": "レガシー決済 UI を表示",
+      "show_legacy_settlement_description": "新しい SafeTrade / PayForWork / Deposit フローではなく、元のテンプレートグリッド方式の決済ページを使用します。次回 /settlement への遷移時に有効になります。"
     },
     "action_bar": {
       "are_you_sure": "本気ですか？",
@@ -469,7 +483,27 @@
       "rename_wallet_file": "ウォレットファイルの名前を変更する",
       "delete_wallet_file": "このウォレットファイルを完全に削除します",
       "manage_wallets": "ウォレットを管理する",
-      "manage_description": "ウォレットファイル、インポート、隠しアドレス"
+      "manage_description": "ウォレットファイル、インポート、隠しアドレス",
+      "manage_button": "管理",
+      "copy_address": "アドレスをコピー",
+      "add_address_button": "アドレスを追加",
+      "generating": "生成中…",
+      "empty_state": "アドレスはまだありません。「管理」を開いて追加してください。",
+      "add_address_confirm_title": "新しいアドレスを追加しますか?",
+      "add_address_confirm_body": "ウォレットシードから次のアドレスを導出します。作成されたアドレスはウォレットファイルから削除できません — 表示リストから非表示にできるだけです。",
+      "set_primary_button": "メインに設定",
+      "primary_button_short": "メイン",
+      "export_wif_short_tooltip": "WIF をエクスポート",
+      "wif_short": "WIF",
+      "qr_short": "QR",
+      "hide_button_short": "非表示",
+      "no_addresses_panel": "アドレスはまだありません。",
+      "panel_description": "アドレスはウォレットシードから導出され、完全には削除できません。「非表示」を使って表示から除去してください。",
+      "label_placeholder_primary": "例: メイン · マイニング",
+      "label_placeholder_other": "例: マイニング",
+      "edit_label": "ラベルを編集",
+      "add_custom_label": "カスタムラベルを追加",
+      "address_qr_label": "アドレス QR"
     },
     "send": {
       "title": "IRMを送信する",
@@ -499,12 +533,44 @@
         "unconfirmed": "あなたの資金はまだ確認されていません。送信する前に少なくとも 1 回の確認を待ってください。",
         "double_spend": "このトランザクションは別の保留中のトランザクションと競合します。しばらく待ってからもう一度お試しください。",
         "generic": "トランザクションをブロードキャストできませんでした。ノードがオンラインであることを確認して、再試行してください。",
-        "fallback": "トランザクションが失敗しました。もう一度試してください。"
-      }
+        "fallback": "トランザクションが失敗しました。もう一度試してください。",
+        "insufficient_for_fee": "ネットワーク手数料に対して残高が不足しています。アドレス残高 {{balance}} sats、最低手数料 {{fee}} sats。",
+        "cannot_compute_max": "最大値を計算できません — {{reason}}",
+        "node_still_syncing": "ノードはまだ同期中です ({{persisted}}/{{height}} ブロック)。このダイアログを閉じて、同期完了を待ってからやり直してください。",
+        "not_accepted_mempool": "トランザクションがノードのメンプールに受け入れられませんでした"
+      },
+      "button_label": "送金",
+      "node_offline_tooltip": "送金するにはノードがオンラインである必要があります",
+      "node_syncing_tooltip": "ノードは同期中です — 送金前にお待ちください",
+      "max_button": "最大",
+      "no_spendable_funds_suffix": " — 使用可能な資金がありません",
+      "no_spendable_in_wallet": "このウォレットには使用可能な資金がありません。",
+      "estimated_fee_25k": "推定手数料: 約 25,000 sats",
+      "estimated_fee_label": "推定手数料",
+      "estimated_fee_value_25k": "約 25,000 sats",
+      "amount_sats_label": "金額 (sats)",
+      "confirm_send_prefix": "送金",
+      "confirm_send_to_suffix": "宛先",
+      "back_button": "← 戻る",
+      "transaction_sent_title": "トランザクション送信完了",
+      "transaction_sent_subtitle": "トランザクションは次のブロックに表示されます",
+      "transaction_sent_explanation": "トランザクションは秘密鍵で暗号的に署名され、ネットワークにブロードキャストされました。次にマイニングされるブロックに含まれることで永続的に保護されます。",
+      "status_signed": "署名済み",
+      "private_key_verified": "秘密鍵を検証しました",
+      "status_confirming": "確認中",
+      "next_mined_block": "次のマイニングブロック",
+      "transaction_id_label": "トランザクション ID",
+      "copy_transaction_id": "トランザクション ID をコピー",
+      "view_in_explorer": "エクスプローラーで表示"
     },
     "receive": {
       "title": "IRMを受信する",
-      "scan_qr_hint": "このQRコードをスキャンするか、以下のアドレスをコピーしてください"
+      "scan_qr_hint": "このQRコードをスキャンするか、以下のアドレスをコピーしてください",
+      "button_label": "受取",
+      "send_to_this_address": "このアドレスに IRM を送ってください:",
+      "no_address_short": "アドレスなし",
+      "no_address_available": "利用可能なアドレスがありません",
+      "copy_address_button": "アドレスをコピー"
     },
     "security": {
       "section_title": "安全",
@@ -519,7 +585,16 @@
       "seed_modal_title": "あなたの回復フレーズ",
       "seed_modal_warning": "これを紙に書き留めてください。これら 24 の単語を持っている人は誰でもあなたの資金を使うことができます。",
       "wif_label": "WIF秘密キー",
-      "backup_warning": "このファイルにはすべての秘密キーが含まれています。安全に保管してください。"
+      "backup_warning": "このファイルにはすべての秘密キーが含まれています。安全に保管してください。",
+      "backup_subsection": "バックアップ",
+      "restore_subsection": "復元",
+      "export_wif_dialog_title": "WIF キーをエクスポート",
+      "export_wif_private_key_dialog_title": "WIF 秘密鍵をエクスポート",
+      "text_file_filter": "テキスト",
+      "backup_dialog_title": "ウォレットバックアップを保存",
+      "select_backup_dialog_title": "ウォレットバックアップファイルを選択",
+      "backup_filter_name": "ウォレットバックアップ",
+      "all_files_filter": "すべてのファイル"
     },
     "transactions": {
       "section_title": "トランザクション",
@@ -529,7 +604,17 @@
       "confirmations": "{{count}} 確認",
       "pending": "保留中",
       "received": "受け取った",
-      "sent": "送信済み"
+      "sent": "送信済み",
+      "confirmed": "承認済み",
+      "for_address": "アドレス {{address}}",
+      "mempool_awaiting": "メンプール · 承認待ち",
+      "miner_label": "マイナー: {{address}}",
+      "fee_label": "手数料: {{amount}} sats",
+      "txid_label": "TXID: {{txid}}",
+      "conf_short": "{{count}} 承認",
+      "block_number": "ブロック #{{height}}",
+      "open_in_explorer": "エクスプローラーで開く",
+      "copy_txid": "TXID をコピー"
     },
     "toasts": {
       "send_success": "送信済み — txid {{txid}}",
@@ -565,7 +650,13 @@
       "wif_copied": "WIFがコピーされました",
       "name_invalid_chars": "ウォレット名に次の文字を含めることはできません: / \\ : * ? \" < > |",
       "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
-      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up.",
+      "node_syncing_wait": "ノード同期中 — {{persisted}}/{{height}} ブロック。お待ちください。",
+      "failed_add_address": "アドレスの追加に失敗しました: {{reason}}",
+      "no_recovery_data": "ウォレットにリカバリーデータが見つかりません",
+      "wallet_deleted": "{{name}} を削除しました",
+      "seed_copied": "シードをコピーしました",
+      "invalid_wallet_path": "ウォレットバイナリが無効なパスを返しました: {{path}}"
     },
     "encryption": {
       "migration_title": "Encrypt your wallet",
@@ -588,6 +679,120 @@
       "needs_migration_status": "Wallet on disk uses the legacy unencrypted format and must be encrypted before use.",
       "plaintext_backup_warning": "Plaintext backup file(s) detected at {{paths}}. Delete after verifying the migration succeeded.",
       "recover_link": "Forgot your password? Recover with seed phrase"
+    },
+    "no_wallet_loaded": "ウォレットが読み込まれていません — 下で作成またはインポートしてください",
+    "balance_label": "残高",
+    "balance_label_for_address": "残高 · アドレス {{index}}",
+    "satoshis_amount": "{{amount}} satoshis",
+    "unconfirmed": "未承認",
+    "wallet_wide": "(ウォレット全体)",
+    "syncing_tooltip": "送金前にノードの同期完了を待ってください。今送ると UTXO セットの再構築中のため、署名検証エラーで失敗する可能性があります。",
+    "syncing_progress": "同期中…",
+    "gaps_count": "{{count}} ギャップ",
+    "common": {
+      "cancel": "キャンセル",
+      "done": "完了",
+      "reveal": "表示",
+      "hide": "非表示",
+      "copy": "コピー",
+      "delete": "削除",
+      "loading": "読み込み中…"
+    },
+    "seed": {
+      "recovery_phrase_title": "リカバリーフレーズ",
+      "wallet_seed_title": "ウォレットシード",
+      "recovery_phrase_warning": "リカバリーフレーズを共有しないでください。この 24 ワードを持つ者は誰でもすべての資金にアクセスできます。オフラインで安全に保管してください。",
+      "wallet_seed_warning": "ウォレットシードを共有しないでください。この 16 進数値はすべての資金への完全なアクセス権を与えます。オフラインで安全に保管してください。",
+      "custom_seed_hint": "このウォレットはカスタムシードを使用しています。復元にはこの 16 進数シードをバックアップしてください。",
+      "copy_phrase": "フレーズをコピー",
+      "copy_seed": "シードをコピー"
+    },
+    "restore": {
+      "title": "バックアップから復元",
+      "warning_body": "現在のウォレットデータが上書きされます。続行前に WIF キーまたはバックアップファイルがあることを確認してください。復元完了後、新しいウォレット状態がクリーンに反映されるよう、ノードは自動的に再起動します。",
+      "restore_button": "ウォレットを復元"
+    },
+    "create_modal": {
+      "create_title": "ウォレットを作成",
+      "import_title": "ウォレットをインポート",
+      "create_new_tab": "新規作成",
+      "import_tab": "インポート",
+      "generate_description": "24 ワードのリカバリーフレーズで新しい BIP39 ウォレットを生成します。",
+      "creating": "作成中…",
+      "create_new_wallet_button": "新しいウォレットを作成",
+      "save_warning": "24 ワードのリカバリーフレーズをオフラインで保存してください — ウォレット全体を復元できます。WIF キーは単一のアドレスをバックアップします。どちらも紛失すると回復できません。",
+      "address_label": "アドレス",
+      "recovery_phrase_label": "リカバリーフレーズ (24 ワード)",
+      "recovery_phrase_hint": "(どちらか 1 つのフレーズでウォレットを復元できます)",
+      "wif_label": "WIF キー",
+      "wif_hint": "(秘密鍵のポータブル形式)",
+      "loading_wif": "WIF を読み込み中…",
+      "export_wif_to_file": "WIF をファイルにエクスポート",
+      "saved_confirmation": "リカバリーフレーズと WIF キーを安全に保存しました。",
+      "import_notice_lead": "新しいウォレットをインポートします。現在のウォレットはそのまま残り、次から切り替えて戻すことができます:",
+      "seed_phrase_method": "シードフレーズ",
+      "wif_key_method": "WIF キー",
+      "seed_phrase_input_label": "シードフレーズ (12 または 24 ワード)",
+      "seed_phrase_placeholder": "word1 word2 word3 …",
+      "bip39_hint": "BIP39 リカバリーフレーズ (スペース区切り)。",
+      "wif_placeholder": "5J… または K… または L…",
+      "wif_format_hint": "WIF 形式 — 5、K、または L で始まります。",
+      "import_button": "インポート"
+    },
+    "new_address": {
+      "title": "新しいアドレス",
+      "derived_lead": "ウォレットの BIP32 シードから新しいアドレスが導出されました。あなたの",
+      "derived_emphasis": "リカバリーフレーズは変更されていません",
+      "derived_trail": "— このアドレスは既存のアドレスと同じウォレットファイルを共有しています。",
+      "copy_address": "アドレスをコピー",
+      "wif_private_key_label": "WIF 秘密鍵",
+      "wif_warning": "この WIF を持つ者は誰でもこのアドレスの資金を使用できます。オフラインで保管してください。",
+      "copy_wif": "WIF をコピー",
+      "recovery_reminder_lead": "このアドレスはウォレットリカバリーフレーズを共有します。表示するには次に移動:",
+      "recovery_reminder_path": "セキュリティ → リカバリーフレーズを表示"
+    },
+    "files": {
+      "section_title": "ウォレットファイル",
+      "section_description": "各ファイルには独自のシードがあります。切り替えて別のウォレットを読み込んでください。",
+      "no_files_found": "~/.irium/ にウォレットファイルが見つかりません",
+      "rename_placeholder": "wallet-name",
+      "active_badge": "アクティブ",
+      "switch_button": "切り替え",
+      "create_new_wallet_file": "新しいウォレットファイルを作成",
+      "create_new_advanced_hint": "(上級者向け — 別のシード)",
+      "create_new_description": "独自のシードを持つ別のウォレットファイルを作成します。現在のウォレットはディスクに残り、このリストから切り替えて戻すことができます。"
+    },
+    "hidden": {
+      "section_title": "非表示アドレス",
+      "still_in_file": "(ウォレットファイル内に残っています)",
+      "description": "アドレスはウォレットファイルから完全には削除できません。非表示アドレスは表示から除去されますが復元可能です — 「再表示」をクリックして戻します。",
+      "unhide_button": "再表示"
+    },
+    "delete_file": {
+      "confirm_title": "このウォレットファイルを完全に削除しますか?",
+      "address_count": "{{count}} アドレス",
+      "address_count_one": "{{count}} アドレス",
+      "warning_label": "警告:",
+      "warning_funds_lead": "このウォレットには資金が含まれています。バックアップなしで削除すると、次の資金を永久に失います:",
+      "warning_funds_trail": "。進める前に WIF キーまたはシードフレーズをエクスポート済みであることを確認してください。",
+      "warning_unknown_lead": "残高を確認できませんでした — ノードがオフラインの可能性があります。このウォレットに資金があり、シードフレーズや WIF キーをバックアップしていない場合、削除すると次のように",
+      "warning_unknown_emphasis": "永久に失われます",
+      "warning_unknown_trail": "。",
+      "warning_zero_lead": "ファイルをディスクから削除します。このウォレットのシードフレーズや WIF キーをバックアップしていない場合、すべての資金は次のように",
+      "warning_zero_emphasis": "永久に失われます",
+      "warning_zero_trail": "。この操作は取り消せません。",
+      "type_prompt_prefix": "次を入力:",
+      "type_prompt_word": "DELETE",
+      "type_prompt_suffix": "して確認",
+      "deleting": "削除中…",
+      "delete_forever": "完全に削除"
+    },
+    "hide_address": {
+      "confirm_title": "このアドレスを非表示にしますか?",
+      "body_lead": "アドレスはウォレットファイル内に残ります — 表示リストのみが更新されます。後で",
+      "body_emphasis": "再表示",
+      "body_trail": "を非表示アドレスセクションから行うことができます。",
+      "confirm_button": "アドレスを非表示"
     }
   },
   "agreements": {
@@ -621,7 +826,18 @@
       "share_text": "テキストを共有する",
       "delete": "消去",
       "submitting": "送信中…",
-      "sign": "サイン"
+      "sign": "サイン",
+      "fund_escrow": "エスクローに資金投入",
+      "release_to_counterparty": "相手方にリリース",
+      "submit_proof": "プルーフを提出",
+      "refund": "返金",
+      "agreement_expired": "契約期限切れ",
+      "create_and_submit_proof": "プルーフを作成して提出",
+      "confirm_release": "リリースを確認",
+      "confirm_fund": "資金投入を確認",
+      "confirm_open_dispute": "紛争開始を確認",
+      "use_this_invoice": "このインボイスを使用 →",
+      "verify_signature_file": "署名ファイルを検証…"
     },
     "proof_modal": {
       "title": "証拠を提出する",
@@ -634,7 +850,15 @@
       "evidence_summary": "証拠の概要",
       "evidence_placeholder": "例えば銀行振込で 50 ドルの支払いを受け取りました (参照番号 12345)。",
       "submit_button": "証拠を提出する",
-      "submitting": "送信中…"
+      "submitting": "送信中…",
+      "intro": "アプリ内で署名付きプルーフを作成するか、既存のものをアップロードします。",
+      "mode_create": "証拠から作成",
+      "mode_upload": "ファイルをアップロード",
+      "mode_create_sub": "アプリ内で作成",
+      "mode_upload_sub": "既存ファイルを使用",
+      "upload_note_prefix": "このタブは、すでにプルーフファイルがある場合のみ使用してください — 例えば相手方や証明者があなたのために署名したもの、または次の方法で作成したもの:",
+      "upload_note_middle": "自分のプルーフを提出する場合は、",
+      "upload_note_suffix": "上のタブを使用してください — アプリを離れることなくプルーフを作成・提出できます。"
     },
     "toasts": {
       "agreement_signed": "契約書が署名されました。",
@@ -663,7 +887,9 @@
       "signature_valid": "署名は有効です (署名者 {{signer}})",
       "signature_invalid": "署名が無効です: {{reason}}",
       "agreement_signed_short": "契約書が署名されました。",
-      "sign_failed": "署名に失敗しました"
+      "sign_failed": "署名に失敗しました",
+      "cleanup_removed": "{{count}} 件の契約を削除しました",
+      "cleanup_removed_with_failures": "{{count}} 件の契約を削除しました ({{failed}} 件失敗)"
     },
     "refund": {
       "blocked_default": "返金対象か不明",
@@ -685,13 +911,26 @@
       "share_text": "この契約のプレーンテキストの概要をクリップボードにコピーします",
       "delete_local": "この契約をローカル ストアから削除してください。相手方のコピーには影響しません。",
       "save_friendly_name": "この契約のフレンドリ名を保存します (ローカルに保存)",
-      "verify_signature_file": "この契約に基づいて署名ファイル (.sig または .json) を検証します。"
+      "verify_signature_file": "この契約に基づいて署名ファイル (.sig または .json) を検証します。",
+      "cleanup_old_test_data": "ID に test / gossip / demo / pr を含む契約をローカルストアから削除します",
+      "node_offline_sign": "署名するにはノードがオンラインである必要があります",
+      "sign_to_confirm": "この契約に署名して参加を確認してください",
+      "node_offline_fund": "エスクローに資金を投入するにはノードがオンラインである必要があります",
+      "fund_escrow_action": "契約金額を HTLC エスクローにロックします",
+      "node_offline_release": "資金をリリースするにはノードがオンラインである必要があります",
+      "release_to_counterparty": "資金を相手方にリリース",
+      "node_offline_dispute": "紛争を開始するにはノードがオンラインである必要があります",
+      "mark_disputed": "この契約を紛争中としてマーク — 解決にはリゾルバーの証明が必要です",
+      "node_offline_refund": "返金するにはノードがオンラインである必要があります",
+      "view_audit": "完全なオンチェーン監査記録を表示"
     },
     "buttons": {
       "import_invoice": "請求書のインポート",
       "import_pack": "インポートパック",
       "browse": "ブラウズ",
-      "delete_agreement": "契約の削除"
+      "delete_agreement": "契約の削除",
+      "cleanup_old_test_data": "古いテストデータをクリーンアップ ({{count}})",
+      "export_pack": "パックをエクスポート"
     },
     "page_views": {
       "agreements": "協定",
@@ -744,12 +983,19 @@
       "seller": "売り手",
       "signer_wallet": "署名者のウォレットアドレス",
       "role": "役割：",
-      "reason": "理由："
+      "reason": "理由：",
+      "agreement_short": "契約",
+      "signer_prefix": "署名者"
     },
     "placeholders": {
       "your_wallet_address": "あなたのウォレットアドレス",
       "secret_preimage": "オプション · 64 文字の 16 進数",
-      "dispute_reason": "何が問題だったかを説明します。これはリゾルバーと共有されます。"
+      "dispute_reason": "何が問題だったかを説明します。これはリゾルバーと共有されます。",
+      "output_pack_path": "/path/to/output.pack.json",
+      "proof_json_path": "/path/to/proof.json",
+      "pack_json_path": "/path/to/agreement.pack.json",
+      "invoice_json_path": "/path/to/invoice.json",
+      "hash_64_hex": "64 文字の 16 進数"
     },
     "modals": {
       "submit_proof_title": "証拠の提出",
@@ -757,16 +1003,117 @@
       "import_invoice_title": "請求書のインポート",
       "open_dispute_title": "オープン紛争?",
       "audit_title": "契約監査",
-      "sign_title": "契約書に署名する"
+      "sign_title": "契約書に署名する",
+      "delete_confirm_prefix": "契約を削除",
+      "delete_confirm_body": "ローカルストアからのみ契約を削除します。相手方のコピーには影響しません。資金未投入(open/pending)の契約のみ削除可能です。",
+      "cleanup_title": "古いテストデータをクリーンアップ",
+      "cleanup_found": "ID に test、gossip、demo、または pr を含む契約が {{count}} 件見つかりました。",
+      "cleanup_disclaimer": "ローカルストアからのみ削除します。相手方のコピーには影響しません。アクティブなオンチェーン HTLC は変更されません — 資金は別途リリースまたは返金する必要があります。",
+      "cleanup_remove_count": "{{count}} 件を削除",
+      "release_funds_title": "資金をリリースしますか?",
+      "release_funds_body_prefix": "次の金額をリリースします:",
+      "release_funds_body_suffix": "を売り手に。",
+      "fund_escrow_title": "エスクローに資金を投入しますか?",
+      "fund_escrow_body_prefix": "次の金額をロックします:",
+      "fund_escrow_body_suffix": "を HTLC エスクローに。プルーフ承認時に相手方へリリースされるか、タイムアウト高さ後に返金されます。",
+      "import_pack_format_prefix": "対応フォーマット:",
+      "import_pack_format_suffix": "— 当事者 A がエクスポート",
+      "import_invoice_subtitle": "インボイス JSON を選択して決済画面で新規契約を事前入力します。"
     },
     "audit": {
-      "fetching": "監査レコードを取得しています…"
+      "fetching": "監査レコードを取得しています…",
+      "no_data": "監査 RPC からデータが返されませんでした",
+      "show_raw_json": "生の JSON を表示",
+      "hide_raw_json": "生の JSON を非表示"
     },
     "empty": {
       "no_signatures": "まだ署名が検証されていません。上のボタンを使用して確認してください。",
       "no_wallet_addresses": "ウォレットアドレスがありません",
       "no_disputes": "異論はありません。",
-      "disputes_offline": "(ノードはオフラインです - 紛争リストは利用できない可能性があります。)"
+      "disputes_offline": "(ノードはオフラインです - 紛争リストは利用できない可能性があります。)",
+      "no_agreements_found": "契約が見つかりません",
+      "with_status": "ステータス",
+      "matching": "一致",
+      "go_to_settlement_cta": "決済に移動して最初の契約を作成 →"
+    },
+    "scope": {
+      "my": "自分の契約",
+      "all": "すべて"
+    },
+    "dialog_titles": {
+      "save_agreement_pack": "契約パックを保存",
+      "select_proof_file": "プルーフファイルを選択 (.json)",
+      "select_pack_file": "契約パックを選択 (.pack.json)",
+      "select_invoice_file": "インボイス JSON を選択",
+      "select_signature_file": "署名ファイルを選択"
+    },
+    "timeline": {
+      "created": "作成済み",
+      "funded": "資金投入済み",
+      "proof_submitted": "プルーフ提出済み",
+      "released": "リリース済み",
+      "refunded": "返金済み"
+    },
+    "detail_labels": {
+      "template": "テンプレート",
+      "created": "作成日",
+      "deadline": "期限",
+      "proof_status": "プルーフステータス",
+      "release_eligible": "リリース可能",
+      "kind": "種別",
+      "threshold": "しきい値",
+      "attestors": "証明者",
+      "parties": "当事者",
+      "amount": "金額",
+      "payer": "支払者",
+      "payee": "受取人",
+      "outcome": "結果",
+      "satisfied": "履行済み",
+      "reason": "理由"
+    },
+    "detail_values": {
+      "none": "なし",
+      "party": "当事者",
+      "parties": "当事者"
+    },
+    "sections": {
+      "policy": "ポリシー",
+      "proofs": "プルーフ",
+      "timeline": "タイムライン ({{count}} 件のイベント)",
+      "proofs_count": "プルーフ ({{count}})",
+      "funding_legs": "資金投入 ({{count}} レッグ)",
+      "linked_transactions": "関連トランザクション ({{count}})"
+    },
+    "warnings": {
+      "proof_finality_body": "リリース前にさらなるブロック承認を待ってください — チェーンの再編成によりプルーフが取り消される可能性があります。",
+      "open_dispute_body": "紛争を開始すると、リゾルバーが双方の証拠を確認する必要があります。進める前に十分な理由と裏付けとなるプルーフを用意してください。この操作は取り消せません。"
+    },
+    "helpers": {
+      "sign_confirms_participation": "署名により参加が確認されます。資金投入の前に両当事者の署名が必要です。",
+      "sign_modal_body": "ウォレットキーでこの契約に署名すると、参加が確認されます。資金投入の前に両当事者の署名が必要です。",
+      "no_hash_on_file": "この契約のハッシュが記録されていません — 相手方が共有したハッシュを貼り付けてください。",
+      "no_file_selected": "ファイルが選択されていません",
+      "secret_auto_loaded": "ローカルの agreement-secrets ストアから自動読み込み",
+      "secret_required_hint": "自分でこの契約を作成していない場合は必須です。ウォレットが自動的に導出する場合は空欄のままにしてください。",
+      "use_invoice_hint": "Use This Invoice をクリックすると、OTC テンプレートが事前入力された決済画面に移動します。契約作成前にテンプレートの変更、フィールド編集、確認ができます。",
+      "signer_unknown": "不明",
+      "rejected": "却下済み",
+      "role_buyer_suffix": "(買い手)",
+      "role_seller_suffix": "(売り手)",
+      "signer_not_party": "このアドレスは買い手でも売り手でもありません — 当事者の役割なしで署名が記録されます。"
+    },
+    "form_errors": {
+      "hash_required": "契約ハッシュは必須です",
+      "proof_type_required": "プルーフタイプを選択してください",
+      "attested_by_required": "証明者アドレスは必須です",
+      "evidence_required": "証拠サマリーに何が起こったかを記載してください",
+      "secret_must_be_64_hex": "64 文字の 16 進数 (0-9, a-f) を正確に入力してください。"
+    },
+    "disputes": {
+      "opened_prefix": "開始済み",
+      "resolved_prefix": "· 解決済み",
+      "open_this_agreement": "この契約を開く",
+      "agreement_not_in_list": "現在のリストに契約がありません — 契約ビューを更新してください"
     }
   },
   "settlement": {
@@ -971,14 +1318,72 @@
       "confirm_large_amount": "{{amount}} IRM をエスクローにロックしようとしています。\n\nこれは大量です。小数点を正しく入力したことを確認してください。",
       "remote_label": "リモート",
       "remote_tooltip": "このオファーは別の販売者からのものであるため、地元のストアから削除することはできません。",
-      "delete_tooltip": "このオファーをローカルストアから削除してください"
+      "delete_tooltip": "このオファーをローカルストアから削除してください",
+      "modal_title": "売り注文を作成",
+      "modal_subtitle": "オーダーブックにオファーを掲載 — 買い手が注文を取った瞬間に IRM がロックされます。",
+      "post_offer_button": "オファーを掲載",
+      "lock_info_prefix": "買い手が確定した瞬間に IRM がロックされます。その後、買い手のオフチェーン支払いを受け取り、次をクリック:",
+      "confirm_received_label": "受領を確認",
+      "lock_info_suffix": "してリリース。または支払いがない場合は紛争を開始してください。",
+      "amount_to_sell_label": "売却する IRM の金額",
+      "price_per_irm_label": "IRM あたりの価格 (USDT)",
+      "buyer_pays_total_prefix": "買い手の支払い総額:",
+      "buyer_pays_total_amount": "{{amount}} USDT",
+      "payment_method_label": "支払い方法",
+      "your_payment_details_label": "支払い先情報",
+      "payment_details_placeholder": "例: IBAN DE89 3704 0044 0532 0130 00 または PayPal: seller@example.com",
+      "payment_details_helper": "オファーを受けた後、買い手にこの情報が表示されます。",
+      "payment_options": {
+        "bank_transfer": "銀行振込",
+        "paypal": "PayPal",
+        "usdt_trc20": "USDT (TRC-20)",
+        "usdt_erc20": "USDT (ERC-20)",
+        "sepa": "SEPA",
+        "cash": "現金",
+        "other": "その他"
+      },
+      "errors": {
+        "positive_irm_amount": "正の IRM 金額を入力してください",
+        "positive_usdt_price": "IRM あたりの正の USDT 価格を入力してください",
+        "select_payment_method": "支払い方法を選択してください",
+        "payment_details_required": "買い手が支払い方法を分かるように、支払い先情報を入力してください"
+      },
+      "toasts": {
+        "offer_posted": "オファーが掲載されました。買い手が確定した瞬間に IRM がロックされます。"
+      }
     },
     "take_offer": {
       "title": "オファーを受ける",
       "completed_trades": "完了した取引",
       "take_button": "オファーを受ける",
       "taking": "撮影中…",
-      "title_modal": "このオファーを利用してください"
+      "title_modal": "このオファーを利用してください",
+      "set_buyer_address_first": "まず買い手アドレスを設定してください",
+      "error_agreement_id_missing": "オファーを取りましたがレスポンスに契約 ID がありません",
+      "irm_locked_send_payment": "IRM がエスクローにロックされました。オフチェーン支払いを送ってください。",
+      "dispute_reason_buyer_cancelled": "買い手が支払い前にキャンセルしました",
+      "dispute_opened_refund_hint": "紛争が開始されました。タイムアウト後に契約ページから返金を請求できます。",
+      "enter_payment_reference": "売り手が支払いを確認できるよう、取引 ID またはメモを入力してください",
+      "payment_reported_seller_notified": "支払いを報告しました。売り手に通知されました。",
+      "step_of_two": "ステップ {{step}} / 2",
+      "step1_intro": "確認すると売り手の IRM がエスクローにロックされます。その後、期限内にオフチェーン支払いを送って取引を報告する必要があります。",
+      "you_receive": "受取:",
+      "payment_method": "支払い方法:",
+      "seller": "売り手:",
+      "buyer_you": "買い手 (あなた):",
+      "not_set": "- 未設定 -",
+      "cancel": "キャンセル",
+      "confirm_take": "取得を確認",
+      "irm_locked_in_escrow": "IRM がエスクローにロックされました",
+      "step2_intro": "売り手の IRM はロックされています。オフチェーン支払いを送り、下に取引参照番号を入力して「支払いを送りました」をクリックしてください。",
+      "sellers_payment_details": "売り手の支払い情報",
+      "no_payment_details": "オファーに詳細がありません。支払い方法は売り手に直接連絡してください。",
+      "your_transaction_reference": "あなたの取引参照番号",
+      "payment_reference_placeholder": "銀行振込参照、PayPal txid、ブロックチェーン txid など。",
+      "payment_reference_hint": "売り手にはこれがそのまま表示されます。支払い到着の確認に使える情報なら何でも構いません - 参照番号、取引 ID、送金者名など。",
+      "cancel_opens_dispute_warning": "ここでキャンセルすると紛争が開始されます。タイムアウト後に契約ページから返金を請求できます。",
+      "cancel_and_dispute": "キャンセルして紛争",
+      "i_have_sent_payment": "支払いを送りました"
     },
     "feeds": {
       "discover_button": "フィードを発見する",
@@ -1026,7 +1431,189 @@
     },
     "swap": {
       "fuel_banner_title": "IRMは決済レイヤーの基盤です。",
-      "fuel_banner_body": "BTC、LTC、またはDOGEをIRMに交換して、信頼不要の取引を始めましょう。"
+      "fuel_banner_body": "BTC、LTC、またはDOGEをIRMに交換して、信頼不要の取引を始めましょう。",
+      "pair_not_available": "このペアはまだ利用できません",
+      "own_order_hint": "それはあなた自身の注文です。右の「自分のスワップ」パネルでキャンセルしてください。",
+      "not_available_yet": "まだ利用できません",
+      "how_it_works_title": "{{pair}} スワップの仕組み",
+      "how_it_works_step1": "左のオーダーブックから注文を選ぶか、自分で投稿します。",
+      "how_it_works_step2": "注文が取られた瞬間、売り手の IRM がエスクローにロックされます。",
+      "how_it_works_step3": "買い手は {{quote}} を売り手のアドレスに送ります。",
+      "how_it_works_step4": "支払いが承認されると、IRM が自動的に買い手にリリースされます。"
+    },
+    "header": {
+      "subtitle_otc": "ピアツーピア OTC。IRM をエスクローにロックし、あらゆるものとスワップ。",
+      "subtitle_swap": "IRM と他チェーン間のアトミックスワップ。トラストレス。ブリッジ不要。",
+      "advanced_flows": "高度なフロー",
+      "advanced_flows_tooltip": "低レベルの決済フローを開きます。"
+    },
+    "mode_tabs": {
+      "otc": "OTC P2P",
+      "swap": "スポットスワップ"
+    },
+    "my_trades": {
+      "title": "自分の取引",
+      "tab_active": "アクティブ",
+      "tab_completed": "完了",
+      "tab_all": "すべて",
+      "empty_active": "アクティブな取引はありません。オーダーブックからオファーを取って開始してください。",
+      "empty_completed": "完了した取引はまだありません。",
+      "empty_all": "取引はまだありません。オーダーブックからオファーを取って開始してください。",
+      "side_buy": "買い",
+      "side_sell": "売り"
+    },
+    "trade_status": {
+      "released": "リリース済み",
+      "refunded": "返金済み",
+      "expired": "期限切れ",
+      "cancelled": "キャンセル済み",
+      "disputed": "紛争中",
+      "confirming": "確認中",
+      "locked": "ロック済み",
+      "proposed": "提案済み",
+      "drafting": "下書き中"
+    },
+    "order_book": {
+      "title": "オーダーブック",
+      "create_order": "注文を作成",
+      "offers_count_one": "オファー",
+      "offers_count_other": "オファー",
+      "offers_count": "オファー",
+      "hidden_tooltip_one": "価格未提示のため {{count}} 件のオファーが非表示",
+      "hidden_tooltip_other": "価格未提示のため {{count}} 件のオファーが非表示",
+      "hidden_tooltip": "価格未提示のため {{count}} 件のオファーが非表示",
+      "hidden_suffix": "{{count}} 件が非表示",
+      "show_taken": "成立済みを表示",
+      "sort": {
+        "price_asc": "価格 ↑",
+        "price_desc": "価格 ↓",
+        "newest": "新着順",
+        "best_rep": "評価順"
+      },
+      "updated_ago": "更新 {{time}}",
+      "refreshing": "更新中…",
+      "refreshing_lower": "更新中…",
+      "empty_prefix": "オーダーブックにオファーはまだありません。次をクリック:",
+      "empty_suffix": "最初の 1 件を掲載してください。",
+      "col_amount_irm": "数量 IRM",
+      "col_price_per_irm": "価格 / IRM",
+      "col_total": "合計",
+      "col_payment": "支払い",
+      "col_seller": "売り手",
+      "col_rep": "評価",
+      "col_age": "経過時間",
+      "rep_tooltip": "5 点中 {{stars}}、{{completed}} 件完了",
+      "no_reputation": "評価なし",
+      "taken": "成立済み",
+      "take": "取る"
+    },
+    "pair_order_book": {
+      "header_title": "{{pair}} オーダーブック",
+      "open_shown_summary": "{{open}} 件公開 · {{shown}} 件表示",
+      "updated_label": "更新",
+      "new_swap": "新規スワップ",
+      "direction_both": "両方",
+      "direction_sell_irm": "IRM を売る",
+      "direction_buy_irm": "IRM を買う",
+      "sort_price_asc": "ベスト価格優先",
+      "sort_price_desc": "最高価格優先",
+      "sort_recent": "新着順",
+      "hide_my_orders": "自分の注文を非表示",
+      "loading_orders": "{{pair}} の注文を読み込み中…",
+      "empty_state": "公開中の {{pair}} 注文はありません。最初の 1 件として上の「新規スワップ」ボタンから掲載してください。",
+      "side_sells_irm": "IRM を売り",
+      "side_buys_irm": "IRM を買い",
+      "badge_yours": "あなた",
+      "escrow_protected": "エスクロー保護",
+      "maker_line": "メイカー {{address}} · {{ago}}",
+      "needs_confirmations": "{{network}} 側で {{count}} 回の承認が必要",
+      "needs_confirmations_plural": "{{network}} 側で {{count}} 回の承認が必要",
+      "relative_recent": "最近",
+      "relative_just_now": "たった今",
+      "relative_blocks_ago": "{{count}} ブロック前",
+      "relative_blocks_ago_one": "{{count}} ブロック前",
+      "relative_hours_ago": "{{count}} 時間前",
+      "relative_days_ago": "{{count}} 日前"
+    },
+    "resolver_picker": {
+      "title": "リゾルバー選択",
+      "intro": "リゾルバーは、買い手と売り手が合意できない場合に IRM の受取者を決定する検証済みの第三者です。リゾルバーは取引成立時に紛争金額から差し引かれる少額の手数料を得ます。",
+      "nominated_section_title": "この取引で指名されたリゾルバー",
+      "primary_label": "プライマリ",
+      "fallback_label": "フォールバック",
+      "fee_with_value": "手数料: {{value}}",
+      "no_nominated_notice": "この取引は指名リゾルバーなしで作成されました。下のリゾルバーが対応する前に、両当事者がウォレットのリゾルバー再指名フローから新たな指名に共同署名する必要があります。",
+      "available_section_title": "利用可能なリゾルバー",
+      "registry_unreachable": "このノードでリゾルバーレジストリのエンドポイントに到達できません ({{error}})。ウォレットのリゾルバー再指名フローを使用して、resolver-list CLI 経由で候補を直接検出してください。",
+      "empty_registry_before": "このノードにリゾルバーはまだ登録されていません。リゾルバーは次を呼び出して登録します:",
+      "empty_registry_after": "アドレスが最近のコインベース出力に表示された後。",
+      "unnamed_resolver": "名前なしリゾルバー",
+      "no_reputation_yet": "評価なし",
+      "agreements_hint": "契約ページを使用して、リゾルバーに追加の証拠を提出し、紛争解決の進行を確認してください。リゾルバーが決定するまで、両当事者はいつでも証拠を提出できます。",
+      "close": "閉じる"
+    },
+    "seller_review": {
+      "toast_released": "IRM をリリースしました。買い手に資金が渡りました。",
+      "dispute_reason": "売り手はオフチェーン支払いを受け取っていません",
+      "toast_dispute_opened": "紛争が開始されました。リゾルバーが証拠を確認します。",
+      "empty_state": "対応待ちの受信取引はありません。買い手があなたのオファーを取って支払いを報告すると、ここに表示されます。",
+      "section_title": "確認する受信取引",
+      "waiting_count": "{{count}} 件待機中",
+      "status_releasing": "リリース中",
+      "status_funded": "資金投入済み",
+      "buyer_label": "買い手:",
+      "buyer_claims_paid": "買い手は {{time}} に支払い送信を申告",
+      "no_reference": "(取引参照番号なし)",
+      "no_payment_yet": "買い手はまだ支払い送信を報告していません。待機するか、期限を過ぎている場合は紛争を開始してください。",
+      "open_dispute_button": "支払いなし - 紛争を開始",
+      "confirm_release_button": "受領確認してリリース",
+      "loading_trades": "取引を読み込み中...",
+      "time_ago_seconds": "{{count}} 秒前",
+      "time_ago_minutes": "{{count}} 分前",
+      "time_ago_hours": "{{count}} 時間前",
+      "time_ago_days": "{{count}} 日前"
+    },
+    "take_swap": {
+      "buy_irm": "IRM を買う",
+      "sell_irm": "IRM を売る",
+      "toast_no_wallet": "アクティブな Irium ウォレットアドレスがありません。まずウォレットを開いてください。",
+      "toast_min_blocks": "返金期限は少なくとも 10 ブロックである必要があります",
+      "toast_locked_buyer": "注文がロックされました。{{code}} 支払いを送って報告してください。",
+      "toast_locked_seller": "注文がロックされました。売り手の IRM がエスクローに入っています。",
+      "toast_need_ref": "売り手が {{code}} 支払いを確認できるよう、取引 ID またはメモを入力してください",
+      "toast_payment_reported": "支払いを報告しました。売り手に通知されました。",
+      "toast_dispute_info": "紛争は契約ページから開始できます。ここでは一旦キャンセルし、契約ページで再度対応してください。",
+      "modal_title": "{{label}} ({{pair}})",
+      "step_of_2": "ステップ {{step}} / 2",
+      "intro_buyer": "確認すると売り手の IRM がエスクローにロックされます。その後、次に表示されるアドレスに {{code}} を送ります。",
+      "intro_seller": "確認するとあなたの IRM で一致するエスクローが作成されます。買い手があなたのアドレスに {{code}} を送ります。",
+      "you_receive": "受取",
+      "you_pay": "支払",
+      "you_send": "送金",
+      "price": "価格",
+      "maker": "メイカー",
+      "maker_foreign_address": "メイカーの {{code}} アドレス",
+      "needs": "必要",
+      "confirmation_one": "{{count}} {{code}} 承認",
+      "confirmation_other": "{{count}} {{code}} 承認",
+      "refund_deadline_label": "返金期限 (Irium ブロック)",
+      "refund_deadline_hint": "この期限までに支払いが承認されない場合、資金は返金されます。",
+      "cancel": "キャンセル",
+      "confirm_action": "{{label}} を確認",
+      "escrow_locked": "エスクローロック済み",
+      "escrow_locked_buyer": "下のアドレスに {{code}} 支払いを送ってください。支払いが承認されると、IRM が自動的にウォレットにリリースされます。",
+      "escrow_locked_seller": "あなたの IRM はエスクローにあります。買い手があなたのアドレスに {{code}} を送ります。支払いが承認されると、IRM が買い手にリリースされ、買い手側のフローは自動的に完了します。",
+      "send_to_label": "{{code}} の送り先",
+      "exact_amount_label": "正確な {{code}} 数量",
+      "required_memo_label": "必須の支払いメモ",
+      "memo_hint": "ほとんどの {{name}} ウォレットでは、これを支払いの追加データフィールドとして含めます。これにより、支払いがこの取引にリンクされ、IRM が自動的にリリースされます。",
+      "tx_reference_label": "あなたの取引参照番号",
+      "tx_reference_placeholder": "{{code}} 取引 ID またはメモ",
+      "tx_reference_hint": "売り手にはこれがそのまま表示されます。支払い確認に使える情報なら何でも構いません。",
+      "cancel_warning": "今キャンセルすると、上記の返金期限まで資金はロックされたままになります。",
+      "cancel_and_dispute": "キャンセルして紛争",
+      "i_have_sent": "{{code}} を送りました",
+      "watching_escrow": "エスクロー監視中"
     }
   },
   "miner": {
@@ -1047,7 +1634,11 @@
       "uptime": "稼働時間",
       "difficulty": "困難",
       "temperature": "温度",
-      "power": "力"
+      "power": "力",
+      "est_daily_irm": "推定日次 IRM",
+      "na_linux_only": "N/A (Linux のみ)",
+      "pool_difficulty": "プール難易度",
+      "pool_hashrate": "プールハッシュレート"
     },
     "buttons": {
       "start_mining": "マイニングを開始する",
@@ -1056,7 +1647,23 @@
       "connect_pool": "プールに接続する",
       "disconnect": "切断する",
       "confirm_disconnect": "切断を確認しますか?",
-      "detect_gpus": "GPUの検出"
+      "detect_gpus": "GPUの検出",
+      "view_wallet": "ウォレットを表示",
+      "starting": "起動中…",
+      "connecting": "接続中…",
+      "start_gpu_mining": "GPU マイニングを開始",
+      "stop_gpu": "GPU を停止",
+      "scanning": "スキャン中…",
+      "yes": "はい",
+      "no": "いいえ",
+      "close": "閉じる",
+      "done": "完了",
+      "ok": "OK",
+      "start": "開始",
+      "stop": "停止",
+      "refresh": "更新",
+      "view_pool_stats": "プール統計を表示",
+      "view_pool_stats_tooltip": "ブロックエクスプローラーで公式プールのライブマイナー統計を開く"
     },
     "fields": {
       "mining_address_label": "マイニングアドレス",
@@ -1080,21 +1687,49 @@
       "intensity_label": "強度 — {{value}}%",
       "intensity_mac_note": "GPU ウォッチドッグがバッチ中にカーネルを強制終了しないように、macOS では強度が 50% に制限されています。 GPU マイナーはウォッチドッグ ストールを自動的に検出し、いずれにせよそれを見つけた場合はきれいに停止します。",
       "pool_preset": "プールプリセット",
-      "stratum_worker_use_wallet": "Use my wallet"
+      "stratum_worker_use_wallet": "Use my wallet",
+      "intensity_hint": "強度を上げるほどハッシュレートと消費電力が増加します",
+      "core_active_tooltip": "コア {{n}} (動作中)",
+      "core_idle_tooltip": "コア {{n}} (アイドル)",
+      "stratum_worker_placeholder": "walletAddress.workerName",
+      "stratum_worker_autofill_tooltip": "自動入力: {{address}}.rig1",
+      "stratum_password_hint": "ほとんどのプールのデフォルト \"x\" を使用する場合は空欄のままにしてください"
     },
     "found_blocks": {
       "section_title": "見つかったブロック",
       "empty": "このセッションではまだブロックが見つかりません。",
-      "open_in_explorer_tooltip": "このブロックをエクスプローラーで開きます"
+      "open_in_explorer_tooltip": "このブロックをエクスプローラーで開きます",
+      "hide_orphans_tooltip": "他のマイナーが獲得したブロックを非表示",
+      "reveal_orphans_tooltip_one": "{{count}} 件の孤立候補を表示",
+      "reveal_orphans_tooltip_other": "{{count}} 件の孤立候補を表示",
+      "hide_orphans_button": "孤立を非表示 ({{count}})",
+      "show_orphans_button": "孤立を表示 ({{count}})",
+      "all_orphaned": "承認済みブロックはまだありません — これまでの候補はすべて孤立しました。",
+      "orphaned_tooltip": "孤立 — 他のマイナーが獲得",
+      "orphaned_long_tooltip": "この高さの正規ブロックは別のアドレスがマイニングしました — 候補は記録しましたがレースに敗れました。",
+      "orphaned_badge": "孤立",
+      "block_height_tooltip": "ブロック高さ {{height}}",
+      "won_by_another": "他のマイナーが獲得",
+      "hash_unavailable": "このマイナービルドからはハッシュを取得できません",
+      "reward_not_indexed_tooltip": "報酬がノードでまだインデックスされていません — 成熟後に値が表示されます",
+      "reward_unknown_tooltip": "報酬不明 — マイナーの標準出力に報告がありません",
+      "estimate_marker": "~ 推定"
     },
     "shares": {
       "accepted": "承認されました",
       "rejected": "拒否されました",
-      "ratio": "比率"
+      "ratio": "比率",
+      "last_share": "最終シェア"
     },
     "asic_info": {
       "headline": "Stratum 経由で ASIC または GPU をマイニング プールに接続します",
-      "after_install": "インストール後、Irium Coreを再起動します。"
+      "after_install": "インストール後、Irium Coreを再起動します。",
+      "external_title": "外部 ASIC または GPU でのプールマイニング",
+      "external_body_before_url": "ASIC または GPU マイニングソフトウェアを上記のプール URL に直接接続してください (例: ",
+      "external_body_after_url": ")。Irium Core はここに表示されるプール側のシェア統計をモニターします。ハードウェアのローカルハッシュレートはマイナー自身が報告します。",
+      "connect_button_intro_before": "下の ",
+      "connect_button_intro_middle": " ボタンは、同梱の ",
+      "connect_button_intro_after": " サイドカー経由で CPU を使用してプールマイニングを開始します — このマシンの CPU ハッシュレートをプールに提供したい場合のみ役立ちます。外部 ASIC にこのボタンは不要です。"
     },
     "toasts": {
       "miner_started": "CPUマイナーが開始されました",
@@ -1114,17 +1749,42 @@
       "connecting_to_pool": "プールに接続中…",
       "pool_disconnected_reconnecting": "プールが切断されました — 再接続中…",
       "pool_connection_lost": "プール接続が失われました。再接続してください。",
-      "pool_error": "プールエラー: {{message}}"
+      "pool_error": "プールエラー: {{message}}",
+      "no_device_selected": "デバイスが選択されていません — デフォルトのデバイス 0 を使用します",
+      "solo_listening_on": "ソロ Stratum が {{addr}} で待ち受け中",
+      "solo_failed_start": "ソロ Stratum の起動に失敗しました",
+      "solo_stopped": "ソロ Stratum が停止しました",
+      "solo_failed_stop": "ソロ Stratum の停止に失敗しました",
+      "copied": "コピーしました"
     },
     "page_subtitle": "SHA-256d・CPU・GPU・ASICプールのサポート",
     "tooltips": {
       "copy_address": "アドレスをコピーする",
-      "copy_full_hash": "完全なハッシュをコピーする"
+      "copy_full_hash": "完全なハッシュをコピーする",
+      "copy": "コピー"
     },
     "pool_configuration": "プール構成",
     "opencl": {
       "detected_title": "OpenCL ハードウェアが検出されました",
-      "none_detected": "OpenCL 対応 GPU が検出されませんでした"
+      "none_detected": "OpenCL 対応 GPU が検出されませんでした",
+      "no_gpu_idle_message": "互換性のある GPU が検出されません — 下の構成を参照",
+      "select_platform": "プラットフォームを選択してマイニングを開始",
+      "no_compatible_gpu": "互換性のある GPU が検出されません",
+      "install_drivers_before": "GPU マイニングには OpenCL ランタイムが必要です。GPU ベンダーのドライバ (NVIDIA、AMD、または Intel OpenCL SDK) をインストールしてから次をクリック: ",
+      "install_drivers_after": "。",
+      "supports_pool_and_solo": "有効化すると、GPU マイナーはプール (Stratum) とソロ (直接ノード RPC) の両方のマイニングをサポートします。",
+      "read_docs": "GPU マイナーのドキュメントを読む",
+      "no_platforms_found": "OpenCL プラットフォームが見つかりません。",
+      "install_icd_before": "GPU ドライバと ICD ローダーをインストールして、もう一度次をクリック: ",
+      "install_icd_after": "。",
+      "platform_n": "プラットフォーム {{n}}",
+      "discrete_gpu": "ディスクリート GPU",
+      "device_n": "デバイス {{n}}",
+      "fix_intro": "これを修正するには、GPU 用の OpenCL ドライバをインストールしてください:",
+      "fix_nvidia": "nvidia.com から GPU ドライバを再インストール",
+      "fix_amd": "amd.com から AMD Software Adrenalin をインストール",
+      "fix_intel": "intel.com から Intel Graphics Driver をインストール",
+      "scanning": "OpenCL デバイスをスキャン中…"
     },
     "unexpected_exit": {
       "title": "Miner stopped unexpectedly",
@@ -1133,6 +1793,75 @@
       "restart_cpu": "Restart CPU Miner",
       "restart_gpu": "Restart GPU Miner",
       "dismiss": "Dismiss"
+    },
+    "activity": {
+      "share_accepted": "シェアが承認されました",
+      "share_rejected": "シェアが却下されました",
+      "share_rejected_with_detail": "シェアが却下されました — {{detail}}",
+      "pool_error": "プールエラー",
+      "pool_error_with_detail": "プールエラー — {{detail}}",
+      "mining_active": "マイニング動作中",
+      "block_hash_marker": "· ブロック #{{height}}",
+      "section_title": "最近のアクティビティ",
+      "last_count": "直近 {{count}} 件",
+      "waiting_for_first_share": "最初のシェアを待機中…"
+    },
+    "status": {
+      "loading": "読み込み中…",
+      "mining_active": "マイニング動作中",
+      "mining_active_syncing": "マイニング動作中 — ブロック同期中…",
+      "cpu_idle": "CPU アイドル",
+      "gpu_active": "GPU 動作中",
+      "gpu_idle": "GPU アイドル",
+      "pool_connected": "プール接続済み",
+      "pool_disconnected": "プール切断",
+      "live_badge": "ライブ",
+      "syncing_badge": "同期中"
+    },
+    "sync": {
+      "node_syncing_height": "ノード同期中 — 高さ {{localHeight}} / ネットワーク {{networkTip}}",
+      "warming_up_header": "マイナーをウォームアップ中 — 最初のシェアレートを待機中…",
+      "node_syncing_body": "ノードはネットワークの最先端にまだ追いついていません。マイニングは有効ですが、ローカルチェーンが一致するまでシェアは承認されません。通常は数分で完了します。",
+      "warming_up_body": "マイナーサイドカーが起動しました。最初のハッシュレート測定値は 1〜3 秒以内に表示されます — 操作は不要です。"
+    },
+    "block_info": {
+      "mining_block_n": "ブロック #{{height}} をマイニング中",
+      "previous_block": "前のブロック",
+      "last_confirmed_block": "最後に確認されたブロック",
+      "network_difficulty": "ネットワーク難易度"
+    },
+    "solo": {
+      "title": "ソロ Stratum ブリッジ",
+      "subtitle": "自分の iriumd に対して ASIC を実行。プール手数料なし、プール依存なし。",
+      "listening": "待ち受け中",
+      "stopped": "停止済み",
+      "listen_address_label": "待ち受けアドレス",
+      "listen_default_before": "デフォルトの ",
+      "listen_default_after": " はすべてのインターフェイスにバインドするため、LAN 上の ASIC からアクセス可能です。",
+      "asic_connection_string": "ASIC 接続文字列",
+      "bullet_replace_host_before": "• 次を置き換えてください: ",
+      "bullet_replace_host_after": " をマシンの LAN IP (または VPS IP) に。",
+      "bullet_worker_username_before": "• ワーカーのユーザー名: Q アドレスの後に ",
+      "bullet_worker_username_after": " を続けます。パスワード: 任意の文字列。",
+      "bullet_bridge_serves_before": "• ブリッジはローカル iriumd 上で ",
+      "bullet_bridge_serves_middle": " と ",
+      "bullet_bridge_serves_after": " を提供します。"
+    },
+    "found_block_banner": {
+      "title": "ブロック #{{height}} をマイニング!",
+      "body": "あなたの {{kind}} マイナーがネットワークレースに勝利しました — 50 IRM が間もなく付与されます (100 ブロックで成熟)。",
+      "dismiss_aria": "閉じる"
+    },
+    "tabs_v2": {
+      "cpu": "CPU マイナー",
+      "gpu": "GPU マイナー",
+      "stratum": "プール / Stratum",
+      "solo": "ソロ Stratum"
+    },
+    "pool_presets": {
+      "irium_official_cpu_gpu": "Irium 公式プール (CPU/GPU)",
+      "irium_official_asic": "Irium 公式プール (ASIC)",
+      "custom": "カスタム"
     }
   },
   "onboarding": {
@@ -1162,7 +1891,8 @@
       "generating": "ウォレットを生成中…",
       "show_recovery": "リカバリフレーズを表示",
       "i_wrote_it_down": "私はそれを書き留めました",
-      "continue_to_wallet": "ウォレットに進む"
+      "continue_to_wallet": "ウォレットに進む",
+      "generating_sub": "24 ワードのシードフレーズで BIP32 HD ウォレットを作成中…"
     },
     "import": {
       "tab_mnemonic": "回復フレーズ",
@@ -1199,6 +1929,153 @@
       "too_short": "Password must be at least 4 characters",
       "required": "Password is required",
       "continue": "Continue"
+    },
+    "splash": {
+      "subtitle_full_node": "フルノードデスクトップウォレット",
+      "status_initializing": "ランタイムを初期化中…",
+      "status_loading_crypto": "暗号モジュールを読み込み中…",
+      "status_verifying_binary": "バイナリの整合性を検証中…",
+      "status_establishing_context": "セキュアコンテキストを確立中…",
+      "status_ready": "準備完了"
+    },
+    "rail": {
+      "system_check": "システムチェック",
+      "bootstrap": "ブートストラップ",
+      "network_sync": "ネットワーク同期",
+      "wallet_setup": "ウォレット設定",
+      "backup_secure": "バックアップとセキュリティ"
+    },
+    "binary_check": {
+      "subtitle": "このマシンに必要なノードバイナリが存在することを確認しています。",
+      "iriumd_desc": "フルノードデーモン",
+      "irium_wallet_desc": "ウォレットとマーケットプレイス CLI",
+      "irium_miner_desc": "CPU マイナー",
+      "all_verified": "すべてのバイナリを検証しました。続行中…",
+      "missing_binaries": "バイナリがありません。実行ファイルを src-tauri/binaries/ に配置してください",
+      "retry": "再試行",
+      "skip_advanced": "スキップ (上級者向け)"
+    },
+    "bootstrap": {
+      "subtitle": "シードノード、トラストアンカー、ジェネシスブロックを構成中。",
+      "creating_data_dir": "データディレクトリを作成中…",
+      "writing_seedlist": "ブートストラップ seedlist.txt を書き込み中…",
+      "writing_static_peers": "static_peers.txt を書き込み中…",
+      "installing_anchors": "ジェネシス anchors.json をインストール中…",
+      "installing_trust_signatures": "トラスト署名をインストール中…",
+      "complete": "ブートストラップ構成が完了しました。",
+      "error_prefix": "エラー",
+      "skip_continue": "スキップ (続行)"
+    },
+    "network_sync": {
+      "subtitle": "ローカルブロックチェーンデータを読み込み、Irium P2P ネットワークに接続しています。",
+      "port_in_use_message": "ポート 38291 はすでに使用中です。別の Irium ノードがバックグラウンドで動作している可能性があります。システムトレイに既存の Irium Core インスタンスがないか、またはタスクマネージャーで iriumd.exe プロセスを終了してから、アプリを再起動してください。",
+      "add_peer_format_error": "IP:PORT 形式を使用してください (例: 1.2.3.4:38291)",
+      "add_peer_rejected": "ノードがアドレスを拒否しました",
+      "add_peer_unreachable": "ノードに到達できませんでした",
+      "starting_iriumd": "iriumd を起動中…",
+      "loading_blockchain_data": "ブロックチェーンデータを読み込み中…",
+      "starting_node": "ノードを起動中…",
+      "discovering": "検出中…",
+      "searching_for_peers": "Irium ネットワークでピアを検索中",
+      "checking_connectivity": "ネットワーク接続を確認中…",
+      "network_reachable": "ネットワークに到達可能 — ノードを起動中…",
+      "port_blocked_title": "ポート 38291 がアウトバウンドでブロックされているようです",
+      "port_blocked_body_before": "Irium ネットワークに到達できません。ルーターまたはファイアウォールを確認してください — ポート",
+      "port_blocked_body_after": "がアウトバウンド TCP 接続用に開放されている必要があります。",
+      "restarting_node": "ノードを再起動中…",
+      "retry_connection": "接続を再試行",
+      "still_connecting_title": "ピアに接続中…",
+      "still_connecting_body": "ノードが Irium ネットワークに接続しています。通常は 30 秒以内に完了します — お待ちください。",
+      "connecting_for": "{{seconds}} 秒間接続中…",
+      "add_peer_manually": "ピアを手動で追加",
+      "add_peer_button": "ピアを追加",
+      "added_peer": "{{addr}} を追加しました",
+      "continuing_in": "{{seconds}} 秒後に続行…",
+      "syncing_background": "バックグラウンドで同期中…",
+      "continue_anyway": "それでも続行 →"
+    },
+    "wallet_setup_subtitle": "新しい HD ウォレットを作成するか、既存のウォレットから復元します。",
+    "wallet_setup_errors": {
+      "failed_create": "ウォレットの作成に失敗しました",
+      "no_wallet_pending": "暗号化待ちのウォレットがありません",
+      "failed_set_password": "ウォレットパスワードの設定に失敗しました",
+      "import_failed": "インポートに失敗しました"
+    },
+    "wallet_password": {
+      "title": "ウォレットパスワードを設定",
+      "subtitle": "ウォレットファイルを暗号化します。続行前に必須です。",
+      "placeholder": "強力なパスワードを選択 (8 文字以上)",
+      "confirm_placeholder": "パスワードを確認",
+      "warning": "このパスワードを忘れると回復できません。書き留めて安全に保管してください。このパスワードなしでウォレットを復元する唯一の方法は、シードフレーズです。",
+      "continue": "暗号化して続行",
+      "too_short": "パスワードは 8 文字以上である必要があります",
+      "mismatch": "パスワードが一致しません",
+      "encrypting": "ウォレットを暗号化中…",
+      "encrypting_sub": "PBKDF2 導出キーをウォレットファイルに適用中。",
+      "hide": "非表示",
+      "show": "表示"
+    },
+    "wallet_restored_sub": "ウォレットが正常にインポートされました。",
+    "restored": {
+      "primary_address": "メインアドレス",
+      "address_pending": "ノードの同期完了後、アドレスがダッシュボードに表示されます。",
+      "additional_addresses": "{{count}} 件の追加アドレスが見つかりました",
+      "balance_will_load": "ノードの同期に伴い、残高と取引履歴がダッシュボードに自動的に読み込まれます。",
+      "continue_to_dashboard": "ダッシュボードへ進む"
+    },
+    "import_form": {
+      "subtitle": "復元方法を以下から選択してください。",
+      "tab_mnemonic_label": "シードフレーズ",
+      "tab_wif_label": "WIF キー",
+      "tab_privkey_label": "秘密鍵",
+      "mnemonic_placeholder": "word1 word2 word3 … word24",
+      "mnemonic_hint": "BIP32 ニーモニック — スペース区切りで 12 または 24 ワード",
+      "wif_placeholder": "5Jxx… または Kxx… または Lxx…",
+      "wif_hint": "WIF 形式 (Base58Check エンコードされた秘密鍵)",
+      "privkey_placeholder": "0x1a2b3c4d… (64 16 進文字)",
+      "privkey_hint": "16 進数の生 256 ビット秘密鍵",
+      "back": "戻る",
+      "importing": "インポート中…"
+    },
+    "choose": {
+      "create_description": "24 ワードのシードフレーズで新しい BIP32 HD ウォレットを生成します。",
+      "import_description": "シードフレーズ、WIF キー、または生の秘密鍵で復元します。"
+    },
+    "backup": {
+      "field_address_label": "ウォレットアドレス",
+      "field_wif_label": "WIF キー",
+      "field_mnemonic_label": "リカバリーフレーズ (24 ワード)",
+      "field_wif_warning": "WIF は秘密鍵のポータブル形式です。これを持つ者は誰でもこのアドレスの資金を支配できます。",
+      "field_mnemonic_warning": "この 24 ワードを順番に書き留めてください。紛失すると復元できません。",
+      "copy": "コピー",
+      "copied": "コピーしました!",
+      "hide": "非表示",
+      "reveal": "表示",
+      "click_to_reveal": "クリックして表示",
+      "confirm_address": "ウォレットアドレスを保存しました",
+      "confirm_wif": "WIF キーを安全に保管しました",
+      "confirm_mnemonic": "リカバリーフレーズをオフラインで書き留めました",
+      "loading": "読み込み中…",
+      "wif_read_failed": "(WIF 読み取りに失敗 — 起動後にセキュリティパネルを使用してください",
+      "shown_once_before": "この情報の表示は",
+      "shown_once_emphasis": "1 回限り",
+      "shown_once_after": "です。続行前にすべての項目をオフラインで保管してください。",
+      "critical_warning_strong": "ウォレットを復元できなくなります",
+      "critical_warning_body": "リカバリーフレーズまたは WIF キーを紛失した場合に。Irium Core にはクラウドバックアップがありません。今すぐすべて書き留めてください。",
+      "items_confirmed": "{{count}} / {{total}} 項目を確認しました",
+      "launch_dashboard": "ダッシュボードを起動",
+      "confirm_all_to_continue": "続行するには 4 項目すべてを確認してください"
+    },
+    "welcome_screen": {
+      "welcome_to": "ようこそ",
+      "tagline": "Irium ブロックチェーン向けのフルノードデスクトップウォレット。送金、受取、取引、決済 — すべてピアツーピア、すべてオンチェーン。",
+      "wizard_intro": "このセットアップウィザードはノードの構成、チェーン同期、ウォレットの作成または復元を行います。",
+      "chip_full_node": "フルノード",
+      "chip_hd_wallet": "HD ウォレット",
+      "chip_p2p_trade": "P2P 取引",
+      "chip_on_chain_settlement": "オンチェーン決済",
+      "chip_privacy_first": "プライバシー優先",
+      "get_started": "始める"
     }
   },
   "reputation": {
@@ -1426,7 +2303,26 @@
       "hashrate_avg_window": "平均{{minutes}}分",
       "confidence_low": "低い信頼性",
       "confidence_medium": "中程度の信頼度",
-      "confidence_high": "高い信頼性"
+      "confidence_high": "高い信頼性",
+      "asic_port_with_443": "ポート {{port}} + 443",
+      "active_miners": "アクティブマイナー",
+      "worker_count_one": "{{count}} ワーカー",
+      "worker_count_other": "{{count}} ワーカー",
+      "your_miners_pinned": "自分のマイナーは上部に固定",
+      "hide_offline": "オフラインを非表示 ({{count}})",
+      "show_offline": "オフラインマイナーを表示 ({{count}})",
+      "no_miners_reporting": "アクティブなマイナーからの報告はありません。",
+      "col_worker": "ワーカー",
+      "col_accepted": "承認済み",
+      "col_rejected_15m": "却下 (15分)",
+      "col_rejected_15m_tooltip": "過去 15 分間に却下されたシェアのみ。累積カウント (Stratum 再起動以降) では、復旧後もウォームアップバースト合計が古いまま表示されていました。",
+      "col_reject_pct_15m": "却下率 (15分)",
+      "col_reject_pct_15m_tooltip": "過去 15 分間のローリング却下率。再起動以降の累積率では、復旧後も再起動後のウォームアップバーストにワーカーが固定されていました。",
+      "col_hashrate_15m": "ハッシュレート (15分)",
+      "col_blocks": "ブロック",
+      "col_blocks_tooltip": "このワーカーがプールで見つけたブロック数。Stats プロキシによって入力されます。プロキシがワーカー別ブロック実績をバックフィルするまで「—」と表示されます。",
+      "col_last_share": "最終シェア",
+      "yours_badge": "あなた"
     },
     "richlist": {
       "title": "トップ IRM ホルダー",
@@ -1464,7 +2360,8 @@
       "load_more_loading": "トップ 500 を読み込み中…",
       "load_error": "リッチリストのロードに失敗しました: {{reason}}",
       "empty": "チェーン上にまだ P2PKH バランスがありません。",
-      "node_offline_hint": "ダッシュボードでノードを起動して、豊富なリストをロードします。"
+      "node_offline_hint": "ダッシュボードでノードを起動して、豊富なリストをロードします。",
+      "sr_total_supply": "スクリーンリーダー向け総供給量コンテキスト {{total}} IRM"
     },
     "solo_pool": {
       "title": "Solo Pool",
@@ -1503,6 +2400,61 @@
       "blocks_per_day_suffix": "block/日",
       "irm_per_day_suffix": "IRM/日",
       "disclaimer": "推定値のみ — 実際の収益は運、プール手数料、難易度の変化に依存します。計算機はリアルタイムのネットワークハッシュレートを使用し、60秒ごとに更新されます。"
+    },
+    "mining_overview": {
+      "title": "ネットワークマイニング概要",
+      "subtitle": "ネットワーク、プール、自分自身のマイニングを 1 画面で表示。30 秒ごとに更新します。",
+      "network_summary": "ネットワークサマリー",
+      "pool_mining": "プールマイニング",
+      "your_mining": "自分のマイニング",
+      "network_hashrate": "ネットワークハッシュレート",
+      "difficulty": "難易度",
+      "avg_block_time": "平均ブロック時間",
+      "est_active_miners": "推定アクティブマイナー",
+      "network_wide_estimate": "ネットワーク全体の推定",
+      "pool_hashrate": "プールハッシュレート",
+      "estimate_sub": "推定",
+      "active_pool_miners": "アクティブなプールマイナー",
+      "pool_blocks_found": "プールで発見されたブロック",
+      "all_time": "通算",
+      "pool_share": "プール / ネットワーク",
+      "share_of_network_hashrate": "ネットワークハッシュレートに占める割合",
+      "your_hashrate": "自分のハッシュレート",
+      "collecting": "収集中…",
+      "pool_workers_one": "{{count}} プールワーカー",
+      "pool_workers_other": "{{count}} プールワーカー",
+      "mode": "モード",
+      "mode_pool": "プール",
+      "mode_solo": "ソロ",
+      "not_mining": "マイニング停止中",
+      "connected_via_stratum": "Stratum 経由で接続",
+      "direct_to_local_node": "ローカルノードに直接接続",
+      "on_pool": "pool.iriumlabs.org にて",
+      "on_solo_bridge": "ソロ Stratum ブリッジ上",
+      "accepted_shares": "承認済みシェア",
+      "none": "なし",
+      "pool_lifetime": "プール通算",
+      "last_share": "最終シェア",
+      "blocks_you_found": "あなたが発見したブロック",
+      "from_pool_worker": "プールワーカーから",
+      "this_session": "このセッション"
+    },
+    "relative_time": {
+      "just_now": "たった今",
+      "seconds_ago_one": "{{count}} 秒前",
+      "seconds_ago_other": "{{count}} 秒前",
+      "minutes_ago_one": "{{count}} 分前",
+      "minutes_ago_other": "{{count}} 分前",
+      "hours_ago_one": "{{count}} 時間前",
+      "hours_ago_other": "{{count}} 時間前",
+      "days_ago_one": "{{count}} 日前",
+      "days_ago_other": "{{count}} 日前"
+    },
+    "founder_card": {
+      "title": "創設者ベスティングアドレス",
+      "description": "このアドレスはジェネシスで CLTV タイムロックによりロックされた 3,500,000 IRM を保持しています。ロックされた資金は使用可能残高にカウントされない特殊スクリプトを使用するため、残高は 0 と表示されます。",
+      "unlocks_at": "ブロック #{{height}} でアンロック",
+      "blocks_remaining": "(残り約 {{count}} ブロック)"
     }
   },
   "help": {
@@ -2146,7 +3098,10 @@
       "errors": {
         "buyer_required": "買い手のIriumアドレスを入力してください。",
         "amount_required": "ロックするIRMの金額を入力してください。",
-        "receiving_required": "見返りに何を期待するかを買い手に伝えてください。"
+        "receiving_required": "見返りに何を期待するかを買い手に伝えてください。",
+        "no_agreement_id": "契約作成で ID が返されませんでした",
+        "fund_after_create_failed": "契約は作成されましたが資金投入に失敗しました。契約ページで再試行してください。",
+        "payment_ref_required": "売り手が支払いを確認できるよう、取引参照番号を入力してください。"
       },
       "review": {
         "you_lock": "あなたがロック",
@@ -2154,7 +3109,14 @@
         "deadline": "期限",
         "deadline_value": "{{hours}} 時間以内に支払いがなければ、IRMは自動的に返却されます。",
         "lock_funds": "資金をロック",
-        "tx_note": "これによりIriumブロックチェーンにトランザクションが作成されます。"
+        "tx_note": "これによりIriumブロックチェーンにトランザクションが作成されます。",
+        "you_lock_short": "あなたがロック",
+        "buyer_pays_you": "買い手があなたに支払う",
+        "payment_deadline": "支払い期限",
+        "hours_from_now": "今から {{hours}} 時間",
+        "buyer_address": "買い手のアドレス",
+        "lock_my_irm": "IRM をロック",
+        "tx_broadcast_note": "ブロックチェーントランザクションがブロードキャストされます。確認に少し時間がかかる場合があります。"
       },
       "share": {
         "title": "買い手と共有",
@@ -2174,7 +3136,25 @@
         "receiving_placeholder": "例: 200 USDT、銀行振込、現金",
         "deadline_label": "この取引はどのくらい開いておきますか?",
         "deadline_helper": "この時間内に支払われなければ、IRMは自動的に返却されます。",
-        "release_button": "支払いを受領しました — 買い手に資金を解放"
+        "release_button": "支払いを受領しました — 買い手に資金を解放",
+        "buyer_address_short_label": "買い手のアドレス",
+        "buyer_address_helper": "買い手の支払いを確認した時に IRM を受け取るアドレス。",
+        "amount_label_short": "売却する IRM の数量",
+        "amount_helper_short": "買い手の支払いを確認するまでエスクローに保持されます。",
+        "receiving_label_short": "対価として受け取るもの",
+        "receiving_placeholder_detailed": "例: 50 USDT を SEPA 銀行振込で",
+        "deadline_label_short": "買い手の支払い期限",
+        "deadline_helper_refund": "期限までに支払いが届かない場合、返金を請求できます。",
+        "locked_hero_title": "IRM がロックされ保護されました",
+        "locked_hero_body": "買い手はあなたの確認なしに取得できません。下のディールコードを共有して参加させ、支払いを待ってください。",
+        "share_code_title": "このディールコードを共有",
+        "share_code_body": "買い手はこのコードをウォレットに貼り付けて取引に参加します。",
+        "header1_title": "売り取引をセットアップ",
+        "header1_subtitle": "買い手と売却したい IRM の量を教えてください。",
+        "header2_title": "確認してロック",
+        "header2_subtitle": "詳細を確認します。ロックすると IRM がエスクローに送られます。",
+        "header3_title": "取引がアクティブです",
+        "header3_subtitle": "ディールコードを買い手と共有し、支払いを待ってください。"
       },
       "buying": {
         "step2_title": "売り手の取引コードを貼り付け",
@@ -2193,12 +3173,42 @@
         "status_waiting": "売り手が支払い受領を確認するのを待っています。",
         "status_releasing": "支払いが確認されました — IRMが送信中です。",
         "status_complete": "完了 — IRMがwalletに到着しました。",
-        "view_agreements": "agreementで表示"
+        "view_agreements": "agreementで表示",
+        "review_commit_intro": "下の取引詳細を確認してください。続行することでこの取引に確定します。このステップの後、売り手にオフチェーン支払いを送り、次の画面から報告してください。",
+        "seller_is_locking": "売り手がロック中",
+        "seller_short_label": "売り手",
+        "details_did_not_load": "取引詳細を読み込めませんでした。続行できますが、支払い前に売り手と IRM の数量を確認してください。",
+        "continue_and_link": "続行してリンク",
+        "trade_complete_title": "取引完了",
+        "trade_complete_body": "IRM がウォレットに届きました。",
+        "seller_locked_for_you_title": "売り手の IRM があなたのためにロックされました",
+        "seller_locked_for_you_body": "売り手にオフチェーン支払いを送り、下に取引参照番号を報告してください。",
+        "report_payment_title": "支払いを報告",
+        "report_payment_body": "オフチェーン支払いを送ったら、売り手が到着を確認できる参照番号を貼り付けてください - 銀行振込参照、PayPal トランザクション ID など。",
+        "report_payment_placeholder": "銀行振込参照、PayPal txid、ブロックチェーン txid など。",
+        "cancel_open_dispute": "キャンセルして紛争を開始",
+        "payment_reported": "支払い報告済み",
+        "i_have_sent_payment": "支払いを送りました",
+        "header1_title": "売り手のディールコードを貼り付け",
+        "header1_subtitle": "売り手は IRM をロックした後、コードを送ってくれます。",
+        "header2_title": "取引を確認",
+        "header2_subtitle": "数量と売り手が期待通りであることを確認してください。",
+        "header3_title": "取引がアクティブです",
+        "header3_subtitle": "オフチェーン支払いを送り、報告して売り手が IRM をリリースできるようにしてください。"
       },
       "fuel_banner_title": "決済を作成するにはIRMが必要です。",
       "fuel_banner_prefix": "移動先:",
       "fuel_banner_link": "マーケットプレイス → スポットスワップ",
-      "fuel_banner_suffix": "まずIRMを取得してください。"
+      "fuel_banner_suffix": "まずIRMを取得してください。",
+      "toast_buyer_linked": "取引にあなたの側がリンクされました。売り手にオフチェーン支払いを送ってください。",
+      "toast_payment_reported": "支払いを報告しました。売り手の確認を待っています。",
+      "toast_dispute_opened": "紛争が開始されました。リゾルバーが証拠を確認します。",
+      "dispute_reason_buyer": "買い手が取引を完了できません",
+      "choose_selling_title": "IRM を売る",
+      "choose_selling_body": "IRM をエスクローにロック。買い手がオフチェーンで支払い、その後あなたがリリースします。",
+      "choose_buying_title": "IRM を買う",
+      "choose_buying_body": "売り手のディールコードを貼り付け。支払いを送ってから確認して IRM を受け取ります。",
+      "view_resolvers": "利用可能なリゾルバーを表示"
     },
     "pay_for_work": {
       "step1_title": "一括支払い、それともマイルストーン別?",
@@ -2250,7 +3260,12 @@
       "claim_refund": "返金を請求",
       "toast_released": "支払いが請負業者に解放されました。",
       "toast_release_pending": "完了を記録しました。次のいくつかのblock確認後に資金が解放されます。",
-      "toast_refunded": "返金を請求しました — 資金がwalletに戻ります。"
+      "toast_refunded": "返金を請求しました — 資金がwalletに戻ります。",
+      "toast_fund_failed": "契約は作成されましたが資金投入に失敗しました。契約ページで該当する契約を見つけて、資金投入を再試行してください。",
+      "which_milestone": "どのマイルストーン?",
+      "milestone_option": "マイルストーン {{index}} / {{total}}",
+      "milestone_helper": "「完了としてマーク」を選ぶとこのマイルストーン分のロック済み IRM がリリースされます。受託者は合計の 1/{{count}} をマイルストーンごとに受け取ります。",
+      "mark_complete_milestone": "完了としてマーク — 支払いをリリース (マイルストーン {{index}})"
     },
     "deposit": {
       "step1_title": "預け金をセットアップ",

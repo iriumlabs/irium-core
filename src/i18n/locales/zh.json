@@ -152,7 +152,9 @@
       "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
       "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
       "rpc_token_test_remote": "Test remote",
-      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated",
+      "hide_token": "隐藏 token",
+      "show_token": "显示 token"
     },
     "buttons": {
       "test_connection": "测试连接",
@@ -195,7 +197,9 @@
       "onboarding_reset": "入门重置 — 重新启动应用程序以查看向导",
       "update_check_internet": "无法检查更新。检查您的互联网连接。",
       "connection_failed": "连接失败",
-      "update_failed": "更新失败"
+      "update_failed": "更新失败",
+      "metrics_http_error": "状态正常，但 /metrics 返回 HTTP {{status}}",
+      "metrics_unreachable": "状态正常，但 /metrics 无法访问：{{error}}"
     },
     "page_subtitle": "配置您的节点连接、钱包路径和显示首选项。",
     "update_banner": {
@@ -261,7 +265,14 @@
       "retry": "重试",
       "external_ip_label": "外部IP",
       "detecting_paragraph": "等待入站对等方确认可达性长达 60 秒。 PEX 启动后需要一些时间将您的地址传播到其他节点。",
-      "inactive_paragraph": "UPnP 失败，没有入站对等方到达。在路由器上配置手动端口转发 (TCP 38291) 或启用 UPnP，然后单击“重试”。出站连接在此状态下仍然有效。"
+      "inactive_paragraph": "UPnP 失败，没有入站对等方到达。在路由器上配置手动端口转发 (TCP 38291) 或启用 UPnP，然后单击“重试”。出站连接在此状态下仍然有效。",
+      "diag_chosen_lan_ip": "选用的局域网 IP",
+      "diag_router_ip": "路由器 IP",
+      "diag_control_url": "控制 URL",
+      "diag_external_ip": "外部 IP",
+      "diag_private_double_nat": "（私有 — 双重 NAT）",
+      "diag_add_port_mapping_tries": "AddPortMapping 尝试次数",
+      "diag_last_fault": "最后一次故障"
     },
     "security_info": {
       "wallet_local": "Irium Core 在本地存储您的钱包文件。您的私钥永远不会离开您的机器。钱包文件已加密。请务必备份您的助记词并使其离线。",
@@ -325,11 +336,14 @@
       "reset_state_success": "状态已重置 — 备份位于 {{path}}",
       "reset_state_no_backup": "没有现有状态需要备份 — 已创建全新状态",
       "reset_state_rebuilding": "node重启中 — 正在从本地block重建 UTXO 集 (5-15 分钟)",
-      "reset_state_failed": "重置失败: {{reason}}"
+      "reset_state_failed": "重置失败: {{reason}}",
+      "external_ip_placeholder": "例如 203.0.113.42"
     },
     "developer_info": {
       "reset_onboarding": "重置入职",
-      "reset_onboarding_description": "下次启动时再次显示首次运行设置向导"
+      "reset_onboarding_description": "下次启动时再次显示首次运行设置向导",
+      "show_legacy_settlement": "显示旧版结算 UI",
+      "show_legacy_settlement_description": "使用原始的模板网格「结算」页面，而不是新的 SafeTrade / PayForWork / Deposit 流程。下次导航至 /settlement 时生效。"
     },
     "action_bar": {
       "are_you_sure": "你确定吗？",
@@ -469,7 +483,27 @@
       "rename_wallet_file": "重命名钱包文件",
       "delete_wallet_file": "永久删除该钱包文件",
       "manage_wallets": "管理钱包",
-      "manage_description": "钱包文件、导入、隐藏地址"
+      "manage_description": "钱包文件、导入、隐藏地址",
+      "manage_button": "管理",
+      "copy_address": "复制地址",
+      "add_address_button": "添加地址",
+      "generating": "生成中…",
+      "empty_state": "暂无地址。打开「管理」添加一个。",
+      "add_address_confirm_title": "添加新地址？",
+      "add_address_confirm_body": "这将从你的钱包种子派生下一个地址。地址一旦创建，无法从钱包文件中移除 — 只能从可见列表中隐藏。",
+      "set_primary_button": "设为主地址",
+      "primary_button_short": "主地址",
+      "export_wif_short_tooltip": "导出 WIF",
+      "wif_short": "WIF",
+      "qr_short": "QR",
+      "hide_button_short": "隐藏",
+      "no_addresses_panel": "暂无地址。",
+      "panel_description": "地址从你的钱包种子派生，无法永久删除。使用「隐藏」将其从视图中移除。",
+      "label_placeholder_primary": "例如：主 · 挖矿",
+      "label_placeholder_other": "例如：挖矿",
+      "edit_label": "编辑标签",
+      "add_custom_label": "添加自定义标签",
+      "address_qr_label": "地址二维码"
     },
     "send": {
       "title": "发送 IRM",
@@ -499,12 +533,44 @@
         "unconfirmed": "您的资金尚未确认。发送前至少等待 1 次确认。",
         "double_spend": "此事务与另一待处理事务冲突。请等待并重试。",
         "generic": "交易无法广播。请检查节点是否在线并重试。",
-        "fallback": "交易失败。请再试一次。"
-      }
+        "fallback": "交易失败。请再试一次。",
+        "insufficient_for_fee": "余额不足以支付网络费用。地址余额 {{balance}} sats；最低费用 {{fee}} sats。",
+        "cannot_compute_max": "无法计算最大值 — {{reason}}",
+        "node_still_syncing": "节点仍在同步（{{persisted}}/{{height}} 个区块）。请关闭此对话框，等待同步完成后再试。",
+        "not_accepted_mempool": "节点 mempool 未接受此交易"
+      },
+      "button_label": "发送",
+      "node_offline_tooltip": "节点必须在线才能发送",
+      "node_syncing_tooltip": "节点同步中 — 请等待后再发送",
+      "max_button": "最大",
+      "no_spendable_funds_suffix": " — 无可花费资金",
+      "no_spendable_in_wallet": "此钱包无可花费资金。",
+      "estimated_fee_25k": "预估费用：约 25,000 sats",
+      "estimated_fee_label": "预估费用",
+      "estimated_fee_value_25k": "约 25,000 sats",
+      "amount_sats_label": "金额（sats）",
+      "confirm_send_prefix": "发送",
+      "confirm_send_to_suffix": "至",
+      "back_button": "← 返回",
+      "transaction_sent_title": "交易已发送",
+      "transaction_sent_subtitle": "你的交易将在下一个区块中出现",
+      "transaction_sent_explanation": "你的交易已用私钥进行加密签名并广播至网络。当被包含到下一个挖出的区块中时，将获得永久保障。",
+      "status_signed": "已签名",
+      "private_key_verified": "私钥已验证",
+      "status_confirming": "确认中",
+      "next_mined_block": "下一个挖出的区块",
+      "transaction_id_label": "交易 ID",
+      "copy_transaction_id": "复制交易 ID",
+      "view_in_explorer": "在浏览器中查看"
     },
     "receive": {
       "title": "接收 IRM",
-      "scan_qr_hint": "扫描此二维码或复制以下地址"
+      "scan_qr_hint": "扫描此二维码或复制以下地址",
+      "button_label": "接收",
+      "send_to_this_address": "将 IRM 发送到此地址：",
+      "no_address_short": "无地址",
+      "no_address_available": "无可用地址",
+      "copy_address_button": "复制地址"
     },
     "security": {
       "section_title": "安全",
@@ -519,7 +585,16 @@
       "seed_modal_title": "您的恢复短语",
       "seed_modal_warning": "把这个写在纸上。任何拥有这 24 个字的人都可以花费您的资金。",
       "wif_label": "WIF私钥",
-      "backup_warning": "该文件包含您的所有私钥。安全存放。"
+      "backup_warning": "该文件包含您的所有私钥。安全存放。",
+      "backup_subsection": "备份",
+      "restore_subsection": "恢复",
+      "export_wif_dialog_title": "导出 WIF 密钥",
+      "export_wif_private_key_dialog_title": "导出 WIF 私钥",
+      "text_file_filter": "文本",
+      "backup_dialog_title": "保存钱包备份",
+      "select_backup_dialog_title": "选择钱包备份文件",
+      "backup_filter_name": "钱包备份",
+      "all_files_filter": "所有文件"
     },
     "transactions": {
       "section_title": "交易",
@@ -529,7 +604,17 @@
       "confirmations": "{{count}} 确认",
       "pending": "待办的",
       "received": "已收到",
-      "sent": "发送"
+      "sent": "发送",
+      "confirmed": "已确认",
+      "for_address": "用于 {{address}}",
+      "mempool_awaiting": "Mempool · 等待确认",
+      "miner_label": "矿工：{{address}}",
+      "fee_label": "费用：{{amount}} sats",
+      "txid_label": "TXID：{{txid}}",
+      "conf_short": "{{count}} 次确认",
+      "block_number": "区块 #{{height}}",
+      "open_in_explorer": "在浏览器中打开",
+      "copy_txid": "复制 TXID"
     },
     "toasts": {
       "send_success": "已发送 — txid {{txid}}",
@@ -565,7 +650,13 @@
       "wif_copied": "WIF 已复制",
       "name_invalid_chars": "钱包名称不能包含：/ \\ : * ? ” < > |",
       "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
-      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up.",
+      "node_syncing_wait": "节点同步中 — {{persisted}}/{{height}} 个区块。请稍候。",
+      "failed_add_address": "添加地址失败：{{reason}}",
+      "no_recovery_data": "钱包中未找到恢复数据",
+      "wallet_deleted": "已删除 {{name}}",
+      "seed_copied": "种子已复制",
+      "invalid_wallet_path": "钱包二进制返回无效路径：{{path}}"
     },
     "encryption": {
       "migration_title": "Encrypt your wallet",
@@ -588,6 +679,120 @@
       "needs_migration_status": "Wallet on disk uses the legacy unencrypted format and must be encrypted before use.",
       "plaintext_backup_warning": "Plaintext backup file(s) detected at {{paths}}. Delete after verifying the migration succeeded.",
       "recover_link": "Forgot your password? Recover with seed phrase"
+    },
+    "no_wallet_loaded": "未加载钱包 — 请在下方创建或导入",
+    "balance_label": "余额",
+    "balance_label_for_address": "余额 · 地址 {{index}}",
+    "satoshis_amount": "{{amount}} satoshi",
+    "unconfirmed": "未确认",
+    "wallet_wide": "（全钱包）",
+    "syncing_tooltip": "请等待节点完成同步后再发送。现在发送可能会因 UTXO 集仍在重建而导致签名验证错误失败。",
+    "syncing_progress": "同步中…",
+    "gaps_count": "{{count}} 个间隙",
+    "common": {
+      "cancel": "取消",
+      "done": "完成",
+      "reveal": "显示",
+      "hide": "隐藏",
+      "copy": "复制",
+      "delete": "删除",
+      "loading": "加载中…"
+    },
+    "seed": {
+      "recovery_phrase_title": "助记词",
+      "wallet_seed_title": "钱包种子",
+      "recovery_phrase_warning": "切勿分享你的助记词。任何持有这 24 个单词的人都可以访问你所有的资金。请离线安全存储。",
+      "wallet_seed_warning": "切勿分享你的钱包种子。此十六进制值赋予对所有资金的完全访问权。请离线安全存储。",
+      "custom_seed_hint": "此钱包使用自定义种子。请备份此十六进制种子以便恢复。",
+      "copy_phrase": "复制助记词",
+      "copy_seed": "复制种子"
+    },
+    "restore": {
+      "title": "从备份恢复",
+      "warning_body": "这将覆盖你当前的钱包数据。在继续之前，请确保你已备份 WIF 密钥或备份文件。恢复完成后，节点将自动重启以干净地接管新的钱包状态。",
+      "restore_button": "恢复钱包"
+    },
+    "create_modal": {
+      "create_title": "创建钱包",
+      "import_title": "导入钱包",
+      "create_new_tab": "新建",
+      "import_tab": "导入",
+      "generate_description": "生成带有 24 词助记词的全新 BIP39 钱包。",
+      "creating": "创建中…",
+      "create_new_wallet_button": "创建新钱包",
+      "save_warning": "请将你的 24 词助记词离线保存 — 它可以恢复你的整个钱包。WIF 密钥只能备份单个地址。两者一旦丢失均无法恢复。",
+      "address_label": "地址",
+      "recovery_phrase_label": "助记词（24 个单词）",
+      "recovery_phrase_hint": "（任一助记词均可恢复你的钱包）",
+      "wif_label": "WIF 密钥",
+      "wif_hint": "（你的可移植格式私钥）",
+      "loading_wif": "正在加载 WIF…",
+      "export_wif_to_file": "导出 WIF 到文件",
+      "saved_confirmation": "我已安全保存我的助记词和 WIF 密钥。",
+      "import_notice_lead": "这将导入一个新钱包。你当前的钱包保持不变，可以从",
+      "seed_phrase_method": "助记词",
+      "wif_key_method": "WIF 密钥",
+      "seed_phrase_input_label": "助记词（12 或 24 个单词）",
+      "seed_phrase_placeholder": "word1 word2 word3 …",
+      "bip39_hint": "BIP39 助记词，以空格分隔。",
+      "wif_placeholder": "5J… 或 K… 或 L…",
+      "wif_format_hint": "Wallet Import Format — 以 5、K 或 L 开头。",
+      "import_button": "导入"
+    },
+    "new_address": {
+      "title": "新地址",
+      "derived_lead": "已从你钱包的 BIP32 种子派生出一个新地址。你的",
+      "derived_emphasis": "助记词没有变化",
+      "derived_trail": "— 此地址与你现有的地址共享同一个钱包文件。",
+      "copy_address": "复制地址",
+      "wif_private_key_label": "WIF 私钥",
+      "wif_warning": "任何持有此 WIF 的人都可以花费此地址的资金。请离线存储。",
+      "copy_wif": "复制 WIF",
+      "recovery_reminder_lead": "此地址共享你的钱包助记词。要查看它，请前往",
+      "recovery_reminder_path": "「安全」→「显示助记词」"
+    },
+    "files": {
+      "section_title": "钱包文件",
+      "section_description": "每个文件都有自己的种子。切换以加载不同的钱包。",
+      "no_files_found": "在 ~/.irium/ 中未找到钱包文件",
+      "rename_placeholder": "wallet-name",
+      "active_badge": "活跃",
+      "switch_button": "切换",
+      "create_new_wallet_file": "创建新钱包文件",
+      "create_new_advanced_hint": "（高级 — 独立种子）",
+      "create_new_description": "创建一个带有独立种子的单独钱包文件。你当前的钱包仍保留在磁盘上，可从此列表切换回去。"
+    },
+    "hidden": {
+      "section_title": "已隐藏的地址",
+      "still_in_file": "（仍在钱包文件中）",
+      "description": "地址无法从钱包文件中永久删除。已隐藏的地址只是从视图中移除，但仍可恢复 — 点击「取消隐藏」可将其恢复。",
+      "unhide_button": "取消隐藏"
+    },
+    "delete_file": {
+      "confirm_title": "永久删除此钱包文件？",
+      "address_count": "{{count}} 个地址",
+      "address_count_one": "{{count}} 个地址",
+      "warning_label": "警告：",
+      "warning_funds_lead": "此钱包包含资金。在没有备份的情况下删除它意味着永久失去",
+      "warning_funds_trail": "。请确保你已导出 WIF 密钥或助记词，再继续操作。",
+      "warning_unknown_lead": "无法确认余额 — 节点可能离线。如果此钱包持有资金且你未备份助记词或 WIF 密钥，删除将",
+      "warning_unknown_emphasis": "永久丢失",
+      "warning_unknown_trail": "它们。",
+      "warning_zero_lead": "这将从磁盘删除该文件。如果你未备份此钱包的助记词或 WIF 密钥，其中所有资金将",
+      "warning_zero_emphasis": "永久丢失",
+      "warning_zero_trail": "。此操作无法撤销。",
+      "type_prompt_prefix": "输入",
+      "type_prompt_word": "DELETE",
+      "type_prompt_suffix": "以确认",
+      "deleting": "删除中…",
+      "delete_forever": "永久删除"
+    },
+    "hide_address": {
+      "confirm_title": "隐藏此地址？",
+      "body_lead": "该地址仍保留在钱包文件中 — 仅更新可见列表。你可以稍后从「已隐藏的地址」部分",
+      "body_emphasis": "取消隐藏",
+      "body_trail": "它。",
+      "confirm_button": "隐藏地址"
     }
   },
   "agreements": {
@@ -621,7 +826,18 @@
       "share_text": "分享文字",
       "delete": "删除",
       "submitting": "正在提交...",
-      "sign": "符号"
+      "sign": "符号",
+      "fund_escrow": "为托管注资",
+      "release_to_counterparty": "向对方释放",
+      "submit_proof": "提交证明",
+      "refund": "退款",
+      "agreement_expired": "协议已过期",
+      "create_and_submit_proof": "创建并提交证明",
+      "confirm_release": "确认释放",
+      "confirm_fund": "确认注资",
+      "confirm_open_dispute": "确认发起争议",
+      "use_this_invoice": "使用此发票 →",
+      "verify_signature_file": "验证签名文件…"
     },
     "proof_modal": {
       "title": "提交证明",
@@ -634,7 +850,15 @@
       "evidence_summary": "证据摘要",
       "evidence_placeholder": "例如通过银行转帐收到 50 美元付款，参考号#12345。",
       "submit_button": "提交证明",
-      "submitting": "正在提交..."
+      "submitting": "正在提交...",
+      "intro": "在应用内构建已签名的证明，或上传你已有的证明。",
+      "mode_create": "从证据创建",
+      "mode_upload": "上传文件",
+      "mode_create_sub": "在应用内构建",
+      "mode_upload_sub": "使用现有文件",
+      "upload_note_prefix": "仅当你已有证明文件时才使用此选项卡 — 例如，对方或见证人为你签署的文件，或你通过",
+      "upload_note_middle": "如果你要提交自己的证明，请使用上方的",
+      "upload_note_suffix": "选项卡 — 它无需离开应用即可构建并提交证明。"
     },
     "toasts": {
       "agreement_signed": "协议签署。",
@@ -663,7 +887,9 @@
       "signature_valid": "签名有效（签名者{{signer}}）",
       "signature_invalid": "签名无效：{{reason}}",
       "agreement_signed_short": "协议签署。",
-      "sign_failed": "签名失败"
+      "sign_failed": "签名失败",
+      "cleanup_removed": "已移除 {{count}} 个协议",
+      "cleanup_removed_with_failures": "已移除 {{count}} 个协议（{{failed}} 个失败）"
     },
     "refund": {
       "blocked_default": "退款资格未知",
@@ -685,13 +911,26 @@
       "share_text": "将本协议的纯文本摘要复制到剪贴板",
       "delete_local": "从您的本地商店删除此协议。交易对手的副本不受影响。",
       "save_friendly_name": "为本协议保存一个好记的名称（本地存储）",
-      "verify_signature_file": "根据此协议验证签名文件（.sig 或 .json）"
+      "verify_signature_file": "根据此协议验证签名文件（.sig 或 .json）",
+      "cleanup_old_test_data": "从本地存储中移除 ID 包含 test / gossip / demo / pr 的协议",
+      "node_offline_sign": "节点必须在线才能签名",
+      "sign_to_confirm": "签署此协议以确认你的参与",
+      "node_offline_fund": "节点必须在线才能为托管注资",
+      "fund_escrow_action": "将协议金额锁定到 HTLC 托管中",
+      "node_offline_release": "节点必须在线才能释放资金",
+      "release_to_counterparty": "向对方释放资金",
+      "node_offline_dispute": "节点必须在线才能发起争议",
+      "mark_disputed": "将此协议标记为争议中 — 需要仲裁人见证才能解决",
+      "node_offline_refund": "节点必须在线才能退款",
+      "view_audit": "查看完整链上审计记录"
     },
     "buttons": {
       "import_invoice": "进口发票",
       "import_pack": "导入包",
       "browse": "浏览",
-      "delete_agreement": "删除协议"
+      "delete_agreement": "删除协议",
+      "cleanup_old_test_data": "清理旧测试数据 ({{count}})",
+      "export_pack": "导出协议包"
     },
     "page_views": {
       "agreements": "协议",
@@ -744,12 +983,19 @@
       "seller": "卖方",
       "signer_wallet": "签名者钱包地址",
       "role": "角色：",
-      "reason": "原因："
+      "reason": "原因：",
+      "agreement_short": "协议",
+      "signer_prefix": "签名者"
     },
     "placeholders": {
       "your_wallet_address": "您的钱包地址",
       "secret_preimage": "可选 · 64 个字符的十六进制",
-      "dispute_reason": "描述出了什么问题——这与解析器共享。"
+      "dispute_reason": "描述出了什么问题——这与解析器共享。",
+      "output_pack_path": "/path/to/output.pack.json",
+      "proof_json_path": "/path/to/proof.json",
+      "pack_json_path": "/path/to/agreement.pack.json",
+      "invoice_json_path": "/path/to/invoice.json",
+      "hash_64_hex": "64 位十六进制字符"
     },
     "modals": {
       "submit_proof_title": "提交证明",
@@ -757,16 +1003,117 @@
       "import_invoice_title": "进口发票",
       "open_dispute_title": "公开争议？",
       "audit_title": "协议审核",
-      "sign_title": "签署协议"
+      "sign_title": "签署协议",
+      "delete_confirm_prefix": "删除协议",
+      "delete_confirm_body": "这只会从你的本地存储中移除该协议，不会影响对方的副本。仅未注资（开放/待处理）的协议可被删除。",
+      "cleanup_title": "清理旧测试数据",
+      "cleanup_found": "发现 {{count}} 个 ID 包含 test、gossip、demo 或 pr 的协议。",
+      "cleanup_disclaimer": "这只会从你的本地存储中移除它们，不会影响对方的副本。链上活动中的 HTLC 不会被改动 — 资金仍需单独释放或退款。",
+      "cleanup_remove_count": "移除 {{count}}",
+      "release_funds_title": "释放资金？",
+      "release_funds_body_prefix": "这将释放",
+      "release_funds_body_suffix": "给卖家。",
+      "fund_escrow_title": "为托管注资？",
+      "fund_escrow_body_prefix": "这将锁定",
+      "fund_escrow_body_suffix": "到 HTLC 托管中。证明被接受后资金释放给对方，或在超时高度后退款。",
+      "import_pack_format_prefix": "接受的格式：",
+      "import_pack_format_suffix": "— 由甲方导出",
+      "import_invoice_subtitle": "选择一个发票 JSON，在「结算」页面预填新协议。"
     },
     "audit": {
-      "fetching": "正在获取审核记录..."
+      "fetching": "正在获取审核记录...",
+      "no_data": "审计 RPC 未返回数据",
+      "show_raw_json": "显示原始 JSON",
+      "hide_raw_json": "隐藏原始 JSON"
     },
     "empty": {
       "no_signatures": "尚未验证签名。使用上面的按钮进行验证。",
       "no_wallet_addresses": "没有钱包地址",
       "no_disputes": "没有争议。",
-      "disputes_offline": "（节点已离线 - 争议列表可能不可用。）"
+      "disputes_offline": "（节点已离线 - 争议列表可能不可用。）",
+      "no_agreements_found": "未找到协议",
+      "with_status": "状态为",
+      "matching": "匹配",
+      "go_to_settlement_cta": "前往「结算」创建你的第一个协议 →"
+    },
+    "scope": {
+      "my": "我的协议",
+      "all": "全部"
+    },
+    "dialog_titles": {
+      "save_agreement_pack": "保存协议包",
+      "select_proof_file": "选择证明文件 (.json)",
+      "select_pack_file": "选择协议包 (.pack.json)",
+      "select_invoice_file": "选择发票 JSON",
+      "select_signature_file": "选择签名文件"
+    },
+    "timeline": {
+      "created": "已创建",
+      "funded": "已注资",
+      "proof_submitted": "已提交证明",
+      "released": "已释放",
+      "refunded": "已退款"
+    },
+    "detail_labels": {
+      "template": "模板",
+      "created": "创建时间",
+      "deadline": "截止时间",
+      "proof_status": "证明状态",
+      "release_eligible": "可释放",
+      "kind": "类型",
+      "threshold": "阈值",
+      "attestors": "见证人",
+      "parties": "参与方",
+      "amount": "金额",
+      "payer": "付款方",
+      "payee": "收款方",
+      "outcome": "结果",
+      "satisfied": "已满足",
+      "reason": "原因"
+    },
+    "detail_values": {
+      "none": "无",
+      "party": "方",
+      "parties": "方"
+    },
+    "sections": {
+      "policy": "策略",
+      "proofs": "证明",
+      "timeline": "时间线（{{count}} 个事件）",
+      "proofs_count": "证明（{{count}}）",
+      "funding_legs": "注资（{{count}} 笔）",
+      "linked_transactions": "关联交易（{{count}}）"
+    },
+    "warnings": {
+      "proof_finality_body": "在释放前等待更多区块确认 — 链重组可能会回滚证明。",
+      "open_dispute_body": "发起争议意味着协议需要仲裁人审查双方的证据。在继续之前，请确认你有充分的理由和支持证据。此操作不可撤销。"
+    },
+    "helpers": {
+      "sign_confirms_participation": "签名以确认你的参与。双方都必须在注资前签名。",
+      "sign_modal_body": "用你的钱包密钥签署此协议以确认你的参与。双方都必须在注资前签名。",
+      "no_hash_on_file": "此协议没有存档哈希 — 请粘贴对方共享的哈希。",
+      "no_file_selected": "未选择文件",
+      "secret_auto_loaded": "已从本地 agreement-secrets 存储自动加载",
+      "secret_required_hint": "如果协议不是你本人创建的，则必填。如果你的钱包自动派生，则留空即可。",
+      "use_invoice_hint": "点击「使用此发票」将跳转到「结算」页面并预填 OTC 模板。你可以在创建协议前更改模板、编辑字段并确认。",
+      "signer_unknown": "未知",
+      "rejected": "已拒绝",
+      "role_buyer_suffix": "（买家）",
+      "role_seller_suffix": "（卖家）",
+      "signer_not_party": "此地址既不是买家也不是卖家 — 签名将被记录，但没有方角色。"
+    },
+    "form_errors": {
+      "hash_required": "需要协议哈希",
+      "proof_type_required": "请选择证明类型",
+      "attested_by_required": "需要见证人地址",
+      "evidence_required": "请在「证据摘要」中描述发生的事情",
+      "secret_must_be_64_hex": "必须正好是 64 位十六进制字符（0-9，a-f）。"
+    },
+    "disputes": {
+      "opened_prefix": "已发起",
+      "resolved_prefix": "· 已解决",
+      "open_this_agreement": "打开此协议",
+      "agreement_not_in_list": "协议不在当前列表中 — 请尝试刷新「协议」视图"
     }
   },
   "settlement": {
@@ -971,14 +1318,72 @@
       "confirm_large_amount": "您即将将 {{amount}} IRM 锁定在托管中。\n\n这是一个很大的数额。确认您输入的小数正确。",
       "remote_label": "偏僻的",
       "remote_tooltip": "此优惠来自其他卖家，无法从您本地的商店中删除。",
-      "delete_tooltip": "从您本地的商店删除此优惠"
+      "delete_tooltip": "从您本地的商店删除此优惠",
+      "modal_title": "创建卖单",
+      "modal_subtitle": "将报价发布到订单簿 — 买家接单的瞬间 IRM 将被锁定。",
+      "post_offer_button": "发布报价",
+      "lock_info_prefix": "买家确认接单的瞬间你的 IRM 即被锁定。然后你会收到买家的链下付款，再点击",
+      "confirm_received_label": "确认已收到",
+      "lock_info_suffix": "进行释放。或者如果对方不付款，则发起争议。",
+      "amount_to_sell_label": "出售的 IRM 数量",
+      "price_per_irm_label": "每枚 IRM 的 USDT 价格",
+      "buyer_pays_total_prefix": "买家共支付",
+      "buyer_pays_total_amount": "{{amount}} USDT",
+      "payment_method_label": "付款方式",
+      "your_payment_details_label": "你的付款详情",
+      "payment_details_placeholder": "例如：IBAN DE89 3704 0044 0532 0130 00 或 PayPal: seller@example.com",
+      "payment_details_helper": "买家在接单后会看到这些详情。",
+      "payment_options": {
+        "bank_transfer": "银行转账",
+        "paypal": "PayPal",
+        "usdt_trc20": "USDT (TRC-20)",
+        "usdt_erc20": "USDT (ERC-20)",
+        "sepa": "SEPA",
+        "cash": "现金",
+        "other": "其他"
+      },
+      "errors": {
+        "positive_irm_amount": "请输入正数的 IRM 金额",
+        "positive_usdt_price": "请输入正数的每枚 IRM 的 USDT 价格",
+        "select_payment_method": "请选择付款方式",
+        "payment_details_required": "请输入你的付款详情，以便买家知道如何付款"
+      },
+      "toasts": {
+        "offer_posted": "报价已发布。买家确认接单的瞬间 IRM 将被锁定。"
+      }
     },
     "take_offer": {
       "title": "接受报价",
       "completed_trades": "已完成交易",
       "take_button": "接受报价",
       "taking": "服用…",
-      "title_modal": "接受此优惠"
+      "title_modal": "接受此优惠",
+      "set_buyer_address_first": "请先设置你的买家地址",
+      "error_agreement_id_missing": "报价已接单，但响应中缺少协议 ID",
+      "irm_locked_send_payment": "IRM 现已锁入托管。请发送链下付款。",
+      "dispute_reason_buyer_cancelled": "买家在付款前取消",
+      "dispute_opened_refund_hint": "争议已发起。你可以在超时后从「协议」页面申请退款。",
+      "enter_payment_reference": "请输入交易 ID 或备注，以便卖家核实你的付款",
+      "payment_reported_seller_notified": "付款已上报。卖家已收到通知。",
+      "step_of_two": "步骤 {{step}} / 2",
+      "step1_intro": "确认将卖家的 IRM 锁入托管。你随后将有一段截止时间来发送链下付款并上报交易。",
+      "you_receive": "你将收到：",
+      "payment_method": "付款方式：",
+      "seller": "卖家：",
+      "buyer_you": "买家（你）：",
+      "not_set": "- 未设置 -",
+      "cancel": "取消",
+      "confirm_take": "确认接单",
+      "irm_locked_in_escrow": "IRM 已锁入托管",
+      "step2_intro": "卖家的 IRM 已锁定。请发送链下付款，然后在下方输入你的交易参考号，并点击「我已发送付款」。",
+      "sellers_payment_details": "卖家的付款详情",
+      "no_payment_details": "报价中无详情。请直接联系卖家获取付款说明。",
+      "your_transaction_reference": "你的交易参考号",
+      "payment_reference_placeholder": "银行汇款参考号、PayPal txid、区块链 txid 等。",
+      "payment_reference_hint": "卖家看到的内容完全一致。任何可用于确认你的付款到账的信息均可 - 参考号、交易 ID、发送人姓名等。",
+      "cancel_opens_dispute_warning": "如果在此处取消，将发起争议。你可以在超时后从「协议」页面申请退款。",
+      "cancel_and_dispute": "取消并争议",
+      "i_have_sent_payment": "我已发送付款"
     },
     "feeds": {
       "discover_button": "发现提要",
@@ -1026,7 +1431,189 @@
     },
     "swap": {
       "fuel_banner_title": "IRM 为结算层提供动力。",
-      "fuel_banner_body": "将 BTC、LTC 或 DOGE 兑换为 IRM,开始无需信任的交易。"
+      "fuel_banner_body": "将 BTC、LTC 或 DOGE 兑换为 IRM,开始无需信任的交易。",
+      "pair_not_available": "此交易对暂不可用",
+      "own_order_hint": "这是你自己的订单。请使用右侧的「我的 Swap」面板取消。",
+      "not_available_yet": "暂不可用",
+      "how_it_works_title": "{{pair}} swap 工作原理",
+      "how_it_works_step1": "从左侧订单簿中挑选一个订单，或自行发布。",
+      "how_it_works_step2": "订单被接受的瞬间，卖家的 IRM 即被锁入托管。",
+      "how_it_works_step3": "买家向卖家的地址发送 {{quote}}。",
+      "how_it_works_step4": "付款确认后，IRM 将自动释放给买家。"
+    },
+    "header": {
+      "subtitle_otc": "点对点 OTC。将 IRM 锁入托管，兑换任何东西。",
+      "subtitle_swap": "IRM 与其他链之间的原子交换。无需信任。无桥接。",
+      "advanced_flows": "高级流程",
+      "advanced_flows_tooltip": "打开更底层的结算流程。"
+    },
+    "mode_tabs": {
+      "otc": "OTC P2P",
+      "swap": "现货 Swap"
+    },
+    "my_trades": {
+      "title": "我的交易",
+      "tab_active": "进行中",
+      "tab_completed": "已完成",
+      "tab_all": "全部",
+      "empty_active": "暂无进行中的交易。从订单簿接单以开始。",
+      "empty_completed": "暂无已完成的交易。",
+      "empty_all": "暂无交易。从订单簿接单以开始。",
+      "side_buy": "买入",
+      "side_sell": "卖出"
+    },
+    "trade_status": {
+      "released": "已释放",
+      "refunded": "已退款",
+      "expired": "已过期",
+      "cancelled": "已取消",
+      "disputed": "争议中",
+      "confirming": "确认中",
+      "locked": "已锁定",
+      "proposed": "已提议",
+      "drafting": "草稿中"
+    },
+    "order_book": {
+      "title": "订单簿",
+      "create_order": "创建订单",
+      "offers_count_one": "个报价",
+      "offers_count_other": "个报价",
+      "offers_count": "个报价",
+      "hidden_tooltip_one": "{{count}} 个报价因未标价而被隐藏",
+      "hidden_tooltip_other": "{{count}} 个报价因未标价而被隐藏",
+      "hidden_tooltip": "{{count}} 个报价因未标价而被隐藏",
+      "hidden_suffix": "{{count}} 个已隐藏",
+      "show_taken": "显示已被接单",
+      "sort": {
+        "price_asc": "价格 ↑",
+        "price_desc": "价格 ↓",
+        "newest": "最新",
+        "best_rep": "信誉最佳"
+      },
+      "updated_ago": "更新于 {{time}}",
+      "refreshing": "刷新中…",
+      "refreshing_lower": "刷新中…",
+      "empty_prefix": "订单簿中暂无报价。点击",
+      "empty_suffix": "发布第一个。",
+      "col_amount_irm": "IRM 数量",
+      "col_price_per_irm": "每枚 IRM 价格",
+      "col_total": "总计",
+      "col_payment": "付款方式",
+      "col_seller": "卖家",
+      "col_rep": "信誉",
+      "col_age": "时长",
+      "rep_tooltip": "5 星中的 {{stars}}，{{completed}} 次完成",
+      "no_reputation": "暂无信誉",
+      "taken": "已接单",
+      "take": "接单"
+    },
+    "pair_order_book": {
+      "header_title": "{{pair}} 订单簿",
+      "open_shown_summary": "{{open}} 个开放 · {{shown}} 个显示",
+      "updated_label": "更新于",
+      "new_swap": "新建 swap",
+      "direction_both": "全部",
+      "direction_sell_irm": "卖出 IRM",
+      "direction_buy_irm": "买入 IRM",
+      "sort_price_asc": "最优价格优先",
+      "sort_price_desc": "最高价格优先",
+      "sort_recent": "最新优先",
+      "hide_my_orders": "隐藏我的订单",
+      "loading_orders": "正在加载 {{pair}} 订单…",
+      "empty_state": "暂无开放的 {{pair}} 订单。成为第一个 — 通过上方的「新建 swap」按钮发布。",
+      "side_sells_irm": "卖出 IRM",
+      "side_buys_irm": "买入 IRM",
+      "badge_yours": "你的",
+      "escrow_protected": "托管保护",
+      "maker_line": "做市方 {{address}} · {{ago}}",
+      "needs_confirmations": "{{network}} 侧需要 {{count}} 个确认",
+      "needs_confirmations_plural": "{{network}} 侧需要 {{count}} 个确认",
+      "relative_recent": "最近",
+      "relative_just_now": "刚刚",
+      "relative_blocks_ago": "{{count}} 个区块前",
+      "relative_blocks_ago_one": "{{count}} 个区块前",
+      "relative_hours_ago": "{{count}} 小时前",
+      "relative_days_ago": "{{count}} 天前"
+    },
+    "resolver_picker": {
+      "title": "仲裁人选择",
+      "intro": "仲裁人是经过认证的第三方，当买家和卖家无法达成一致时，由其裁定 IRM 归属。仲裁人收取一笔小额费用，在交易结算时从争议金额中扣除。",
+      "nominated_section_title": "为此交易提名的仲裁人",
+      "primary_label": "主选",
+      "fallback_label": "备选",
+      "fee_with_value": "费用：{{value}}",
+      "no_nominated_notice": "此交易创建时未提名仲裁人。在下方任何仲裁人可以介入之前，双方都需要在钱包的仲裁人重新提名流程中共同签署一份新的提名。",
+      "available_section_title": "可用仲裁人",
+      "registry_unreachable": "此节点上无法访问仲裁人注册端点（{{error}}）。请通过钱包的仲裁人重新提名流程，使用 resolver-list CLI 直接发现候选人。",
+      "empty_registry_before": "此节点上尚未注册任何仲裁人。仲裁人在其地址出现在最近的 coinbase 输出后，通过调用",
+      "empty_registry_after": "进行注册。",
+      "unnamed_resolver": "未命名仲裁人",
+      "no_reputation_yet": "暂无信誉",
+      "agreements_hint": "使用「协议」页面向仲裁人提交额外证据，并观察争议的解决过程。在仲裁人作出决定之前，双方可随时提交证据。",
+      "close": "关闭"
+    },
+    "seller_review": {
+      "toast_released": "IRM 已释放。买家现已获得资金。",
+      "dispute_reason": "卖家未收到链下付款",
+      "toast_dispute_opened": "争议已发起。仲裁人将审查证据。",
+      "empty_state": "没有等待你处理的传入交易。当买家接受你的任一报价并上报付款后，会显示在此处。",
+      "section_title": "待核实的传入交易",
+      "waiting_count": "{{count}} 个等待中",
+      "status_releasing": "释放中",
+      "status_funded": "已注资",
+      "buyer_label": "买家：",
+      "buyer_claims_paid": "买家声称已于 {{time}} 发送付款",
+      "no_reference": "（未提供交易参考号）",
+      "no_payment_yet": "买家尚未上报付款。请等待，或在截止时间过后发起争议。",
+      "open_dispute_button": "未付款 - 发起争议",
+      "confirm_release_button": "确认收到并释放",
+      "loading_trades": "正在加载交易...",
+      "time_ago_seconds": "{{count}} 秒前",
+      "time_ago_minutes": "{{count}} 分钟前",
+      "time_ago_hours": "{{count}} 小时前",
+      "time_ago_days": "{{count}} 天前"
+    },
+    "take_swap": {
+      "buy_irm": "买入 IRM",
+      "sell_irm": "卖出 IRM",
+      "toast_no_wallet": "没有活跃的 Irium 钱包地址。请先打开钱包。",
+      "toast_min_blocks": "退款截止时间至少为 10 个区块",
+      "toast_locked_buyer": "订单已锁定。请发送 {{code}} 付款并上报。",
+      "toast_locked_seller": "订单已锁定。卖家的 IRM 已在托管中。",
+      "toast_need_ref": "请输入交易 ID 或备注，以便卖家核实你的 {{code}} 付款",
+      "toast_payment_reported": "付款已上报。卖家已收到通知。",
+      "toast_dispute_info": "可以从「协议」页面发起争议。请暂时在此取消，之后再到那里处理。",
+      "modal_title": "在 {{pair}} 上 {{label}}",
+      "step_of_2": "步骤 {{step}} / 2",
+      "intro_buyer": "确认将把卖家的 IRM 锁入托管。然后你将向下一屏显示的地址发送 {{code}}。",
+      "intro_seller": "确认将创建一个匹配的托管，其中包含你的 IRM。买家将向你的地址发送 {{code}}。",
+      "you_receive": "你将收到",
+      "you_pay": "你将支付",
+      "you_send": "你将发送",
+      "price": "价格",
+      "maker": "做市方",
+      "maker_foreign_address": "做市方 {{code}} 地址",
+      "needs": "需要",
+      "confirmation_one": "{{count}} 个 {{code}} 确认",
+      "confirmation_other": "{{count}} 个 {{code}} 确认",
+      "refund_deadline_label": "退款截止时间（Irium 区块）",
+      "refund_deadline_hint": "如果在此截止时间前未确认付款，你的资金可以被退款。",
+      "cancel": "取消",
+      "confirm_action": "确认 {{label}}",
+      "escrow_locked": "托管已锁定",
+      "escrow_locked_buyer": "请向下方地址发送 {{code}} 付款。付款确认后，IRM 将自动释放到你的钱包。",
+      "escrow_locked_seller": "你的 IRM 已在托管中。买家将向你的地址发送 {{code}}。其付款确认后，IRM 将释放给买家，买家流程将自行完成。",
+      "send_to_label": "将 {{code}} 发送至",
+      "exact_amount_label": "精确的 {{code}} 金额",
+      "required_memo_label": "必填的付款备注",
+      "memo_hint": "大多数 {{name}} 钱包将此作为付款上的额外数据字段。它将你的付款关联到此交易，以便 IRM 自动释放。",
+      "tx_reference_label": "你的交易参考号",
+      "tx_reference_placeholder": "{{code}} 交易 ID 或备注",
+      "tx_reference_hint": "卖家看到的内容完全一致。任何可用于确认付款的信息均可。",
+      "cancel_warning": "如果现在取消，你的资金将保持锁定，直到上方的退款截止时间。",
+      "cancel_and_dispute": "取消并争议",
+      "i_have_sent": "我已发送 {{code}}",
+      "watching_escrow": "监控托管"
     }
   },
   "miner": {
@@ -1047,7 +1634,11 @@
       "uptime": "正常运行时间",
       "difficulty": "困难",
       "temperature": "温度",
-      "power": "力量"
+      "power": "力量",
+      "est_daily_irm": "预估每日 IRM",
+      "na_linux_only": "N/A（仅 Linux）",
+      "pool_difficulty": "矿池难度",
+      "pool_hashrate": "矿池算力"
     },
     "buttons": {
       "start_mining": "开始挖矿",
@@ -1056,7 +1647,23 @@
       "connect_pool": "连接到池",
       "disconnect": "断开",
       "confirm_disconnect": "确认断开连接？",
-      "detect_gpus": "检测 GPU"
+      "detect_gpus": "检测 GPU",
+      "view_wallet": "查看钱包",
+      "starting": "启动中…",
+      "connecting": "连接中…",
+      "start_gpu_mining": "开始 GPU 挖矿",
+      "stop_gpu": "停止 GPU",
+      "scanning": "扫描中…",
+      "yes": "是",
+      "no": "否",
+      "close": "关闭",
+      "done": "完成",
+      "ok": "确定",
+      "start": "开始",
+      "stop": "停止",
+      "refresh": "刷新",
+      "view_pool_stats": "查看矿池统计",
+      "view_pool_stats_tooltip": "在区块浏览器中打开公共矿池的实时矿工统计"
     },
     "fields": {
       "mining_address_label": "挖矿地址",
@@ -1080,21 +1687,49 @@
       "intensity_label": "强度 — {{value}}%",
       "intensity_mac_note": "macOS 上的强度上限为 50%，以防止 GPU 看门狗在批次中杀死内核。 GPU 矿工会自动检测看门狗停顿，并在发现它们时干净地停止。",
       "pool_preset": "池预设",
-      "stratum_worker_use_wallet": "Use my wallet"
+      "stratum_worker_use_wallet": "Use my wallet",
+      "intensity_hint": "强度越高 = 算力越高，功耗越大",
+      "core_active_tooltip": "核心 {{n}}（活跃）",
+      "core_idle_tooltip": "核心 {{n}}（空闲）",
+      "stratum_worker_placeholder": "walletAddress.workerName",
+      "stratum_worker_autofill_tooltip": "自动填充：{{address}}.rig1",
+      "stratum_password_hint": "留空将使用 \"x\"（大多数矿池的默认值）"
     },
     "found_blocks": {
       "section_title": "找到的方块",
       "empty": "本次会话中尚未找到任何块。",
-      "open_in_explorer_tooltip": "在资源管理器中打开此块"
+      "open_in_explorer_tooltip": "在资源管理器中打开此块",
+      "hide_orphans_tooltip": "隐藏被其他矿工赢得的区块",
+      "reveal_orphans_tooltip_one": "显示 {{count}} 个孤块候选",
+      "reveal_orphans_tooltip_other": "显示 {{count}} 个孤块候选",
+      "hide_orphans_button": "隐藏孤块（{{count}}）",
+      "show_orphans_button": "显示孤块（{{count}}）",
+      "all_orphaned": "暂无已确认的区块 — 目前所有候选块都被孤立。",
+      "orphaned_tooltip": "已孤立 — 被其他矿工赢得",
+      "orphaned_long_tooltip": "此高度的标准区块由另一地址挖出 — 我们记录了候选块但输掉了竞争。",
+      "orphaned_badge": "孤块",
+      "block_height_tooltip": "区块高度 {{height}}",
+      "won_by_another": "被其他矿工赢得",
+      "hash_unavailable": "此矿工版本无法提供哈希",
+      "reward_not_indexed_tooltip": "节点尚未索引奖励 — 成熟后数值会自动填充",
+      "reward_unknown_tooltip": "奖励未知 — 矿工 stdout 未上报",
+      "estimate_marker": "~ 估算"
     },
     "shares": {
       "accepted": "公认",
       "rejected": "被拒绝",
-      "ratio": "比率"
+      "ratio": "比率",
+      "last_share": "最后 share"
     },
     "asic_info": {
       "headline": "通过 Stratum 将您的 ASIC 或 GPU 连接到矿池",
-      "after_install": "安装后，重新启动 Irium Core。"
+      "after_install": "安装后，重新启动 Irium Core。",
+      "external_title": "使用外部 ASIC 或 GPU 进行矿池挖矿",
+      "external_body_before_url": "将你的 ASIC 或 GPU 挖矿软件直接指向上方的矿池 URL（例如 ",
+      "external_body_after_url": "）。Irium Core 监控此处显示的矿池端 share 统计；硬件的本地算力由矿工自身上报。",
+      "connect_button_intro_before": "下方的 ",
+      "connect_button_intro_middle": " 按钮通过捆绑的 ",
+      "connect_button_intro_after": " sidecar 使用 CPU 启动矿池挖矿 — 仅在你希望此机器也向矿池贡献 CPU 算力时有用。外部 ASIC 不需要此按钮。"
     },
     "toasts": {
       "miner_started": "CPU挖矿机启动",
@@ -1114,17 +1749,42 @@
       "connecting_to_pool": "正在连接到泳池...",
       "pool_disconnected_reconnecting": "池已断开连接 — 正在重新连接...",
       "pool_connection_lost": "池连接丢失。请重新连接。",
-      "pool_error": "池错误：{{message}}"
+      "pool_error": "池错误：{{message}}",
+      "no_device_selected": "未选择设备 — 使用默认设备 0",
+      "solo_listening_on": "Solo Stratum 正在监听 {{addr}}",
+      "solo_failed_start": "Solo Stratum 启动失败",
+      "solo_stopped": "Solo Stratum 已停止",
+      "solo_failed_stop": "Solo Stratum 停止失败",
+      "copied": "已复制"
     },
     "page_subtitle": "SHA-256d · CPU · GPU · ASIC 池支持",
     "tooltips": {
       "copy_address": "复制地址",
-      "copy_full_hash": "复制完整哈希值"
+      "copy_full_hash": "复制完整哈希值",
+      "copy": "复制"
     },
     "pool_configuration": "池配置",
     "opencl": {
       "detected_title": "检测到 OpenCL 硬件",
-      "none_detected": "未检测到支持 OpenCL 的 GPU"
+      "none_detected": "未检测到支持 OpenCL 的 GPU",
+      "no_gpu_idle_message": "未检测到兼容的 GPU — 请参阅下方的「配置」",
+      "select_platform": "选择一个平台并开始挖矿",
+      "no_compatible_gpu": "未检测到兼容的 GPU",
+      "install_drivers_before": "GPU 挖矿需要 OpenCL 运行时。请安装 GPU 厂商的驱动程序（NVIDIA、AMD 或 Intel OpenCL SDK），然后点击 ",
+      "install_drivers_after": "。",
+      "supports_pool_and_solo": "启用后，GPU 矿工同时支持矿池（Stratum）和 solo（直连节点 RPC）挖矿。",
+      "read_docs": "阅读 GPU 矿工文档",
+      "no_platforms_found": "未找到 OpenCL 平台。",
+      "install_icd_before": "安装你的 GPU 驱动和 ICD 加载器，然后点击 ",
+      "install_icd_after": " 再次尝试。",
+      "platform_n": "平台 {{n}}",
+      "discrete_gpu": "独立 GPU",
+      "device_n": "设备 {{n}}",
+      "fix_intro": "要修复此问题，请为你的 GPU 安装 OpenCL 驱动：",
+      "fix_nvidia": "从 nvidia.com 重新安装你的 GPU 驱动",
+      "fix_amd": "从 amd.com 安装 AMD Software Adrenalin",
+      "fix_intel": "从 intel.com 安装 Intel Graphics Driver",
+      "scanning": "正在扫描 OpenCL 设备…"
     },
     "unexpected_exit": {
       "title": "Miner stopped unexpectedly",
@@ -1133,6 +1793,75 @@
       "restart_cpu": "Restart CPU Miner",
       "restart_gpu": "Restart GPU Miner",
       "dismiss": "Dismiss"
+    },
+    "activity": {
+      "share_accepted": "Share 已接受",
+      "share_rejected": "Share 已拒绝",
+      "share_rejected_with_detail": "Share 已拒绝 — {{detail}}",
+      "pool_error": "矿池错误",
+      "pool_error_with_detail": "矿池错误 — {{detail}}",
+      "mining_active": "挖矿中",
+      "block_hash_marker": "· 区块 #{{height}}",
+      "section_title": "近期活动",
+      "last_count": "最近 {{count}} 条",
+      "waiting_for_first_share": "等待首个 share…"
+    },
+    "status": {
+      "loading": "加载中…",
+      "mining_active": "挖矿中",
+      "mining_active_syncing": "挖矿中 — 同步区块中…",
+      "cpu_idle": "CPU 空闲",
+      "gpu_active": "GPU 活跃",
+      "gpu_idle": "GPU 空闲",
+      "pool_connected": "矿池已连接",
+      "pool_disconnected": "矿池已断开",
+      "live_badge": "实时",
+      "syncing_badge": "同步中"
+    },
+    "sync": {
+      "node_syncing_height": "节点同步中 — 高度 {{localHeight}} / 网络 {{networkTip}}",
+      "warming_up_header": "矿工预热中 — 等待首个 share 速率…",
+      "node_syncing_body": "节点仍在追赶网络尖端。挖矿已启用，但在本地链与网络一致之前不会接受任何 share。通常几分钟内完成。",
+      "warming_up_body": "矿工 sidecar 已启动。首个算力读数将在 1-3 秒内出现 — 无需操作。"
+    },
+    "block_info": {
+      "mining_block_n": "正在挖区块 #{{height}}",
+      "previous_block": "上一个区块",
+      "last_confirmed_block": "最后已确认区块",
+      "network_difficulty": "网络难度"
+    },
+    "solo": {
+      "title": "Solo Stratum 桥接",
+      "subtitle": "让 ASIC 对接你自己的 iriumd。无矿池费用，无矿池依赖。",
+      "listening": "监听中",
+      "stopped": "已停止",
+      "listen_address_label": "监听地址",
+      "listen_default_before": "默认 ",
+      "listen_default_after": " 绑定到所有接口，以便局域网内的 ASIC 都能访问。",
+      "asic_connection_string": "ASIC 连接字符串",
+      "bullet_replace_host_before": "• 将 ",
+      "bullet_replace_host_after": " 替换为你机器的局域网 IP（或 VPS IP）。",
+      "bullet_worker_username_before": "• 工作机用户名：你的 Q 地址，后跟 ",
+      "bullet_worker_username_after": "。密码：任意字符串。",
+      "bullet_bridge_serves_before": "• 桥接服务 ",
+      "bullet_bridge_serves_middle": " 和 ",
+      "bullet_bridge_serves_after": " 在你本地的 iriumd 上。"
+    },
+    "found_block_banner": {
+      "title": "区块 #{{height}} 已挖出！",
+      "body": "你的 {{kind}} 矿工刚刚赢得了网络竞争 — 50 IRM 即将到账（100 个区块后成熟）。",
+      "dismiss_aria": "关闭"
+    },
+    "tabs_v2": {
+      "cpu": "CPU 矿工",
+      "gpu": "GPU 矿工",
+      "stratum": "矿池 / Stratum",
+      "solo": "Solo Stratum"
+    },
+    "pool_presets": {
+      "irium_official_cpu_gpu": "Irium 官方矿池 (CPU/GPU)",
+      "irium_official_asic": "Irium 官方矿池 (ASIC)",
+      "custom": "自定义"
     }
   },
   "onboarding": {
@@ -1162,7 +1891,8 @@
       "generating": "正在生成钱包...",
       "show_recovery": "显示恢复短语",
       "i_wrote_it_down": "我写下来了",
-      "continue_to_wallet": "继续前往钱包"
+      "continue_to_wallet": "继续前往钱包",
+      "generating_sub": "正在创建带有 24 词助记词的 BIP32 HD 钱包…"
     },
     "import": {
       "tab_mnemonic": "恢复短语",
@@ -1199,6 +1929,153 @@
       "too_short": "Password must be at least 4 characters",
       "required": "Password is required",
       "continue": "Continue"
+    },
+    "splash": {
+      "subtitle_full_node": "全节点桌面钱包",
+      "status_initializing": "正在初始化运行时…",
+      "status_loading_crypto": "正在加载加密模块…",
+      "status_verifying_binary": "正在验证二进制完整性…",
+      "status_establishing_context": "正在建立安全上下文…",
+      "status_ready": "就绪"
+    },
+    "rail": {
+      "system_check": "系统检查",
+      "bootstrap": "引导",
+      "network_sync": "网络同步",
+      "wallet_setup": "钱包设置",
+      "backup_secure": "备份与安全"
+    },
+    "binary_check": {
+      "subtitle": "正在验证本机所需的节点二进制是否齐全。",
+      "iriumd_desc": "全节点守护进程",
+      "irium_wallet_desc": "钱包与市场 CLI",
+      "irium_miner_desc": "CPU 矿工",
+      "all_verified": "所有二进制已验证。继续…",
+      "missing_binaries": "二进制缺失。请将可执行文件放入 src-tauri/binaries/",
+      "retry": "重试",
+      "skip_advanced": "跳过（高级）"
+    },
+    "bootstrap": {
+      "subtitle": "正在配置种子节点、信任锚和创世区块。",
+      "creating_data_dir": "正在创建数据目录…",
+      "writing_seedlist": "正在写入引导 seedlist.txt…",
+      "writing_static_peers": "正在写入 static_peers.txt…",
+      "installing_anchors": "正在安装创世 anchors.json…",
+      "installing_trust_signatures": "正在安装信任签名…",
+      "complete": "引导配置完成。",
+      "error_prefix": "错误",
+      "skip_continue": "跳过（继续）"
+    },
+    "network_sync": {
+      "subtitle": "正在加载本地区块链数据并连接到 Irium P2P 网络。",
+      "port_in_use_message": "端口 38291 已被占用。可能有另一个 Irium 节点正在后台运行。请检查系统托盘中是否有现存的 Irium Core 实例，或打开任务管理器结束所有 iriumd.exe 进程，然后重启应用。",
+      "add_peer_format_error": "请使用 IP:PORT 格式（例如 1.2.3.4:38291）",
+      "add_peer_rejected": "节点拒绝了该地址",
+      "add_peer_unreachable": "无法连接到节点",
+      "starting_iriumd": "正在启动 iriumd…",
+      "loading_blockchain_data": "正在加载区块链数据…",
+      "starting_node": "正在启动节点…",
+      "discovering": "发现中…",
+      "searching_for_peers": "正在 Irium 网络上搜索对等节点",
+      "checking_connectivity": "正在检查网络连通性…",
+      "network_reachable": "网络可达 — 正在启动节点…",
+      "port_blocked_title": "端口 38291 似乎出站被阻止",
+      "port_blocked_body_before": "无法连接到 Irium 网络。请检查你的路由器或防火墙 — 端口",
+      "port_blocked_body_after": "必须开放给出站 TCP 连接。",
+      "restarting_node": "正在重启节点…",
+      "retry_connection": "重试连接",
+      "still_connecting_title": "仍在连接对等节点…",
+      "still_connecting_body": "节点正在接入 Irium 网络。通常 30 秒内完成 — 请耐心等待。",
+      "connecting_for": "已连接 {{seconds}} 秒…",
+      "add_peer_manually": "手动添加对等节点",
+      "add_peer_button": "添加对等节点",
+      "added_peer": "已添加 {{addr}}",
+      "continuing_in": "{{seconds}} 秒后继续…",
+      "syncing_background": "后台同步中…",
+      "continue_anyway": "仍然继续 →"
+    },
+    "wallet_setup_subtitle": "创建一个全新的 HD 钱包，或从现有钱包恢复。",
+    "wallet_setup_errors": {
+      "failed_create": "创建钱包失败",
+      "no_wallet_pending": "没有等待加密的钱包",
+      "failed_set_password": "设置钱包密码失败",
+      "import_failed": "导入失败"
+    },
+    "wallet_password": {
+      "title": "设置钱包密码",
+      "subtitle": "用于加密你的钱包文件。继续前必须设置。",
+      "placeholder": "选择一个强密码（8 位以上）",
+      "confirm_placeholder": "确认密码",
+      "warning": "此密码一旦遗忘无法恢复。请将其写下来并安全保管。你的助记词是不依赖此密码恢复钱包的唯一途径。",
+      "continue": "加密并继续",
+      "too_short": "密码至少 8 个字符",
+      "mismatch": "两次输入的密码不一致",
+      "encrypting": "正在加密钱包…",
+      "encrypting_sub": "正在将 PBKDF2 派生的密钥应用到钱包文件。",
+      "hide": "隐藏",
+      "show": "显示"
+    },
+    "wallet_restored_sub": "你的钱包已成功导入。",
+    "restored": {
+      "primary_address": "主地址",
+      "address_pending": "节点完成同步后，地址将显示在仪表盘上。",
+      "additional_addresses": "已发现 {{count}} 个其他地址",
+      "balance_will_load": "节点同步时，你的余额和交易历史将自动在仪表盘上加载。",
+      "continue_to_dashboard": "前往仪表盘"
+    },
+    "import_form": {
+      "subtitle": "请在下方选择恢复方式。",
+      "tab_mnemonic_label": "助记词",
+      "tab_wif_label": "WIF 密钥",
+      "tab_privkey_label": "私钥",
+      "mnemonic_placeholder": "word1 word2 word3 … word24",
+      "mnemonic_hint": "BIP32 助记词 — 12 或 24 个以空格分隔的单词",
+      "wif_placeholder": "5Jxx… 或 Kxx… 或 Lxx…",
+      "wif_hint": "Wallet Import Format（Base58Check 编码的私钥）",
+      "privkey_placeholder": "0x1a2b3c4d…（64 个十六进制字符）",
+      "privkey_hint": "原始 256 位十六进制私钥",
+      "back": "返回",
+      "importing": "导入中…"
+    },
+    "choose": {
+      "create_description": "生成带有 24 词助记词的全新 BIP32 HD 钱包。",
+      "import_description": "通过助记词、WIF 密钥或原始私钥恢复。"
+    },
+    "backup": {
+      "field_address_label": "钱包地址",
+      "field_wif_label": "WIF 密钥",
+      "field_mnemonic_label": "助记词（24 个单词）",
+      "field_wif_warning": "WIF 是你的可移植格式私钥。任何持有它的人都能控制此地址的资金。",
+      "field_mnemonic_warning": "按顺序写下这 24 个单词。一旦丢失无法恢复。",
+      "copy": "复制",
+      "copied": "已复制！",
+      "hide": "隐藏",
+      "reveal": "显示",
+      "click_to_reveal": "点击显示",
+      "confirm_address": "我已保存我的钱包地址",
+      "confirm_wif": "我已安全存储我的 WIF 密钥",
+      "confirm_mnemonic": "我已离线写下我的助记词",
+      "loading": "加载中…",
+      "wif_read_failed": "（WIF 读取失败 — 启动后请使用「安全」面板",
+      "shown_once_before": "此信息仅显示",
+      "shown_once_emphasis": "一次",
+      "shown_once_after": "。继续前请将每项内容离线保存。",
+      "critical_warning_strong": "你将无法恢复你的钱包",
+      "critical_warning_body": "如果你丢失了助记词或 WIF 密钥。Irium Core 没有云端备份。请立即把所有内容写下来。",
+      "items_confirmed": "已确认 {{count}} / {{total}} 项",
+      "launch_dashboard": "启动仪表盘",
+      "confirm_all_to_continue": "请确认全部 4 项后才能继续"
+    },
+    "welcome_screen": {
+      "welcome_to": "欢迎使用",
+      "tagline": "你的 Irium 区块链全节点桌面钱包。发送、接收、交易和结算 — 全部点对点，全部链上。",
+      "wizard_intro": "此设置向导将配置你的节点、同步链并创建或恢复你的钱包。",
+      "chip_full_node": "全节点",
+      "chip_hd_wallet": "HD 钱包",
+      "chip_p2p_trade": "P2P 交易",
+      "chip_on_chain_settlement": "链上结算",
+      "chip_privacy_first": "隐私优先",
+      "get_started": "开始使用"
     }
   },
   "reputation": {
@@ -1426,7 +2303,26 @@
       "hashrate_avg_window": "{{minutes}} 分钟平均值",
       "confidence_low": "信心度低",
       "confidence_medium": "中等置信度",
-      "confidence_high": "高置信度"
+      "confidence_high": "高置信度",
+      "asic_port_with_443": "端口 {{port}} + 443",
+      "active_miners": "活跃矿工",
+      "worker_count_one": "{{count}} 个工作机",
+      "worker_count_other": "{{count}} 个工作机",
+      "your_miners_pinned": "你的矿工已置顶",
+      "hide_offline": "隐藏离线（{{count}}）",
+      "show_offline": "显示离线矿工（{{count}}）",
+      "no_miners_reporting": "没有活跃矿工上报。",
+      "col_worker": "工作机",
+      "col_accepted": "已接受",
+      "col_rejected_15m": "已拒绝（15 分钟）",
+      "col_rejected_15m_tooltip": "仅最近 15 分钟内被拒绝的 share。累计计数（自 stratum 重启以来）会让工作机即使已恢复也持续显示陈旧的预热期暴增总数。",
+      "col_reject_pct_15m": "拒绝率（15 分钟）",
+      "col_reject_pct_15m_tooltip": "最近 15 分钟的滚动拒绝率。自重启以来的累计速率会让工作机即使已恢复也持续停留在重启后的预热期暴增水平。",
+      "col_hashrate_15m": "算力（15 分钟）",
+      "col_blocks": "区块",
+      "col_blocks_tooltip": "此工作机在矿池中找到的区块。由 stats-proxy 填充；在代理回填每个工作机的区块归属之前显示「—」。",
+      "col_last_share": "最后 share",
+      "yours_badge": "你的"
     },
     "richlist": {
       "title": "顶级 IRM 持有者",
@@ -1464,7 +2360,8 @@
       "load_more_loading": "正在加载前 500 名...",
       "load_error": "无法加载丰富列表：{{reason}}",
       "empty": "链上还没有 P2PKH 余额。",
-      "node_offline_hint": "启动仪表板上的节点以加载丰富列表。"
+      "node_offline_hint": "启动仪表板上的节点以加载丰富列表。",
+      "sr_total_supply": "屏幕阅读器使用的总供应量上下文：{{total}} IRM"
     },
     "solo_pool": {
       "title": "Solo Pool",
@@ -1503,6 +2400,61 @@
       "blocks_per_day_suffix": "block/天",
       "irm_per_day_suffix": "IRM/天",
       "disclaimer": "仅供估算 — 实际收益取决于运气、矿池费用和难度变化。计算器使用实时网络算力,每60秒刷新一次。"
+    },
+    "mining_overview": {
+      "title": "网络挖矿概览",
+      "subtitle": "网络、矿池及你自己的挖矿状况一屏总览。每 30 秒刷新。",
+      "network_summary": "网络摘要",
+      "pool_mining": "矿池挖矿",
+      "your_mining": "你的挖矿",
+      "network_hashrate": "网络算力",
+      "difficulty": "难度",
+      "avg_block_time": "平均区块时间",
+      "est_active_miners": "预估活跃矿工",
+      "network_wide_estimate": "全网估算",
+      "pool_hashrate": "矿池算力",
+      "estimate_sub": "估算",
+      "active_pool_miners": "活跃矿池矿工",
+      "pool_blocks_found": "矿池已找到区块",
+      "all_time": "累计",
+      "pool_share": "矿池 / 网络",
+      "share_of_network_hashrate": "占网络算力比例",
+      "your_hashrate": "你的算力",
+      "collecting": "采集中…",
+      "pool_workers_one": "{{count}} 个矿池工作机",
+      "pool_workers_other": "{{count}} 个矿池工作机",
+      "mode": "模式",
+      "mode_pool": "矿池",
+      "mode_solo": "Solo",
+      "not_mining": "未挖矿",
+      "connected_via_stratum": "通过 Stratum 连接",
+      "direct_to_local_node": "直连本地节点",
+      "on_pool": "在 pool.iriumlabs.org",
+      "on_solo_bridge": "在 solo-stratum 桥接",
+      "accepted_shares": "已接受的 share",
+      "none": "无",
+      "pool_lifetime": "矿池累计",
+      "last_share": "最后 share",
+      "blocks_you_found": "你找到的区块",
+      "from_pool_worker": "来自矿池工作机",
+      "this_session": "本次会话"
+    },
+    "relative_time": {
+      "just_now": "刚刚",
+      "seconds_ago_one": "{{count}} 秒前",
+      "seconds_ago_other": "{{count}} 秒前",
+      "minutes_ago_one": "{{count}} 分钟前",
+      "minutes_ago_other": "{{count}} 分钟前",
+      "hours_ago_one": "{{count}} 小时前",
+      "hours_ago_other": "{{count}} 小时前",
+      "days_ago_one": "{{count}} 天前",
+      "days_ago_other": "{{count}} 天前"
+    },
+    "founder_card": {
+      "title": "创始人锁仓地址",
+      "description": "此地址在创世时通过 CLTV 时间锁锁定了 3,500,000 IRM。余额显示为 0，是因为锁仓资金使用特殊脚本，不计入可花费余额。",
+      "unlocks_at": "在第 #{{height}} 区块解锁",
+      "blocks_remaining": "（剩余约 {{count}} 个区块）"
     }
   },
   "help": {
@@ -2146,7 +3098,10 @@
       "errors": {
         "buyer_required": "请输入买家的 Irium 地址。",
         "amount_required": "请输入您要锁定的 IRM 金额。",
-        "receiving_required": "告诉您的买家您期望什么作为回报。"
+        "receiving_required": "告诉您的买家您期望什么作为回报。",
+        "no_agreement_id": "协议创建未返回 ID",
+        "fund_after_create_failed": "协议已创建但注资失败。请打开「协议」页面重试。",
+        "payment_ref_required": "请输入交易参考号，以便卖家核实你的付款。"
       },
       "review": {
         "you_lock": "您正在锁定",
@@ -2154,7 +3109,14 @@
         "deadline": "截止时间",
         "deadline_value": "如果在 {{hours}} 小时内未付款,您的 IRM 将自动返还。",
         "lock_funds": "锁定资金",
-        "tx_note": "这将在 Irium 区块链上创建一笔交易。"
+        "tx_note": "这将在 Irium 区块链上创建一笔交易。",
+        "you_lock_short": "你锁定",
+        "buyer_pays_you": "买家向你支付",
+        "payment_deadline": "付款截止时间",
+        "hours_from_now": "{{hours}} 小时后",
+        "buyer_address": "买家地址",
+        "lock_my_irm": "锁定我的 IRM",
+        "tx_broadcast_note": "区块链交易将被广播。确认可能需要一些时间。"
       },
       "share": {
         "title": "与您的买家分享此内容",
@@ -2174,7 +3136,25 @@
         "receiving_placeholder": "例如:200 USDT、银行转账、现金",
         "deadline_label": "此交易应保持开放多长时间?",
         "deadline_helper": "如果他们在此时间内未付款,您的 IRM 将自动返还。",
-        "release_button": "我已收到付款 — 将资金释放给买家"
+        "release_button": "我已收到付款 — 将资金释放给买家",
+        "buyer_address_short_label": "买家地址",
+        "buyer_address_helper": "你确认买家已付款后，IRM 会发送到此地址。",
+        "amount_label_short": "出售的 IRM 数量",
+        "amount_helper_short": "在你确认买家付款前，将被托管保管。",
+        "receiving_label_short": "你将收到什么作为回报",
+        "receiving_placeholder_detailed": "例如：通过 SEPA 银行转账收到 50 USDT",
+        "deadline_label_short": "买家付款的截止时间",
+        "deadline_helper_refund": "如果在截止时间前没有收到付款，你可以申请退款。",
+        "locked_hero_title": "你的 IRM 现在已锁定并受保护",
+        "locked_hero_body": "未经你的确认，买家无法取走。请将下方的交易代码分享给买家以加入交易，然后等待其付款。",
+        "share_code_title": "分享此交易代码",
+        "share_code_body": "买家在其钱包中粘贴此代码以加入交易。",
+        "header1_title": "设置你的卖出交易",
+        "header1_subtitle": "告诉我们买家是谁，以及你想出售多少 IRM。",
+        "header2_title": "审核并锁定",
+        "header2_subtitle": "确认详情。锁定将把 IRM 发送到托管。",
+        "header3_title": "你的交易已生效",
+        "header3_subtitle": "将交易代码分享给买家并等待其付款。"
       },
       "buying": {
         "step2_title": "粘贴卖家发送的交易代码",
@@ -2193,12 +3173,42 @@
         "status_waiting": "等待卖家确认已收到付款。",
         "status_releasing": "付款已确认 — IRM 正在发送中。",
         "status_complete": "已完成 — IRM 已到达您的wallet。",
-        "view_agreements": "在 agreement 中查看"
+        "view_agreements": "在 agreement 中查看",
+        "review_commit_intro": "请确认下方的交易详情。继续即表示你确认参与此交易。在此步骤之后，请向卖家发送链下付款，并在下一屏上报付款。",
+        "seller_is_locking": "卖家正在锁定",
+        "seller_short_label": "卖家",
+        "details_did_not_load": "交易详情未加载。你仍然可以继续，但请在付款前与卖家核实 IRM 数量。",
+        "continue_and_link": "继续并关联",
+        "trade_complete_title": "交易完成",
+        "trade_complete_body": "IRM 已到达你的钱包。",
+        "seller_locked_for_you_title": "卖家的 IRM 已为你锁定",
+        "seller_locked_for_you_body": "向卖家发送链下付款，然后在下方上报你的交易参考号。",
+        "report_payment_title": "上报你的付款",
+        "report_payment_body": "在你发送链下付款后，粘贴任何卖家可用于确认付款到达的参考信息 - 银行汇款参考号、PayPal 交易号等。",
+        "report_payment_placeholder": "银行汇款参考号、PayPal txid、区块链 txid 等。",
+        "cancel_open_dispute": "取消并发起争议",
+        "payment_reported": "付款已上报",
+        "i_have_sent_payment": "我已发送付款",
+        "header1_title": "粘贴卖家的交易代码",
+        "header1_subtitle": "卖家在锁定 IRM 后会将代码发给你。",
+        "header2_title": "审核交易",
+        "header2_subtitle": "请确保金额和卖家与你的预期相符。",
+        "header3_title": "你的交易已生效",
+        "header3_subtitle": "发送链下付款，然后上报，以便卖家释放 IRM。"
       },
       "fuel_banner_title": "您需要 IRM 才能创建结算。",
       "fuel_banner_prefix": "前往",
       "fuel_banner_link": "市场 → 现货互换",
-      "fuel_banner_suffix": "以先获取 IRM。"
+      "fuel_banner_suffix": "以先获取 IRM。",
+      "toast_buyer_linked": "你的一方已关联到此交易。请向卖家发送链下付款。",
+      "toast_payment_reported": "付款已上报。等待卖家确认。",
+      "toast_dispute_opened": "争议已发起。仲裁人将审查证据。",
+      "dispute_reason_buyer": "买家无法完成交易",
+      "choose_selling_title": "我要卖出 IRM",
+      "choose_selling_body": "将你的 IRM 锁入托管。买家在链下向你付款后，你再释放。",
+      "choose_buying_title": "我要买入 IRM",
+      "choose_buying_body": "粘贴卖家的交易代码。向其付款，然后确认以收到 IRM。",
+      "view_resolvers": "查看可用仲裁人"
     },
     "pay_for_work": {
       "step1_title": "单次付款还是按里程碑?",
@@ -2250,7 +3260,12 @@
       "claim_refund": "申请退款",
       "toast_released": "付款已释放给承包商。",
       "toast_release_pending": "完成已记录。接下来几个block确认后资金将释放。",
-      "toast_refunded": "退款已申请 — 资金正在返回您的wallet。"
+      "toast_refunded": "退款已申请 — 资金正在返回您的wallet。",
+      "toast_fund_failed": "协议已创建但注资失败。请在「协议」页面中找到并重试注资。",
+      "which_milestone": "哪个里程碑？",
+      "milestone_option": "第 {{index}} / {{total}} 个里程碑",
+      "milestone_helper": "「标记完成」将释放此里程碑对应份额的已锁定 IRM。承包商每个里程碑获得总额的 1/{{count}}。",
+      "mark_complete_milestone": "标记完成 — 释放付款（里程碑 {{index}}）"
     },
     "deposit": {
       "step1_title": "设置您的押金",

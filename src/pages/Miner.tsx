@@ -267,6 +267,7 @@ function formatRelativeSeconds(unixSeconds: number | null | undefined, nowSecs: 
 // and a relative timestamp (e.g. "12s ago"). Long details are truncated
 // at 60 chars with a "…" so a multi-line stderr blob can't break layout.
 function ActivityRow({ evt, nowSecs }: { evt: StratumEvent; nowSecs: number }) {
+  const { t } = useTranslation();
   const truncate = (s: string) => (s.length > 60 ? `${s.slice(0, 57)}…` : s);
   let icon: React.ReactNode;
   let color: string;
@@ -274,15 +275,19 @@ function ActivityRow({ evt, nowSecs }: { evt: StratumEvent; nowSecs: number }) {
   if (evt.kind === 'accepted') {
     icon = <CheckCircle2 size={12} />;
     color = '#34d399';
-    label = 'Share accepted';
+    label = t('miner.activity.share_accepted');
   } else if (evt.kind === 'rejected') {
     icon = <AlertCircle size={12} />;
     color = '#f87171';
-    label = evt.detail ? `Share rejected — ${truncate(evt.detail)}` : 'Share rejected';
+    label = evt.detail
+      ? t('miner.activity.share_rejected_with_detail', { detail: truncate(evt.detail) })
+      : t('miner.activity.share_rejected');
   } else {
     icon = <AlertCircle size={12} />;
     color = '#fbbf24';
-    label = evt.detail ? `Pool error — ${truncate(evt.detail)}` : 'Pool error';
+    label = evt.detail
+      ? t('miner.activity.pool_error_with_detail', { detail: truncate(evt.detail) })
+      : t('miner.activity.pool_error');
   }
   return (
     <li className="flex items-center gap-2 text-xs">
@@ -339,6 +344,7 @@ function HashCandidateStream({
   hashrateKhs: number;
   blockHeight: number | null;
 }) {
+  const { t } = useTranslation();
   if (!active) return null;
   return (
     <div
@@ -368,14 +374,14 @@ function HashCandidateStream({
             className="text-[10px] uppercase tracking-wider font-display font-bold flex-shrink-0"
             style={{ color: '#34d399' }}
           >
-            Mining Active
+            {t('miner.activity.mining_active')}
           </span>
           {blockHeight !== null && (
             <span
               className="text-[10px] text-white/40 truncate"
               style={{ fontFamily: '"JetBrains Mono", monospace' }}
             >
-              · block #{blockHeight.toLocaleString('en-US')}
+              {t('miner.activity.block_hash_marker', { height: blockHeight.toLocaleString('en-US') })}
             </span>
           )}
         </div>
@@ -455,7 +461,7 @@ function FoundBlocksList() {
     <div className="card p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>
-          Found Blocks
+          {t('miner.found_blocks.section_title')}
         </h3>
         {orphanCount > 0 && (
           <button
@@ -468,19 +474,21 @@ function FoundBlocksList() {
             }}
             title={
               showOrphaned
-                ? 'Hide blocks won by another miner'
-                : `Reveal ${orphanCount} orphaned candidate${orphanCount === 1 ? '' : 's'}`
+                ? t('miner.found_blocks.hide_orphans_tooltip')
+                : t('miner.found_blocks.reveal_orphans_tooltip', { count: orphanCount })
             }
           >
-            {showOrphaned ? `Hide orphans (${orphanCount})` : `Show orphans (${orphanCount})`}
+            {showOrphaned
+              ? t('miner.found_blocks.hide_orphans_button', { count: orphanCount })
+              : t('miner.found_blocks.show_orphans_button', { count: orphanCount })}
           </button>
         )}
       </div>
       {visible.length === 0 ? (
         <p className="text-xs py-2" style={{ color: 'rgba(238,240,255,0.40)' }}>
           {blocks.length === 0
-            ? 'No blocks found yet in this session.'
-            : 'No confirmed blocks yet — all candidates so far were orphaned.'}
+            ? t('miner.found_blocks.empty')
+            : t('miner.found_blocks.all_orphaned')}
         </p>
       ) : (
         <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
@@ -529,7 +537,7 @@ function FoundBlocksList() {
                 }
                 title={
                   isOrphan
-                    ? 'Orphaned — won by another miner'
+                    ? t('miner.found_blocks.orphaned_tooltip')
                     : t('miner.found_blocks.open_in_explorer_tooltip')
                 }
               >
@@ -539,7 +547,7 @@ function FoundBlocksList() {
                     color: isOrphan ? 'rgba(238,240,255,0.45)' : '#34d399',
                     fontFamily: '"JetBrains Mono", monospace',
                   }}
-                  title={`Block height ${b.height}`}
+                  title={t('miner.found_blocks.block_height_tooltip', { height: b.height })}
                 >
                   #{b.height.toLocaleString('en-US')}
                 </span>
@@ -547,9 +555,9 @@ function FoundBlocksList() {
                   <span
                     className="text-[10px] uppercase tracking-wider flex-shrink-0"
                     style={{ color: 'rgba(245,158,11,0.85)' }}
-                    title="The canonical block at this height was mined by another address — we recorded our candidate but lost the race."
+                    title={t('miner.found_blocks.orphaned_long_tooltip')}
                   >
-                    orphaned
+                    {t('miner.found_blocks.orphaned_badge')}
                   </span>
                 )}
                 <span
@@ -557,11 +565,11 @@ function FoundBlocksList() {
                   style={{ color: 'rgba(238,240,255,0.55)', fontFamily: '"JetBrains Mono", monospace' }}
                   title={
                     isOrphan
-                      ? 'Won by another miner'
-                      : (b.hash || 'hash unavailable from this miner build')
+                      ? t('miner.found_blocks.won_by_another')
+                      : (b.hash || t('miner.found_blocks.hash_unavailable'))
                   }
                 >
-                  {isOrphan ? 'Won by another miner' : (b.hash ? truncateHash(b.hash) : '—')}
+                  {isOrphan ? t('miner.found_blocks.won_by_another') : (b.hash ? truncateHash(b.hash) : '—')}
                 </span>
                 <span
                   className="font-mono flex-shrink-0"
@@ -578,8 +586,8 @@ function FoundBlocksList() {
                       : hasReward
                         ? undefined
                         : showEstimateHint
-                          ? 'Reward not yet indexed by the node — value will fill in once mature'
-                          : 'Reward unknown — miner stdout does not report it'
+                          ? t('miner.found_blocks.reward_not_indexed_tooltip')
+                          : t('miner.found_blocks.reward_unknown_tooltip')
                   }
                 >
                   {isOrphan ? '—' : reward}
@@ -588,7 +596,7 @@ function FoundBlocksList() {
                       className="text-[9px] uppercase tracking-wider"
                       style={{ color: 'rgba(251,191,36,0.65)' }}
                     >
-                      ~ est
+                      {t('miner.found_blocks.estimate_marker')}
                     </span>
                   )}
                 </span>
@@ -762,16 +770,16 @@ function CpuMinerTab() {
                     <span className={loading ? 'dot-offline' : status?.running ? 'dot-live' : 'dot-offline'} />
                     <span className="font-display font-semibold text-sm" style={{ color: status?.running ? '#34d399' : 'rgba(238,240,255,0.35)' }}>
                       {loading
-                        ? 'Loading…'
+                        ? t('miner.status.loading')
                         : status?.running
-                          ? (isSyncing ? 'Mining Active — Syncing blocks…' : 'Mining Active')
-                          : 'CPU Idle'}
+                          ? (isSyncing ? t('miner.status.mining_active_syncing') : t('miner.status.mining_active'))
+                          : t('miner.status.cpu_idle')}
                     </span>
                     {status?.running && !isSyncing && (
                       <span className="badge badge-irium">{status.hashrate_khs.toFixed(1)} KH/s</span>
                     )}
                     {isSyncing && (
-                      <span className="badge badge-warning text-[10px]">Syncing</span>
+                      <span className="badge badge-warning text-[10px]">{t('miner.status.syncing_badge')}</span>
                     )}
                   </div>
                 </div>
@@ -817,8 +825,8 @@ function CpuMinerTab() {
                           miner…" which read as alarming on every restart. */}
                       <p className="font-mono" style={{ color: 'rgba(238,240,255,0.65)' }}>
                         {nodeSyncing
-                          ? (status?.sync_status ?? `Node syncing — height ${localHeight} / network ${networkTip}`)
-                          : 'Warming up miner — waiting for first share rate…'}
+                          ? (status?.sync_status ?? t('miner.sync.node_syncing_height', { localHeight, networkTip }))
+                          : t('miner.sync.warming_up_header')}
                       </p>
                       {/* FIX D: body line. The old text claimed
                           "Downloading blockchain data for the first
@@ -828,8 +836,8 @@ function CpuMinerTab() {
                           warm-up gets a short reassuring caption. */}
                       <p className="mt-0.5" style={{ color: 'rgba(238,240,255,0.35)' }}>
                         {nodeSyncing
-                          ? 'The node is still catching up to the network tip. Mining is enabled but no shares will be accepted until the local chain matches. This usually finishes within a few minutes.'
-                          : 'The miner sidecar has started. The first hashrate reading lands within 1-3 seconds — no action needed.'}
+                          ? t('miner.sync.node_syncing_body')
+                          : t('miner.sync.warming_up_body')}
                       </p>
                     </div>
                   </motion.div>
@@ -858,7 +866,7 @@ function CpuMinerTab() {
                   className="font-mono font-bold text-base tracking-tight"
                   style={{ color: '#6ec6ff', fontFamily: '"JetBrains Mono", monospace' }}
                 >
-                  Mining block #{(netInfo.height + 1).toLocaleString('en-US')}
+                  {t('miner.block_info.mining_block_n', { height: (netInfo.height + 1).toLocaleString('en-US') })}
                 </span>
               </div>
 
@@ -868,7 +876,7 @@ function CpuMinerTab() {
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-1.5">
                     <Hash size={11} color="#A78BFA" className="opacity-50" />
-                    <span className="label mb-0 text-[10px]">Previous block</span>
+                    <span className="label mb-0 text-[10px]">{t('miner.block_info.previous_block')}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono font-semibold text-sm" style={{ color: '#A78BFA', fontFamily: '"JetBrains Mono", monospace' }}>
@@ -885,7 +893,7 @@ function CpuMinerTab() {
                       <Copy size={11} />
                     </button>
                   </div>
-                  <span className="text-[10px] text-white/30">last confirmed block</span>
+                  <span className="text-[10px] text-white/30">{t('miner.block_info.last_confirmed_block')}</span>
                 </div>
 
                 {/* Block time — hidden while syncing to avoid showing stale data */}
@@ -893,7 +901,7 @@ function CpuMinerTab() {
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1.5">
                       <Clock size={11} color="#34d399" className="opacity-50" />
-                      <span className="label mb-0 text-[10px]">Block time</span>
+                      <span className="label mb-0 text-[10px]">{t('miner.block_time')}</span>
                     </div>
                     <span className="font-mono font-semibold text-base" style={{ color: '#34d399', fontFamily: '"JetBrains Mono", monospace' }}>
                       {formatBlockAge(netInfo.seconds_since_last_block)}
@@ -905,7 +913,7 @@ function CpuMinerTab() {
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-1.5">
                     <Target size={11} color="#fbbf24" className="opacity-50" />
-                    <span className="label mb-0 text-[10px]">Network difficulty</span>
+                    <span className="label mb-0 text-[10px]">{t('miner.block_info.network_difficulty')}</span>
                   </div>
                   <span className="font-mono font-semibold text-base" style={{ color: '#fbbf24', fontFamily: '"JetBrains Mono", monospace' }}>
                     {netInfo.difficulty.toLocaleString(undefined, { maximumFractionDigits: 2 })}
@@ -951,7 +959,7 @@ function CpuMinerTab() {
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(110,198,255,0.10)', border: '1px solid rgba(110,198,255,0.20)' }}>
                   <Cpu size={28} style={{ color: '#6ec6ff' }} />
                 </div>
-                <p className="text-sm" style={{ color: 'rgba(238,240,255,0.35)' }}>Configure your address below and start mining</p>
+                <p className="text-sm" style={{ color: 'rgba(238,240,255,0.35)' }}>{t('miner.configure_hint')}</p>
               </motion.div>
             ) : null}
           </AnimatePresence>
@@ -960,15 +968,15 @@ function CpuMinerTab() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
-        <StatCard label="Hashrate"       value={status === null ? '—' : status.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#A78BFA" icon={Activity} />
-        <StatCard label="Est. Block Time" value={etaSeconds ? formatEta(etaSeconds) : '—'} color="#6ec6ff" icon={Timer} />
-        <StatCard label="Blocks Found"   value={String(status?.blocks_found ?? 0)} color="#34d399" icon={Hash} />
-        <StatCard label="Uptime"         value={status?.uptime_secs ? formatUptime(status.uptime_secs) : '—'} color="#60a5fa" icon={Clock} />
-        <StatCard label="Difficulty"     value={netInfo?.difficulty != null ? netInfo.difficulty.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'} color="#fbbf24" icon={Target} />
+        <StatCard label={t('miner.stats.hashrate')}       value={status === null ? '—' : status.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#A78BFA" icon={Activity} />
+        <StatCard label={t('miner.stats.est_block_time')} value={etaSeconds ? formatEta(etaSeconds) : '—'} color="#6ec6ff" icon={Timer} />
+        <StatCard label={t('miner.stats.blocks_found')}   value={String(status?.blocks_found ?? 0)} color="#34d399" icon={Hash} />
+        <StatCard label={t('miner.stats.uptime')}         value={status?.uptime_secs ? formatUptime(status.uptime_secs) : '—'} color="#60a5fa" icon={Clock} />
+        <StatCard label={t('miner.stats.difficulty')}     value={netInfo?.difficulty != null ? netInfo.difficulty.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'} color="#fbbf24" icon={Target} />
         {/* FIX 4 (Mining UI): expected daily IRM at current hashrate × difficulty.
             Shows "—" until both numbers are available so we never claim 0. */}
         <StatCard
-          label="Est. Daily IRM"
+          label={t('miner.stats.est_daily_irm')}
           value={(() => {
             const e = estimateDailyEarnings(status?.hashrate_khs, netInfo?.difficulty, netInfo?.height);
             return e == null ? '—' : `${e.toFixed(e >= 1 ? 2 : 4)} IRM`;
@@ -1002,7 +1010,7 @@ function CpuMinerTab() {
             </p>
           )}
           <button onClick={() => navigate('/wallet')} className="mt-1.5 flex items-center gap-1 text-xs transition-colors" style={{ color: '#6ec6ff' }}>
-            View wallet <ArrowRight size={11} />
+            {t('miner.buttons.view_wallet')} <ArrowRight size={11} />
           </button>
         </div>
 
@@ -1028,7 +1036,7 @@ function CpuMinerTab() {
                     background: active ? '#34d399' : 'rgba(238,240,255,0.08)',
                     boxShadow: active ? '0 0 6px rgba(52,211,153,0.55)' : 'none',
                   }}
-                  title={active ? `Core ${i + 1} (active)` : `Core ${i + 1} (idle)`}
+                  title={active ? t('miner.fields.core_active_tooltip', { n: i + 1 }) : t('miner.fields.core_idle_tooltip', { n: i + 1 })}
                 />
               );
             })}
@@ -1039,7 +1047,7 @@ function CpuMinerTab() {
           {!status?.running ? (
             <button onClick={handleStart} disabled={startLoading || !validateMinerAddress(address)} className="btn-primary">
               {startLoading ? <RefreshCw size={13} className="animate-spin" /> : <Play size={13} fill="currentColor" />}
-              {startLoading ? 'Starting…' : 'Start Mining'}
+              {startLoading ? t('miner.buttons.starting') : t('miner.buttons.start_mining')}
             </button>
           ) : (
             <div className="flex items-center gap-2">
@@ -1049,14 +1057,14 @@ function CpuMinerTab() {
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-display font-semibold transition-all duration-200"
                 style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.22)', color: '#f87171' }}
               >
-                <Square size={13} fill="currentColor" /> Stop Mining
+                <Square size={13} fill="currentColor" /> {t('miner.buttons.stop_mining')}
               </button>
               <AnimatePresence>
                 {showStopConfirm && (
                   <motion.div initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} className="flex items-center gap-1.5">
-                    <span className="text-xs" style={{ color: 'var(--t3)' }}>Confirm stop?</span>
-                    <button onClick={handleStop} className="btn-ghost text-xs py-1 px-2" style={{ color: '#f87171' }}>Yes</button>
-                    <button onClick={() => setShowStopConfirm(false)} className="btn-ghost text-xs py-1 px-2">No</button>
+                    <span className="text-xs" style={{ color: 'var(--t3)' }}>{t('miner.buttons.confirm_stop')}</span>
+                    <button onClick={handleStop} className="btn-ghost text-xs py-1 px-2" style={{ color: '#f87171' }}>{t('miner.buttons.yes')}</button>
+                    <button onClick={() => setShowStopConfirm(false)} className="btn-ghost text-xs py-1 px-2">{t('miner.buttons.no')}</button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1176,7 +1184,7 @@ function GpuMinerTab() {
         ? String(selectedPlatformIdx)
         : undefined;
       const deviceIdxs = selectedDeviceIdxs.length > 0 ? selectedDeviceIdxs : [0];
-      if (selectedDeviceIdxs.length === 0) toast('No device selected — using default device 0', { icon: '⚠️' });
+      if (selectedDeviceIdxs.length === 0) toast(t('miner.toasts.no_device_selected'), { icon: '⚠️' });
       await gpuMiner.start(addr, platformSel, deviceIdxs, intensity);
       toast.success(t('miner.toasts.gpu_started'));
     } catch (e) {
@@ -1217,10 +1225,10 @@ function GpuMinerTab() {
 
   // Idle hero message: mirrors old behaviour — uses platform info when available.
   const idleMessage = gpuPlatforms === null
-    ? 'Scanning for OpenCL devices…'
+    ? t('miner.opencl.scanning')
     : noGpuFound
-    ? 'No compatible GPU detected — see Configuration below'
-    : 'Select a platform and start mining';
+    ? t('miner.opencl.no_gpu_idle_message')
+    : t('miner.opencl.select_platform');
 
   return (
     <div className="space-y-4">
@@ -1234,7 +1242,7 @@ function GpuMinerTab() {
             <div className="flex items-center gap-2.5">
               <span className={loading ? 'dot-offline' : status?.running ? 'dot-live' : 'dot-offline'} />
               <span className="font-display font-semibold text-sm" style={{ color: status?.running ? '#60a5fa' : 'rgba(238,240,255,0.35)' }}>
-                {loading ? 'Loading…' : status?.running ? 'GPU Active' : 'GPU Idle'}
+                {loading ? t('miner.status.loading') : status?.running ? t('miner.status.gpu_active') : t('miner.status.gpu_idle')}
               </span>
               {status?.running && (
                 <span className="badge badge-info">{status.hashrate_khs.toFixed(1)} KH/s</span>
@@ -1260,14 +1268,14 @@ function GpuMinerTab() {
                   className="font-mono font-bold text-base tracking-tight"
                   style={{ color: '#6ec6ff', fontFamily: '"JetBrains Mono", monospace' }}
                 >
-                  Mining block #{(netInfo.height + 1).toLocaleString('en-US')}
+                  {t('miner.block_info.mining_block_n', { height: (netInfo.height + 1).toLocaleString('en-US') })}
                 </span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-1.5">
                     <Hash size={11} color="#A78BFA" className="opacity-50" />
-                    <span className="label mb-0 text-[10px]">Previous block</span>
+                    <span className="label mb-0 text-[10px]">{t('miner.block_info.previous_block')}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono font-semibold text-sm" style={{ color: '#A78BFA', fontFamily: '"JetBrains Mono", monospace' }}>
@@ -1284,13 +1292,13 @@ function GpuMinerTab() {
                       <Copy size={11} />
                     </button>
                   </div>
-                  <span className="text-[10px] text-white/30">last confirmed block</span>
+                  <span className="text-[10px] text-white/30">{t('miner.block_info.last_confirmed_block')}</span>
                 </div>
                 {netInfo.seconds_since_last_block != null && (
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1.5">
                       <Clock size={11} color="#34d399" className="opacity-50" />
-                      <span className="label mb-0 text-[10px]">Block time</span>
+                      <span className="label mb-0 text-[10px]">{t('miner.block_time')}</span>
                     </div>
                     <span className="font-mono font-semibold text-base" style={{ color: '#34d399', fontFamily: '"JetBrains Mono", monospace' }}>
                       {formatBlockAge(netInfo.seconds_since_last_block)}
@@ -1300,7 +1308,7 @@ function GpuMinerTab() {
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-1.5">
                     <Target size={11} color="#fbbf24" className="opacity-50" />
-                    <span className="label mb-0 text-[10px]">Network difficulty</span>
+                    <span className="label mb-0 text-[10px]">{t('miner.block_info.network_difficulty')}</span>
                   </div>
                   <span className="font-mono font-semibold text-base" style={{ color: '#fbbf24', fontFamily: '"JetBrains Mono", monospace' }}>
                     {netInfo.difficulty.toLocaleString(undefined, { maximumFractionDigits: 2 })}
@@ -1352,14 +1360,14 @@ function GpuMinerTab() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
-        <StatCard label="Hashrate"       value={status === null ? '—' : status.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#60a5fa" icon={Activity} />
-        <StatCard label="Est. Block Time" value={etaSeconds ? formatEta(etaSeconds) : '—'} color="#6ec6ff" icon={Timer} />
-        <StatCard label="Temperature"    value={!status?.running ? '—' : status.temperature_c != null ? `${status.temperature_c.toFixed(1)}°C` : 'N/A (Linux only)'} color={status?.running && (status.temperature_c ?? 0) > 80 ? '#f87171' : '#fbbf24'} icon={Thermometer} />
-        <StatCard label="Power"          value={!status?.running ? '—' : status.power_w != null ? `${status.power_w.toFixed(1)}W` : 'N/A (Linux only)'} color="#a78bfa" icon={Zap} />
-        <StatCard label="Blocks Found"   value={String(status?.blocks_found ?? 0)} color="#34d399" icon={Hash} />
+        <StatCard label={t('miner.stats.hashrate')}       value={status === null ? '—' : status.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#60a5fa" icon={Activity} />
+        <StatCard label={t('miner.stats.est_block_time')} value={etaSeconds ? formatEta(etaSeconds) : '—'} color="#6ec6ff" icon={Timer} />
+        <StatCard label={t('miner.stats.temperature')}    value={!status?.running ? '—' : status.temperature_c != null ? `${status.temperature_c.toFixed(1)}°C` : t('miner.stats.na_linux_only')} color={status?.running && (status.temperature_c ?? 0) > 80 ? '#f87171' : '#fbbf24'} icon={Thermometer} />
+        <StatCard label={t('miner.stats.power')}          value={!status?.running ? '—' : status.power_w != null ? `${status.power_w.toFixed(1)}W` : t('miner.stats.na_linux_only')} color="#a78bfa" icon={Zap} />
+        <StatCard label={t('miner.stats.blocks_found')}   value={String(status?.blocks_found ?? 0)} color="#34d399" icon={Hash} />
         {/* FIX 4 (Mining UI): expected daily IRM at current hashrate × difficulty. */}
         <StatCard
-          label="Est. Daily IRM"
+          label={t('miner.stats.est_daily_irm')}
           value={(() => {
             const e = estimateDailyEarnings(status?.hashrate_khs, netInfo?.difficulty, netInfo?.height);
             return e == null ? '—' : `${e.toFixed(e >= 1 ? 2 : 4)} IRM`;
@@ -1384,29 +1392,28 @@ function GpuMinerTab() {
             style={{ background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.25)', color: '#60a5fa' }}
           >
             {detecting
-              ? <><RefreshCw size={12} className="animate-spin" /> Scanning…</>
-              : <><Monitor size={12} /> Detect GPUs</>}
+              ? <><RefreshCw size={12} className="animate-spin" /> {t('miner.buttons.scanning')}</>
+              : <><Monitor size={12} /> {t('miner.buttons.detect_gpus')}</>}
           </button>
         </div>
 
         {/* Platform / device section */}
         {gpuPlatforms === null ? (
           <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--t3)' }}>
-            <RefreshCw size={11} className="animate-spin" /> Scanning for OpenCL devices…
+            <RefreshCw size={11} className="animate-spin" /> {t('miner.opencl.scanning')}
           </div>
         ) : noGpuFound ? (
           /* ── Empty state ── */
           <div className="rounded-xl p-4 space-y-2.5" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}>
             <div className="flex items-center gap-2">
               <Monitor size={16} style={{ color: 'var(--t3)' }} />
-              <span className="text-sm font-display font-semibold" style={{ color: 'var(--t2)' }}>No compatible GPU detected</span>
+              <span className="text-sm font-display font-semibold" style={{ color: 'var(--t2)' }}>{t('miner.opencl.no_compatible_gpu')}</span>
             </div>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--t3)' }}>
-              GPU mining requires an OpenCL runtime. Install your GPU vendor's drivers
-              (NVIDIA, AMD, or Intel OpenCL SDK) and click <strong>Detect GPUs</strong>.
+              {t('miner.opencl.install_drivers_before')} <strong>{t('miner.buttons.detect_gpus')}</strong>{t('miner.opencl.install_drivers_after')}
             </p>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--t3)' }}>
-              Once enabled, the GPU miner supports both pool (Stratum) and solo (direct node RPC) mining.
+              {t('miner.opencl.supports_pool_and_solo')}
             </p>
             <a
               href="https://github.com/iriumlabs/irium/blob/main/GPU-MINER.md"
@@ -1415,7 +1422,7 @@ function GpuMinerTab() {
               className="inline-flex items-center gap-1.5 text-xs hover:underline"
               style={{ color: '#6ec6ff' }}
             >
-              Read the GPU Miner docs <ExternalLink size={11} />
+              {t('miner.opencl.read_docs')} <ExternalLink size={11} />
             </a>
           </div>
         ) : (
@@ -1443,7 +1450,7 @@ function GpuMinerTab() {
             </p>
           )}
           <button onClick={() => navigate('/wallet')} className="mt-1.5 flex items-center gap-1 text-xs transition-colors" style={{ color: '#6ec6ff' }}>
-            View wallet <ArrowRight size={11} />
+            {t('miner.buttons.view_wallet')} <ArrowRight size={11} />
           </button>
         </div>
 
@@ -1456,7 +1463,7 @@ function GpuMinerTab() {
             className="w-full h-1.5 rounded-full appearance-none cursor-pointer mt-1"
             style={{ background: `linear-gradient(to right, #3B82F6 0%, #06B6D4 ${(intensity / maxIntensity) * 100}%, rgba(255,255,255,0.08) ${(intensity / maxIntensity) * 100}%, rgba(255,255,255,0.08) 100%)` }}
           />
-          <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Higher intensity = more hashrate, more power usage</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>{t('miner.fields.intensity_hint')}</p>
         </div>
 
         {/* Start / Stop */}
@@ -1469,7 +1476,7 @@ function GpuMinerTab() {
               style={{ background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)', boxShadow: '0 4px 16px rgba(59,130,246,0.35)' }}
             >
               {startLoading ? <RefreshCw size={13} className="animate-spin" /> : <Play size={13} fill="currentColor" />}
-              {startLoading ? 'Starting…' : 'Start GPU Mining'}
+              {startLoading ? t('miner.buttons.starting') : t('miner.buttons.start_gpu_mining')}
             </button>
           ) : (
             <div className="flex items-center gap-2">
@@ -1479,14 +1486,14 @@ function GpuMinerTab() {
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-display font-semibold transition-all"
                 style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.22)', color: '#f87171' }}
               >
-                <Square size={13} fill="currentColor" /> Stop GPU
+                <Square size={13} fill="currentColor" /> {t('miner.buttons.stop_gpu')}
               </button>
               <AnimatePresence>
                 {showStopConfirm && (
                   <motion.div initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} className="flex items-center gap-1.5">
-                    <span className="text-xs" style={{ color: 'var(--t3)' }}>Confirm stop?</span>
-                    <button onClick={handleStop} className="btn-ghost text-xs py-1 px-2" style={{ color: '#f87171' }}>Yes</button>
-                    <button onClick={() => setShowStopConfirm(false)} className="btn-ghost text-xs py-1 px-2">No</button>
+                    <span className="text-xs" style={{ color: 'var(--t3)' }}>{t('miner.buttons.confirm_stop')}</span>
+                    <button onClick={handleStop} className="btn-ghost text-xs py-1 px-2" style={{ color: '#f87171' }}>{t('miner.buttons.yes')}</button>
+                    <button onClick={() => setShowStopConfirm(false)} className="btn-ghost text-xs py-1 px-2">{t('miner.buttons.no')}</button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1524,14 +1531,14 @@ function GpuMinerTab() {
                   className="btn-ghost text-xs py-1 px-2"
                   style={{ color: 'var(--t3)' }}
                 >
-                  ✕ Close
+                  ✕ {t('miner.buttons.close')}
                 </button>
               </div>
 
               {gpuPlatforms.length === 0 ? (
                 <div className="text-sm space-y-2" style={{ color: 'var(--t3)' }}>
-                  <p>No OpenCL platforms found.</p>
-                  <p className="text-xs">Install your GPU driver and the ICD loader, then click <strong>Detect GPUs</strong> again.</p>
+                  <p>{t('miner.opencl.no_platforms_found')}</p>
+                  <p className="text-xs">{t('miner.opencl.install_icd_before')}<strong>{t('miner.buttons.detect_gpus')}</strong>{t('miner.opencl.install_icd_after')}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1543,19 +1550,19 @@ function GpuMinerTab() {
                     >
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.07)', color: 'var(--t3)' }}>
-                          Platform {p.index}
+                          {t('miner.opencl.platform_n', { n: p.index })}
                         </span>
                         <span className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>{p.name}</span>
                         {p.is_discrete && (
                           <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: 'rgba(52,211,153,0.14)', color: '#34d399', border: '1px solid rgba(52,211,153,0.28)' }}>
-                            discrete GPU
+                            {t('miner.opencl.discrete_gpu')}
                           </span>
                         )}
                       </div>
                       <div className="pl-2 space-y-1 border-l" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
                         {p.devices.map((d) => (
                           <div key={d.index} className="flex items-center gap-2 text-xs">
-                            <span className="font-mono" style={{ color: 'var(--t3)' }}>Device {d.index}</span>
+                            <span className="font-mono" style={{ color: 'var(--t3)' }}>{t('miner.opencl.device_n', { n: d.index })}</span>
                             <span style={{ color: 'var(--t2)' }}>{d.name}</span>
                           </div>
                         ))}
@@ -1569,7 +1576,7 @@ function GpuMinerTab() {
                 className="btn-primary mt-5 w-full"
                 onClick={() => setShowModal(false)}
               >
-                Done
+                {t('miner.buttons.done')}
               </button>
             </motion.div>
           </motion.div>
@@ -1605,23 +1612,23 @@ function GpuMinerTab() {
                   className="btn-ghost text-xs py-1 px-2"
                   style={{ color: 'var(--t3)' }}
                 >
-                  ✕ Close
+                  ✕ {t('miner.buttons.close')}
                 </button>
               </div>
               <div className="space-y-3">
-                <p className="text-sm" style={{ color: 'var(--t3)' }}>To fix this, install the OpenCL driver for your GPU:</p>
+                <p className="text-sm" style={{ color: 'var(--t3)' }}>{t('miner.opencl.fix_intro')}</p>
                 <ul className="space-y-2 text-sm" style={{ color: 'var(--t2)' }}>
-                  <li><strong>NVIDIA:</strong> Reinstall your GPU driver from nvidia.com</li>
-                  <li><strong>AMD:</strong> Install AMD Software Adrenalin from amd.com</li>
-                  <li><strong>Intel:</strong> Install Intel Graphics Driver from intel.com</li>
+                  <li><strong>NVIDIA:</strong> {t('miner.opencl.fix_nvidia')}</li>
+                  <li><strong>AMD:</strong> {t('miner.opencl.fix_amd')}</li>
+                  <li><strong>Intel:</strong> {t('miner.opencl.fix_intel')}</li>
                 </ul>
-                <p className="text-xs pt-1" style={{ color: 'var(--t3)' }}>After installing, restart Irium Core.</p>
+                <p className="text-xs pt-1" style={{ color: 'var(--t3)' }}>{t('miner.asic_info.after_install')}</p>
               </div>
               <button
                 className="btn-primary mt-5 w-full"
                 onClick={() => setShowOpenCLError(false)}
               >
-                OK
+                {t('miner.buttons.ok')}
               </button>
             </motion.div>
           </motion.div>
@@ -1639,13 +1646,13 @@ function GpuMinerTab() {
 // targets hobbyist hardware; the ASIC profile (port 3333) targets
 // modern SHA-256 ASICs at a higher base difficulty. Both run on
 // irium-vps from pool/irium-stratum/ in the source tree.
-const PRESET_POOLS = [
-  { name: 'Irium Official Pool (CPU/GPU)', url: 'stratum+tcp://pool.iriumlabs.org:3335' },
-  { name: 'Irium Official Pool (ASIC)',    url: 'stratum+tcp://pool.iriumlabs.org:3333' },
+const PRESET_POOLS: Array<{ name: string; url: string; labelKey?: string }> = [
+  { name: 'Irium Official Pool (CPU/GPU)', url: 'stratum+tcp://pool.iriumlabs.org:3335', labelKey: 'miner.pool_presets.irium_official_cpu_gpu' },
+  { name: 'Irium Official Pool (ASIC)',    url: 'stratum+tcp://pool.iriumlabs.org:3333', labelKey: 'miner.pool_presets.irium_official_asic' },
   { name: 'F2Pool',                         url: 'stratum+tcp://irium.f2pool.com:3333'   },
   { name: 'ViaBTC',                         url: 'stratum+tcp://irium.viabtc.com:3333'   },
   { name: 'AntPool',                        url: 'stratum+tcp://irium.antpool.com:3333'  },
-  { name: 'Custom',                         url: ''                                       },
+  { name: 'Custom',                         url: '',                                      labelKey: 'miner.pool_presets.custom' },
 ];
 
 // Stratum URL validator. The pool URL must be a valid Stratum v1 endpoint:
@@ -1806,10 +1813,10 @@ function StratumTab() {
                 : <WifiOff size={16} style={{ color: 'rgba(238,240,255,0.30)' }} />
               }
               <span className="font-display font-semibold text-sm" style={{ color: status?.connected ? '#34d399' : 'rgba(238,240,255,0.35)' }}>
-                {loading ? 'Loading…' : status?.connected ? 'Pool Connected' : 'Pool Disconnected'}
+                {loading ? t('miner.status.loading') : status?.connected ? t('miner.status.pool_connected') : t('miner.status.pool_disconnected')}
               </span>
               {status?.connected && (
-                <span className="badge badge-success">Live</span>
+                <span className="badge badge-success">{t('miner.status.live_badge')}</span>
               )}
             </div>
             {status?.connected && status.pool_url && (
@@ -1826,17 +1833,17 @@ function StratumTab() {
               className="grid grid-cols-5 gap-3 mt-5"
             >
               {[
-                { label: 'Accepted', value: String(status.shares_accepted), color: '#34d399', highlight: false },
-                { label: 'Rejected', value: String(status.shares_rejected), color: '#f87171', highlight: false },
-                { label: 'Ratio',    value: `${shareRatio}%`,               color: '#A78BFA', highlight: false },
-                { label: 'Uptime',   value: status.uptime_secs ? formatUptime(status.uptime_secs) : '—', color: '#60a5fa', highlight: false },
+                { label: t('miner.shares.accepted'), value: String(status.shares_accepted), color: '#34d399', highlight: false },
+                { label: t('miner.shares.rejected'), value: String(status.shares_rejected), color: '#f87171', highlight: false },
+                { label: t('miner.shares.ratio'),    value: `${shareRatio}%`,               color: '#A78BFA', highlight: false },
+                { label: t('miner.stats.uptime'),    value: status.uptime_secs ? formatUptime(status.uptime_secs) : '—', color: '#60a5fa', highlight: false },
                 // FIX 4 (Mining UI): last accepted share with pulse when recent.
                 // Backed by stratum_last_share_time on the Rust side; updates
                 // every status poll. Pulse animation = "still earning"; the
                 // user can see at a glance that the miner isn't stalled even
                 // when the hashrate number alone could be misleading.
                 {
-                  label: 'Last share',
+                  label: t('miner.shares.last_share'),
                   value: formatRelativeSeconds(status.last_share_time, Math.floor(Date.now() / 1000)),
                   color: '#fbbf24',
                   highlight: !!status.last_share_time && Math.floor(Date.now() / 1000) - status.last_share_time < 30,
@@ -1862,7 +1869,7 @@ function StratumTab() {
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.18)' }}>
                 <Server size={28} style={{ color: '#34d399' }} />
               </div>
-              <p className="text-sm" style={{ color: 'rgba(238,240,255,0.35)' }}>Connect your ASIC or GPU to a mining pool via Stratum</p>
+              <p className="text-sm" style={{ color: 'rgba(238,240,255,0.35)' }}>{t('miner.asic_info.headline')}</p>
             </div>
           )}
         </div>
@@ -1871,8 +1878,8 @@ function StratumTab() {
       {/* Pool diff & hashrate when connected */}
       {status?.connected && (
         <div className="grid grid-cols-2 gap-3">
-          <StatCard label="Pool Difficulty" value={status.pool_diff ? status.pool_diff.toLocaleString('en-US') : '—'} color="#fbbf24" icon={Target} />
-          <StatCard label="Pool Hashrate"   value={status.pool_hashrate_khs ? `${(status.pool_hashrate_khs / 1000).toFixed(1)} MH/s` : '—'} color="#A78BFA" icon={Gauge} />
+          <StatCard label={t('miner.stats.pool_difficulty')} value={status.pool_diff ? status.pool_diff.toLocaleString('en-US') : '—'} color="#fbbf24" icon={Target} />
+          <StatCard label={t('miner.stats.pool_hashrate')}   value={status.pool_hashrate_khs ? `${(status.pool_hashrate_khs / 1000).toFixed(1)} MH/s` : '—'} color="#A78BFA" icon={Gauge} />
         </div>
       )}
 
@@ -1885,15 +1892,15 @@ function StratumTab() {
           <div className="flex items-center gap-2 mb-3">
             <History size={13} style={{ color: '#6ec6ff' }} />
             <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>
-              Recent Activity
+              {t('miner.activity.section_title')}
             </h3>
             <span className="ml-auto text-[10px]" style={{ color: 'var(--t3)', fontFamily: '"JetBrains Mono", monospace' }}>
-              last {status.recent_events?.length ?? 0}
+              {t('miner.activity.last_count', { count: status.recent_events?.length ?? 0 })}
             </span>
           </div>
           {!status.recent_events || status.recent_events.length === 0 ? (
             <p className="text-xs" style={{ color: 'var(--t3)' }}>
-              Waiting for first share…
+              {t('miner.activity.waiting_for_first_share')}
             </p>
           ) : (
             <ul className="space-y-1.5">
@@ -1927,7 +1934,7 @@ function StratumTab() {
                   color: selectedPreset === i ? '#A78BFA' : 'var(--t2)',
                 }}
               >
-                {p.name}
+                {p.labelKey ? t(p.labelKey) : p.name}
               </button>
             ))}
           </div>
@@ -1936,14 +1943,14 @@ function StratumTab() {
         {/* Pool URL */}
         <div>
           <label className="label">{t('miner.fields.stratum_url_label')}</label>
-          <input value={poolUrl} onChange={e => { setPoolUrl(e.target.value); setSelectedPreset(3); }} placeholder="stratum+tcp://pool.example.com:3333" className="input" />
+          <input value={poolUrl} onChange={e => { setPoolUrl(e.target.value); setSelectedPreset(3); }} placeholder={t('miner.fields.stratum_url_placeholder')} className="input" />
         </div>
 
         {/* Worker */}
         <div>
           <label className="label">{t('miner.fields.stratum_worker_label')}</label>
           <div className="flex gap-2">
-            <input value={worker} onChange={e => setWorker(e.target.value)} placeholder="walletAddress.workerName" className="input flex-1" />
+            <input value={worker} onChange={e => setWorker(e.target.value)} placeholder={t('miner.fields.stratum_worker_placeholder')} className="input flex-1" />
             {/* FIX 4 (Mining UI): one-click worker derivation from the
                 user's first wallet address. Renders only when we have
                 one (no point offering it on a brand-new install with
@@ -1953,20 +1960,20 @@ function StratumTab() {
                 type="button"
                 onClick={() => setWorker(`${firstWalletAddress}.rig1`)}
                 className="btn-secondary px-3 py-2 text-xs whitespace-nowrap"
-                title={`Auto-fill: ${firstWalletAddress}.rig1`}
+                title={t('miner.fields.stratum_worker_autofill_tooltip', { address: firstWalletAddress })}
               >
                 {t('miner.fields.stratum_worker_use_wallet')}
               </button>
             )}
           </div>
-          <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Format: your_wallet_address.worker_id (e.g. Pxxx…xxxx.rig1)</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>{t('miner.fields.stratum_worker_hint')}</p>
         </div>
 
         {/* Password */}
         <div>
           <label className="label">{t('miner.fields.stratum_password_label')}</label>
           <input value={password} onChange={e => setPassword(e.target.value)} placeholder="x" className="input" />
-          <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>Leave blank to use "x" (the default for most pools)</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>{t('miner.fields.stratum_password_hint')}</p>
         </div>
 
         {/* GPU device picker — visible only when OpenCL platforms have been
@@ -1986,7 +1993,7 @@ function StratumTab() {
             <button onClick={handleConnect} disabled={connectLoading || !poolUrl.trim() || !worker.trim()} className="btn-primary"
               style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)', boxShadow: '0 4px 16px rgba(16,185,129,0.30)' }}>
               {connectLoading ? <RefreshCw size={13} className="animate-spin" /> : <Wifi size={13} />}
-              {connectLoading ? 'Connecting…' : 'Connect to Pool'}
+              {connectLoading ? t('miner.buttons.connecting') : t('miner.buttons.connect_pool')}
             </button>
           ) : (
             <div className="flex items-center gap-2">
@@ -1996,7 +2003,7 @@ function StratumTab() {
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-display font-semibold transition-all"
                 style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.22)', color: '#f87171' }}
               >
-                <WifiOff size={13} /> Disconnect
+                <WifiOff size={13} /> {t('miner.buttons.disconnect')}
               </button>
               <AnimatePresence>
                 {showDisconnectConfirm && (
@@ -2006,9 +2013,9 @@ function StratumTab() {
                     exit={{ opacity: 0, x: -8 }}
                     className="flex items-center gap-1.5"
                   >
-                    <span className="text-xs" style={{ color: 'var(--t3)' }}>Confirm disconnect?</span>
-                    <button onClick={handleDisconnect} className="btn-ghost text-xs py-1 px-2" style={{ color: '#f87171' }}>Yes</button>
-                    <button onClick={() => setShowDisconnectConfirm(false)} className="btn-ghost text-xs py-1 px-2">No</button>
+                    <span className="text-xs" style={{ color: 'var(--t3)' }}>{t('miner.buttons.confirm_disconnect')}</span>
+                    <button onClick={handleDisconnect} className="btn-ghost text-xs py-1 px-2" style={{ color: '#f87171' }}>{t('miner.buttons.yes')}</button>
+                    <button onClick={() => setShowDisconnectConfirm(false)} className="btn-ghost text-xs py-1 px-2">{t('miner.buttons.no')}</button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -2027,22 +2034,22 @@ function StratumTab() {
       <div className="card p-4 flex gap-3" style={{ borderColor: 'rgba(110,198,255,0.30)' }}>
         <Server size={16} style={{ color: '#6ec6ff', flexShrink: 0, marginTop: 1 }} />
         <div className="text-xs space-y-2" style={{ color: 'var(--t2)' }}>
-          <p className="font-semibold font-display" style={{ color: '#6ec6ff' }}>Pool mining with an external ASIC or GPU</p>
+          <p className="font-semibold font-display" style={{ color: '#6ec6ff' }}>{t('miner.asic_info.external_title')}</p>
           <p style={{ color: 'var(--t3)' }}>
-            Point your ASIC or GPU mining software directly at the pool URL above (e.g.{' '}
+            {t('miner.asic_info.external_body_before_url')}
             <span className="font-mono" style={{ color: 'var(--t2)', fontFamily: '"JetBrains Mono", monospace' }}>
               stratum+tcp://pool.iriumlabs.org:3333
             </span>
-            ). Irium Core monitors the pool-side share statistics shown here; your hardware's local hashrate is reported by the miner itself.
+            {t('miner.asic_info.external_body_after_url')}
           </p>
           <p style={{ color: 'var(--t3)' }}>
-            The{' '}
-            <strong style={{ color: 'var(--t2)' }}>Connect to Pool</strong>{' '}
-            button below starts pool mining using your CPU via the bundled{' '}
+            {t('miner.asic_info.connect_button_intro_before')}
+            <strong style={{ color: 'var(--t2)' }}>{t('miner.buttons.connect_pool')}</strong>
+            {t('miner.asic_info.connect_button_intro_middle')}
             <span className="font-mono" style={{ color: 'var(--t2)', fontFamily: '"JetBrains Mono", monospace' }}>
               irium-miner
-            </span>{' '}
-            sidecar — useful only if you also want this machine to contribute CPU hashrate to the pool. External ASICs do not need this button.
+            </span>
+            {t('miner.asic_info.connect_button_intro_after')}
           </p>
         </div>
       </div>
@@ -2059,6 +2066,7 @@ function StratumTab() {
 const DEFAULT_SOLO_LISTEN = '0.0.0.0:3333';
 
 function SoloStratumTab() {
+  const { t } = useTranslation();
   const [listen, setListen] = useState(DEFAULT_SOLO_LISTEN);
   const [status, setStatus] = useState<{ running: boolean; listen_addr: string | null } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -2080,10 +2088,10 @@ function SoloStratumTab() {
     setLoading(true);
     try {
       const used = await soloStratum.start(listen.trim() || DEFAULT_SOLO_LISTEN);
-      toast.success(`Solo Stratum listening on ${used}`);
+      toast.success(t('miner.toasts.solo_listening_on', { addr: used }));
       await refresh();
     } catch (e) {
-      toast.error(typeof e === 'string' ? e : 'Failed to start solo Stratum');
+      toast.error(typeof e === 'string' ? e : t('miner.toasts.solo_failed_start'));
     } finally {
       setLoading(false);
     }
@@ -2093,10 +2101,10 @@ function SoloStratumTab() {
     setLoading(true);
     try {
       await soloStratum.stop();
-      toast.success('Solo Stratum stopped');
+      toast.success(t('miner.toasts.solo_stopped'));
       await refresh();
     } catch (e) {
-      toast.error(typeof e === 'string' ? e : 'Failed to stop solo Stratum');
+      toast.error(typeof e === 'string' ? e : t('miner.toasts.solo_failed_stop'));
     } finally {
       setLoading(false);
     }
@@ -2116,10 +2124,10 @@ function SoloStratumTab() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>
-            Solo Stratum Bridge
+            {t('miner.solo.title')}
           </h3>
           <p className="text-xs mt-1" style={{ color: 'rgba(238,240,255,0.45)' }}>
-            Run an ASIC against your own iriumd. No pool fee, no pool dependency.
+            {t('miner.solo.subtitle')}
           </p>
         </div>
         <div
@@ -2133,12 +2141,12 @@ function SoloStratumTab() {
           }}
         >
           {running ? <Wifi size={12} /> : <WifiOff size={12} />}
-          {running ? 'Listening' : 'Stopped'}
+          {running ? t('miner.solo.listening') : t('miner.solo.stopped')}
         </div>
       </div>
 
       <div>
-        <label className="label">Listen address</label>
+        <label className="label">{t('miner.solo.listen_address_label')}</label>
         <input
           className="input w-full"
           value={listen}
@@ -2147,22 +2155,22 @@ function SoloStratumTab() {
           placeholder={DEFAULT_SOLO_LISTEN}
         />
         <p className="text-xs mt-1" style={{ color: 'rgba(238,240,255,0.35)' }}>
-          Default <code>{DEFAULT_SOLO_LISTEN}</code> binds every interface so the ASIC on your LAN can reach it.
+          {t('miner.solo.listen_default_before')}<code>{DEFAULT_SOLO_LISTEN}</code>{t('miner.solo.listen_default_after')}
         </p>
       </div>
 
       <div className="flex items-center gap-2">
         {running ? (
           <button onClick={handleStop} disabled={loading} className="btn-secondary flex items-center gap-2">
-            <Square size={14} /> Stop
+            <Square size={14} /> {t('miner.buttons.stop')}
           </button>
         ) : (
           <button onClick={handleStart} disabled={loading} className="btn-primary flex items-center gap-2">
-            <Play size={14} /> Start
+            <Play size={14} /> {t('miner.buttons.start')}
           </button>
         )}
         <button onClick={refresh} disabled={loading} className="btn-secondary flex items-center gap-2">
-          <RefreshCw size={14} /> Refresh
+          <RefreshCw size={14} /> {t('miner.buttons.refresh')}
         </button>
       </div>
 
@@ -2174,7 +2182,7 @@ function SoloStratumTab() {
         }}
       >
         <div className="text-xs font-display font-semibold" style={{ color: 'var(--t1)' }}>
-          ASIC connection string
+          {t('miner.solo.asic_connection_string')}
         </div>
         <div className="flex items-center gap-2">
           <code
@@ -2191,18 +2199,18 @@ function SoloStratumTab() {
           <button
             onClick={() => {
               navigator.clipboard.writeText(asicUrl).catch(() => undefined);
-              toast.success('Copied');
+              toast.success(t('miner.toasts.copied'));
             }}
             className="btn-secondary px-3 py-2"
-            title="Copy"
+            title={t('miner.tooltips.copy')}
           >
             <Copy size={13} />
           </button>
         </div>
         <ul className="text-xs space-y-1" style={{ color: 'rgba(238,240,255,0.55)' }}>
-          <li>• Replace <code>&lt;your-host&gt;</code> with your machine's LAN IP (or VPS IP).</li>
-          <li>• Worker username: your Q-address followed by <code>.worker1</code>. Password: any string.</li>
-          <li>• Bridge serves <code>/rpc/getblocktemplate</code> &amp; <code>/rpc/submit_block</code> on your local iriumd.</li>
+          <li>{t('miner.solo.bullet_replace_host_before')}<code>&lt;your-host&gt;</code>{t('miner.solo.bullet_replace_host_after')}</li>
+          <li>{t('miner.solo.bullet_worker_username_before')}<code>.worker1</code>{t('miner.solo.bullet_worker_username_after')}</li>
+          <li>{t('miner.solo.bullet_bridge_serves_before')}<code>/rpc/getblocktemplate</code>{t('miner.solo.bullet_bridge_serves_middle')}<code>/rpc/submit_block</code>{t('miner.solo.bullet_bridge_serves_after')}</li>
         </ul>
       </div>
     </div>
@@ -2212,10 +2220,10 @@ function SoloStratumTab() {
 // ── PAGE ──────────────────────────────────────────────────────
 
 const TABS = [
-  { key: 'cpu',     label: 'CPU Miner',       icon: Cpu     },
-  { key: 'gpu',     label: 'GPU Miner',       icon: Monitor },
-  { key: 'stratum', label: 'Pool / Stratum',  icon: Server  },
-  { key: 'solo',    label: 'Solo Stratum',    icon: Wifi    },
+  { key: 'cpu',     labelKey: 'miner.tabs_v2.cpu',     icon: Cpu     },
+  { key: 'gpu',     labelKey: 'miner.tabs_v2.gpu',     icon: Monitor },
+  { key: 'stratum', labelKey: 'miner.tabs_v2.stratum', icon: Server  },
+  { key: 'solo',    labelKey: 'miner.tabs_v2.solo',    icon: Wifi    },
 ] as const;
 
 type TabKey = typeof TABS[number]['key'];
@@ -2311,17 +2319,16 @@ export default function Miner() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-display font-semibold text-sm" style={{ color: '#34d399' }}>
-                  Block #{foundBlockBanner.height} mined!
+                  {t('miner.found_block_banner.title', { height: foundBlockBanner.height })}
                 </p>
                 <p className="text-xs leading-snug" style={{ color: 'rgba(238,240,255,0.65)' }}>
-                  Your {foundBlockBanner.kind.toUpperCase()} miner just won the network race —
-                  50 IRM is on the way (matures in 100 blocks).
+                  {t('miner.found_block_banner.body', { kind: foundBlockBanner.kind.toUpperCase() })}
                 </p>
               </div>
               <button
                 onClick={() => setFoundBlockBanner(null)}
                 className="btn-ghost p-1.5 shrink-0"
-                aria-label="Dismiss"
+                aria-label={t('miner.found_block_banner.dismiss_aria')}
               >
                 <X size={14} />
               </button>
@@ -2387,7 +2394,7 @@ export default function Miner() {
           className="flex gap-1 p-1 rounded-xl"
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', width: 'fit-content' }}
         >
-          {TABS.map(({ key, label, icon: Icon }) => (
+          {TABS.map(({ key, labelKey, icon: Icon }) => (
             <button
               key={key}
               onClick={() => setActiveTab(key)}
@@ -2403,13 +2410,13 @@ export default function Miner() {
               }}
             >
               <Icon size={14} />
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </div>
         <button
           onClick={() => navigate('/explorer', { state: { pageTab: 'pool_stats' } })}
-          title="Open the public pool's live miner stats in the Block Explorer"
+          title={t('miner.buttons.view_pool_stats_tooltip')}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-display font-semibold transition-colors"
           style={{
             color: 'rgba(238,240,255,0.65)',
@@ -2428,7 +2435,7 @@ export default function Miner() {
           }}
         >
           <BarChart3 size={12} />
-          View Pool Stats
+          {t('miner.buttons.view_pool_stats')}
           <ArrowRight size={12} />
         </button>
       </div>

@@ -152,7 +152,9 @@
       "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
       "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
       "rpc_token_test_remote": "Test remote",
-      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated",
+      "hide_token": "Hide token",
+      "show_token": "Show token"
     },
     "buttons": {
       "test_connection": "Test connection",
@@ -195,7 +197,9 @@
       "onboarding_reset": "Onboarding reset — restart the app to see the wizard",
       "update_check_internet": "Could not check for updates. Check your internet connection.",
       "connection_failed": "Connection failed",
-      "update_failed": "Update failed"
+      "update_failed": "Update failed",
+      "metrics_http_error": "Status OK, but /metrics returned HTTP {{status}}",
+      "metrics_unreachable": "Status OK, but /metrics unreachable: {{error}}"
     },
     "page_subtitle": "Configure your node connection, wallet paths, and display preferences.",
     "update_banner": {
@@ -261,7 +265,14 @@
       "retry": "Retry",
       "external_ip_label": "External IP",
       "detecting_paragraph": "Waiting up to 60s for an inbound peer to confirm reachability. PEX needs a moment to propagate your address to other nodes after start.",
-      "inactive_paragraph": "UPnP failed and no inbound peers have arrived. Configure manual port forwarding on your router (TCP 38291) or enable UPnP, then click Retry. Outbound connections still work in this state."
+      "inactive_paragraph": "UPnP failed and no inbound peers have arrived. Configure manual port forwarding on your router (TCP 38291) or enable UPnP, then click Retry. Outbound connections still work in this state.",
+      "diag_chosen_lan_ip": "Chosen LAN IP",
+      "diag_router_ip": "Router IP",
+      "diag_control_url": "Control URL",
+      "diag_external_ip": "External IP",
+      "diag_private_double_nat": "(private — double NAT)",
+      "diag_add_port_mapping_tries": "AddPortMapping tries",
+      "diag_last_fault": "Last fault"
     },
     "security_info": {
       "wallet_local": "Irium Core stores your wallet file locally. Your private keys never leave your machine. The wallet file is encrypted. Always back up your seed phrase and keep it offline.",
@@ -325,11 +336,14 @@
       "reset_state_success": "State reset — backup at {{path}}",
       "reset_state_no_backup": "No existing state to back up — fresh state created",
       "reset_state_rebuilding": "Node restarting — rebuilding UTXO set from local blocks (5-15 min)",
-      "reset_state_failed": "Reset failed: {{reason}}"
+      "reset_state_failed": "Reset failed: {{reason}}",
+      "external_ip_placeholder": "e.g. 203.0.113.42"
     },
     "developer_info": {
       "reset_onboarding": "Reset onboarding",
-      "reset_onboarding_description": "Show the first-run setup wizard again on next launch"
+      "reset_onboarding_description": "Show the first-run setup wizard again on next launch",
+      "show_legacy_settlement": "Show legacy settlement UI",
+      "show_legacy_settlement_description": "Use the original template-grid Settlement page instead of the new SafeTrade / PayForWork / Deposit flows. Takes effect on next /settlement navigation."
     },
     "action_bar": {
       "are_you_sure": "Are you sure?",
@@ -453,6 +467,24 @@
   },
   "wallet": {
     "page_title": "Wallet",
+    "no_wallet_loaded": "No wallet loaded — create or import one below",
+    "balance_label": "Balance",
+    "balance_label_for_address": "Balance · Address {{index}}",
+    "satoshis_amount": "{{amount}} satoshis",
+    "unconfirmed": "unconfirmed",
+    "wallet_wide": "(wallet-wide)",
+    "syncing_tooltip": "Wait for the node to finish syncing before sending. Sending now can fail with a signature verification error because the UTXO set is still being rebuilt.",
+    "syncing_progress": "Syncing…",
+    "gaps_count": "{{count}} gaps",
+    "common": {
+      "cancel": "Cancel",
+      "done": "Done",
+      "reveal": "Reveal",
+      "hide": "Hide",
+      "copy": "Copy",
+      "delete": "Delete",
+      "loading": "Loading…"
+    },
     "encryption": {
       "migration_title": "Encrypt your wallet",
       "migration_body": "Your wallet is currently stored unencrypted on this device. Set a password to protect it. The same addresses and balances will be preserved; nothing on-chain changes.",
@@ -490,8 +522,28 @@
       "unhide_address": "Unhide this address",
       "rename_wallet_file": "Rename wallet file",
       "delete_wallet_file": "Permanently delete this wallet file",
-      "manage_wallets": "Manage wallets",
-      "manage_description": "Wallet files, import, hidden addresses"
+      "manage_wallets": "Manage Wallets",
+      "manage_description": "Wallet files, import, hidden addresses",
+      "manage_button": "Manage",
+      "copy_address": "Copy address",
+      "add_address_button": "Add Address",
+      "generating": "Generating…",
+      "empty_state": "No addresses yet. Open Manage to add one.",
+      "add_address_confirm_title": "Add a new address?",
+      "add_address_confirm_body": "This will derive the next address from your wallet seed. Addresses cannot be removed from the wallet file once created — only hidden from the visible list.",
+      "set_primary_button": "Set Primary",
+      "primary_button_short": "Primary",
+      "export_wif_short_tooltip": "Export WIF",
+      "wif_short": "WIF",
+      "qr_short": "QR",
+      "hide_button_short": "Hide",
+      "no_addresses_panel": "No addresses yet.",
+      "panel_description": "Addresses are derived from your wallet seed and cannot be permanently deleted. Use Hide to remove them from view.",
+      "label_placeholder_primary": "e.g. Primary · Mining",
+      "label_placeholder_other": "e.g. Mining",
+      "edit_label": "Edit label",
+      "add_custom_label": "Add a custom label",
+      "address_qr_label": "Address QR"
     },
     "send": {
       "title": "Send IRM",
@@ -521,17 +573,49 @@
         "unconfirmed": "Your funds are not yet confirmed. Wait for at least 1 confirmation before sending.",
         "double_spend": "This transaction conflicts with another pending transaction. Please wait and try again.",
         "generic": "Transaction could not be broadcast. Please check that the node is online and try again.",
-        "fallback": "Transaction failed. Please try again."
-      }
+        "fallback": "Transaction failed. Please try again.",
+        "insufficient_for_fee": "Insufficient funds for the network fee. Address balance {{balance}} sats; minimum fee {{fee}} sats.",
+        "cannot_compute_max": "Could not compute max — {{reason}}",
+        "node_still_syncing": "Node is still syncing ({{persisted}}/{{height}} blocks). Please close this dialog, wait until syncing completes, and try again.",
+        "not_accepted_mempool": "Transaction was not accepted by the node mempool"
+      },
+      "button_label": "Send",
+      "node_offline_tooltip": "Node must be online to send",
+      "node_syncing_tooltip": "Node is syncing — please wait before sending",
+      "max_button": "MAX",
+      "no_spendable_funds_suffix": " — No spendable funds",
+      "no_spendable_in_wallet": "This wallet has no spendable funds.",
+      "estimated_fee_25k": "Estimated fee: ~25,000 sats",
+      "estimated_fee_label": "Estimated fee",
+      "estimated_fee_value_25k": "~25,000 sats",
+      "amount_sats_label": "Amount (sats)",
+      "confirm_send_prefix": "Send",
+      "confirm_send_to_suffix": "to",
+      "back_button": "← Back",
+      "transaction_sent_title": "Transaction Sent",
+      "transaction_sent_subtitle": "Your transaction will appear in the next block",
+      "transaction_sent_explanation": "Your transaction is cryptographically signed with your private key and broadcast to the network. It will be permanently secured when included in the next mined block.",
+      "status_signed": "SIGNED",
+      "private_key_verified": "Private key verified",
+      "status_confirming": "CONFIRMING",
+      "next_mined_block": "Next mined block",
+      "transaction_id_label": "Transaction ID",
+      "copy_transaction_id": "Copy transaction ID",
+      "view_in_explorer": "View in Explorer"
     },
     "receive": {
       "title": "Receive IRM",
-      "scan_qr_hint": "Scan this QR code or copy the address below"
+      "scan_qr_hint": "Scan this QR code or copy the address below",
+      "button_label": "Receive",
+      "send_to_this_address": "Send IRM to this address:",
+      "no_address_short": "No address",
+      "no_address_available": "No address available",
+      "copy_address_button": "Copy Address"
     },
     "security": {
       "section_title": "Security",
       "show_recovery_phrase": "Show Recovery Phrase",
-      "export_wif": "Export WIF key",
+      "export_wif": "Export WIF Key",
       "export_backup": "Export Backup File",
       "import_seed": "Import Seed Phrase",
       "import_wif": "Import WIF Key",
@@ -541,17 +625,36 @@
       "seed_modal_title": "Your recovery phrase",
       "seed_modal_warning": "Write this down on paper. Anyone with these 24 words can spend your funds.",
       "wif_label": "WIF private key",
-      "backup_warning": "This file contains all your private keys. Store it securely."
+      "backup_warning": "This file contains all your private keys. Store it securely.",
+      "backup_subsection": "Backup",
+      "restore_subsection": "Restore",
+      "export_wif_dialog_title": "Export WIF Key",
+      "export_wif_private_key_dialog_title": "Export WIF Private Key",
+      "text_file_filter": "Text",
+      "backup_dialog_title": "Save Wallet Backup",
+      "select_backup_dialog_title": "Select Wallet Backup File",
+      "backup_filter_name": "Wallet Backup",
+      "all_files_filter": "All Files"
     },
     "transactions": {
       "section_title": "Transactions",
-      "no_transactions": "No transactions yet",
+      "no_transactions": "No transactions yet.",
       "load_error": "Could not load transactions",
       "filter_placeholder": "Filter by txid or address…",
       "confirmations": "{{count}} confirmations",
       "pending": "Pending",
+      "confirmed": "Confirmed",
       "received": "Received",
-      "sent": "Sent"
+      "sent": "Sent",
+      "for_address": "for {{address}}",
+      "mempool_awaiting": "Mempool · awaiting confirmation",
+      "miner_label": "Miner: {{address}}",
+      "fee_label": "Fee: {{amount}} sats",
+      "txid_label": "TXID: {{txid}}",
+      "conf_short": "{{count}} conf",
+      "block_number": "Block #{{height}}",
+      "open_in_explorer": "Open in Explorer",
+      "copy_txid": "Copy TXID"
     },
     "toasts": {
       "send_success": "Sent — txid {{txid}}",
@@ -587,7 +690,109 @@
       "copied": "Copied",
       "recovery_copied": "Recovery phrase copied",
       "wif_copied": "WIF copied",
-      "name_invalid_chars": "Wallet name cannot contain: / \\ : * ? \" < > |"
+      "name_invalid_chars": "Wallet name cannot contain: / \\ : * ? \" < > |",
+      "node_syncing_wait": "Node syncing — {{persisted}}/{{height}} blocks. Please wait.",
+      "failed_add_address": "Failed to add address: {{reason}}",
+      "no_recovery_data": "No recovery data found in wallet",
+      "wallet_deleted": "Deleted {{name}}",
+      "seed_copied": "Seed copied",
+      "invalid_wallet_path": "Wallet binary returned invalid path: {{path}}"
+    },
+    "seed": {
+      "recovery_phrase_title": "Recovery Phrase",
+      "wallet_seed_title": "Wallet Seed",
+      "recovery_phrase_warning": "Never share your recovery phrase. Anyone with these 24 words can access all your funds. Store it offline securely.",
+      "wallet_seed_warning": "Never share your wallet seed. This hex value gives full access to all funds. Store it offline securely.",
+      "custom_seed_hint": "This wallet uses a custom seed. Back up this hex seed to restore.",
+      "copy_phrase": "Copy Phrase",
+      "copy_seed": "Copy Seed"
+    },
+    "restore": {
+      "title": "Restore from Backup",
+      "warning_body": "This will overwrite your current wallet data. Make sure you have your WIF key or backup file before continuing. The node will restart automatically once the restore completes so the new wallet state is picked up cleanly.",
+      "restore_button": "Restore Wallet"
+    },
+    "create_modal": {
+      "create_title": "Create Wallet",
+      "import_title": "Import Wallet",
+      "create_new_tab": "Create New",
+      "import_tab": "Import",
+      "generate_description": "Generate a new BIP39 wallet with a 24-word recovery phrase.",
+      "creating": "Creating…",
+      "create_new_wallet_button": "Create New Wallet",
+      "save_warning": "Save your 24-word recovery phrase offline — it can restore your full wallet. Your WIF key backs up a single address. Neither can be recovered if lost.",
+      "address_label": "Address",
+      "recovery_phrase_label": "Recovery Phrase (24 words)",
+      "recovery_phrase_hint": "(any one phrase restores your wallet)",
+      "wif_label": "WIF Key",
+      "wif_hint": "(your private key in portable format)",
+      "loading_wif": "Loading WIF…",
+      "export_wif_to_file": "Export WIF to File",
+      "saved_confirmation": "I have saved my recovery phrase and WIF key securely.",
+      "import_notice_lead": "This will import a new wallet. Your current wallet remains untouched and can be switched back from",
+      "seed_phrase_method": "Seed Phrase",
+      "wif_key_method": "WIF Key",
+      "seed_phrase_input_label": "Seed Phrase (12 or 24 words)",
+      "seed_phrase_placeholder": "word1 word2 word3 …",
+      "bip39_hint": "BIP39 recovery phrase separated by spaces.",
+      "wif_placeholder": "5J… or K… or L…",
+      "wif_format_hint": "Wallet Import Format — starts with 5, K, or L.",
+      "import_button": "Import"
+    },
+    "new_address": {
+      "title": "New Address",
+      "derived_lead": "A fresh address has been derived from your wallet's BIP32 seed. Your",
+      "derived_emphasis": "recovery phrase has not changed",
+      "derived_trail": "— this address shares the same wallet file as your existing addresses.",
+      "copy_address": "Copy address",
+      "wif_private_key_label": "WIF Private Key",
+      "wif_warning": "Anyone with this WIF can spend funds at this address. Store it offline.",
+      "copy_wif": "Copy WIF",
+      "recovery_reminder_lead": "This address shares your wallet recovery phrase. To view it, go to",
+      "recovery_reminder_path": "Security → Show Recovery Phrase"
+    },
+    "files": {
+      "section_title": "Wallet Files",
+      "section_description": "Each file has its own seed. Switch to load a different wallet.",
+      "no_files_found": "No wallet files found in ~/.irium/",
+      "rename_placeholder": "wallet-name",
+      "active_badge": "Active",
+      "switch_button": "Switch",
+      "create_new_wallet_file": "Create New Wallet File",
+      "create_new_advanced_hint": "(advanced — separate seed)",
+      "create_new_description": "Creates a separate wallet file with its own seed. Your current wallet remains on disk and can be switched back to from this list."
+    },
+    "hidden": {
+      "section_title": "Hidden Addresses",
+      "still_in_file": "(still in wallet file)",
+      "description": "Addresses cannot be permanently deleted from the wallet file. Hidden addresses are removed from view but remain recoverable — click Unhide to bring them back.",
+      "unhide_button": "Unhide"
+    },
+    "delete_file": {
+      "confirm_title": "Permanently delete this wallet file?",
+      "address_count": "{{count}} addresses",
+      "address_count_one": "{{count}} address",
+      "warning_label": "WARNING:",
+      "warning_funds_lead": "This wallet contains funds. Deleting it without a backup means permanent loss of",
+      "warning_funds_trail": ". Make sure you have exported your WIF keys or seed phrase before proceeding.",
+      "warning_unknown_lead": "Balance could not be confirmed — the node may be offline. If this wallet held funds and you have not backed up the seed phrase or WIF keys, deletion will",
+      "warning_unknown_emphasis": "permanently lose",
+      "warning_unknown_trail": "them.",
+      "warning_zero_lead": "This will delete the file from disk. If you have not backed up the seed phrase or WIF keys for this wallet, all funds in it will be",
+      "warning_zero_emphasis": "permanently lost",
+      "warning_zero_trail": ". This cannot be undone.",
+      "type_prompt_prefix": "Type",
+      "type_prompt_word": "DELETE",
+      "type_prompt_suffix": "to confirm",
+      "deleting": "Deleting…",
+      "delete_forever": "Delete forever"
+    },
+    "hide_address": {
+      "confirm_title": "Hide this address?",
+      "body_lead": "The address stays in the wallet file — only the visible list is updated. You can",
+      "body_emphasis": "unhide",
+      "body_trail": "it later from the Hidden Addresses section.",
+      "confirm_button": "Hide address"
     }
   },
   "agreements": {
@@ -621,7 +826,18 @@
       "share_text": "Share Text",
       "delete": "Delete",
       "submitting": "Submitting…",
-      "sign": "Sign"
+      "sign": "Sign",
+      "fund_escrow": "Fund Escrow",
+      "release_to_counterparty": "Release to Counterparty",
+      "submit_proof": "Submit Proof",
+      "refund": "Refund",
+      "agreement_expired": "Agreement Expired",
+      "create_and_submit_proof": "Create & Submit Proof",
+      "confirm_release": "Confirm Release",
+      "confirm_fund": "Confirm Fund",
+      "confirm_open_dispute": "Confirm Open Dispute",
+      "use_this_invoice": "Use This Invoice →",
+      "verify_signature_file": "Verify a Signature File…"
     },
     "proof_modal": {
       "title": "Submit proof",
@@ -634,7 +850,15 @@
       "evidence_summary": "Evidence Summary",
       "evidence_placeholder": "e.g. Payment of $50 received via bank transfer, reference #12345.",
       "submit_button": "Submit proof",
-      "submitting": "Submitting…"
+      "submitting": "Submitting…",
+      "intro": "Build a signed proof in-app, or upload one you already have.",
+      "mode_create": "Create from Evidence",
+      "mode_upload": "Upload File",
+      "mode_create_sub": "Build in-app",
+      "mode_upload_sub": "Use existing file",
+      "upload_note_prefix": "Use this tab only if you already have a proof file — for example, one a counterparty or attestor signed for you, or one you produced via",
+      "upload_note_middle": "If you are submitting your own proof, use the",
+      "upload_note_suffix": "tab above — it builds and submits the proof without leaving the app."
     },
     "toasts": {
       "agreement_signed": "Agreement signed.",
@@ -663,7 +887,9 @@
       "signature_valid": "Signature valid (signer {{signer}})",
       "signature_invalid": "Signature invalid: {{reason}}",
       "agreement_signed_short": "Agreement signed.",
-      "sign_failed": "Sign failed"
+      "sign_failed": "Sign failed",
+      "cleanup_removed": "Removed {{count}} agreement(s)",
+      "cleanup_removed_with_failures": "Removed {{count}} agreement(s) ({{failed}} failed)"
     },
     "refund": {
       "blocked_default": "Refund eligibility unknown",
@@ -685,13 +911,26 @@
       "share_text": "Copy a plain-text summary of this agreement to clipboard",
       "delete_local": "Delete this agreement from your local store. The counterparty's copy is not affected.",
       "save_friendly_name": "Save a friendly name for this agreement (stored locally)",
-      "verify_signature_file": "Verify a signature file (.sig or .json) against this agreement"
+      "verify_signature_file": "Verify a signature file (.sig or .json) against this agreement",
+      "cleanup_old_test_data": "Remove agreements with IDs containing test / gossip / demo / pr from your local store",
+      "node_offline_sign": "Node must be online to sign",
+      "sign_to_confirm": "Sign this agreement to confirm your participation",
+      "node_offline_fund": "Node must be online to fund escrow",
+      "fund_escrow_action": "Lock the agreement amount into the HTLC escrow",
+      "node_offline_release": "Node must be online to release funds",
+      "release_to_counterparty": "Release funds to counterparty",
+      "node_offline_dispute": "Node must be online to open a dispute",
+      "mark_disputed": "Mark this agreement as disputed — requires a resolver attestation to settle",
+      "node_offline_refund": "Node must be online to refund",
+      "view_audit": "View full on-chain audit record"
     },
     "buttons": {
       "import_invoice": "Import Invoice",
       "import_pack": "Import Pack",
       "browse": "Browse",
-      "delete_agreement": "Delete Agreement"
+      "delete_agreement": "Delete Agreement",
+      "cleanup_old_test_data": "Clean up old test data ({{count}})",
+      "export_pack": "Export Pack"
     },
     "page_views": {
       "agreements": "Agreements",
@@ -744,12 +983,19 @@
       "seller": "Seller",
       "signer_wallet": "Signer wallet address",
       "role": "Role:",
-      "reason": "Reason:"
+      "reason": "Reason:",
+      "agreement_short": "Agreement",
+      "signer_prefix": "signer"
     },
     "placeholders": {
       "your_wallet_address": "Your wallet address",
       "secret_preimage": "Optional · 64-character hex",
-      "dispute_reason": "Describe what went wrong — this is shared with the resolver."
+      "dispute_reason": "Describe what went wrong — this is shared with the resolver.",
+      "output_pack_path": "/path/to/output.pack.json",
+      "proof_json_path": "/path/to/proof.json",
+      "pack_json_path": "/path/to/agreement.pack.json",
+      "invoice_json_path": "/path/to/invoice.json",
+      "hash_64_hex": "64-character hex"
     },
     "modals": {
       "submit_proof_title": "Submit Proof",
@@ -757,16 +1003,117 @@
       "import_invoice_title": "Import Invoice",
       "open_dispute_title": "Open Dispute?",
       "audit_title": "Agreement Audit",
-      "sign_title": "Sign Agreement"
+      "sign_title": "Sign Agreement",
+      "delete_confirm_prefix": "Delete agreement",
+      "delete_confirm_body": "This removes the agreement from your local store only. The counterparty's copy is not affected. Only unfunded (open/pending) agreements can be deleted.",
+      "cleanup_title": "Clean up old test data",
+      "cleanup_found": "Found {{count}} agreement(s) with an id containing test, gossip, demo, or pr.",
+      "cleanup_disclaimer": "This removes them from your local store only. The counterparty's copy is not affected. Active on-chain HTLCs are not touched — funds still need to be released or refunded separately.",
+      "cleanup_remove_count": "Remove {{count}}",
+      "release_funds_title": "Release Funds?",
+      "release_funds_body_prefix": "This will release",
+      "release_funds_body_suffix": "to the seller.",
+      "fund_escrow_title": "Fund Escrow?",
+      "fund_escrow_body_prefix": "This will lock",
+      "fund_escrow_body_suffix": "into the HTLC escrow. Funds release to the counterparty on proof acceptance, or refund after the timeout height.",
+      "import_pack_format_prefix": "Accepted format:",
+      "import_pack_format_suffix": "— exported by Party A",
+      "import_invoice_subtitle": "Pick an invoice JSON to pre-fill a new agreement on the Settlement page."
     },
     "audit": {
-      "fetching": "Fetching audit record…"
+      "fetching": "Fetching audit record…",
+      "no_data": "Audit RPC returned no data",
+      "show_raw_json": "Show raw JSON",
+      "hide_raw_json": "Hide raw JSON"
     },
     "empty": {
       "no_signatures": "No signatures verified yet. Use the button above to verify one.",
       "no_wallet_addresses": "No wallet addresses",
       "no_disputes": "No disputes.",
-      "disputes_offline": "(Node is offline — dispute list may be unavailable.)"
+      "disputes_offline": "(Node is offline — dispute list may be unavailable.)",
+      "no_agreements_found": "No agreements found",
+      "with_status": "with status",
+      "matching": "matching",
+      "go_to_settlement_cta": "Go to Settlement to create your first agreement →"
+    },
+    "scope": {
+      "my": "My Agreements",
+      "all": "All"
+    },
+    "dialog_titles": {
+      "save_agreement_pack": "Save Agreement Pack",
+      "select_proof_file": "Select Proof File (.json)",
+      "select_pack_file": "Select Agreement Pack (.pack.json)",
+      "select_invoice_file": "Select Invoice JSON",
+      "select_signature_file": "Select Signature File"
+    },
+    "timeline": {
+      "created": "Created",
+      "funded": "Funded",
+      "proof_submitted": "Proof Submitted",
+      "released": "Released",
+      "refunded": "Refunded"
+    },
+    "detail_labels": {
+      "template": "Template",
+      "created": "Created",
+      "deadline": "Deadline",
+      "proof_status": "Proof Status",
+      "release_eligible": "Release Eligible",
+      "kind": "Kind",
+      "threshold": "Threshold",
+      "attestors": "Attestors",
+      "parties": "Parties",
+      "amount": "Amount",
+      "payer": "Payer",
+      "payee": "Payee",
+      "outcome": "Outcome",
+      "satisfied": "Satisfied",
+      "reason": "Reason"
+    },
+    "detail_values": {
+      "none": "none",
+      "party": "party",
+      "parties": "parties"
+    },
+    "sections": {
+      "policy": "Policy",
+      "proofs": "Proofs",
+      "timeline": "Timeline ({{count}} event(s))",
+      "proofs_count": "Proofs ({{count}})",
+      "funding_legs": "Funding ({{count}} leg(s))",
+      "linked_transactions": "Linked Transactions ({{count}})"
+    },
+    "warnings": {
+      "proof_finality_body": "Wait for more block confirmations before releasing — a chain reorg could roll the proof back.",
+      "open_dispute_body": "Opening a dispute means the agreement needs a resolver to review the evidence from both sides. Make sure you have a good reason and supporting proof before proceeding. This action cannot be undone."
+    },
+    "helpers": {
+      "sign_confirms_participation": "Signing confirms your participation. Both parties must sign before funding.",
+      "sign_modal_body": "Signing this agreement with your wallet key confirms your participation. Both parties must sign before funding.",
+      "no_hash_on_file": "No hash on file for this agreement — paste the hash shared by the counterparty.",
+      "no_file_selected": "No file selected",
+      "secret_auto_loaded": "Auto-loaded from local agreement-secrets store",
+      "secret_required_hint": "Required if you did not create this agreement yourself. Leave blank if your wallet auto-derives it.",
+      "use_invoice_hint": "Clicking Use This Invoice jumps to Settlement with the OTC template pre-filled. You can change the template, edit fields, and confirm before creating the agreement.",
+      "signer_unknown": "unknown",
+      "rejected": "rejected",
+      "role_buyer_suffix": "(buyer)",
+      "role_seller_suffix": "(seller)",
+      "signer_not_party": "This address is not the buyer or seller — signing will be recorded without a party role."
+    },
+    "form_errors": {
+      "hash_required": "Agreement hash required",
+      "proof_type_required": "Pick a proof type",
+      "attested_by_required": "Attested-by address required",
+      "evidence_required": "Describe what happened in the Evidence Summary",
+      "secret_must_be_64_hex": "Must be exactly 64 hex characters (0-9, a-f)."
+    },
+    "disputes": {
+      "opened_prefix": "opened",
+      "resolved_prefix": "· resolved",
+      "open_this_agreement": "Open this agreement",
+      "agreement_not_in_list": "Agreement not in current list — try refreshing the Agreements view"
     }
   },
   "settlement": {
@@ -1042,7 +1389,10 @@
       "errors": {
         "buyer_required": "Enter the buyer's Irium address.",
         "amount_required": "Enter how much IRM you want to lock.",
-        "receiving_required": "Tell your buyer what you're expecting in return."
+        "receiving_required": "Tell your buyer what you're expecting in return.",
+        "no_agreement_id": "Agreement creation returned no id",
+        "fund_after_create_failed": "Agreement created but funding failed. Open the Agreements page to retry.",
+        "payment_ref_required": "Enter a transaction reference so the seller can verify your payment."
       },
       "review": {
         "you_lock": "You are locking",
@@ -1050,7 +1400,14 @@
         "deadline": "Deadline",
         "deadline_value": "If not paid in {{hours}} hours, your IRM returns automatically.",
         "lock_funds": "Lock Funds",
-        "tx_note": "This will create a transaction on the Irium blockchain."
+        "tx_note": "This will create a transaction on the Irium blockchain.",
+        "you_lock_short": "You lock",
+        "buyer_pays_you": "Buyer pays you",
+        "payment_deadline": "Payment deadline",
+        "hours_from_now": "{{hours}} hours from now",
+        "buyer_address": "Buyer's address",
+        "lock_my_irm": "Lock my IRM",
+        "tx_broadcast_note": "A blockchain transaction will be broadcast. This may take a moment to confirm."
       },
       "share": {
         "title": "Share this with your buyer",
@@ -1070,7 +1427,25 @@
         "receiving_placeholder": "e.g. 200 USDT, bank transfer, cash",
         "deadline_label": "How long should this trade stay open?",
         "deadline_helper": "If they don't pay within this time, your IRM returns automatically.",
-        "release_button": "I received payment — Release funds to buyer"
+        "release_button": "I received payment — Release funds to buyer",
+        "buyer_address_short_label": "Buyer's address",
+        "buyer_address_helper": "The address that receives the IRM when you confirm the buyer paid.",
+        "amount_label_short": "Amount of IRM to sell",
+        "amount_helper_short": "Held in escrow until you confirm the buyer's payment.",
+        "receiving_label_short": "What you receive in return",
+        "receiving_placeholder_detailed": "e.g. 50 USDT via SEPA bank transfer",
+        "deadline_label_short": "Deadline for the buyer to pay",
+        "deadline_helper_refund": "If no payment arrives by the deadline you can claim a refund.",
+        "locked_hero_title": "Your IRM is now locked and protected",
+        "locked_hero_body": "The buyer cannot take it without your confirmation. Share the deal code below so they can join, then wait for their payment.",
+        "share_code_title": "Share this deal code",
+        "share_code_body": "The buyer pastes this code in their wallet to join the trade.",
+        "header1_title": "Set up your sell trade",
+        "header1_subtitle": "Tell us who the buyer is and how much IRM you want to sell.",
+        "header2_title": "Review and lock",
+        "header2_subtitle": "Confirm the details. Locking sends the IRM to escrow.",
+        "header3_title": "Your trade is live",
+        "header3_subtitle": "Share the deal code with the buyer and wait for their payment."
       },
       "buying": {
         "step2_title": "Paste the trade code from your seller",
@@ -1089,12 +1464,42 @@
         "status_waiting": "Waiting for the seller to confirm payment received.",
         "status_releasing": "Payment confirmed — IRM is on its way.",
         "status_complete": "Complete — IRM has arrived in your wallet.",
-        "view_agreements": "View in Agreements"
+        "view_agreements": "View in Agreements",
+        "review_commit_intro": "Confirm the trade details below. By continuing, you commit to this trade. After this step, send the off-chain payment to the seller and report it from the next screen.",
+        "seller_is_locking": "Seller is locking",
+        "seller_short_label": "Seller",
+        "details_did_not_load": "Trade details did not load. You can still continue, but verify the IRM amount with the seller before paying.",
+        "continue_and_link": "Continue and link",
+        "trade_complete_title": "Trade complete",
+        "trade_complete_body": "The IRM has arrived in your wallet.",
+        "seller_locked_for_you_title": "The seller's IRM is locked for you",
+        "seller_locked_for_you_body": "Send the off-chain payment to the seller, then report your transaction reference below.",
+        "report_payment_title": "Report your payment",
+        "report_payment_body": "After you send the off-chain payment, paste any reference the seller can use to confirm it arrived - bank wire reference, PayPal transaction id, etc.",
+        "report_payment_placeholder": "Bank wire reference, PayPal txid, blockchain txid, etc.",
+        "cancel_open_dispute": "Cancel and open dispute",
+        "payment_reported": "Payment reported",
+        "i_have_sent_payment": "I have sent payment",
+        "header1_title": "Paste the seller's deal code",
+        "header1_subtitle": "The seller will have sent you a code after they locked their IRM.",
+        "header2_title": "Review the trade",
+        "header2_subtitle": "Make sure the amount and seller match what you expect.",
+        "header3_title": "Your trade is live",
+        "header3_subtitle": "Send the off-chain payment, then report it so the seller can release the IRM."
       },
       "fuel_banner_title": "You need IRM to create a settlement.",
       "fuel_banner_prefix": "Go to",
       "fuel_banner_link": "Marketplace → Spot Swap",
-      "fuel_banner_suffix": "to acquire IRM first."
+      "fuel_banner_suffix": "to acquire IRM first.",
+      "toast_buyer_linked": "Your side is now linked to the trade. Send the off-chain payment to the seller.",
+      "toast_payment_reported": "Payment reported. Waiting for the seller to confirm.",
+      "toast_dispute_opened": "Dispute opened. A resolver will review the evidence.",
+      "dispute_reason_buyer": "buyer cannot complete the trade",
+      "choose_selling_title": "I am selling IRM",
+      "choose_selling_body": "Lock your IRM in escrow. The buyer pays you off-chain, then you release.",
+      "choose_buying_title": "I am buying IRM",
+      "choose_buying_body": "Paste the seller's deal code. Send them payment, then confirm to receive IRM.",
+      "view_resolvers": "View available resolvers"
     },
     "pay_for_work": {
       "step1_title": "Single payment or by milestone?",
@@ -1146,7 +1551,12 @@
       "claim_refund": "Claim Refund",
       "toast_released": "Payment released to the contractor.",
       "toast_release_pending": "Completion recorded. Funds will release after the next few blocks confirm.",
-      "toast_refunded": "Refund claimed — funds are returning to your wallet."
+      "toast_refunded": "Refund claimed — funds are returning to your wallet.",
+      "toast_fund_failed": "Agreement created but funding failed. Find it in your Agreements page to retry funding.",
+      "which_milestone": "Which milestone?",
+      "milestone_option": "Milestone {{index}} of {{total}}",
+      "milestone_helper": "Mark Complete releases this milestone's share of the locked IRM. The contractor receives 1/{{count}} of the total per milestone.",
+      "mark_complete_milestone": "Mark as Complete — Release Payment (milestone {{index}})"
     },
     "deposit": {
       "step1_title": "Set up your deposit",
@@ -1257,14 +1667,72 @@
       "confirm_large_amount": "You're about to lock {{amount}} IRM in escrow.\n\nThis is a large amount. Confirm you typed the decimal correctly.",
       "remote_label": "remote",
       "remote_tooltip": "This offer is from another seller and cannot be deleted from your local store.",
-      "delete_tooltip": "Delete this offer from your local store"
+      "delete_tooltip": "Delete this offer from your local store",
+      "modal_title": "Create Sell Order",
+      "modal_subtitle": "Post an offer to the order book — IRM locks the moment a buyer takes it.",
+      "post_offer_button": "Post Offer",
+      "lock_info_prefix": "Your IRM is locked the moment a buyer commits. You then receive the buyer's off-chain payment and click",
+      "confirm_received_label": "Confirm received",
+      "lock_info_suffix": "to release. Or open a dispute if they don't pay.",
+      "amount_to_sell_label": "Amount of IRM to sell",
+      "price_per_irm_label": "Price per IRM in USDT",
+      "buyer_pays_total_prefix": "Buyer pays a total of",
+      "buyer_pays_total_amount": "{{amount}} USDT",
+      "payment_method_label": "Payment method",
+      "your_payment_details_label": "Your payment details",
+      "payment_details_placeholder": "e.g. IBAN DE89 3704 0044 0532 0130 00 or PayPal: seller@example.com",
+      "payment_details_helper": "The buyer sees these details after they take the offer.",
+      "payment_options": {
+        "bank_transfer": "Bank transfer",
+        "paypal": "PayPal",
+        "usdt_trc20": "USDT (TRC-20)",
+        "usdt_erc20": "USDT (ERC-20)",
+        "sepa": "SEPA",
+        "cash": "Cash",
+        "other": "Other"
+      },
+      "errors": {
+        "positive_irm_amount": "Enter a positive IRM amount",
+        "positive_usdt_price": "Enter a positive USDT price per IRM",
+        "select_payment_method": "Select a payment method",
+        "payment_details_required": "Enter your payment details so the buyer knows how to pay"
+      },
+      "toasts": {
+        "offer_posted": "Offer posted. IRM will lock the moment a buyer commits."
+      }
     },
     "take_offer": {
       "title": "Take Offer",
       "completed_trades": "Completed trades",
       "take_button": "Take offer",
       "taking": "Taking…",
-      "title_modal": "Take This Offer"
+      "title_modal": "Take This Offer",
+      "set_buyer_address_first": "Set your buyer address first",
+      "error_agreement_id_missing": "Offer taken but agreement id missing in response",
+      "irm_locked_send_payment": "IRM is now locked in escrow. Send the off-chain payment.",
+      "dispute_reason_buyer_cancelled": "buyer cancelled before payment",
+      "dispute_opened_refund_hint": "Dispute opened. You can claim your refund from the Agreements page after the timeout.",
+      "enter_payment_reference": "Enter a transaction id or note so the seller can verify your payment",
+      "payment_reported_seller_notified": "Payment reported. The seller has been notified.",
+      "step_of_two": "Step {{step}} of 2",
+      "step1_intro": "Confirming locks the seller's IRM in escrow. You then have a deadline to send the off-chain payment and report the transaction.",
+      "you_receive": "You receive:",
+      "payment_method": "Payment method:",
+      "seller": "Seller:",
+      "buyer_you": "Buyer (you):",
+      "not_set": "- not set -",
+      "cancel": "Cancel",
+      "confirm_take": "Confirm Take",
+      "irm_locked_in_escrow": "IRM locked in escrow",
+      "step2_intro": "The seller's IRM is locked. Send the off-chain payment, then enter your transaction reference below and click \"I have sent payment\".",
+      "sellers_payment_details": "Seller's payment details",
+      "no_payment_details": "No details in the offer. Contact the seller directly for payment instructions.",
+      "your_transaction_reference": "Your transaction reference",
+      "payment_reference_placeholder": "Bank wire reference, PayPal txid, blockchain txid, etc.",
+      "payment_reference_hint": "The seller sees this exactly. Anything they can use to confirm your payment arrived works - reference number, transaction id, sender name, etc.",
+      "cancel_opens_dispute_warning": "If you cancel here, a dispute opens. You can claim a refund after the timeout from the Agreements page.",
+      "cancel_and_dispute": "Cancel and dispute",
+      "i_have_sent_payment": "I have sent payment"
     },
     "feeds": {
       "discover_button": "Discover feeds",
@@ -1312,7 +1780,189 @@
     },
     "swap": {
       "fuel_banner_title": "IRM powers the Settlement layer.",
-      "fuel_banner_body": "Swap BTC, LTC or DOGE for IRM to start trading trustlessly."
+      "fuel_banner_body": "Swap BTC, LTC or DOGE for IRM to start trading trustlessly.",
+      "pair_not_available": "This pair is not available yet",
+      "own_order_hint": "That is your own order. Use the My Swaps panel on the right to cancel it.",
+      "not_available_yet": "Not available yet",
+      "how_it_works_title": "How {{pair}} swaps work",
+      "how_it_works_step1": "Pick an order from the book on the left, or post your own.",
+      "how_it_works_step2": "The seller's IRM is locked in escrow the moment the order is taken.",
+      "how_it_works_step3": "The buyer sends {{quote}} to the seller's address.",
+      "how_it_works_step4": "Once the payment confirms, the IRM is released to the buyer automatically."
+    },
+    "header": {
+      "subtitle_otc": "Peer-to-peer OTC. Lock IRM in escrow, swap for anything.",
+      "subtitle_swap": "Atomic swaps between IRM and other chains. Trustless. No bridge.",
+      "advanced_flows": "Advanced flows",
+      "advanced_flows_tooltip": "Open the lower-level settlement flows."
+    },
+    "mode_tabs": {
+      "otc": "OTC P2P",
+      "swap": "Spot Swap"
+    },
+    "my_trades": {
+      "title": "My Trades",
+      "tab_active": "Active",
+      "tab_completed": "Completed",
+      "tab_all": "All",
+      "empty_active": "No active trades. Take an offer from the order book to start.",
+      "empty_completed": "No completed trades yet.",
+      "empty_all": "No trades yet. Take an offer from the order book to start.",
+      "side_buy": "BUY",
+      "side_sell": "SELL"
+    },
+    "trade_status": {
+      "released": "Released",
+      "refunded": "refunded",
+      "expired": "expired",
+      "cancelled": "cancelled",
+      "disputed": "Disputed",
+      "confirming": "Confirming",
+      "locked": "Locked",
+      "proposed": "Proposed",
+      "drafting": "Drafting"
+    },
+    "order_book": {
+      "title": "Order Book",
+      "create_order": "Create Order",
+      "offers_count_one": "offer",
+      "offers_count_other": "offers",
+      "offers_count": "offers",
+      "hidden_tooltip_one": "{{count}} offer hidden because it had no quoted price",
+      "hidden_tooltip_other": "{{count}} offers hidden because they had no quoted price",
+      "hidden_tooltip": "{{count}} offers hidden because they had no quoted price",
+      "hidden_suffix": "{{count}} hidden",
+      "show_taken": "Show taken",
+      "sort": {
+        "price_asc": "Price ↑",
+        "price_desc": "Price ↓",
+        "newest": "Newest",
+        "best_rep": "Best Rep"
+      },
+      "updated_ago": "Updated {{time}}",
+      "refreshing": "Refreshing…",
+      "refreshing_lower": "refreshing…",
+      "empty_prefix": "No offers in the book yet. Click",
+      "empty_suffix": "to post the first one.",
+      "col_amount_irm": "Amount IRM",
+      "col_price_per_irm": "Price / IRM",
+      "col_total": "Total",
+      "col_payment": "Payment",
+      "col_seller": "Seller",
+      "col_rep": "Rep",
+      "col_age": "Age",
+      "rep_tooltip": "{{stars}} of 5, {{completed}} completed",
+      "no_reputation": "No reputation",
+      "taken": "Taken",
+      "take": "Take"
+    },
+    "pair_order_book": {
+      "header_title": "{{pair}} order book",
+      "open_shown_summary": "{{open}} open · {{shown}} shown",
+      "updated_label": "updated",
+      "new_swap": "New swap",
+      "direction_both": "Both",
+      "direction_sell_irm": "Sell IRM",
+      "direction_buy_irm": "Buy IRM",
+      "sort_price_asc": "Best price first",
+      "sort_price_desc": "Highest price first",
+      "sort_recent": "Newest first",
+      "hide_my_orders": "Hide my orders",
+      "loading_orders": "Loading {{pair}} orders…",
+      "empty_state": "No open {{pair}} orders. Be the first — post one with the New swap button above.",
+      "side_sells_irm": "Sells IRM",
+      "side_buys_irm": "Buys IRM",
+      "badge_yours": "Yours",
+      "escrow_protected": "Escrow protected",
+      "maker_line": "Maker {{address}} · {{ago}}",
+      "needs_confirmations": "Needs {{count}} confirmation on the {{network}} side",
+      "needs_confirmations_plural": "Needs {{count}} confirmations on the {{network}} side",
+      "relative_recent": "recent",
+      "relative_just_now": "just now",
+      "relative_blocks_ago": "{{count}} blocks ago",
+      "relative_blocks_ago_one": "{{count}} block ago",
+      "relative_hours_ago": "{{count}}h ago",
+      "relative_days_ago": "{{count}}d ago"
+    },
+    "resolver_picker": {
+      "title": "Resolver selection",
+      "intro": "A resolver is a verified third party who decides who gets the IRM when buyer and seller cannot agree. The resolver earns a small fee, deducted from the disputed amount when the trade settles.",
+      "nominated_section_title": "Resolvers nominated for this trade",
+      "primary_label": "Primary",
+      "fallback_label": "Fallback",
+      "fee_with_value": "Fee: {{value}}",
+      "no_nominated_notice": "This trade was created without nominated resolvers. Both parties can co-sign a fresh nomination from the wallet's resolver re-nomination flow before any resolver below can act.",
+      "available_section_title": "Available resolvers",
+      "registry_unreachable": "The resolver registry endpoint is not reachable on this node ({{error}}). Use the resolver re-nomination flow from your wallet to discover candidates directly via the resolver-list CLI.",
+      "empty_registry_before": "No resolvers have registered on this node yet. Resolvers register by calling",
+      "empty_registry_after": "after their address has appeared in a recent coinbase output.",
+      "unnamed_resolver": "Unnamed resolver",
+      "no_reputation_yet": "no reputation yet",
+      "agreements_hint": "Use the Agreements page to submit additional evidence to the resolver and to watch the dispute resolution unfold. Both parties can submit evidence at any time before the resolver decides.",
+      "close": "Close"
+    },
+    "seller_review": {
+      "toast_released": "IRM released. The buyer now has the funds.",
+      "dispute_reason": "seller did not receive off-chain payment",
+      "toast_dispute_opened": "Dispute opened. A resolver will review the evidence.",
+      "empty_state": "No incoming trades waiting on you. When a buyer takes one of your offers and reports payment, it shows up here.",
+      "section_title": "Incoming trades to verify",
+      "waiting_count": "{{count}} waiting",
+      "status_releasing": "Releasing",
+      "status_funded": "Funded",
+      "buyer_label": "Buyer:",
+      "buyer_claims_paid": "Buyer claims payment sent {{time}}",
+      "no_reference": "(no transaction reference provided)",
+      "no_payment_yet": "Buyer has not yet reported sending payment. Wait, or open a dispute if the deadline has passed.",
+      "open_dispute_button": "No payment - open dispute",
+      "confirm_release_button": "Confirm received and release",
+      "loading_trades": "Loading trades...",
+      "time_ago_seconds": "{{count}}s ago",
+      "time_ago_minutes": "{{count}}m ago",
+      "time_ago_hours": "{{count}}h ago",
+      "time_ago_days": "{{count}}d ago"
+    },
+    "take_swap": {
+      "buy_irm": "Buy IRM",
+      "sell_irm": "Sell IRM",
+      "toast_no_wallet": "No active Irium wallet address. Open a wallet first.",
+      "toast_min_blocks": "Refund deadline must be at least 10 blocks",
+      "toast_locked_buyer": "Order locked. Send the {{code}} payment and report it.",
+      "toast_locked_seller": "Order locked. The seller's IRM is in escrow.",
+      "toast_need_ref": "Enter a transaction id or note so the seller can verify your {{code}} payment",
+      "toast_payment_reported": "Payment reported. The seller has been notified.",
+      "toast_dispute_info": "A dispute can be opened from the Agreements page. Cancel here for now and revisit it there.",
+      "modal_title": "{{label}} on {{pair}}",
+      "step_of_2": "Step {{step}} of 2",
+      "intro_buyer": "Confirming will lock the seller's IRM in escrow. You will then send {{code}} to the address shown next.",
+      "intro_seller": "Confirming will create a matching escrow with your IRM. The buyer will send {{code}} to your address.",
+      "you_receive": "You receive",
+      "you_pay": "You pay",
+      "you_send": "You send",
+      "price": "Price",
+      "maker": "Maker",
+      "maker_foreign_address": "Maker {{code}} address",
+      "needs": "Needs",
+      "confirmation_one": "{{count}} {{code}} confirmation",
+      "confirmation_other": "{{count}} {{code}} confirmations",
+      "refund_deadline_label": "Refund deadline (Irium blocks)",
+      "refund_deadline_hint": "If payment is not confirmed by this deadline, your funds can be refunded.",
+      "cancel": "Cancel",
+      "confirm_action": "Confirm {{label}}",
+      "escrow_locked": "Escrow locked",
+      "escrow_locked_buyer": "Send the {{code}} payment to the address below. Once your payment confirms, the IRM is released to your wallet automatically.",
+      "escrow_locked_seller": "Your IRM is in escrow. The buyer will send {{code}} to your address. When their payment confirms, the IRM is released to them and the buyer flow finishes on its own.",
+      "send_to_label": "Send {{code}} to",
+      "exact_amount_label": "Exact {{code}} amount",
+      "required_memo_label": "Required payment memo",
+      "memo_hint": "Most {{name}} wallets include this as an extra data field on the payment. It links your payment to this trade so the IRM can release automatically.",
+      "tx_reference_label": "Your transaction reference",
+      "tx_reference_placeholder": "{{code}} transaction id or note",
+      "tx_reference_hint": "The seller sees this exactly. Anything they can use to confirm your payment works.",
+      "cancel_warning": "If you cancel now, your funds stay locked until the refund deadline above.",
+      "cancel_and_dispute": "Cancel and dispute",
+      "i_have_sent": "I have sent {{code}}",
+      "watching_escrow": "Watching escrow"
     }
   },
   "miner": {
@@ -1341,7 +1991,11 @@
       "uptime": "Uptime",
       "difficulty": "Difficulty",
       "temperature": "Temperature",
-      "power": "Power"
+      "power": "Power",
+      "est_daily_irm": "Est. Daily IRM",
+      "na_linux_only": "N/A (Linux only)",
+      "pool_difficulty": "Pool Difficulty",
+      "pool_hashrate": "Pool Hashrate"
     },
     "buttons": {
       "start_mining": "Start mining",
@@ -1350,7 +2004,23 @@
       "connect_pool": "Connect to pool",
       "disconnect": "Disconnect",
       "confirm_disconnect": "Confirm disconnect?",
-      "detect_gpus": "Detect GPUs"
+      "detect_gpus": "Detect GPUs",
+      "view_wallet": "View wallet",
+      "starting": "Starting…",
+      "connecting": "Connecting…",
+      "start_gpu_mining": "Start GPU Mining",
+      "stop_gpu": "Stop GPU",
+      "scanning": "Scanning…",
+      "yes": "Yes",
+      "no": "No",
+      "close": "Close",
+      "done": "Done",
+      "ok": "OK",
+      "start": "Start",
+      "stop": "Stop",
+      "refresh": "Refresh",
+      "view_pool_stats": "View Pool Stats",
+      "view_pool_stats_tooltip": "Open the public pool's live miner stats in the Block Explorer"
     },
     "fields": {
       "mining_address_label": "Mining Address",
@@ -1374,21 +2044,49 @@
       "gpu_address_placeholder": "P…",
       "intensity_label": "Intensity — {{value}}%",
       "intensity_mac_note": "Intensity capped at 50% on macOS to prevent the GPU watchdog from killing kernels mid-batch. The GPU miner automatically detects watchdog stalls and stops cleanly if it sees them anyway.",
-      "pool_preset": "Pool Preset"
+      "pool_preset": "Pool Preset",
+      "intensity_hint": "Higher intensity = more hashrate, more power usage",
+      "core_active_tooltip": "Core {{n}} (active)",
+      "core_idle_tooltip": "Core {{n}} (idle)",
+      "stratum_worker_placeholder": "walletAddress.workerName",
+      "stratum_worker_autofill_tooltip": "Auto-fill: {{address}}.rig1",
+      "stratum_password_hint": "Leave blank to use \"x\" (the default for most pools)"
     },
     "found_blocks": {
       "section_title": "Found Blocks",
       "empty": "No blocks found yet in this session.",
-      "open_in_explorer_tooltip": "Open this block in the Explorer"
+      "open_in_explorer_tooltip": "Open this block in the Explorer",
+      "hide_orphans_tooltip": "Hide blocks won by another miner",
+      "reveal_orphans_tooltip_one": "Reveal {{count}} orphaned candidate",
+      "reveal_orphans_tooltip_other": "Reveal {{count}} orphaned candidates",
+      "hide_orphans_button": "Hide orphans ({{count}})",
+      "show_orphans_button": "Show orphans ({{count}})",
+      "all_orphaned": "No confirmed blocks yet — all candidates so far were orphaned.",
+      "orphaned_tooltip": "Orphaned — won by another miner",
+      "orphaned_long_tooltip": "The canonical block at this height was mined by another address — we recorded our candidate but lost the race.",
+      "orphaned_badge": "orphaned",
+      "block_height_tooltip": "Block height {{height}}",
+      "won_by_another": "Won by another miner",
+      "hash_unavailable": "hash unavailable from this miner build",
+      "reward_not_indexed_tooltip": "Reward not yet indexed by the node — value will fill in once mature",
+      "reward_unknown_tooltip": "Reward unknown — miner stdout does not report it",
+      "estimate_marker": "~ est"
     },
     "shares": {
       "accepted": "Accepted",
       "rejected": "Rejected",
-      "ratio": "Ratio"
+      "ratio": "Ratio",
+      "last_share": "Last share"
     },
     "asic_info": {
       "headline": "Connect your ASIC or GPU to a mining pool via Stratum",
-      "after_install": "After installing, restart Irium Core."
+      "after_install": "After installing, restart Irium Core.",
+      "external_title": "Pool mining with an external ASIC or GPU",
+      "external_body_before_url": "Point your ASIC or GPU mining software directly at the pool URL above (e.g. ",
+      "external_body_after_url": "). Irium Core monitors the pool-side share statistics shown here; your hardware's local hashrate is reported by the miner itself.",
+      "connect_button_intro_before": "The ",
+      "connect_button_intro_middle": " button below starts pool mining using your CPU via the bundled ",
+      "connect_button_intro_after": " sidecar — useful only if you also want this machine to contribute CPU hashrate to the pool. External ASICs do not need this button."
     },
     "toasts": {
       "miner_started": "CPU miner started",
@@ -1408,17 +2106,111 @@
       "connecting_to_pool": "Connecting to pool…",
       "pool_disconnected_reconnecting": "Pool disconnected — reconnecting…",
       "pool_connection_lost": "Pool connection lost. Please reconnect.",
-      "pool_error": "Pool error: {{message}}"
+      "pool_error": "Pool error: {{message}}",
+      "no_device_selected": "No device selected — using default device 0",
+      "solo_listening_on": "Solo Stratum listening on {{addr}}",
+      "solo_failed_start": "Failed to start solo Stratum",
+      "solo_stopped": "Solo Stratum stopped",
+      "solo_failed_stop": "Failed to stop solo Stratum",
+      "copied": "Copied"
     },
     "page_subtitle": "SHA-256d · CPU · GPU · ASIC pool support",
     "tooltips": {
       "copy_address": "Copy address",
-      "copy_full_hash": "Copy full hash"
+      "copy_full_hash": "Copy full hash",
+      "copy": "Copy"
     },
     "pool_configuration": "Pool Configuration",
     "opencl": {
       "detected_title": "OpenCL Hardware Detected",
-      "none_detected": "No OpenCL-capable GPU detected"
+      "none_detected": "No OpenCL-capable GPU detected",
+      "no_gpu_idle_message": "No compatible GPU detected — see Configuration below",
+      "select_platform": "Select a platform and start mining",
+      "no_compatible_gpu": "No compatible GPU detected",
+      "install_drivers_before": "GPU mining requires an OpenCL runtime. Install your GPU vendor's drivers (NVIDIA, AMD, or Intel OpenCL SDK) and click ",
+      "install_drivers_after": ".",
+      "supports_pool_and_solo": "Once enabled, the GPU miner supports both pool (Stratum) and solo (direct node RPC) mining.",
+      "read_docs": "Read the GPU Miner docs",
+      "no_platforms_found": "No OpenCL platforms found.",
+      "install_icd_before": "Install your GPU driver and the ICD loader, then click ",
+      "install_icd_after": " again.",
+      "platform_n": "Platform {{n}}",
+      "discrete_gpu": "discrete GPU",
+      "device_n": "Device {{n}}",
+      "fix_intro": "To fix this, install the OpenCL driver for your GPU:",
+      "fix_nvidia": "Reinstall your GPU driver from nvidia.com",
+      "fix_amd": "Install AMD Software Adrenalin from amd.com",
+      "fix_intel": "Install Intel Graphics Driver from intel.com",
+      "scanning": "Scanning for OpenCL devices…"
+    },
+    "activity": {
+      "share_accepted": "Share accepted",
+      "share_rejected": "Share rejected",
+      "share_rejected_with_detail": "Share rejected — {{detail}}",
+      "pool_error": "Pool error",
+      "pool_error_with_detail": "Pool error — {{detail}}",
+      "mining_active": "Mining Active",
+      "block_hash_marker": "· block #{{height}}",
+      "section_title": "Recent Activity",
+      "last_count": "last {{count}}",
+      "waiting_for_first_share": "Waiting for first share…"
+    },
+    "status": {
+      "loading": "Loading…",
+      "mining_active": "Mining Active",
+      "mining_active_syncing": "Mining Active — Syncing blocks…",
+      "cpu_idle": "CPU Idle",
+      "gpu_active": "GPU Active",
+      "gpu_idle": "GPU Idle",
+      "pool_connected": "Pool Connected",
+      "pool_disconnected": "Pool Disconnected",
+      "live_badge": "Live",
+      "syncing_badge": "Syncing"
+    },
+    "sync": {
+      "node_syncing_height": "Node syncing — height {{localHeight}} / network {{networkTip}}",
+      "warming_up_header": "Warming up miner — waiting for first share rate…",
+      "node_syncing_body": "The node is still catching up to the network tip. Mining is enabled but no shares will be accepted until the local chain matches. This usually finishes within a few minutes.",
+      "warming_up_body": "The miner sidecar has started. The first hashrate reading lands within 1-3 seconds — no action needed."
+    },
+    "block_info": {
+      "mining_block_n": "Mining block #{{height}}",
+      "previous_block": "Previous block",
+      "last_confirmed_block": "last confirmed block",
+      "network_difficulty": "Network difficulty"
+    },
+    "solo": {
+      "title": "Solo Stratum Bridge",
+      "subtitle": "Run an ASIC against your own iriumd. No pool fee, no pool dependency.",
+      "listening": "Listening",
+      "stopped": "Stopped",
+      "listen_address_label": "Listen address",
+      "listen_default_before": "Default ",
+      "listen_default_after": " binds every interface so the ASIC on your LAN can reach it.",
+      "asic_connection_string": "ASIC connection string",
+      "bullet_replace_host_before": "• Replace ",
+      "bullet_replace_host_after": " with your machine's LAN IP (or VPS IP).",
+      "bullet_worker_username_before": "• Worker username: your Q-address followed by ",
+      "bullet_worker_username_after": ". Password: any string.",
+      "bullet_bridge_serves_before": "• Bridge serves ",
+      "bullet_bridge_serves_middle": " & ",
+      "bullet_bridge_serves_after": " on your local iriumd."
+    },
+    "found_block_banner": {
+      "title": "Block #{{height}} mined!",
+      "body": "Your {{kind}} miner just won the network race — 50 IRM is on the way (matures in 100 blocks).",
+      "dismiss_aria": "Dismiss"
+    },
+    "tabs_v2": {
+      "cpu": "CPU Miner",
+      "gpu": "GPU Miner",
+      "stratum": "Pool / Stratum",
+      "solo": "Solo Stratum"
+    },
+    "pool_presets": {
+      "irium_official_cpu_gpu": "Irium Official Pool (CPU/GPU)",
+      "irium_official_asic": "Irium Official Pool (ASIC)",
+      "custom": "Custom"
     }
   },
   "onboarding": {
@@ -1448,7 +2240,8 @@
       "generating": "Generating wallet…",
       "show_recovery": "Show recovery phrase",
       "i_wrote_it_down": "I wrote it down",
-      "continue_to_wallet": "Continue to Wallet"
+      "continue_to_wallet": "Continue to Wallet",
+      "generating_sub": "Creating BIP32 HD wallet with 24-word seed phrase…"
     },
     "password": {
       "title": "Set a wallet password",
@@ -1485,6 +2278,153 @@
     },
     "tooltips": {
       "copy_address": "Copy address"
+    },
+    "splash": {
+      "subtitle_full_node": "FULL NODE DESKTOP WALLET",
+      "status_initializing": "Initializing runtime…",
+      "status_loading_crypto": "Loading cryptographic modules…",
+      "status_verifying_binary": "Verifying binary integrity…",
+      "status_establishing_context": "Establishing secure context…",
+      "status_ready": "Ready"
+    },
+    "rail": {
+      "system_check": "System Check",
+      "bootstrap": "Bootstrap",
+      "network_sync": "Network Sync",
+      "wallet_setup": "Wallet Setup",
+      "backup_secure": "Backup & Secure"
+    },
+    "binary_check": {
+      "subtitle": "Verifying required node binaries are present on this machine.",
+      "iriumd_desc": "Full node daemon",
+      "irium_wallet_desc": "Wallet & marketplace CLI",
+      "irium_miner_desc": "CPU miner",
+      "all_verified": "All binaries verified. Continuing…",
+      "missing_binaries": "Missing binaries. Place executables in src-tauri/binaries/",
+      "retry": "Retry",
+      "skip_advanced": "Skip (advanced)"
+    },
+    "bootstrap": {
+      "subtitle": "Configuring seed nodes, trust anchors, and genesis block.",
+      "creating_data_dir": "Creating data directory…",
+      "writing_seedlist": "Writing bootstrap seedlist.txt…",
+      "writing_static_peers": "Writing static_peers.txt…",
+      "installing_anchors": "Installing genesis anchors.json…",
+      "installing_trust_signatures": "Installing trust signatures…",
+      "complete": "Bootstrap configuration complete.",
+      "error_prefix": "Error",
+      "skip_continue": "Skip (continue anyway)"
+    },
+    "network_sync": {
+      "subtitle": "Loading local blockchain data and connecting to the Irium P2P network.",
+      "port_in_use_message": "Port 38291 is already in use. Another Irium node may be running in the background. Check your system tray for an existing Irium Core instance, or open Task Manager and end any iriumd.exe processes, then restart the app.",
+      "add_peer_format_error": "Use IP:PORT format (e.g. 1.2.3.4:38291)",
+      "add_peer_rejected": "Node rejected the address",
+      "add_peer_unreachable": "Could not reach node",
+      "starting_iriumd": "Starting iriumd…",
+      "loading_blockchain_data": "Loading blockchain data…",
+      "starting_node": "Starting node…",
+      "discovering": "discovering…",
+      "searching_for_peers": "Searching for peers on the Irium network",
+      "checking_connectivity": "Checking network connectivity…",
+      "network_reachable": "Network reachable — starting node…",
+      "port_blocked_title": "Port 38291 appears to be blocked outbound",
+      "port_blocked_body_before": "The Irium network cannot be reached. Check your router or firewall — port",
+      "port_blocked_body_after": "must be open for outbound TCP connections.",
+      "restarting_node": "Restarting node…",
+      "retry_connection": "Retry connection",
+      "still_connecting_title": "Still connecting to peers…",
+      "still_connecting_body": "The node is reaching out to the Irium network. This usually completes within 30 seconds — hang tight.",
+      "connecting_for": "Connecting for {{seconds}}s…",
+      "add_peer_manually": "Add a peer manually",
+      "add_peer_button": "Add Peer",
+      "added_peer": "added {{addr}}",
+      "continuing_in": "Continuing in {{seconds}}s…",
+      "syncing_background": "Syncing in background…",
+      "continue_anyway": "Continue anyway →"
+    },
+    "wallet_setup_subtitle": "Create a fresh HD wallet or restore from an existing wallet.",
+    "wallet_password": {
+      "title": "Set a wallet password",
+      "subtitle": "Encrypts your wallet file. Required before continuing.",
+      "placeholder": "Choose a strong password (8+ chars)",
+      "confirm_placeholder": "Confirm password",
+      "warning": "This password cannot be recovered if forgotten. Write it down and store it safely. Your seed phrase is the only way to restore the wallet without this password.",
+      "continue": "Encrypt & Continue",
+      "too_short": "Password must be at least 8 characters",
+      "mismatch": "Passwords do not match",
+      "encrypting": "Encrypting wallet…",
+      "encrypting_sub": "Applying PBKDF2-derived key to your wallet file.",
+      "hide": "hide",
+      "show": "show"
+    },
+    "wallet_restored_sub": "Your wallet has been imported successfully.",
+    "restored": {
+      "primary_address": "Primary Address",
+      "address_pending": "Address will appear on the Dashboard once the node finishes syncing.",
+      "additional_addresses": "{{count}} additional address(es) found",
+      "balance_will_load": "Your balance and transaction history will load automatically on the Dashboard as the node syncs.",
+      "continue_to_dashboard": "Continue to Dashboard"
+    },
+    "import_form": {
+      "subtitle": "Choose your restore method below.",
+      "tab_mnemonic_label": "Seed Phrase",
+      "tab_wif_label": "WIF Key",
+      "tab_privkey_label": "Private Key",
+      "mnemonic_placeholder": "word1 word2 word3 … word24",
+      "mnemonic_hint": "BIP32 mnemonic — 12 or 24 space-separated words",
+      "wif_placeholder": "5Jxx… or Kxx… or Lxx…",
+      "wif_hint": "Wallet Import Format (Base58Check-encoded private key)",
+      "privkey_placeholder": "0x1a2b3c4d… (64 hex chars)",
+      "privkey_hint": "Raw 256-bit private key in hexadecimal",
+      "back": "Back",
+      "importing": "Importing…"
+    },
+    "choose": {
+      "create_description": "Generate a fresh BIP32 HD wallet with a 24-word seed phrase.",
+      "import_description": "Restore via seed phrase, WIF key, or raw private key."
+    },
+    "backup": {
+      "field_address_label": "Wallet Address",
+      "field_wif_label": "WIF Key",
+      "field_mnemonic_label": "Recovery Phrase (24 words)",
+      "field_wif_warning": "The WIF is your private key in portable format. Anyone with it controls funds at this address.",
+      "field_mnemonic_warning": "Write these 24 words in order. Cannot be recovered if lost.",
+      "copy": "Copy",
+      "copied": "Copied!",
+      "hide": "Hide",
+      "reveal": "Reveal",
+      "click_to_reveal": "Click to reveal",
+      "confirm_address": "I have saved my wallet address",
+      "confirm_wif": "I have securely stored my WIF key",
+      "confirm_mnemonic": "I have written down my recovery phrase offline",
+      "loading": "Loading…",
+      "wif_read_failed": "(WIF read failed — use Security panel after launch",
+      "shown_once_before": "This information is shown",
+      "shown_once_emphasis": "one time only",
+      "shown_once_after": ". Store every item offline before continuing.",
+      "critical_warning_strong": "You will not be able to recover your wallet",
+      "critical_warning_body": "if you lose your recovery phrase or WIF key. Irium Core has no cloud backup. Write everything down now.",
+      "items_confirmed": "{{count}} of {{total}} items confirmed",
+      "launch_dashboard": "Launch Dashboard",
+      "confirm_all_to_continue": "Confirm all 4 items to continue"
+    },
+    "welcome_screen": {
+      "welcome_to": "Welcome to",
+      "tagline": "Your full-node desktop wallet for the Irium blockchain. Send, receive, trade, and settle — all peer-to-peer, all on-chain.",
+      "wizard_intro": "This setup wizard will configure your node, sync the chain, and create or restore your wallet.",
+      "chip_full_node": "Full Node",
+      "chip_hd_wallet": "HD Wallet",
+      "chip_p2p_trade": "P2P Trade",
+      "chip_on_chain_settlement": "On-Chain Settlement",
+      "chip_privacy_first": "Privacy First",
+      "get_started": "Get Started"
+    },
+    "wallet_setup_errors": {
+      "failed_create": "Failed to create wallet",
+      "no_wallet_pending": "No wallet pending encryption",
+      "failed_set_password": "Failed to set wallet password",
+      "import_failed": "Import failed"
     }
   },
   "reputation": {
@@ -1726,7 +2666,81 @@
       "hashrate_avg_window": "{{minutes}}min avg",
       "confidence_low": "Low confidence",
       "confidence_medium": "Medium confidence",
-      "confidence_high": "High confidence"
+      "confidence_high": "High confidence",
+      "asic_port_with_443": "ports {{port}} + 443",
+      "active_miners": "Active Miners",
+      "worker_count_one": "{{count}} worker",
+      "worker_count_other": "{{count}} workers",
+      "your_miners_pinned": "Your miners pinned to top",
+      "hide_offline": "Hide offline ({{count}})",
+      "show_offline": "Show offline miners ({{count}})",
+      "no_miners_reporting": "No active miners reporting.",
+      "col_worker": "Worker",
+      "col_accepted": "Accepted",
+      "col_rejected_15m": "Rejected (15m)",
+      "col_rejected_15m_tooltip": "Rejected shares in the last 15 minutes only. The cumulative count (since stratum restart) kept a worker showing a stale warmup-burst total even after they recovered.",
+      "col_reject_pct_15m": "Reject % (15m)",
+      "col_reject_pct_15m_tooltip": "Rolling rejection rate over the last 15 minutes. The cumulative-since-restart rate kept a worker stuck on a post-restart warmup burst even after they recovered.",
+      "col_hashrate_15m": "Hashrate (15m)",
+      "col_blocks": "Blocks",
+      "col_blocks_tooltip": "Blocks found by this worker at the pool. Populated by the stats-proxy; shows '—' until the proxy backfills per-worker block credit.",
+      "col_last_share": "Last Share",
+      "yours_badge": "yours"
+    },
+    "mining_overview": {
+      "title": "Network Mining Overview",
+      "subtitle": "One-screen view of network, pool, and your own mining. Refreshes every 30 seconds.",
+      "network_summary": "Network Summary",
+      "pool_mining": "Pool Mining",
+      "your_mining": "Your Mining",
+      "network_hashrate": "Network Hashrate",
+      "difficulty": "Difficulty",
+      "avg_block_time": "Avg Block Time",
+      "est_active_miners": "Est. Active Miners",
+      "network_wide_estimate": "network-wide estimate",
+      "pool_hashrate": "Pool Hashrate",
+      "estimate_sub": "estimate",
+      "active_pool_miners": "Active Pool Miners",
+      "pool_blocks_found": "Pool Blocks Found",
+      "all_time": "all time",
+      "pool_share": "Pool / Network",
+      "share_of_network_hashrate": "share of network hashrate",
+      "your_hashrate": "Your Hashrate",
+      "collecting": "collecting…",
+      "pool_workers_one": "{{count}} pool worker",
+      "pool_workers_other": "{{count}} pool workers",
+      "mode": "Mode",
+      "mode_pool": "Pool",
+      "mode_solo": "Solo",
+      "not_mining": "not mining",
+      "connected_via_stratum": "connected via stratum",
+      "direct_to_local_node": "direct to local node",
+      "on_pool": "on pool.iriumlabs.org",
+      "on_solo_bridge": "on solo-stratum bridge",
+      "accepted_shares": "Accepted Shares",
+      "none": "none",
+      "pool_lifetime": "pool, lifetime",
+      "last_share": "Last Share",
+      "blocks_you_found": "Blocks You Found",
+      "from_pool_worker": "from pool worker",
+      "this_session": "this session"
+    },
+    "relative_time": {
+      "just_now": "just now",
+      "seconds_ago_one": "{{count}} second ago",
+      "seconds_ago_other": "{{count}} seconds ago",
+      "minutes_ago_one": "{{count}} minute ago",
+      "minutes_ago_other": "{{count}} minutes ago",
+      "hours_ago_one": "{{count}} hour ago",
+      "hours_ago_other": "{{count}} hours ago",
+      "days_ago_one": "{{count}} day ago",
+      "days_ago_other": "{{count}} days ago"
+    },
+    "founder_card": {
+      "title": "Founder Vesting Address",
+      "description": "This address holds 3,500,000 IRM locked via CLTV timelock at genesis. Balance shown as 0 because locked funds use a special script not counted as spendable balance.",
+      "unlocks_at": "Unlocks at block #{{height}}",
+      "blocks_remaining": "(~{{count}} blocks remaining)"
     },
     "solo_pool": {
       "title": "Solo Pool",
@@ -1788,7 +2802,8 @@
       "load_more_loading": "Loading top 500…",
       "load_error": "Failed to load rich list: {{reason}}",
       "empty": "No P2PKH balances on chain yet.",
-      "node_offline_hint": "Start the node on the Dashboard to load the rich list."
+      "node_offline_hint": "Start the node on the Dashboard to load the rich list.",
+      "sr_total_supply": "{{total}} IRM total supply context for screen readers"
     }
   },
   "help": {
