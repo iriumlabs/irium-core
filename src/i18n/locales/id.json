@@ -2437,7 +2437,9 @@
       "last_share": "Share Terakhir",
       "blocks_you_found": "Blok yang Anda Temukan",
       "from_pool_worker": "dari worker pool",
-      "this_session": "sesi ini"
+      "this_session": "sesi ini",
+      "pool_blocks_today": "Blok Pool Hari Ini",
+      "today": "hari ini"
     },
     "relative_time": {
       "just_now": "baru saja",

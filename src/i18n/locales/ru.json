@@ -2437,7 +2437,9 @@
       "last_share": "Последняя шара",
       "blocks_you_found": "Блоки, найденные Вами",
       "from_pool_worker": "от воркера пула",
-      "this_session": "в этой сессии"
+      "this_session": "в этой сессии",
+      "pool_blocks_today": "Блоки пула сегодня",
+      "today": "сегодня"
     },
     "relative_time": {
       "just_now": "только что",

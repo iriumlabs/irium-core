@@ -2437,7 +2437,9 @@
       "last_share": "最后 share",
       "blocks_you_found": "你找到的区块",
       "from_pool_worker": "来自矿池工作机",
-      "this_session": "本次会话"
+      "this_session": "本次会话",
+      "pool_blocks_today": "今日矿池区块",
+      "today": "今日"
     },
     "relative_time": {
       "just_now": "刚刚",

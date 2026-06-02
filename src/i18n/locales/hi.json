@@ -2437,7 +2437,9 @@
       "last_share": "अंतिम शेयर",
       "blocks_you_found": "आपके द्वारा मिले ब्लॉक्स",
       "from_pool_worker": "पूल वर्कर से",
-      "this_session": "इस सत्र में"
+      "this_session": "इस सत्र में",
+      "pool_blocks_today": "आज पूल ब्लॉक",
+      "today": "आज"
     },
     "relative_time": {
       "just_now": "अभी-अभी",

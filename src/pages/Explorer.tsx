@@ -14,7 +14,7 @@ import { useStore } from '../lib/store';
 import { rpc, wallet, miner, gpuMiner, stratum } from '../lib/tauri';
 import { timeAgo, formatIRM, formatLocalDateTime, SATS_PER_IRM } from '../lib/types';
 import type {
-  ExplorerBlock, NetworkHashrateInfo, RichListEntry, PoolStats,
+  ExplorerBlock, NetworkHashrateInfo, RichListEntry, PoolStats, StatsProxyResponse,
   MinerStatus, GpuMinerStatus, StratumStatus,
 } from '../lib/types';
 
@@ -825,6 +825,10 @@ function NetworkMiningOverview() {
   const [network, setNetwork] = useState<NetworkHashrateResp | null>(null);
   const [poolMiners, setPoolMiners] = useState<MinerRow[] | null>(null);
   const [poolAggregate, setPoolAggregate] = useState<PoolStats | null>(null);
+  // Direct stats-proxy snapshot. Carries the per-profile rolling-window
+  // hashrate_estimate_hps (asic + cpu_gpu + solo) plus the blocks_found_today
+  // counter, neither of which the get_pool_stats Tauri command surfaces.
+  const [statsProxy, setStatsProxy] = useState<StatsProxyResponse | null>(null);
   const [cpuStatus, setCpuStatus] = useState<MinerStatus | null>(null);
   const [gpuStatus, setGpuStatus] = useState<GpuMinerStatus | null>(null);
   const [stratumS, setStratumS] = useState<StratumStatus | null>(null);
@@ -837,7 +841,7 @@ function NetworkMiningOverview() {
   const [myAddresses, setMyAddresses] = useState<Set<string>>(new Set());
 
   const fetchAll = useCallback(async () => {
-    const [netR, poolMinersR, poolStatsR, cpuR, gpuR, strR, addrR] = await Promise.allSettled([
+    const [netR, poolMinersR, poolStatsR, statsProxyR, cpuR, gpuR, strR, addrR] = await Promise.allSettled([
       tauriFetch<NetworkHashrateResp>('http://127.0.0.1:38300/rpc/network_hashrate', {
         method: 'GET',
         responseType: ResponseType.JSON,
@@ -849,6 +853,11 @@ function NetworkMiningOverview() {
         timeout: 10,
       }),
       rpc.poolStats().catch(() => null),
+      tauriFetch<StatsProxyResponse>('http://pool.iriumlabs.org:3337/stats', {
+        method: 'GET',
+        responseType: ResponseType.JSON,
+        timeout: 10,
+      }),
       miner.status().catch(() => null),
       gpuMiner.status().catch(() => null),
       stratum.status().catch(() => null),
@@ -861,6 +870,9 @@ function NetworkMiningOverview() {
       setPoolMiners(poolMinersR.value.data.miners ?? []);
     }
     if (poolStatsR.status === 'fulfilled') setPoolAggregate(poolStatsR.value);
+    if (statsProxyR.status === 'fulfilled' && statsProxyR.value.ok && statsProxyR.value.data) {
+      setStatsProxy(statsProxyR.value.data);
+    }
     if (cpuR.status === 'fulfilled') setCpuStatus(cpuR.value);
     if (gpuR.status === 'fulfilled') setGpuStatus(gpuR.value);
     if (strR.status === 'fulfilled') setStratumS(strR.value);
@@ -894,26 +906,29 @@ function NetworkMiningOverview() {
   // that auto-failover after a stratum bounce), which would otherwise
   // inflate the aggregate Pool Hashrate.
   const activeRows = poolRows.filter((m) => !isMinerOffline(m));
-  const poolHashrateRaw = activeRows.length > 0
-    ? activeRows.reduce((sum, m) => sum + (m.hashrate_15m ?? 0), 0)
+  // Pool hashrate comes from the stats-proxy's per-profile rolling-window
+  // hashrate_estimate_hps (asic + cpu_gpu + solo) — the authoritative value
+  // the proxy itself computes from accepted shares × current_diff. Summing
+  // per-miner hashrate_15m from /miners (the previous source) produced
+  // overestimates from vardiff drift that frequently exceeded the network
+  // value, requiring a clamp-to-network fallback that made pool and network
+  // hashrate display identical. The proxy aggregates are bounded per profile,
+  // so the sum is honest even if the displayed pool hashrate happens to
+  // exceed network for a poll due to estimator-window misalignment.
+  const poolHashrate = statsProxy != null
+    ? (statsProxy.asic.hashrate_estimate_hps ?? 0)
+      + (statsProxy.cpu_gpu.hashrate_estimate_hps ?? 0)
+      + (statsProxy.solo?.hashrate_estimate_hps ?? 0)
     : null;
-  // Sanity cap: the proxy estimates per-worker hashrate from
-  // accepted-share counts × current_diff over a rolling window. Vardiff
-  // drift, transient bursts, or stale window samples can produce sums
-  // that exceed the actual network hashrate — which is physically
-  // impossible (the pool is a subset of the network). When the raw sum
-  // exceeds the network value, clamp the displayed pool hashrate to the
-  // network value and flag the panel so the user knows it's a clamped
-  // estimate, not a measured value.
-  const poolHashrateCapped = (poolHashrateRaw != null && networkHashrate != null && poolHashrateRaw > networkHashrate)
-    ? networkHashrate
-    : poolHashrateRaw;
-  const poolHashrateClamped = poolHashrateRaw != null && networkHashrate != null && poolHashrateRaw > networkHashrate;
-  const poolHashrate = poolHashrateCapped;
-  // Active miner count derived from the same activeRows filter so the
-  // count and the hashrate sum stay consistent.
+  // Active miner count derived from the activeRows filter so the count and
+  // the per-row table stay consistent (the stats-proxy aggregate's
+  // active_miners would count proxy-side which can drift from /miners).
   const activePoolMiners = activeRows.length;
-  const poolBlocksFound = poolAggregate?.total_blocks_found ?? null;
+  // Two block counters: today (from the proxy's rolling daily counter) and
+  // cumulative all-time. Prefer the proxy's top-level total_blocks_found
+  // (always present on /stats) over the legacy poolAggregate field.
+  const poolBlocksToday = statsProxy?.blocks_found_today ?? null;
+  const poolBlocksFound = statsProxy?.total_blocks_found ?? poolAggregate?.total_blocks_found ?? null;
   const poolShareOfNetwork = (poolHashrate != null && networkHashrate != null && networkHashrate > 0)
     ? (poolHashrate / networkHashrate) * 100
     : null;
@@ -1089,12 +1104,17 @@ function NetworkMiningOverview() {
             <PoolStatsTile
               label={t('explorer.mining_overview.pool_hashrate')}
               value={poolHashrate != null ? formatHashrate(poolHashrate) : '—'}
-              sub={poolHashrateClamped ? t('explorer.mining_overview.estimate_sub') : undefined}
               accent="#a78bfa"
             />
             <PoolStatsTile
               label={t('explorer.mining_overview.active_pool_miners')}
               value={poolRows.length > 0 ? activePoolMiners.toLocaleString('en-US') : '—'}
+              accent="#a78bfa"
+            />
+            <PoolStatsTile
+              label={t('explorer.mining_overview.pool_blocks_today')}
+              value={poolBlocksToday != null ? poolBlocksToday.toLocaleString('en-US') : '—'}
+              sub={t('explorer.mining_overview.today')}
               accent="#a78bfa"
             />
             <PoolStatsTile

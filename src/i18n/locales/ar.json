@@ -2437,7 +2437,9 @@
       "last_share": "آخر حصة",
       "blocks_you_found": "الكتل التي وجدتها",
       "from_pool_worker": "من عامل تجمع التعدين",
-      "this_session": "هذه الجلسة"
+      "this_session": "هذه الجلسة",
+      "pool_blocks_today": "كتل التجمع اليوم",
+      "today": "اليوم"
     },
     "relative_time": {
       "just_now": "الآن",

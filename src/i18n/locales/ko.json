@@ -2437,7 +2437,9 @@
       "last_share": "마지막 쉐어",
       "blocks_you_found": "내가 찾은 블록",
       "from_pool_worker": "풀 워커 기준",
-      "this_session": "이 세션"
+      "this_session": "이 세션",
+      "pool_blocks_today": "오늘 풀 블록",
+      "today": "오늘"
     },
     "relative_time": {
       "just_now": "방금 전",

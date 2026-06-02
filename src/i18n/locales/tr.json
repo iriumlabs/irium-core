@@ -2437,7 +2437,9 @@
       "last_share": "Son Share",
       "blocks_you_found": "Bulduğunuz Bloklar",
       "from_pool_worker": "havuz worker'ından",
-      "this_session": "bu oturum"
+      "this_session": "bu oturum",
+      "pool_blocks_today": "Bugünkü Havuz Blokları",
+      "today": "bugün"
     },
     "relative_time": {
       "just_now": "az önce",

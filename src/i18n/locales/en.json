@@ -2723,7 +2723,9 @@
       "last_share": "Last Share",
       "blocks_you_found": "Blocks You Found",
       "from_pool_worker": "from pool worker",
-      "this_session": "this session"
+      "this_session": "this session",
+      "pool_blocks_today": "Pool Blocks Today",
+      "today": "today"
     },
     "relative_time": {
       "just_now": "just now",

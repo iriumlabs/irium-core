@@ -2437,7 +2437,9 @@
       "last_share": "最終シェア",
       "blocks_you_found": "あなたが発見したブロック",
       "from_pool_worker": "プールワーカーから",
-      "this_session": "このセッション"
+      "this_session": "このセッション",
+      "pool_blocks_today": "今日のプールブロック",
+      "today": "今日"
     },
     "relative_time": {
       "just_now": "たった今",

@@ -2437,7 +2437,9 @@
       "last_share": "Dernier share",
       "blocks_you_found": "Blocs que vous avez trouvés",
       "from_pool_worker": "depuis le worker du pool",
-      "this_session": "cette session"
+      "this_session": "cette session",
+      "pool_blocks_today": "Blocs du Pool aujourd'hui",
+      "today": "aujourd'hui"
     },
     "relative_time": {
       "just_now": "à l'instant",
