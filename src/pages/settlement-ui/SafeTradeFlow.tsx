@@ -320,9 +320,30 @@ export default function SafeTradeFlow() {
     </div>
   );
 
+  // Read the seller's IRM balance from the wallet store. We gate the
+  // wizard with a guidance banner when this is zero — sellers without
+  // any IRM can't fund the escrow.
+  const sellerBalanceSats = addresses[activeAddrIdx]?.balance ?? 0;
+
   // SELLING Step 1 - plain form, four fields.
   const renderSellingStep1 = () => (
     <div className="card p-6 space-y-5">
+      {sellerBalanceSats === 0 && (
+        <div className="bg-[#fcd535]/10 border border-[#fcd535]/30 rounded-lg px-3 py-2.5 text-[12px] text-[#eaecef]">
+          <span className="font-semibold text-[#fcd535]">You need IRM to create a settlement.</span>{' '}
+          <span className="text-[#b7bdc6]">
+            Go to{' '}
+            <button
+              type="button"
+              onClick={() => navigate('/marketplace?mode=swap')}
+              className="underline text-[#fcd535] hover:text-[#f0c020]"
+            >
+              Marketplace → Spot Swap
+            </button>{' '}
+            to acquire IRM first.
+          </span>
+        </div>
+      )}
       <div className="space-y-1">
         <AddressInput
           value={sBuyerAddr}

@@ -117,6 +117,15 @@ export default function SwapPanel() {
   return (
     <ActivePairContext.Provider value={ctxValue}>
       <div className="space-y-3">
+        {/* IRM-as-settlement-fuel banner — frames the Spot Swap as a way
+            to acquire IRM for downstream Settlement use, not just an end
+            in itself. Hardcoded English to avoid blocking on i18n until
+            the locale registry catches up. */}
+        <div className="bg-[#fcd535]/10 border border-[#fcd535]/30 rounded-lg px-3 py-2 text-[12px] text-[#eaecef]">
+          <span className="font-semibold text-[#fcd535]">IRM powers the Settlement layer.</span>
+          <span className="text-[#b7bdc6]"> Swap BTC, LTC or DOGE for IRM to start trading trustlessly.</span>
+        </div>
+
         <PairSwitcher
           pairs={SWAP_PAIRS}
           activeId={activePairId}
