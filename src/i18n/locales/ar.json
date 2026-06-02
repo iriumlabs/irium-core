@@ -1023,6 +1023,10 @@
       "default_feeds_added": "تمت إضافة الخلاصات الافتراضية",
       "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
       "take_failed_already_taken": "This offer has already been taken by another buyer."
+    },
+    "swap": {
+      "fuel_banner_title": "يدعم IRM طبقة التسوية.",
+      "fuel_banner_body": "بدّل BTC أو LTC أو DOGE مقابل IRM لبدء التداول بدون وسيط."
     }
   },
   "miner": {
@@ -2041,7 +2045,9 @@
       "amount": "المبلغ",
       "start_cta": "ابدأ",
       "toast_released": "تم تحرير الأموال للطرف الآخر.",
-      "toast_refunded": "تمت المطالبة بالاسترداد — الأموال تعود إلى wallet."
+      "toast_refunded": "تمت المطالبة بالاسترداد — الأموال تعود إلى wallet.",
+      "intro_security": "كل عمليات التسوية مؤمَّنة بـ IRM مغلق على السلسلة. يجب أن يملك الطرفان IRM لإنشاء اتفاقية أو المشاركة فيها.",
+      "intro_use_cases": "أودِع IRM في الضمان لأي معاملة بدون وسيط — سلع أو خدمات أو عمل مستقل أو صفقات. يُحرَّر IRM تلقائيًا عند تأكيد الطرفين."
     },
     "status": {
       "setting_up": "جاري الإعداد",
@@ -2188,7 +2194,11 @@
         "status_releasing": "تم تأكيد الدفعة — IRM في الطريق.",
         "status_complete": "مكتمل — وصل IRM إلى wallet.",
         "view_agreements": "عرض في agreement"
-      }
+      },
+      "fuel_banner_title": "تحتاج إلى IRM لإنشاء تسوية.",
+      "fuel_banner_prefix": "اذهب إلى",
+      "fuel_banner_link": "السوق ← المبادلة الفورية",
+      "fuel_banner_suffix": "للحصول على IRM أولًا."
     },
     "pay_for_work": {
       "step1_title": "دفعة واحدة أم بالمراحل؟",

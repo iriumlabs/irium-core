@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { wallet } from '../../../lib/tauri';
 import { useStore } from '../../../lib/store';
 import type { AddressInfo } from '../../../lib/types';
@@ -57,6 +58,7 @@ function readPersistedActiveSwap(): ActiveSwap | null {
 }
 
 export default function SwapPanel() {
+  const { t } = useTranslation();
   const [activePairId, setActivePairId] = useState<string>(defaultPair().id);
   const [myAddrs, setMyAddrs] = useState<Set<string>>(new Set());
   const [activeWalletAddr, setActiveWalletAddr] = useState('');
@@ -188,11 +190,10 @@ export default function SwapPanel() {
       <div className="space-y-3">
         {/* IRM-as-settlement-fuel banner — frames the Spot Swap as a way
             to acquire IRM for downstream Settlement use, not just an end
-            in itself. Hardcoded English to avoid blocking on i18n until
-            the locale registry catches up. */}
+            in itself. */}
         <div className="bg-[#fcd535]/10 border border-[#fcd535]/30 rounded-lg px-3 py-2 text-[12px] text-[#eaecef]">
-          <span className="font-semibold text-[#fcd535]">IRM powers the Settlement layer.</span>
-          <span className="text-[#b7bdc6]"> Swap BTC, LTC or DOGE for IRM to start trading trustlessly.</span>
+          <span className="font-semibold text-[#fcd535]">{t('marketplace.swap.fuel_banner_title')}</span>{' '}
+          <span className="text-[#b7bdc6]">{t('marketplace.swap.fuel_banner_body')}</span>
         </div>
 
         <PairSwitcher

@@ -1023,6 +1023,10 @@
       "default_feeds_added": "Se agregaron feeds predeterminados",
       "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
       "take_failed_already_taken": "This offer has already been taken by another buyer."
+    },
+    "swap": {
+      "fuel_banner_title": "IRM impulsa la capa de Liquidación.",
+      "fuel_banner_body": "Intercambia BTC, LTC o DOGE por IRM para empezar a operar sin intermediarios."
     }
   },
   "miner": {
@@ -2041,7 +2045,9 @@
       "amount": "Importe",
       "start_cta": "Iniciar",
       "toast_released": "Fondos liberados a la otra parte.",
-      "toast_refunded": "Reembolso reclamado — los fondos vuelven a tu wallet."
+      "toast_refunded": "Reembolso reclamado — los fondos vuelven a tu wallet.",
+      "intro_security": "Todas las liquidaciones están aseguradas por IRM bloqueado en la cadena. Ambas partes deben tener IRM para crear o participar en un acuerdo.",
+      "intro_use_cases": "Bloquea IRM en custodia para cualquier transacción sin confianza — bienes, servicios, trabajo freelance o intercambios. IRM se libera automáticamente cuando ambas partes confirman."
     },
     "status": {
       "setting_up": "Configurando",
@@ -2188,7 +2194,11 @@
         "status_releasing": "Pago confirmado — el IRM está en camino.",
         "status_complete": "Completo — el IRM ha llegado a tu wallet.",
         "view_agreements": "Ver en agreement"
-      }
+      },
+      "fuel_banner_title": "Necesitas IRM para crear una liquidación.",
+      "fuel_banner_prefix": "Ve a",
+      "fuel_banner_link": "Mercado → Intercambio Spot",
+      "fuel_banner_suffix": "para adquirir IRM primero."
     },
     "pay_for_work": {
       "step1_title": "¿Pago único o por hito?",

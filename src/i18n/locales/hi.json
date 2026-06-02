@@ -1023,6 +1023,10 @@
       "default_feeds_added": "डिफ़ॉल्ट फ़ीड जोड़ी गईं",
       "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
       "take_failed_already_taken": "This offer has already been taken by another buyer."
+    },
+    "swap": {
+      "fuel_banner_title": "IRM सेटलमेंट परत को शक्ति देता है।",
+      "fuel_banner_body": "भरोसे के बिना ट्रेडिंग शुरू करने के लिए BTC, LTC या DOGE को IRM में बदलें।"
     }
   },
   "miner": {
@@ -2041,7 +2045,9 @@
       "amount": "राशि",
       "start_cta": "शुरू",
       "toast_released": "फंड दूसरे पक्ष को जारी किए गए।",
-      "toast_refunded": "रिफंड क्लेम किया गया — फंड आपके wallet में लौट रहे हैं।"
+      "toast_refunded": "रिफंड क्लेम किया गया — फंड आपके wallet में लौट रहे हैं।",
+      "intro_security": "सभी सेटलमेंट ऑन-चेन लॉक किए गए IRM से सुरक्षित हैं। एक समझौता बनाने या उसमें भाग लेने के लिए दोनों पक्षों के पास IRM होना चाहिए।",
+      "intro_use_cases": "किसी भी भरोसा-रहित लेनदेन के लिए IRM को एस्क्रो में लॉक करें — सामान, सेवाएँ, फ्रीलांस काम या ट्रेड। दोनों पक्षों के पुष्टि करने पर IRM स्वचालित रूप से रिलीज़ हो जाता है।"
     },
     "status": {
       "setting_up": "सेट अप",
@@ -2188,7 +2194,11 @@
         "status_releasing": "भुगतान की पुष्टि — IRM रास्ते में है।",
         "status_complete": "पूर्ण — IRM आपके wallet में पहुँच गया है।",
         "view_agreements": "agreement में देखें"
-      }
+      },
+      "fuel_banner_title": "सेटलमेंट बनाने के लिए आपको IRM की आवश्यकता है।",
+      "fuel_banner_prefix": "जाएँ",
+      "fuel_banner_link": "मार्केटप्लेस → स्पॉट स्वैप",
+      "fuel_banner_suffix": "पहले IRM प्राप्त करने के लिए।"
     },
     "pay_for_work": {
       "step1_title": "एकल भुगतान या माइलस्टोन द्वारा?",

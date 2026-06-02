@@ -1023,6 +1023,10 @@
       "default_feeds_added": "添加了默认提要",
       "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
       "take_failed_already_taken": "This offer has already been taken by another buyer."
+    },
+    "swap": {
+      "fuel_banner_title": "IRM 为结算层提供动力。",
+      "fuel_banner_body": "将 BTC、LTC 或 DOGE 兑换为 IRM,开始无需信任的交易。"
     }
   },
   "miner": {
@@ -2041,7 +2045,9 @@
       "amount": "金额",
       "start_cta": "开始",
       "toast_released": "资金已释放给对方。",
-      "toast_refunded": "退款已申请 — 资金正在返回您的wallet。"
+      "toast_refunded": "退款已申请 — 资金正在返回您的wallet。",
+      "intro_security": "所有结算均由链上锁定的 IRM 提供保护。双方都必须持有 IRM 才能创建或参与协议。",
+      "intro_use_cases": "为任何无需信任的交易将 IRM 锁定在托管中 — 商品、服务、自由职业工作或交易。当双方确认时,IRM 自动释放。"
     },
     "status": {
       "setting_up": "设置中",
@@ -2188,7 +2194,11 @@
         "status_releasing": "付款已确认 — IRM 正在发送中。",
         "status_complete": "已完成 — IRM 已到达您的wallet。",
         "view_agreements": "在 agreement 中查看"
-      }
+      },
+      "fuel_banner_title": "您需要 IRM 才能创建结算。",
+      "fuel_banner_prefix": "前往",
+      "fuel_banner_link": "市场 → 现货互换",
+      "fuel_banner_suffix": "以先获取 IRM。"
     },
     "pay_for_work": {
       "step1_title": "单次付款还是按里程碑?",

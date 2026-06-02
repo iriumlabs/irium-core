@@ -90,10 +90,10 @@ export default function SettlementHub() {
               {t('settlement_ui.hub.title')}
             </h1>
             <p className="text-[12px] text-[#b7bdc6] mt-0.5">
-              All settlements are secured by IRM locked on-chain. Both parties must hold IRM to create or participate in an agreement.
+              {t('settlement_ui.hub.intro_security')}
             </p>
             <p className="text-[12px] text-[#b7bdc6] mt-1.5 max-w-3xl">
-              Lock IRM in escrow for any trustless transaction — goods, services, freelance work, or trades. IRM releases automatically when both parties confirm.
+              {t('settlement_ui.hub.intro_use_cases')}
             </p>
           </div>
           <div className="flex items-center gap-2">

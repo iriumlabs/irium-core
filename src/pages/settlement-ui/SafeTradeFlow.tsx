@@ -330,17 +330,17 @@ export default function SafeTradeFlow() {
     <div className="card p-6 space-y-5">
       {sellerBalanceSats === 0 && (
         <div className="bg-[#fcd535]/10 border border-[#fcd535]/30 rounded-lg px-3 py-2.5 text-[12px] text-[#eaecef]">
-          <span className="font-semibold text-[#fcd535]">You need IRM to create a settlement.</span>{' '}
+          <span className="font-semibold text-[#fcd535]">{t('settlement_ui.safe_trade.fuel_banner_title')}</span>{' '}
           <span className="text-[#b7bdc6]">
-            Go to{' '}
+            {t('settlement_ui.safe_trade.fuel_banner_prefix')}{' '}
             <button
               type="button"
               onClick={() => navigate('/marketplace?mode=swap')}
               className="underline text-[#fcd535] hover:text-[#f0c020]"
             >
-              Marketplace → Spot Swap
+              {t('settlement_ui.safe_trade.fuel_banner_link')}
             </button>{' '}
-            to acquire IRM first.
+            {t('settlement_ui.safe_trade.fuel_banner_suffix')}
           </span>
         </div>
       )}

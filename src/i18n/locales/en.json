@@ -941,7 +941,9 @@
       "amount": "Amount",
       "start_cta": "Start",
       "toast_released": "Funds released to the other party.",
-      "toast_refunded": "Refund claimed — funds are returning to your wallet."
+      "toast_refunded": "Refund claimed — funds are returning to your wallet.",
+      "intro_security": "All settlements are secured by IRM locked on-chain. Both parties must hold IRM to create or participate in an agreement.",
+      "intro_use_cases": "Lock IRM in escrow for any trustless transaction — goods, services, freelance work, or trades. IRM releases automatically when both parties confirm."
     },
     "status": {
       "setting_up": "Setting up",
@@ -1088,7 +1090,11 @@
         "status_releasing": "Payment confirmed — IRM is on its way.",
         "status_complete": "Complete — IRM has arrived in your wallet.",
         "view_agreements": "View in Agreements"
-      }
+      },
+      "fuel_banner_title": "You need IRM to create a settlement.",
+      "fuel_banner_prefix": "Go to",
+      "fuel_banner_link": "Marketplace → Spot Swap",
+      "fuel_banner_suffix": "to acquire IRM first."
     },
     "pay_for_work": {
       "step1_title": "Single payment or by milestone?",
@@ -1303,6 +1309,10 @@
       "default_feeds_added": "Default feeds added",
       "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
       "take_failed_already_taken": "This offer has already been taken by another buyer."
+    },
+    "swap": {
+      "fuel_banner_title": "IRM powers the Settlement layer.",
+      "fuel_banner_body": "Swap BTC, LTC or DOGE for IRM to start trading trustlessly."
     }
   },
   "miner": {

@@ -1023,6 +1023,10 @@
       "default_feeds_added": "Varsayılan feed'ler eklendi",
       "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
       "take_failed_already_taken": "This offer has already been taken by another buyer."
+    },
+    "swap": {
+      "fuel_banner_title": "IRM, Settlement katmanına güç verir.",
+      "fuel_banner_body": "Güven gerektirmeden işlem yapmaya başlamak için BTC, LTC veya DOGE'u IRM ile takas edin."
     }
   },
   "miner": {
@@ -2041,7 +2045,9 @@
       "amount": "Tutar",
       "start_cta": "Başla",
       "toast_released": "Fonlar karşı tarafa serbest bırakıldı.",
-      "toast_refunded": "İade talep edildi — fonlar wallet'ınıza dönüyor."
+      "toast_refunded": "İade talep edildi — fonlar wallet'ınıza dönüyor.",
+      "intro_security": "Tüm settlement'lar, zincir üzerinde kilitlenmiş IRM ile güvence altına alınır. Bir anlaşma oluşturmak veya katılmak için her iki tarafın da IRM'ye sahip olması gerekir.",
+      "intro_use_cases": "Herhangi bir güvensiz işlem için IRM'yi emanet hesabına kilitleyin — mallar, hizmetler, serbest çalışma veya takas. Her iki taraf da onayladığında IRM otomatik olarak serbest bırakılır."
     },
     "status": {
       "setting_up": "Kuruluyor",
@@ -2188,7 +2194,11 @@
         "status_releasing": "Ödeme onaylandı — IRM yolda.",
         "status_complete": "Tamamlandı — IRM wallet'ınıza ulaştı.",
         "view_agreements": "agreement'larda Görüntüle"
-      }
+      },
+      "fuel_banner_title": "Bir settlement oluşturmak için IRM'ye ihtiyacınız var.",
+      "fuel_banner_prefix": "Şuraya gidin:",
+      "fuel_banner_link": "Marketplace → Spot Swap",
+      "fuel_banner_suffix": "önce IRM edinmek için."
     },
     "pay_for_work": {
       "step1_title": "Tek ödeme mi yoksa kilometre taşı ile mi?",

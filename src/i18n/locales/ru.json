@@ -1023,6 +1023,10 @@
       "default_feeds_added": "Добавлены каналы по умолчанию",
       "relisted_banner_body": "Your offer was taken but the buyer did not fund the agreement. The offer has been relisted automatically.",
       "take_failed_already_taken": "This offer has already been taken by another buyer."
+    },
+    "swap": {
+      "fuel_banner_title": "IRM обеспечивает работу слоя Settlement.",
+      "fuel_banner_body": "Обменяйте BTC, LTC или DOGE на IRM, чтобы начать торговать без посредников."
     }
   },
   "miner": {
@@ -2041,7 +2045,9 @@
       "amount": "Сумма",
       "start_cta": "Начать",
       "toast_released": "Средства отправлены второй стороне.",
-      "toast_refunded": "Возврат запрошен — средства идут в ваш wallet."
+      "toast_refunded": "Возврат запрошен — средства идут в ваш wallet.",
+      "intro_security": "Все расчёты защищены IRM, заблокированными в блокчейне. Обе стороны должны иметь IRM, чтобы создать соглашение или участвовать в нём.",
+      "intro_use_cases": "Заблокируйте IRM в эскроу для любой бездоверительной транзакции — товары, услуги, фриланс или сделки. IRM освобождается автоматически, когда обе стороны подтверждают."
     },
     "status": {
       "setting_up": "Настройка",
@@ -2188,7 +2194,11 @@
         "status_releasing": "Оплата подтверждена — IRM в пути.",
         "status_complete": "Готово — IRM в вашем wallet.",
         "view_agreements": "Открыть в agreement"
-      }
+      },
+      "fuel_banner_title": "Вам нужен IRM, чтобы создать расчёт.",
+      "fuel_banner_prefix": "Перейдите в",
+      "fuel_banner_link": "Маркетплейс → Spot Swap",
+      "fuel_banner_suffix": "чтобы сначала получить IRM."
     },
     "pay_for_work": {
       "step1_title": "Одним платежом или по вехам?",
