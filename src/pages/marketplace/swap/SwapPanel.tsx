@@ -57,7 +57,16 @@ function readPersistedActiveSwap(): ActiveSwap | null {
   }
 }
 
-export default function SwapPanel() {
+interface SwapPanelProps {
+  // Pair id requested by the Marketplace page after the user picks a swap
+  // option from the OrderTypePickerModal. SwapPanel keeps its own internal
+  // active pair state so the user can switch pairs from PairSwitcher while
+  // staying on the page, but a fresh externally-requested id always wins
+  // (handled by the effect below).
+  requestedPairId?: string;
+}
+
+export default function SwapPanel({ requestedPairId }: SwapPanelProps = {}) {
   const { t } = useTranslation();
   const [activePairId, setActivePairId] = useState<string>(defaultPair().id);
   const [myAddrs, setMyAddrs] = useState<Set<string>>(new Set());
@@ -72,6 +81,14 @@ export default function SwapPanel() {
     () => getPairById(activePairId) ?? defaultPair(),
     [activePairId],
   );
+
+  // External pair request (from the Marketplace OrderTypePickerModal). React
+  // setter no-ops when the value matches, so re-emitting the same id is safe.
+  useEffect(() => {
+    if (requestedPairId && getPairById(requestedPairId)) {
+      setActivePairId(requestedPairId);
+    }
+  }, [requestedPairId]);
   const availability = usePairAvailability(activePair);
 
   // Wallet bootstrap — same shape as the OTC Marketplace page.

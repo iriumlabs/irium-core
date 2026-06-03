@@ -232,6 +232,7 @@ function AppLayout() {
   const setNodeStarting = useStore((s) => s.setNodeStarting);
   const setNodeOperation = useStore((s) => s.setNodeOperation);
   const setQuarantinedBlockCount = useStore((s) => s.setQuarantinedBlockCount);
+  const setQuarantinedDirCount = useStore((s) => s.setQuarantinedDirCount);
   const autoStartFired = useRef(false);
   const quarantineScanFired = useRef(false);
   const marketplaceFeedSyncFired = useRef(false);
@@ -290,12 +291,14 @@ function AppLayout() {
     node.scanQuarantinedBlocks()
       .then((result) => {
         setQuarantinedBlockCount(result?.files ?? 0);
+        setQuarantinedDirCount(result?.dirs ?? 0);
       })
       .catch(() => {
         // Silent — banner just stays hidden if the IPC call fails.
         setQuarantinedBlockCount(0);
+        setQuarantinedDirCount(0);
       });
-  }, [nodeStatus?.running, setQuarantinedBlockCount]);
+  }, [nodeStatus?.running, setQuarantinedBlockCount, setQuarantinedDirCount]);
 
   // Marketplace feed pipeline at app level (decentralised — no required
   // central feed hub). Three steps, all triggered by the node reaching a

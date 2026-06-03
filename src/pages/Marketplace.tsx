@@ -12,6 +12,7 @@ import TradeCalculator from './marketplace/TradeCalculator';
 import TakeOfferModal from './marketplace/TakeOfferModal';
 import EscrowProgress from './marketplace/EscrowProgress';
 import CreateOrderModal from './marketplace/CreateOrderModal';
+import OrderTypePickerModal, { type OrderTypeChoice } from './marketplace/OrderTypePickerModal';
 import SellerTradeReview from './marketplace/SellerTradeReview';
 import ResolverPicker from './marketplace/ResolverPicker';
 import SwapPanel from './marketplace/swap/SwapPanel';
@@ -120,9 +121,33 @@ export default function MarketplacePage() {
   const [reputationStars, setReputationStars] = useState<Record<string, number | null>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateOrder, setShowCreateOrder] = useState(false);
+  const [showOrderTypePicker, setShowOrderTypePicker] = useState(false);
+  // Pair id requested from the OrderTypePickerModal (swap-btc / swap-ltc /
+  // swap-doge). Forwarded to <SwapPanel> so it switches to the matching pair
+  // on the next render. Bumping a counter on every pick (even if the same
+  // pair was already active) would be overkill — SwapPanel's effect handles
+  // duplicate ids as a no-op.
+  const [requestedSwapPairId, setRequestedSwapPairId] = useState<string | undefined>(undefined);
   const [myTradesTab, setMyTradesTab] = useState<MyTradesTab>('active');
   const [resolverPickerAgreement, setResolverPickerAgreement] = useState<Agreement | null>(null);
   const [mode, setMode] = useState<MarketplaceMode>('otc');
+
+  const handleOrderTypePicked = (choice: OrderTypeChoice) => {
+    setShowOrderTypePicker(false);
+    if (choice === 'otc') {
+      setShowCreateOrder(true);
+      return;
+    }
+    // Swap option: switch mode + pre-select pair. LTC/DOGE land on the
+    // Coming Soon overlay until their activation heights; BTC lands on the
+    // live order book.
+    const pairId =
+      choice === 'swap-btc' ? 'IRM_BTC' :
+      choice === 'swap-ltc' ? 'IRM_LTC' :
+      'IRM_DOGE';
+    setRequestedSwapPairId(pairId);
+    setMode('swap');
+  };
 
   const view = useStore((s) => s.marketplaceView);
   const setMarketplaceSelectedOffer = useStore((s) => s.setMarketplaceSelectedOffer);
@@ -252,7 +277,7 @@ export default function MarketplacePage() {
               <RefreshCw size={13} className="animate-spin text-[#5e6673]" />
             )}
             <Link
-              to="/settlement-hub"
+              to="/settlement"
               className="text-[12px] inline-flex items-center gap-1.5 text-[#b7bdc6] hover:text-[#eaecef] transition-colors"
               title={t('marketplace.header.advanced_flows_tooltip')}
             >
@@ -276,7 +301,7 @@ export default function MarketplacePage() {
         </div>
 
         {mode === 'swap' ? (
-          <SwapPanel />
+          <SwapPanel requestedPairId={requestedSwapPairId} />
         ) : (
         <>
         <div
@@ -286,7 +311,7 @@ export default function MarketplacePage() {
           {/* LEFT — Order book */}
           <OrderBook
             onTakeOffer={handleTake}
-            onCreateOrder={() => setShowCreateOrder(true)}
+            onCreateOrder={() => setShowOrderTypePicker(true)}
             selectedOfferId={view.selectedOfferId}
           />
 
@@ -380,6 +405,13 @@ export default function MarketplacePage() {
             )}
           </div>
         </div>
+
+        {showOrderTypePicker && (
+          <OrderTypePickerModal
+            onClose={() => setShowOrderTypePicker(false)}
+            onSelect={handleOrderTypePicked}
+          />
+        )}
 
         {showCreateOrder && (
           <CreateOrderModal

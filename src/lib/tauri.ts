@@ -74,6 +74,18 @@ export const node = {
       'clear_quarantined_blocks',
     ),
 
+  // Reads the persisted "dismissed at this dir count" fingerprint from
+  // <data_dir>/.quarantine_dismissed. Returns null when nothing was ever
+  // dismissed. The banner re-surfaces when a fresh scan reports strictly
+  // more orphan dirs than this number.
+  getQuarantineDismissed: () =>
+    safeInvoke<number | null>('get_quarantine_dismissed'),
+
+  // Persists the dir-count fingerprint. Passing 0 deletes the file
+  // (clean-slate after a successful Recover Now / Help-page clear).
+  setQuarantineDismissed: (dirs: number) =>
+    safeInvoke<null>('set_quarantine_dismissed', { dirs }),
+
   detectPublicIp: (serviceUrl: string) =>
     safeInvoke<string>('detect_public_ip', { serviceUrl }),
 
