@@ -252,7 +252,7 @@ export default function MarketplacePage() {
               <RefreshCw size={13} className="animate-spin text-[#5e6673]" />
             )}
             <Link
-              to="/settlement-hub"
+              to="/settlement"
               className="text-[12px] inline-flex items-center gap-1.5 text-[#b7bdc6] hover:text-[#eaecef] transition-colors"
               title={t('marketplace.header.advanced_flows_tooltip')}
             >
