@@ -217,6 +217,7 @@ export default function SwapPanel({ requestedPairId }: SwapPanelProps = {}) {
           pairs={SWAP_PAIRS}
           activeId={activePairId}
           onSelect={setActivePairId}
+          tipHeight={tipHeight}
         />
 
         {!availability.available ? (
