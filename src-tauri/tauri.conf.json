@@ -9,7 +9,7 @@
   },
   "package": {
     "productName": "Irium Core",
-    "version": "1.0.86"
+    "version": "1.0.87"
   },
   "tauri": {
     "allowlist": {
