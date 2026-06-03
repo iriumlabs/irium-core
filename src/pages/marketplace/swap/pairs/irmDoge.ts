@@ -183,7 +183,7 @@ export const irmDogePair: SwapPairConfig = {
   quote: doge,
   available: true,
   // Chain-gated: consensus activates IRM/DOGE swap orders at this height.
-  activationHeight: 25_000,
+  activationHeight: 24_800,
 
   accent: {
     primary: '#345D9D',
