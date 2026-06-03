@@ -9049,44 +9049,44 @@ async fn run_diagnostics(state: State<'_, AppState>) -> Result<DiagnosticsResult
         }),
     }
 
-    // 5. irium-wallet balance runs (get first address) — reuses cached output.
-    match &list_addr_result {
-        Ok(out) => {
-            let first_addr = out.lines().find(|l| !l.trim().is_empty()).unwrap_or("").trim().to_string();
-            if first_addr.is_empty() {
-                checks.push(DiagnosticCheck {
-                    label: "irium-wallet balance query".to_string(),
-                    passed: false,
-                    detail: Some("No addresses in wallet".to_string()),
-                });
-            } else {
-                let bal_url = format!("{}/rpc/balance?address={}", rpc_url, first_addr);
-                match client.get(&bal_url).send().await {
-                    Ok(r) => match r.json::<RpcBalance>().await {
-                        Ok(b) => checks.push(DiagnosticCheck {
-                            label: "irium-wallet balance query".to_string(),
-                            passed: true,
-                            detail: Some(format!("{} sats", b.balance)),
-                        }),
-                        Err(e) => checks.push(DiagnosticCheck {
-                            label: "irium-wallet balance query".to_string(),
-                            passed: false,
-                            detail: Some(e.to_string()),
-                        }),
-                    },
+    // 5. irium-wallet balance runs (get first address) — reuses cached
+    // list-addresses output from check 4. When the wallet is locked or
+    // the CLI returns an empty address set (e.g. fresh install before
+    // first wallet creation), the balance query is skipped entirely
+    // instead of being reported as a failed check. The earlier check 4
+    // (irium-wallet list-addresses) already surfaces the underlying
+    // state, so duplicating it here as a hard "No addresses in wallet"
+    // failure was misleading on locked wallets and inflated the failure
+    // count in the Settings diagnostic card.
+    if let Ok(out) = &list_addr_result {
+        let first_addr = out
+            .lines()
+            .find(|l| !l.trim().is_empty())
+            .unwrap_or("")
+            .trim()
+            .to_string();
+        if !first_addr.is_empty() {
+            let bal_url = format!("{}/rpc/balance?address={}", rpc_url, first_addr);
+            match client.get(&bal_url).send().await {
+                Ok(r) => match r.json::<RpcBalance>().await {
+                    Ok(b) => checks.push(DiagnosticCheck {
+                        label: "irium-wallet balance query".to_string(),
+                        passed: true,
+                        detail: Some(format!("{} sats", b.balance)),
+                    }),
                     Err(e) => checks.push(DiagnosticCheck {
                         label: "irium-wallet balance query".to_string(),
                         passed: false,
                         detail: Some(e.to_string()),
                     }),
-                }
+                },
+                Err(e) => checks.push(DiagnosticCheck {
+                    label: "irium-wallet balance query".to_string(),
+                    passed: false,
+                    detail: Some(e.to_string()),
+                }),
             }
         }
-        Err(e) => checks.push(DiagnosticCheck {
-            label: "irium-wallet balance query".to_string(),
-            passed: false,
-            detail: Some(e.clone()),
-        }),
     }
 
     // 6. Wallet file exists at configured path or default
