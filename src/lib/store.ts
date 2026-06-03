@@ -149,6 +149,12 @@ interface AppStore {
   // will re-evaluate.
   quarantinedBlockCount: number;
   setQuarantinedBlockCount: (count: number) => void;
+  // Parallel dir count so QuarantineRecoveryBanner can fingerprint dismissals
+  // against the orphan-dir set rather than file count. iriumd creates a new
+  // `orphaned_<ts>/` dir per quarantine event, so dir count is the cleanest
+  // signal for "is this a new event vs the one the user already dismissed".
+  quarantinedDirCount: number;
+  setQuarantinedDirCount: (count: number) => void;
   quarantineBannerDismissed: boolean;
   dismissQuarantineBanner: () => void;
 
@@ -498,6 +504,8 @@ export const useStore = create<AppStore>((set) => ({
 
   quarantinedBlockCount: 0,
   setQuarantinedBlockCount: (quarantinedBlockCount) => set({ quarantinedBlockCount }),
+  quarantinedDirCount: 0,
+  setQuarantinedDirCount: (quarantinedDirCount) => set({ quarantinedDirCount }),
   quarantineBannerDismissed: false,
   dismissQuarantineBanner: () => set({ quarantineBannerDismissed: true }),
 

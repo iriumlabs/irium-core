@@ -2669,6 +2669,61 @@ async fn clear_quarantined_blocks(state: State<'_, AppState>) -> Result<Quaranti
     Ok(QuarantineClearResult { deleted_files, deleted_dirs, errors })
 }
 
+// ─── Quarantine-dismissal persistence ─────────────────────────────────────────
+// The recovery banner used a store-only `dismissed` flag that reset on every
+// cold launch — so the warning re-appeared every time the user opened the app,
+// even after they had explicitly hidden it. We now fingerprint the dismissed
+// state by orphan-dir count and persist it to `<data_dir>/.quarantine_dismissed`.
+// If a later scan reports MORE orphan dirs than the stored fingerprint, the
+// banner re-surfaces — preserving the signal for genuine new corruption.
+// Passing 0 to set_quarantine_dismissed deletes the marker (clean slate after
+// a successful clear).
+
+fn quarantine_dismissed_path(state: &State<'_, AppState>) -> Result<PathBuf, String> {
+    let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
+    let base = match data_dir {
+        Some(d) if !d.trim().is_empty() => PathBuf::from(d),
+        _ => dirs::home_dir()
+            .ok_or_else(|| "Cannot determine home directory".to_string())?
+            .join(".irium"),
+    };
+    Ok(base.join(".quarantine_dismissed"))
+}
+
+#[tauri::command]
+async fn get_quarantine_dismissed(state: State<'_, AppState>) -> Result<Option<u64>, String> {
+    let path = quarantine_dismissed_path(&state)?;
+    if !path.exists() {
+        return Ok(None);
+    }
+    match std::fs::read_to_string(&path) {
+        Ok(contents) => Ok(contents.trim().parse::<u64>().ok()),
+        Err(_) => Ok(None),
+    }
+}
+
+#[tauri::command]
+async fn set_quarantine_dismissed(state: State<'_, AppState>, dirs: u64) -> Result<(), String> {
+    let path = quarantine_dismissed_path(&state)?;
+    if dirs == 0 {
+        if path.exists() {
+            std::fs::remove_file(&path)
+                .map_err(|e| format!("remove {}: {}", path.display(), e))?;
+        }
+        return Ok(());
+    }
+    let parent = path.parent()
+        .ok_or_else(|| "quarantine dismissed path has no parent".to_string())?;
+    std::fs::create_dir_all(parent)
+        .map_err(|e| format!("create_dir_all {}: {}", parent.display(), e))?;
+    let tmp = parent.join(".quarantine_dismissed.tmp");
+    std::fs::write(&tmp, dirs.to_string())
+        .map_err(|e| format!("write {}: {}", tmp.display(), e))?;
+    std::fs::rename(&tmp, &path)
+        .map_err(|e| format!("rename {} -> {}: {}", tmp.display(), path.display(), e))?;
+    Ok(())
+}
+
 // setup_data_dir: creates ~/.irium/bootstrap/ and writes all seed/anchor files.
 #[tauri::command]
 async fn setup_data_dir() -> Result<bool, String> {
@@ -9497,6 +9552,8 @@ fn main() {
             reset_node_state_keep_blocks,
             scan_quarantined_blocks,
             clear_quarantined_blocks,
+            get_quarantine_dismissed,
+            set_quarantine_dismissed,
             save_discovered_peers,
             check_binaries,
             try_upnp_port_map,

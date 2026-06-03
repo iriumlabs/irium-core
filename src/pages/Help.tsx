@@ -364,6 +364,7 @@ function QuarantineRecovery() {
   // Dashboard banner refreshes (and self-dismisses on count==0) when
   // the user runs scan/clear from this page.
   const setQuarantinedBlockCount = useStore((s) => s.setQuarantinedBlockCount);
+  const setQuarantinedDirCount = useStore((s) => s.setQuarantinedDirCount);
   const [counts, setCounts] = useState<{ files: number; dirs: number } | null>(null);
   const [scanning, setScanning] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -378,13 +379,14 @@ function QuarantineRecovery() {
       const next = result ?? { files: 0, dirs: 0 };
       setCounts(next);
       setQuarantinedBlockCount(next.files);
+      setQuarantinedDirCount(next.dirs);
     } catch (e) {
       setScanError(String(e));
       setCounts(null);
     } finally {
       setScanning(false);
     }
-  }, [setQuarantinedBlockCount]);
+  }, [setQuarantinedBlockCount, setQuarantinedDirCount]);
 
   useEffect(() => {
     scan();
@@ -401,6 +403,9 @@ function QuarantineRecovery() {
           // the user knows some dirs were not removed.
           toast.error(t('help.quarantine.toast_clear_failed', { reason: result.errors[0] }));
         }
+        // Clean slate: drop the dismissal fingerprint so the next session
+        // starts from "never dismissed" instead of a stale count.
+        try { await node.setQuarantineDismissed(0); } catch { /* non-fatal */ }
       }
       await scan();
     } catch (e) {

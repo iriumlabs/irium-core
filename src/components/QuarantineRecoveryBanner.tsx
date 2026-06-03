@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { AlertTriangle, RefreshCw, Square, Trash2, X } from 'lucide-react';
@@ -29,14 +29,30 @@ import { node } from '../lib/tauri';
 export default function QuarantineRecoveryBanner() {
   const { t } = useTranslation();
   const count = useStore((s) => s.quarantinedBlockCount);
+  const dirCount = useStore((s) => s.quarantinedDirCount);
   const dismissed = useStore((s) => s.quarantineBannerDismissed);
   const dismiss = useStore((s) => s.dismissQuarantineBanner);
   const setQuarantinedBlockCount = useStore((s) => s.setQuarantinedBlockCount);
   const nodeStatus = useStore((s) => s.nodeStatus);
   const nodeRunning = nodeStatus?.running ?? false;
   const [busy, setBusy] = useState<'stopping' | 'clearing' | null>(null);
+  // Persisted dismissal fingerprint. undefined = still reading the file,
+  // null = file absent / unparseable (never dismissed), number = orphan-dir
+  // count we dismissed against. Banner stays hidden while that number is
+  // >= the current scanned dir count.
+  const [persistedDismissedDirs, setPersistedDismissedDirs] = useState<number | null | undefined>(undefined);
 
+  useEffect(() => {
+    let cancelled = false;
+    node.getQuarantineDismissed()
+      .then((v) => { if (!cancelled) setPersistedDismissedDirs(v ?? null); })
+      .catch(() => { if (!cancelled) setPersistedDismissedDirs(null); });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (persistedDismissedDirs === undefined) return null;
   if (count <= 0 || dismissed) return null;
+  if (persistedDismissedDirs !== null && persistedDismissedDirs >= dirCount) return null;
 
   const handleStopNode = async () => {
     if (busy) return;
@@ -80,6 +96,9 @@ export default function QuarantineRecoveryBanner() {
       // The next session-start scan in App.tsx will surface any new
       // quarantine that appears later.
       setQuarantinedBlockCount(0);
+      // Clean slate on disk: drop the dismissal fingerprint so the next
+      // launch starts from "never dismissed" instead of a stale count.
+      try { await node.setQuarantineDismissed(0); } catch { /* non-fatal */ }
     } catch (e) {
       toast.error(t('quarantine_banner.toast_recover_failed', { reason: String(e) }));
     } finally {
@@ -177,7 +196,14 @@ export default function QuarantineRecoveryBanner() {
           </button>
         )}
         <button
-          onClick={dismiss}
+          onClick={async () => {
+            // Persist the orphan-dir fingerprint so this same quarantine
+            // state stays dismissed across launches. New orphan dirs raise
+            // the scanned count above this fingerprint and the banner
+            // re-surfaces — preserving the signal for new corruption.
+            try { await node.setQuarantineDismissed(dirCount); } catch { /* non-fatal */ }
+            dismiss();
+          }}
           aria-label={t('quarantine_banner.dismiss')}
           className="w-8 h-8 inline-flex items-center justify-center rounded-lg transition-all"
           style={{
