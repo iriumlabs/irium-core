@@ -8562,9 +8562,41 @@ async fn agreement_dispute(
         args.push(r);
     }
     let output = run_wallet_cmd(args, wallet_path, data_dir).await?;
-    let raw: serde_json::Value = serde_json::from_str(&output).unwrap_or_default();
+    // Previously: serde_json::from_str(&output).unwrap_or_default() followed
+    // by success: true unconditionally — meaning a CLI run that exited 0 but
+    // emitted a structured error body (e.g. {"error": "agreement not found"}
+    // or {"success": false, "message": "..."}) was silently reported to the
+    // UI as a successful dispute. Latent bug masked real failures.
+    let raw: serde_json::Value = serde_json::from_str(&output).map_err(|e| {
+        let preview: String = output.chars().take(200).collect();
+        format!(
+            "agreement-dispute returned non-JSON output ({}): {}",
+            e, preview
+        )
+    })?;
+    if let Some(err_msg) = raw.get("error").and_then(|v| v.as_str()) {
+        return Err(format!("agreement-dispute failed: {}", err_msg));
+    }
+    if raw.get("success").and_then(|v| v.as_bool()) == Some(false) {
+        let msg = raw
+            .get("message")
+            .and_then(|v| v.as_str())
+            .unwrap_or("agreement-dispute failed without a message");
+        return Err(format!("agreement-dispute failed: {}", msg));
+    }
+    let dispute_id = raw
+        .get("dispute_id")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    if dispute_id.is_none() {
+        let preview: String = output.chars().take(200).collect();
+        return Err(format!(
+            "agreement-dispute returned no dispute_id in: {}",
+            preview
+        ));
+    }
     Ok(DisputeOpenResult {
-        dispute_id: raw["dispute_id"].as_str().map(String::from),
+        dispute_id,
         success: true,
         message: None,
     })
