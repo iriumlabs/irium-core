@@ -1614,6 +1614,21 @@
       "cancel_and_dispute": "रद्द करें और विवाद करें",
       "i_have_sent": "मैंने {{code}} भेज दिया है",
       "watching_escrow": "एस्क्रो देख रहे हैं"
+    },
+    "order_type_picker": {
+      "title": "What do you want to do?",
+      "subtitle": "Pick the way you'd like to trade — off-chain payment or trustless atomic swap.",
+      "otc_title": "Sell IRM via OTC",
+      "otc_description": "Post an offer to sell IRM for off-chain payment (bank transfer, PayPal, USDT, SEPA, cash). Buyer locks escrow, sends payment off-chain, you confirm receipt to release.",
+      "btc_title": "Swap IRM ↔ BTC",
+      "btc_description": "Trustless atomic swap. IRM locks on-chain; BTC unlocks on Bitcoin via the same preimage. No counterparty risk, no off-chain payment step.",
+      "btc_badge": "Live",
+      "ltc_title": "Swap IRM ↔ LTC",
+      "ltc_description": "Atomic swap via Litecoin SPV header relay. Same trust-minimised design as the BTC pair, settling on Litecoin's faster blocks.",
+      "ltc_badge": "Activates at block 25,000",
+      "doge_title": "Swap IRM ↔ DOGE",
+      "doge_description": "Atomic swap via Dogecoin SPV header relay. Pair will go live as the network reaches the activation height.",
+      "doge_badge": "Activates at block 25,200"
     }
   },
   "miner": {
