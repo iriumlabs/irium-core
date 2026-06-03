@@ -14,7 +14,7 @@ import { useStore } from '../lib/store';
 import { rpc, wallet, miner, gpuMiner, stratum } from '../lib/tauri';
 import { timeAgo, formatIRM, formatLocalDateTime, SATS_PER_IRM } from '../lib/types';
 import type {
-  ExplorerBlock, NetworkHashrateInfo, RichListEntry, PoolStats,
+  ExplorerBlock, NetworkHashrateInfo, RichListEntry, PoolStats, StatsProxyResponse,
   MinerStatus, GpuMinerStatus, StratumStatus,
 } from '../lib/types';
 
@@ -696,23 +696,26 @@ const formatMinerHashrate = (hps: number | null | undefined): string => {
 // timeAgo() from ../lib/types takes a unix timestamp; the proxy returns a
 // delta in seconds, so we wrap it with a different unit and pick natural
 // English phrasing (single vs plural, "just now" for very recent).
-const formatAgoPlainEnglish = (secs: number | null | undefined): string => {
+const formatAgoPlainEnglish = (
+  secs: number | null | undefined,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string => {
   if (secs == null) return '—';
-  if (secs < 5) return 'just now';
+  if (secs < 5) return t('explorer.relative_time.just_now');
   if (secs < 60) {
     const s = Math.floor(secs);
-    return `${s} second${s === 1 ? '' : 's'} ago`;
+    return t('explorer.relative_time.seconds_ago', { count: s });
   }
   if (secs < 3600) {
     const m = Math.floor(secs / 60);
-    return `${m} minute${m === 1 ? '' : 's'} ago`;
+    return t('explorer.relative_time.minutes_ago', { count: m });
   }
   if (secs < 86400) {
     const h = Math.floor(secs / 3600);
-    return `${h} hour${h === 1 ? '' : 's'} ago`;
+    return t('explorer.relative_time.hours_ago', { count: h });
   }
   const d = Math.floor(secs / 86400);
-  return `${d} day${d === 1 ? '' : 's'} ago`;
+  return t('explorer.relative_time.days_ago', { count: d });
 };
 
 // Truncate a stratum worker name to 12 visible characters using the
@@ -818,9 +821,14 @@ function formatBlockTime(secs: number | null | undefined): string {
 // the others — each panel renders whatever it has and shows "—" for
 // the rest until the next poll.
 function NetworkMiningOverview() {
+  const { t } = useTranslation();
   const [network, setNetwork] = useState<NetworkHashrateResp | null>(null);
   const [poolMiners, setPoolMiners] = useState<MinerRow[] | null>(null);
   const [poolAggregate, setPoolAggregate] = useState<PoolStats | null>(null);
+  // Direct stats-proxy snapshot. Carries the per-profile rolling-window
+  // hashrate_estimate_hps (asic + cpu_gpu + solo) plus the blocks_found_today
+  // counter, neither of which the get_pool_stats Tauri command surfaces.
+  const [statsProxy, setStatsProxy] = useState<StatsProxyResponse | null>(null);
   const [cpuStatus, setCpuStatus] = useState<MinerStatus | null>(null);
   const [gpuStatus, setGpuStatus] = useState<GpuMinerStatus | null>(null);
   const [stratumS, setStratumS] = useState<StratumStatus | null>(null);
@@ -833,7 +841,7 @@ function NetworkMiningOverview() {
   const [myAddresses, setMyAddresses] = useState<Set<string>>(new Set());
 
   const fetchAll = useCallback(async () => {
-    const [netR, poolMinersR, poolStatsR, cpuR, gpuR, strR, addrR] = await Promise.allSettled([
+    const [netR, poolMinersR, poolStatsR, statsProxyR, cpuR, gpuR, strR, addrR] = await Promise.allSettled([
       tauriFetch<NetworkHashrateResp>('http://127.0.0.1:38300/rpc/network_hashrate', {
         method: 'GET',
         responseType: ResponseType.JSON,
@@ -845,6 +853,11 @@ function NetworkMiningOverview() {
         timeout: 10,
       }),
       rpc.poolStats().catch(() => null),
+      tauriFetch<StatsProxyResponse>('http://pool.iriumlabs.org:3337/stats', {
+        method: 'GET',
+        responseType: ResponseType.JSON,
+        timeout: 10,
+      }),
       miner.status().catch(() => null),
       gpuMiner.status().catch(() => null),
       stratum.status().catch(() => null),
@@ -857,6 +870,9 @@ function NetworkMiningOverview() {
       setPoolMiners(poolMinersR.value.data.miners ?? []);
     }
     if (poolStatsR.status === 'fulfilled') setPoolAggregate(poolStatsR.value);
+    if (statsProxyR.status === 'fulfilled' && statsProxyR.value.ok && statsProxyR.value.data) {
+      setStatsProxy(statsProxyR.value.data);
+    }
     if (cpuR.status === 'fulfilled') setCpuStatus(cpuR.value);
     if (gpuR.status === 'fulfilled') setGpuStatus(gpuR.value);
     if (strR.status === 'fulfilled') setStratumS(strR.value);
@@ -890,26 +906,29 @@ function NetworkMiningOverview() {
   // that auto-failover after a stratum bounce), which would otherwise
   // inflate the aggregate Pool Hashrate.
   const activeRows = poolRows.filter((m) => !isMinerOffline(m));
-  const poolHashrateRaw = activeRows.length > 0
-    ? activeRows.reduce((sum, m) => sum + (m.hashrate_15m ?? 0), 0)
+  // Pool hashrate comes from the stats-proxy's per-profile rolling-window
+  // hashrate_estimate_hps (asic + cpu_gpu + solo) — the authoritative value
+  // the proxy itself computes from accepted shares × current_diff. Summing
+  // per-miner hashrate_15m from /miners (the previous source) produced
+  // overestimates from vardiff drift that frequently exceeded the network
+  // value, requiring a clamp-to-network fallback that made pool and network
+  // hashrate display identical. The proxy aggregates are bounded per profile,
+  // so the sum is honest even if the displayed pool hashrate happens to
+  // exceed network for a poll due to estimator-window misalignment.
+  const poolHashrate = statsProxy != null
+    ? (statsProxy.asic.hashrate_estimate_hps ?? 0)
+      + (statsProxy.cpu_gpu.hashrate_estimate_hps ?? 0)
+      + (statsProxy.solo?.hashrate_estimate_hps ?? 0)
     : null;
-  // Sanity cap: the proxy estimates per-worker hashrate from
-  // accepted-share counts × current_diff over a rolling window. Vardiff
-  // drift, transient bursts, or stale window samples can produce sums
-  // that exceed the actual network hashrate — which is physically
-  // impossible (the pool is a subset of the network). When the raw sum
-  // exceeds the network value, clamp the displayed pool hashrate to the
-  // network value and flag the panel so the user knows it's a clamped
-  // estimate, not a measured value.
-  const poolHashrateCapped = (poolHashrateRaw != null && networkHashrate != null && poolHashrateRaw > networkHashrate)
-    ? networkHashrate
-    : poolHashrateRaw;
-  const poolHashrateClamped = poolHashrateRaw != null && networkHashrate != null && poolHashrateRaw > networkHashrate;
-  const poolHashrate = poolHashrateCapped;
-  // Active miner count derived from the same activeRows filter so the
-  // count and the hashrate sum stay consistent.
+  // Active miner count derived from the activeRows filter so the count and
+  // the per-row table stay consistent (the stats-proxy aggregate's
+  // active_miners would count proxy-side which can drift from /miners).
   const activePoolMiners = activeRows.length;
-  const poolBlocksFound = poolAggregate?.total_blocks_found ?? null;
+  // Two block counters: today (from the proxy's rolling daily counter) and
+  // cumulative all-time. Prefer the proxy's top-level total_blocks_found
+  // (always present on /stats) over the legacy poolAggregate field.
+  const poolBlocksToday = statsProxy?.blocks_found_today ?? null;
+  const poolBlocksFound = statsProxy?.total_blocks_found ?? poolAggregate?.total_blocks_found ?? null;
   const poolShareOfNetwork = (poolHashrate != null && networkHashrate != null && networkHashrate > 0)
     ? (poolHashrate / networkHashrate) * 100
     : null;
@@ -1011,11 +1030,16 @@ function NetworkMiningOverview() {
   // reference when the user is exclusively pool-mining.
   const isMining = localMining || myPoolRows.length > 0;
   const yourHashrateHps = localHashrateHps + myPoolHashrateHps;
-  const yourMode = !isMining
-    ? '—'
+  const yourModeKey: 'Pool' | 'Solo' | null = !isMining
+    ? null
     : localMining
       ? (stratumConnected ? 'Pool' : 'Solo')
-      : (myPoolMode ?? '—');
+      : (myPoolMode ?? null);
+  const yourMode = yourModeKey == null
+    ? '—'
+    : yourModeKey === 'Pool'
+      ? t('explorer.mining_overview.mode_pool')
+      : t('explorer.mining_overview.mode_solo');
   const yourBlocksFound = localBlocksFound;
 
   // ── Render ──────────────────────────────────────────────────
@@ -1037,37 +1061,37 @@ function NetworkMiningOverview() {
     <div className="space-y-3">
       <div>
         <h2 style={{ fontSize: 16, fontWeight: 800, color: '#d4eeff', fontFamily: '"Space Grotesk", sans-serif', letterSpacing: '0.02em' }}>
-          Network Mining Overview
+          {t('explorer.mining_overview.title')}
         </h2>
         <p className="mt-1" style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.45)' }}>
-          One-screen view of network, pool, and your own mining. Refreshes every 30 seconds.
+          {t('explorer.mining_overview.subtitle')}
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {/* Panel 1 — Network Summary */}
         <div className="p-4 space-y-3" style={panelStyle}>
-          <h3 style={panelTitleStyle}>Network Summary</h3>
+          <h3 style={panelTitleStyle}>{t('explorer.mining_overview.network_summary')}</h3>
           <div className="grid grid-cols-2 gap-2">
             <PoolStatsTile
-              label="Network Hashrate"
+              label={t('explorer.mining_overview.network_hashrate')}
               value={networkHashrate != null ? formatHashrate(networkHashrate) : '—'}
               accent="#6ec6ff"
             />
             <PoolStatsTile
-              label="Difficulty"
+              label={t('explorer.mining_overview.difficulty')}
               value={networkDifficulty != null ? formatDifficulty(networkDifficulty) : '—'}
               accent="#6ec6ff"
             />
             <PoolStatsTile
-              label="Avg Block Time"
+              label={t('explorer.mining_overview.avg_block_time')}
               value={formatBlockTime(avgBlockTime)}
               accent="#6ec6ff"
             />
             <PoolStatsTile
-              label="Est. Active Miners"
+              label={t('explorer.mining_overview.est_active_miners')}
               value={estimatedNetworkMiners != null ? estimatedNetworkMiners.toLocaleString('en-US') : '—'}
-              sub="network-wide estimate"
+              sub={t('explorer.mining_overview.network_wide_estimate')}
               accent="#6ec6ff"
             />
           </div>
@@ -1075,29 +1099,34 @@ function NetworkMiningOverview() {
 
         {/* Panel 2 — Pool Mining */}
         <div className="p-4 space-y-3" style={panelStyle}>
-          <h3 style={panelTitleStyle}>Pool Mining</h3>
+          <h3 style={panelTitleStyle}>{t('explorer.mining_overview.pool_mining')}</h3>
           <div className="grid grid-cols-2 gap-2">
             <PoolStatsTile
-              label="Pool Hashrate"
+              label={t('explorer.mining_overview.pool_hashrate')}
               value={poolHashrate != null ? formatHashrate(poolHashrate) : '—'}
-              sub={poolHashrateClamped ? 'estimate' : undefined}
               accent="#a78bfa"
             />
             <PoolStatsTile
-              label="Active Pool Miners"
+              label={t('explorer.mining_overview.active_pool_miners')}
               value={poolRows.length > 0 ? activePoolMiners.toLocaleString('en-US') : '—'}
               accent="#a78bfa"
             />
             <PoolStatsTile
-              label="Pool Blocks Found"
-              value={poolBlocksFound != null ? poolBlocksFound.toLocaleString('en-US') : '—'}
-              sub="all time"
+              label={t('explorer.mining_overview.pool_blocks_today')}
+              value={poolBlocksToday != null ? poolBlocksToday.toLocaleString('en-US') : '—'}
+              sub={t('explorer.mining_overview.today')}
               accent="#a78bfa"
             />
             <PoolStatsTile
-              label="Pool / Network"
+              label={t('explorer.mining_overview.pool_blocks_found')}
+              value={poolBlocksFound != null ? poolBlocksFound.toLocaleString('en-US') : '—'}
+              sub={t('explorer.mining_overview.all_time')}
+              accent="#a78bfa"
+            />
+            <PoolStatsTile
+              label={t('explorer.mining_overview.pool_share')}
               value={poolShareOfNetwork != null ? `${poolShareOfNetwork.toFixed(1)}%` : '—'}
-              sub="share of network hashrate"
+              sub={t('explorer.mining_overview.share_of_network_hashrate')}
               accent="#a78bfa"
             />
           </div>
@@ -1111,46 +1140,46 @@ function NetworkMiningOverview() {
             their hashrate was clearly attributable on the public stats
             page; the pool cross-reference fixes that. */}
         <div className="p-4 space-y-3" style={panelStyle}>
-          <h3 style={panelTitleStyle}>Your Mining</h3>
+          <h3 style={panelTitleStyle}>{t('explorer.mining_overview.your_mining')}</h3>
           <div className="grid grid-cols-2 gap-2">
             <PoolStatsTile
-              label="Your Hashrate"
+              label={t('explorer.mining_overview.your_hashrate')}
               value={isMining && yourHashrateHps > 0
                 ? formatHashrate(yourHashrateHps)
-                : (isMining ? 'collecting…' : '—')}
+                : (isMining ? t('explorer.mining_overview.collecting') : '—')}
               sub={myPoolRows.length > 0 && !localMining
-                ? `${myPoolRows.length} pool worker${myPoolRows.length === 1 ? '' : 's'}`
+                ? t('explorer.mining_overview.pool_workers', { count: myPoolRows.length })
                 : undefined}
               accent="#34d399"
             />
             <PoolStatsTile
-              label="Mode"
+              label={t('explorer.mining_overview.mode')}
               value={yourMode}
               sub={!isMining
-                ? 'not mining'
+                ? t('explorer.mining_overview.not_mining')
                 : localMining
-                  ? (stratumConnected ? 'connected via stratum' : 'direct to local node')
+                  ? (stratumConnected ? t('explorer.mining_overview.connected_via_stratum') : t('explorer.mining_overview.direct_to_local_node'))
                   : (myPoolMode === 'Pool'
-                    ? 'on pool.iriumlabs.org'
-                    : 'on solo-stratum bridge')}
+                    ? t('explorer.mining_overview.on_pool')
+                    : t('explorer.mining_overview.on_solo_bridge'))}
               accent="#34d399"
             />
             <PoolStatsTile
-              label="Accepted Shares"
+              label={t('explorer.mining_overview.accepted_shares')}
               value={myPoolRows.length > 0
                 ? myPoolAccepted.toLocaleString('en-US')
                 : (localMining
                   ? `${cpuRunning ? 'CPU ' : ''}${gpuRunning ? 'GPU ' : ''}`.trim()
-                  : 'none')}
-              sub={myPoolRows.length > 0 ? 'pool, lifetime' : undefined}
+                  : t('explorer.mining_overview.none'))}
+              sub={myPoolRows.length > 0 ? t('explorer.mining_overview.pool_lifetime') : undefined}
               accent="#34d399"
             />
             <PoolStatsTile
-              label={myPoolRows.length > 0 ? 'Last Share' : 'Blocks You Found'}
+              label={myPoolRows.length > 0 ? t('explorer.mining_overview.last_share') : t('explorer.mining_overview.blocks_you_found')}
               value={myPoolRows.length > 0
-                ? formatAgoPlainEnglish(myPoolLastShareSecs)
+                ? formatAgoPlainEnglish(myPoolLastShareSecs, t)
                 : yourBlocksFound.toLocaleString('en-US')}
-              sub={myPoolRows.length > 0 ? 'from pool worker' : 'this session'}
+              sub={myPoolRows.length > 0 ? t('explorer.mining_overview.from_pool_worker') : t('explorer.mining_overview.this_session')}
               accent="#34d399"
             />
           </div>
@@ -1452,7 +1481,7 @@ function PoolStatsSection() {
             const cpuEffective = stats.cpu_gpu.accepted_shares > 0 ? stats.cpu_gpu.active_miners : 0;
             const totalEffective = asicEffective + cpuEffective;
             const asicPortSub = has443
-              ? `ports ${stats.asic_port} + 443`
+              ? t('explorer.pool_stats.asic_port_with_443', { port: stats.asic_port })
               : t('explorer.pool_stats.asic_port', { port: stats.asic_port });
             return (
               <>
@@ -1577,16 +1606,16 @@ function PoolStatsSection() {
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <span style={{ fontSize: 13, fontWeight: 700, color: '#d4eeff', fontFamily: '"Space Grotesk", sans-serif' }}>
-                  Active Miners
+                  {t('explorer.pool_stats.active_miners')}
                 </span>
                 <span className="font-mono" style={{ fontSize: 11, color: 'rgba(110,198,255,0.55)' }}>
-                  {activeMiners.length} {activeMiners.length === 1 ? 'worker' : 'workers'}
+                  {t('explorer.pool_stats.worker_count', { count: activeMiners.length })}
                 </span>
               </div>
               <div className="flex items-center gap-3">
                 {myAddresses.size > 0 && displayedMiners.some((m) => myAddresses.has((m.worker.split('.')[0] ?? '').trim())) && (
                   <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.45)' }}>
-                    Your miners pinned to top
+                    {t('explorer.pool_stats.your_miners_pinned')}
                   </span>
                 )}
                 {offlineCount > 0 && (
@@ -1605,27 +1634,29 @@ function PoolStatsSection() {
                       letterSpacing: '0.02em',
                     }}
                   >
-                    {showOffline ? `Hide offline (${offlineCount})` : `Show offline miners (${offlineCount})`}
+                    {showOffline
+                      ? t('explorer.pool_stats.hide_offline', { count: offlineCount })
+                      : t('explorer.pool_stats.show_offline', { count: offlineCount })}
                   </button>
                 )}
               </div>
             </div>
             {displayedMiners.length === 0 ? (
               <div className="py-6 text-center" style={{ fontSize: 12, color: 'rgba(255,255,255,0.40)' }}>
-                No active miners reporting.
+                {t('explorer.pool_stats.no_miners_reporting')}
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full" style={{ fontSize: 12 }}>
                   <thead>
                     <tr style={{ color: 'rgba(255,255,255,0.40)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: '"Space Grotesk", sans-serif' }}>
-                      <th className="text-left py-2 pr-3 font-semibold">Worker</th>
-                      <th className="text-right py-2 px-3 font-semibold">Accepted</th>
-                      <th className="text-right py-2 px-3 font-semibold" title="Rejected shares in the last 15 minutes only. The cumulative count (since stratum restart) kept a worker showing a stale warmup-burst total even after they recovered.">Rejected (15m)</th>
-                      <th className="text-right py-2 px-3 font-semibold" title="Rolling rejection rate over the last 15 minutes. The cumulative-since-restart rate kept a worker stuck on a post-restart warmup burst even after they recovered.">Reject % (15m)</th>
-                      <th className="text-right py-2 px-3 font-semibold">Hashrate (15m)</th>
-                      <th className="text-right py-2 px-3 font-semibold" title="Blocks found by this worker at the pool. Populated by the stats-proxy; shows '—' until the proxy backfills per-worker block credit.">Blocks</th>
-                      <th className="text-right py-2 pl-3 font-semibold">Last Share</th>
+                      <th className="text-left py-2 pr-3 font-semibold">{t('explorer.pool_stats.col_worker')}</th>
+                      <th className="text-right py-2 px-3 font-semibold">{t('explorer.pool_stats.col_accepted')}</th>
+                      <th className="text-right py-2 px-3 font-semibold" title={t('explorer.pool_stats.col_rejected_15m_tooltip')}>{t('explorer.pool_stats.col_rejected_15m')}</th>
+                      <th className="text-right py-2 px-3 font-semibold" title={t('explorer.pool_stats.col_reject_pct_15m_tooltip')}>{t('explorer.pool_stats.col_reject_pct_15m')}</th>
+                      <th className="text-right py-2 px-3 font-semibold">{t('explorer.pool_stats.col_hashrate_15m')}</th>
+                      <th className="text-right py-2 px-3 font-semibold" title={t('explorer.pool_stats.col_blocks_tooltip')}>{t('explorer.pool_stats.col_blocks')}</th>
+                      <th className="text-right py-2 pl-3 font-semibold">{t('explorer.pool_stats.col_last_share')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1670,7 +1701,7 @@ function PoolStatsSection() {
                                   verticalAlign: 'middle',
                                 }}
                               >
-                                yours
+                                {t('explorer.pool_stats.yours_badge')}
                               </span>
                             )}
                           </td>
@@ -1690,7 +1721,7 @@ function PoolStatsSection() {
                             {m.blocks_found == null ? '—' : m.blocks_found.toLocaleString('en-US')}
                           </td>
                           <td className="py-2 pl-3 text-right" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                            {formatAgoPlainEnglish(m.last_share_ago_seconds)}
+                            {formatAgoPlainEnglish(m.last_share_ago_seconds, t)}
                           </td>
                         </tr>
                       );
@@ -2164,7 +2195,7 @@ function RichListSection({ running }: { running: boolean }) {
               </button>
             )}
             {totalIrm > 0 && (
-              <span className="sr-only">{`${totalIrm} IRM total supply context for screen readers`}</span>
+              <span className="sr-only">{t('explorer.richlist.sr_total_supply', { total: totalIrm })}</span>
             )}
           </div>
         </>
@@ -2705,17 +2736,15 @@ export default function Explorer() {
                             <div className="flex items-center gap-2 mb-1.5">
                               <Lock size={13} style={{ color: '#fbbf24' }} />
                               <span style={{ fontSize: 12.5, fontWeight: 700, color: '#fde68a', fontFamily: '"Space Grotesk", sans-serif' }}>
-                                Founder Vesting Address
+                                {t('explorer.founder_card.title')}
                               </span>
                             </div>
                             <p style={{ fontSize: 11.5, color: 'rgba(253,230,138,0.85)', lineHeight: 1.55 }}>
-                              This address holds 3,500,000 IRM locked via CLTV timelock at genesis.
-                              Balance shown as 0 because locked funds use a special script not counted
-                              as spendable balance.
+                              {t('explorer.founder_card.description')}
                             </p>
                             <p className="mt-1.5" style={{ fontSize: 11, color: 'rgba(253,230,138,0.70)', fontFamily: '"JetBrains Mono", monospace' }}>
-                              Unlocks at block #{FOUNDER_VESTING_UNLOCK_HEIGHT.toLocaleString('en-US')}
-                              {height > 0 && ` (~${blocksRemaining.toLocaleString('en-US')} blocks remaining)`}
+                              {t('explorer.founder_card.unlocks_at', { height: FOUNDER_VESTING_UNLOCK_HEIGHT.toLocaleString('en-US') })}
+                              {height > 0 && ` ${t('explorer.founder_card.blocks_remaining', { count: blocksRemaining.toLocaleString('en-US') })}`}
                             </p>
                           </div>
                         )}

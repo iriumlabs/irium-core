@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Loader2, Check, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { offers } from '../../lib/tauri';
 import type { CreateOfferParams } from '../../lib/types';
 import { TradingModal } from '../../components/ui';
@@ -24,14 +25,14 @@ export interface CreateOrderModalProps {
   hidePaymentMethod?: boolean;
 }
 
-const PAYMENT_OPTIONS: { value: string; label: string }[] = [
-  { value: 'bank-transfer', label: 'Bank transfer' },
-  { value: 'paypal',        label: 'PayPal' },
-  { value: 'usdt-trc20',    label: 'USDT (TRC-20)' },
-  { value: 'usdt-erc20',    label: 'USDT (ERC-20)' },
-  { value: 'sepa',          label: 'SEPA' },
-  { value: 'cash',          label: 'Cash' },
-  { value: 'other',         label: 'Other' },
+const PAYMENT_OPTIONS: { value: string; labelKey: string }[] = [
+  { value: 'bank-transfer', labelKey: 'marketplace.create_offer.payment_options.bank_transfer' },
+  { value: 'paypal',        labelKey: 'marketplace.create_offer.payment_options.paypal' },
+  { value: 'usdt-trc20',    labelKey: 'marketplace.create_offer.payment_options.usdt_trc20' },
+  { value: 'usdt-erc20',    labelKey: 'marketplace.create_offer.payment_options.usdt_erc20' },
+  { value: 'sepa',          labelKey: 'marketplace.create_offer.payment_options.sepa' },
+  { value: 'cash',          labelKey: 'marketplace.create_offer.payment_options.cash' },
+  { value: 'other',         labelKey: 'marketplace.create_offer.payment_options.other' },
 ];
 
 const INPUT_CLASS = 'w-full h-10 px-3 rounded bg-[#0b0e11] border border-[#2b3139] text-[#eaecef] text-[13px] focus:outline-none focus:border-[#fcd535] disabled:opacity-50 placeholder:text-[#5e6673]';
@@ -43,6 +44,7 @@ export default function CreateOrderModal({
   onCreated,
   hidePaymentMethod = false,
 }: CreateOrderModalProps) {
+  const { t } = useTranslation();
   const [amountIrm, setAmountIrm] = useState('');
   const [pricePerIrmUsdt, setPricePerIrmUsdt] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('bank-transfer');
@@ -61,20 +63,20 @@ export default function CreateOrderModal({
 
   const handleCreate = async () => {
     if (numericAmount <= 0) {
-      toast.error('Enter a positive IRM amount');
+      toast.error(t('marketplace.create_offer.errors.positive_irm_amount'));
       return;
     }
     if (numericPrice <= 0) {
-      toast.error('Enter a positive USDT price per IRM');
+      toast.error(t('marketplace.create_offer.errors.positive_usdt_price'));
       return;
     }
     if (!hidePaymentMethod) {
       if (!paymentMethod.trim()) {
-        toast.error('Select a payment method');
+        toast.error(t('marketplace.create_offer.errors.select_payment_method'));
         return;
       }
       if (!paymentDetails.trim()) {
-        toast.error('Enter your payment details so the buyer knows how to pay');
+        toast.error(t('marketplace.create_offer.errors.payment_details_required'));
         return;
       }
     }
@@ -88,7 +90,7 @@ export default function CreateOrderModal({
         description: `${totalUsdt} USDT`,
       };
       await offers.create(params);
-      toast.success('Offer posted. IRM will lock the moment a buyer commits.');
+      toast.success(t('marketplace.create_offer.toasts.offer_posted'));
       onCreated();
       onClose();
     } catch (e) {
@@ -102,8 +104,8 @@ export default function CreateOrderModal({
     <TradingModal
       open={true}
       onClose={() => { if (!busy) onClose(); }}
-      title="Create Sell Order"
-      subtitle="Post an offer to the order book — IRM locks the moment a buyer takes it."
+      title={t('marketplace.create_offer.modal_title')}
+      subtitle={t('marketplace.create_offer.modal_subtitle')}
       size="md"
       footer={
         <>
@@ -112,7 +114,7 @@ export default function CreateOrderModal({
             disabled={busy}
             className="h-9 px-4 rounded text-[13px] font-medium text-[#b7bdc6] hover:text-[#eaecef] hover:bg-[#2b3139] transition-colors disabled:opacity-50"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleCreate}
@@ -120,7 +122,7 @@ export default function CreateOrderModal({
             className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded text-[13px] font-semibold bg-[#fcd535] text-[#0b0e11] hover:bg-[#f0c020] transition-colors disabled:opacity-50"
           >
             {busy ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-            Post Offer
+            {t('marketplace.create_offer.post_offer_button')}
           </button>
         </>
       }
@@ -129,14 +131,14 @@ export default function CreateOrderModal({
         <div className="p-3 rounded inline-flex items-start gap-2 bg-[rgba(14,203,129,0.08)] border border-[rgba(14,203,129,0.22)]">
           <Lock size={13} className="text-[#0ecb81] flex-shrink-0 mt-0.5" />
           <div className="text-[12px] text-[#b7bdc6] leading-relaxed">
-            Your IRM is locked the moment a buyer commits. You then receive the buyer's
-            off-chain payment and click <span className="text-[#0ecb81] font-medium">Confirm received</span> to
-            release. Or open a dispute if they don't pay.
+            {t('marketplace.create_offer.lock_info_prefix')}{' '}
+            <span className="text-[#0ecb81] font-medium">{t('marketplace.create_offer.confirm_received_label')}</span>
+            {' '}{t('marketplace.create_offer.lock_info_suffix')}
           </div>
         </div>
 
         <div>
-          <label className={LABEL_CLASS}>Amount of IRM to sell</label>
+          <label className={LABEL_CLASS}>{t('marketplace.create_offer.amount_to_sell_label')}</label>
           <div className="flex items-center gap-2">
             <input
               className={INPUT_CLASS + ' text-right font-mono tabular-nums'}
@@ -151,7 +153,7 @@ export default function CreateOrderModal({
         </div>
 
         <div>
-          <label className={LABEL_CLASS}>Price per IRM in USDT</label>
+          <label className={LABEL_CLASS}>{t('marketplace.create_offer.price_per_irm_label')}</label>
           <div className="flex items-center gap-2">
             <input
               className={INPUT_CLASS + ' text-right font-mono tabular-nums'}
@@ -165,9 +167,9 @@ export default function CreateOrderModal({
           </div>
           {totalUsdt > 0 && (
             <p className="text-[11px] text-[#5e6673] mt-1.5">
-              Buyer pays a total of{' '}
+              {t('marketplace.create_offer.buyer_pays_total_prefix')}{' '}
               <span className="text-[#0ecb81] font-mono tabular-nums">
-                {totalUsdt.toLocaleString('en-US', { maximumFractionDigits: 4 })} USDT
+                {t('marketplace.create_offer.buyer_pays_total_amount', { amount: totalUsdt.toLocaleString('en-US', { maximumFractionDigits: 4 }) })}
               </span>
             </p>
           )}
@@ -176,7 +178,7 @@ export default function CreateOrderModal({
         {!hidePaymentMethod && (
           <>
             <div>
-              <label className={LABEL_CLASS}>Payment method</label>
+              <label className={LABEL_CLASS}>{t('marketplace.create_offer.payment_method_label')}</label>
               <select
                 className={INPUT_CLASS}
                 value={paymentMethod}
@@ -185,24 +187,24 @@ export default function CreateOrderModal({
               >
                 {PAYMENT_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value} className="bg-[#181a20]">
-                    {opt.label}
+                    {t(opt.labelKey)}
                   </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className={LABEL_CLASS}>Your payment details</label>
+              <label className={LABEL_CLASS}>{t('marketplace.create_offer.your_payment_details_label')}</label>
               <textarea
                 className={INPUT_CLASS + ' h-auto py-2'}
                 rows={3}
                 value={paymentDetails}
                 onChange={(e) => setPaymentDetails(e.target.value)}
-                placeholder="e.g. IBAN DE89 3704 0044 0532 0130 00 or PayPal: seller@example.com"
+                placeholder={t('marketplace.create_offer.payment_details_placeholder')}
                 disabled={busy}
               />
               <p className="text-[11px] text-[#5e6673] mt-1.5">
-                The buyer sees these details after they take the offer.
+                {t('marketplace.create_offer.payment_details_helper')}
               </p>
             </div>
           </>

@@ -23,7 +23,8 @@ const SettlementLegacy = lazy(() => import('./pages/_legacy/Settlement'));
 const SafeTradeFlow    = lazy(() => import('./pages/settlement-ui/SafeTradeFlow'));
 const PayForWorkFlow   = lazy(() => import('./pages/settlement-ui/PayForWorkFlow'));
 const DepositFlow      = lazy(() => import('./pages/settlement-ui/DepositFlow'));
-const DisputeFlow      = lazy(() => import('./pages/settlement-ui/DisputeFlow'));
+const DisputeFlow         = lazy(() => import('./pages/settlement-ui/DisputeFlow'));
+const DisputeResolveFlow  = lazy(() => import('./pages/settlement-ui/DisputeResolveFlow'));
 const Marketplace  = lazy(() => import('./pages/Marketplace'));
 const Agreements   = lazy(() => import('./pages/Agreements'));
 const Reputation   = lazy(() => import('./pages/Reputation'));
@@ -456,6 +457,7 @@ function AppLayout() {
                 <Route path="/settlement/pay-for-work" element={<PayForWorkFlow />}   />
                 <Route path="/settlement/deposit"              element={<DepositFlow />}      />
                 <Route path="/settlement/dispute/:agreementId" element={<DisputeFlow />}      />
+                <Route path="/settlement/dispute-resolve"      element={<DisputeResolveFlow />} />
                 <Route path="/marketplace"    element={<Marketplace />} />
                 <Route path="/agreements"     element={<Agreements />} />
                 <Route path="/agreements/:id" element={<Agreements />} />

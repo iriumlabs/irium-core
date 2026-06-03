@@ -145,7 +145,7 @@ export default function PayForWorkFlow() {
       await agreementSpend.fund(res.agreement_id!, true);
     } catch (fundErr) {
       console.error('[pay-for-work] fund failed (agreement orphaned):', fundErr);
-      toast.error('Agreement created but funding failed. Find it in your Agreements page to retry funding.');
+      toast.error(t('settlement_ui.pay_for_work.toast_fund_failed'));
       setTimeout(() => navigate('/agreements'), 3000);
       setCreating(false);
       return;
@@ -404,7 +404,7 @@ export default function PayForWorkFlow() {
           </p>
           {kind === 'milestone' && (
             <div className="space-y-1 pt-1">
-              <label className="label">Which milestone?</label>
+              <label className="label">{t('settlement_ui.pay_for_work.which_milestone')}</label>
               <select
                 value={selectedMilestone}
                 onChange={(e) => setSelectedMilestone(parseInt(e.target.value, 10))}
@@ -413,12 +413,12 @@ export default function PayForWorkFlow() {
               >
                 {Array.from({ length: milestoneCount }, (_, i) => (
                   <option key={i} value={i}>
-                    Milestone {i + 1} of {milestoneCount}
+                    {t('settlement_ui.pay_for_work.milestone_option', { index: i + 1, total: milestoneCount })}
                   </option>
                 ))}
               </select>
               <p className="text-xs text-white/45">
-                Mark Complete releases this milestone&apos;s share of the locked IRM. The contractor receives 1/{milestoneCount} of the total per milestone.
+                {t('settlement_ui.pay_for_work.milestone_helper', { count: milestoneCount })}
               </p>
             </div>
           )}
@@ -431,7 +431,7 @@ export default function PayForWorkFlow() {
             >
               {releasing ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
               {kind === 'milestone'
-                ? `${t('settlement_ui.pay_for_work.mark_complete')} (milestone ${selectedMilestone + 1})`
+                ? t('settlement_ui.pay_for_work.mark_complete_milestone', { index: selectedMilestone + 1 })
                 : t('settlement_ui.pay_for_work.mark_complete')}
             </button>
             <button

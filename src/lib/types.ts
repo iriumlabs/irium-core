@@ -940,6 +940,26 @@ export interface PoolStats {
   total_blocks_found: number;
 }
 
+// Full stats-proxy /stats response. Superset of PoolStats — includes the
+// solo profile and blocks_found_today which the get_pool_stats Tauri command
+// (and the Rust PoolStats struct it mirrors) don't expose yet. Explorer
+// fetches this directly via tauriFetch so the Pool Hashrate aggregate can
+// use the proxy's authoritative per-profile hashrate_estimate_hps instead
+// of summing per-miner vardiff samples and clamping to network on overshoot.
+export interface StatsProxyResponse {
+  pool: string;
+  url: string;
+  asic_port: number;
+  cpu_gpu_port: number;
+  solo_port?: number;
+  asic: PoolProfileStats;
+  cpu_gpu: PoolProfileStats;
+  solo?: PoolProfileStats;
+  total_miners: number;
+  total_blocks_found: number;
+  blocks_found_today?: number | null;
+}
+
 // Returned by check_port_open. `open` is the simple boolean the UI uses
 // to flip a green/red status; `reason` is a human-readable explanation.
 // `upnp_external_ip` and `inbound_count` carry the two underlying signals

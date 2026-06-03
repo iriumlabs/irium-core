@@ -152,7 +152,9 @@
       "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
       "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
       "rpc_token_test_remote": "Test remote",
-      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated",
+      "hide_token": "Ẩn token",
+      "show_token": "Hiện token"
     },
     "buttons": {
       "test_connection": "Kiểm tra kết nối",
@@ -195,7 +197,9 @@
       "onboarding_reset": "Khởi động lại cài đặt — khởi động lại ứng dụng để xem trình hướng dẫn",
       "update_check_internet": "Không thể kiểm tra cập nhật. Kiểm tra kết nối internet của bạn.",
       "connection_failed": "Kết nối không thành công",
-      "update_failed": "Cập nhật không thành công"
+      "update_failed": "Cập nhật không thành công",
+      "metrics_http_error": "Trạng thái OK, nhưng /metrics trả về HTTP {{status}}",
+      "metrics_unreachable": "Trạng thái OK, nhưng /metrics không thể tiếp cận: {{error}}"
     },
     "page_subtitle": "Định cấu hình kết nối nút, đường dẫn ví và tùy chọn hiển thị của bạn.",
     "update_banner": {
@@ -261,7 +265,14 @@
       "retry": "Thử lại",
       "external_ip_label": "IP bên ngoài",
       "detecting_paragraph": "Chờ tới 60 giây để một thiết bị ngang hàng gửi đến xác nhận khả năng tiếp cận. PEX cần một chút thời gian để truyền địa chỉ của bạn đến các nút khác sau khi bắt đầu.",
-      "inactive_paragraph": "UPnP không thành công và không có đồng nghiệp gửi đến nào đến. Định cấu hình chuyển tiếp cổng thủ công trên bộ định tuyến của bạn (TCP 38291) hoặc bật UPnP, sau đó nhấp vào Thử lại. Các kết nối gửi đi vẫn hoạt động ở trạng thái này."
+      "inactive_paragraph": "UPnP không thành công và không có đồng nghiệp gửi đến nào đến. Định cấu hình chuyển tiếp cổng thủ công trên bộ định tuyến của bạn (TCP 38291) hoặc bật UPnP, sau đó nhấp vào Thử lại. Các kết nối gửi đi vẫn hoạt động ở trạng thái này.",
+      "diag_chosen_lan_ip": "IP LAN đã chọn",
+      "diag_router_ip": "IP router",
+      "diag_control_url": "URL điều khiển",
+      "diag_external_ip": "IP bên ngoài",
+      "diag_private_double_nat": "(riêng tư — NAT kép)",
+      "diag_add_port_mapping_tries": "Số lần thử AddPortMapping",
+      "diag_last_fault": "Lỗi gần nhất"
     },
     "security_info": {
       "wallet_local": "Irium Core lưu trữ tệp ví của bạn cục bộ. Khóa riêng của bạn không bao giờ rời khỏi máy của bạn. Tệp ví đã được mã hóa. Luôn sao lưu cụm từ hạt giống của bạn và giữ nó ngoại tuyến.",
@@ -325,11 +336,14 @@
       "reset_state_success": "Trạng thái đã đặt lại — bản sao lưu tại {{path}}",
       "reset_state_no_backup": "Không có trạng thái hiện có để sao lưu — đã tạo trạng thái mới",
       "reset_state_rebuilding": "node đang khởi động lại — xây dựng lại tập UTXO từ block cục bộ (5-15 phút)",
-      "reset_state_failed": "Đặt lại thất bại: {{reason}}"
+      "reset_state_failed": "Đặt lại thất bại: {{reason}}",
+      "external_ip_placeholder": "ví dụ 203.0.113.42"
     },
     "developer_info": {
       "reset_onboarding": "Đặt lại quá trình làm quen",
-      "reset_onboarding_description": "Hiển thị lại trình hướng dẫn thiết lập lần chạy đầu tiên vào lần khởi chạy tiếp theo"
+      "reset_onboarding_description": "Hiển thị lại trình hướng dẫn thiết lập lần chạy đầu tiên vào lần khởi chạy tiếp theo",
+      "show_legacy_settlement": "Hiện UI Settlement cũ",
+      "show_legacy_settlement_description": "Dùng trang Settlement template-grid gốc thay cho các luồng SafeTrade / PayForWork / Deposit mới. Có hiệu lực ở lần điều hướng /settlement tiếp theo."
     },
     "action_bar": {
       "are_you_sure": "Bạn có chắc không?",
@@ -469,7 +483,27 @@
       "rename_wallet_file": "Đổi tên tập tin ví",
       "delete_wallet_file": "Xóa vĩnh viễn tệp ví này",
       "manage_wallets": "Quản lý ví",
-      "manage_description": "Tệp ví, nhập, địa chỉ ẩn"
+      "manage_description": "Tệp ví, nhập, địa chỉ ẩn",
+      "manage_button": "Quản lý",
+      "copy_address": "Sao chép địa chỉ",
+      "add_address_button": "Thêm địa chỉ",
+      "generating": "Đang tạo…",
+      "empty_state": "Chưa có địa chỉ nào. Mở Quản lý để thêm.",
+      "add_address_confirm_title": "Thêm địa chỉ mới?",
+      "add_address_confirm_body": "Thao tác này sẽ dẫn xuất địa chỉ tiếp theo từ seed ví của bạn. Không thể xóa địa chỉ khỏi tệp ví sau khi đã tạo — chỉ có thể ẩn khỏi danh sách hiển thị.",
+      "set_primary_button": "Đặt làm chính",
+      "primary_button_short": "Chính",
+      "export_wif_short_tooltip": "Xuất WIF",
+      "wif_short": "WIF",
+      "qr_short": "QR",
+      "hide_button_short": "Ẩn",
+      "no_addresses_panel": "Chưa có địa chỉ nào.",
+      "panel_description": "Địa chỉ được dẫn xuất từ seed ví và không thể xóa vĩnh viễn. Dùng Ẩn để gỡ khỏi chế độ xem.",
+      "label_placeholder_primary": "ví dụ Chính · Đào",
+      "label_placeholder_other": "ví dụ Đào",
+      "edit_label": "Sửa nhãn",
+      "add_custom_label": "Thêm nhãn tùy chỉnh",
+      "address_qr_label": "QR địa chỉ"
     },
     "send": {
       "title": "Gửi IRM",
@@ -499,12 +533,44 @@
         "unconfirmed": "Tiền của bạn vẫn chưa được xác nhận. Đợi ít nhất 1 xác nhận trước khi gửi.",
         "double_spend": "Giao dịch này xung đột với một giao dịch đang chờ xử lý khác. Vui lòng đợi và thử lại.",
         "generic": "Giao dịch không thể được phát sóng. Vui lòng kiểm tra xem nút có trực tuyến không và thử lại.",
-        "fallback": "Giao dịch không thành công. Vui lòng thử lại."
-      }
+        "fallback": "Giao dịch không thành công. Vui lòng thử lại.",
+        "insufficient_for_fee": "Không đủ tiền trả phí mạng. Số dư địa chỉ {{balance}} sats; phí tối thiểu {{fee}} sats.",
+        "cannot_compute_max": "Không thể tính max — {{reason}}",
+        "node_still_syncing": "Node vẫn đang đồng bộ ({{persisted}}/{{height}} khối). Vui lòng đóng hộp thoại này, chờ đồng bộ xong, và thử lại.",
+        "not_accepted_mempool": "Giao dịch không được mempool của node chấp nhận"
+      },
+      "button_label": "Gửi",
+      "node_offline_tooltip": "Node phải online để gửi",
+      "node_syncing_tooltip": "Node đang đồng bộ — vui lòng chờ trước khi gửi",
+      "max_button": "MAX",
+      "no_spendable_funds_suffix": " — Không có tiền khả dụng",
+      "no_spendable_in_wallet": "Ví này không có tiền khả dụng.",
+      "estimated_fee_25k": "Phí ước tính: ~25.000 sats",
+      "estimated_fee_label": "Phí ước tính",
+      "estimated_fee_value_25k": "~25.000 sats",
+      "amount_sats_label": "Số lượng (sats)",
+      "confirm_send_prefix": "Gửi",
+      "confirm_send_to_suffix": "đến",
+      "back_button": "← Quay lại",
+      "transaction_sent_title": "Đã gửi giao dịch",
+      "transaction_sent_subtitle": "Giao dịch của bạn sẽ xuất hiện trong khối tiếp theo",
+      "transaction_sent_explanation": "Giao dịch của bạn được ký bằng mật mã với khóa riêng tư và phát ra mạng. Nó sẽ được bảo mật vĩnh viễn khi được đưa vào khối được đào tiếp theo.",
+      "status_signed": "ĐÃ KÝ",
+      "private_key_verified": "Đã xác minh khóa riêng tư",
+      "status_confirming": "ĐANG XÁC NHẬN",
+      "next_mined_block": "Khối được đào tiếp theo",
+      "transaction_id_label": "ID giao dịch",
+      "copy_transaction_id": "Sao chép ID giao dịch",
+      "view_in_explorer": "Xem trong Explorer"
     },
     "receive": {
       "title": "Nhận IRM",
-      "scan_qr_hint": "Quét mã QR này hoặc sao chép địa chỉ bên dưới"
+      "scan_qr_hint": "Quét mã QR này hoặc sao chép địa chỉ bên dưới",
+      "button_label": "Nhận",
+      "send_to_this_address": "Gửi IRM đến địa chỉ này:",
+      "no_address_short": "Không có địa chỉ",
+      "no_address_available": "Không có địa chỉ khả dụng",
+      "copy_address_button": "Sao chép địa chỉ"
     },
     "security": {
       "section_title": "Bảo vệ",
@@ -519,7 +585,16 @@
       "seed_modal_title": "Cụm từ khôi phục của bạn",
       "seed_modal_warning": "Hãy viết điều này ra giấy. Bất cứ ai có 24 từ này đều có thể tiêu tiền của bạn.",
       "wif_label": "Khóa riêng WIF",
-      "backup_warning": "Tệp này chứa tất cả các khóa riêng của bạn. Lưu trữ nó một cách an toàn."
+      "backup_warning": "Tệp này chứa tất cả các khóa riêng của bạn. Lưu trữ nó một cách an toàn.",
+      "backup_subsection": "Sao lưu",
+      "restore_subsection": "Khôi phục",
+      "export_wif_dialog_title": "Xuất khóa WIF",
+      "export_wif_private_key_dialog_title": "Xuất khóa riêng tư WIF",
+      "text_file_filter": "Văn bản",
+      "backup_dialog_title": "Lưu bản sao lưu ví",
+      "select_backup_dialog_title": "Chọn tệp sao lưu ví",
+      "backup_filter_name": "Bản sao lưu ví",
+      "all_files_filter": "Tất cả tệp"
     },
     "transactions": {
       "section_title": "Giao dịch",
@@ -529,7 +604,17 @@
       "confirmations": "{{count}} xác nhận",
       "pending": "Chưa giải quyết",
       "received": "Đã nhận",
-      "sent": "Đã gửi"
+      "sent": "Đã gửi",
+      "confirmed": "Đã xác nhận",
+      "for_address": "cho {{address}}",
+      "mempool_awaiting": "Mempool · đang chờ xác nhận",
+      "miner_label": "Thợ đào: {{address}}",
+      "fee_label": "Phí: {{amount}} sats",
+      "txid_label": "TXID: {{txid}}",
+      "conf_short": "{{count}} xác nhận",
+      "block_number": "Khối #{{height}}",
+      "open_in_explorer": "Mở trong Explorer",
+      "copy_txid": "Sao chép TXID"
     },
     "toasts": {
       "send_success": "Đã gửi — txid {{txid}}",
@@ -565,7 +650,13 @@
       "wif_copied": "Đã sao chép WIF",
       "name_invalid_chars": "Tên ví không được chứa: / \\ : * ? \" < > |",
       "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
-      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up.",
+      "node_syncing_wait": "Node đang đồng bộ — {{persisted}}/{{height}} khối. Vui lòng chờ.",
+      "failed_add_address": "Thêm địa chỉ thất bại: {{reason}}",
+      "no_recovery_data": "Không tìm thấy dữ liệu khôi phục trong ví",
+      "wallet_deleted": "Đã xóa {{name}}",
+      "seed_copied": "Đã sao chép seed",
+      "invalid_wallet_path": "Binary ví trả về đường dẫn không hợp lệ: {{path}}"
     },
     "encryption": {
       "migration_title": "Encrypt your wallet",
@@ -588,6 +679,120 @@
       "needs_migration_status": "Wallet on disk uses the legacy unencrypted format and must be encrypted before use.",
       "plaintext_backup_warning": "Plaintext backup file(s) detected at {{paths}}. Delete after verifying the migration succeeded.",
       "recover_link": "Forgot your password? Recover with seed phrase"
+    },
+    "no_wallet_loaded": "Chưa tải ví nào — tạo hoặc nhập một ví bên dưới",
+    "balance_label": "Số dư",
+    "balance_label_for_address": "Số dư · Địa chỉ {{index}}",
+    "satoshis_amount": "{{amount}} satoshis",
+    "unconfirmed": "chưa xác nhận",
+    "wallet_wide": "(toàn ví)",
+    "syncing_tooltip": "Hãy chờ node đồng bộ xong trước khi gửi. Gửi ngay có thể thất bại với lỗi xác minh chữ ký vì tập UTXO vẫn đang được dựng lại.",
+    "syncing_progress": "Đang đồng bộ…",
+    "gaps_count": "{{count}} khoảng trống",
+    "common": {
+      "cancel": "Hủy",
+      "done": "Xong",
+      "reveal": "Hiện",
+      "hide": "Ẩn",
+      "copy": "Sao chép",
+      "delete": "Xóa",
+      "loading": "Đang tải…"
+    },
+    "seed": {
+      "recovery_phrase_title": "Cụm khôi phục",
+      "wallet_seed_title": "Seed ví",
+      "recovery_phrase_warning": "Đừng bao giờ chia sẻ cụm khôi phục của bạn. Bất kỳ ai có 24 từ này đều có thể truy cập toàn bộ tiền của bạn. Lưu trữ offline an toàn.",
+      "wallet_seed_warning": "Đừng bao giờ chia sẻ seed ví. Giá trị hex này cho phép toàn quyền truy cập mọi khoản tiền. Lưu trữ offline an toàn.",
+      "custom_seed_hint": "Ví này dùng seed tùy chỉnh. Sao lưu seed hex này để khôi phục.",
+      "copy_phrase": "Sao chép cụm",
+      "copy_seed": "Sao chép seed"
+    },
+    "restore": {
+      "title": "Khôi phục từ sao lưu",
+      "warning_body": "Thao tác này sẽ ghi đè dữ liệu ví hiện tại. Hãy chắc chắn bạn có khóa WIF hoặc tệp sao lưu trước khi tiếp tục. Node sẽ tự động khởi động lại khi khôi phục hoàn tất để trạng thái ví mới được nạp sạch.",
+      "restore_button": "Khôi phục ví"
+    },
+    "create_modal": {
+      "create_title": "Tạo ví",
+      "import_title": "Nhập ví",
+      "create_new_tab": "Tạo mới",
+      "import_tab": "Nhập",
+      "generate_description": "Tạo ví BIP39 mới với cụm khôi phục 24 từ.",
+      "creating": "Đang tạo…",
+      "create_new_wallet_button": "Tạo ví mới",
+      "save_warning": "Lưu cụm khôi phục 24 từ offline — nó có thể khôi phục toàn bộ ví của bạn. Khóa WIF sao lưu một địa chỉ duy nhất. Cả hai đều không thể khôi phục nếu mất.",
+      "address_label": "Địa chỉ",
+      "recovery_phrase_label": "Cụm khôi phục (24 từ)",
+      "recovery_phrase_hint": "(bất kỳ cụm nào trong đây cũng khôi phục được ví)",
+      "wif_label": "Khóa WIF",
+      "wif_hint": "(khóa riêng tư của bạn ở dạng di động)",
+      "loading_wif": "Đang tải WIF…",
+      "export_wif_to_file": "Xuất WIF ra tệp",
+      "saved_confirmation": "Tôi đã lưu cụm khôi phục và khóa WIF an toàn.",
+      "import_notice_lead": "Thao tác này sẽ nhập một ví mới. Ví hiện tại của bạn vẫn nguyên vẹn và có thể chuyển về từ",
+      "seed_phrase_method": "Seed phrase",
+      "wif_key_method": "Khóa WIF",
+      "seed_phrase_input_label": "Seed phrase (12 hoặc 24 từ)",
+      "seed_phrase_placeholder": "từ1 từ2 từ3 …",
+      "bip39_hint": "Cụm khôi phục BIP39 cách nhau bởi khoảng trắng.",
+      "wif_placeholder": "5J… hoặc K… hoặc L…",
+      "wif_format_hint": "Wallet Import Format — bắt đầu bằng 5, K hoặc L.",
+      "import_button": "Nhập"
+    },
+    "new_address": {
+      "title": "Địa chỉ mới",
+      "derived_lead": "Một địa chỉ mới đã được dẫn xuất từ seed BIP32 của ví. ",
+      "derived_emphasis": "cụm khôi phục của bạn không thay đổi",
+      "derived_trail": "— địa chỉ này dùng chung tệp ví với các địa chỉ hiện có.",
+      "copy_address": "Sao chép địa chỉ",
+      "wif_private_key_label": "Khóa riêng tư WIF",
+      "wif_warning": "Bất kỳ ai có WIF này đều có thể tiêu tiền tại địa chỉ này. Lưu trữ offline.",
+      "copy_wif": "Sao chép WIF",
+      "recovery_reminder_lead": "Địa chỉ này dùng chung cụm khôi phục của ví bạn. Để xem, vào",
+      "recovery_reminder_path": "Bảo mật → Hiện cụm khôi phục"
+    },
+    "files": {
+      "section_title": "Tệp ví",
+      "section_description": "Mỗi tệp có seed riêng. Chuyển đổi để tải ví khác.",
+      "no_files_found": "Không tìm thấy tệp ví nào trong ~/.irium/",
+      "rename_placeholder": "tên-ví",
+      "active_badge": "Đang hoạt động",
+      "switch_button": "Chuyển",
+      "create_new_wallet_file": "Tạo tệp ví mới",
+      "create_new_advanced_hint": "(nâng cao — seed riêng)",
+      "create_new_description": "Tạo tệp ví riêng với seed riêng. Ví hiện tại của bạn vẫn còn trên đĩa và có thể chuyển về từ danh sách này."
+    },
+    "hidden": {
+      "section_title": "Địa chỉ đã ẩn",
+      "still_in_file": "(vẫn còn trong tệp ví)",
+      "description": "Địa chỉ không thể bị xóa vĩnh viễn khỏi tệp ví. Địa chỉ đã ẩn được gỡ khỏi chế độ xem nhưng vẫn có thể khôi phục — nhấn Bỏ ẩn để đưa chúng trở lại.",
+      "unhide_button": "Bỏ ẩn"
+    },
+    "delete_file": {
+      "confirm_title": "Xóa vĩnh viễn tệp ví này?",
+      "address_count": "{{count}} địa chỉ",
+      "address_count_one": "{{count}} địa chỉ",
+      "warning_label": "CẢNH BÁO:",
+      "warning_funds_lead": "Ví này có chứa tiền. Xóa mà không sao lưu đồng nghĩa với việc mất vĩnh viễn",
+      "warning_funds_trail": ". Hãy chắc chắn bạn đã xuất khóa WIF hoặc seed phrase trước khi tiếp tục.",
+      "warning_unknown_lead": "Số dư không thể xác nhận — node có thể đang offline. Nếu ví này có tiền và bạn chưa sao lưu seed phrase hoặc khóa WIF, việc xóa sẽ",
+      "warning_unknown_emphasis": "mất vĩnh viễn",
+      "warning_unknown_trail": "chúng.",
+      "warning_zero_lead": "Thao tác này sẽ xóa tệp khỏi đĩa. Nếu bạn chưa sao lưu seed phrase hoặc khóa WIF cho ví này, mọi khoản tiền trong đó sẽ bị",
+      "warning_zero_emphasis": "mất vĩnh viễn",
+      "warning_zero_trail": ". Không thể hoàn tác.",
+      "type_prompt_prefix": "Gõ",
+      "type_prompt_word": "DELETE",
+      "type_prompt_suffix": "để xác nhận",
+      "deleting": "Đang xóa…",
+      "delete_forever": "Xóa vĩnh viễn"
+    },
+    "hide_address": {
+      "confirm_title": "Ẩn địa chỉ này?",
+      "body_lead": "Địa chỉ vẫn ở trong tệp ví — chỉ danh sách hiển thị được cập nhật. Bạn có thể",
+      "body_emphasis": "bỏ ẩn",
+      "body_trail": "nó sau từ phần Địa chỉ đã ẩn.",
+      "confirm_button": "Ẩn địa chỉ"
     }
   },
   "agreements": {
@@ -621,7 +826,18 @@
       "share_text": "Chia sẻ văn bản",
       "delete": "Xóa bỏ",
       "submitting": "Đang gửi…",
-      "sign": "Dấu hiệu"
+      "sign": "Dấu hiệu",
+      "fund_escrow": "Nạp ký quỹ",
+      "release_to_counterparty": "Giải phóng cho đối tác",
+      "submit_proof": "Gửi bằng chứng",
+      "refund": "Hoàn tiền",
+      "agreement_expired": "Thỏa thuận đã hết hạn",
+      "create_and_submit_proof": "Tạo & Gửi bằng chứng",
+      "confirm_release": "Xác nhận giải phóng",
+      "confirm_fund": "Xác nhận nạp tiền",
+      "confirm_open_dispute": "Xác nhận mở tranh chấp",
+      "use_this_invoice": "Sử dụng Hóa đơn này →",
+      "verify_signature_file": "Xác minh tệp Chữ ký…"
     },
     "proof_modal": {
       "title": "Gửi bằng chứng",
@@ -634,7 +850,15 @@
       "evidence_summary": "Tóm tắt bằng chứng",
       "evidence_placeholder": "ví dụ. Thanh toán $50 nhận được qua chuyển khoản ngân hàng, số tham chiếu #12345.",
       "submit_button": "Gửi bằng chứng",
-      "submitting": "Đang gửi…"
+      "submitting": "Đang gửi…",
+      "intro": "Tạo bằng chứng đã ký trong ứng dụng, hoặc tải lên bằng chứng bạn đã có.",
+      "mode_create": "Tạo từ Bằng chứng",
+      "mode_upload": "Tải tệp lên",
+      "mode_create_sub": "Tạo trong ứng dụng",
+      "mode_upload_sub": "Dùng tệp có sẵn",
+      "upload_note_prefix": "Chỉ dùng tab này nếu bạn đã có tệp bằng chứng — ví dụ tệp do đối tác hoặc người chứng thực ký cho bạn, hoặc tệp bạn tạo qua",
+      "upload_note_middle": "Nếu bạn đang gửi bằng chứng của chính mình, hãy dùng tab",
+      "upload_note_suffix": "ở trên — nó sẽ tạo và gửi bằng chứng mà không cần rời ứng dụng."
     },
     "toasts": {
       "agreement_signed": "Thỏa thuận đã được ký kết.",
@@ -663,7 +887,9 @@
       "signature_valid": "Chữ ký hợp lệ (người ký {{signer}})",
       "signature_invalid": "Chữ ký không hợp lệ: {{reason}}",
       "agreement_signed_short": "Thỏa thuận đã được ký kết.",
-      "sign_failed": "Đăng nhập không thành công"
+      "sign_failed": "Đăng nhập không thành công",
+      "cleanup_removed": "Đã xóa {{count}} thỏa thuận",
+      "cleanup_removed_with_failures": "Đã xóa {{count}} thỏa thuận ({{failed}} thất bại)"
     },
     "refund": {
       "blocked_default": "Không rõ khả năng hoàn tiền",
@@ -685,13 +911,26 @@
       "share_text": "Sao chép bản tóm tắt bằng văn bản thuần túy của thỏa thuận này vào khay nhớ tạm",
       "delete_local": "Xóa thỏa thuận này khỏi cửa hàng địa phương của bạn. Bản sao của đối tác không bị ảnh hưởng.",
       "save_friendly_name": "Lưu một tên thân thiện cho thỏa thuận này (được lưu trữ cục bộ)",
-      "verify_signature_file": "Xác minh tệp chữ ký (.sig hoặc .json) theo thỏa thuận này"
+      "verify_signature_file": "Xác minh tệp chữ ký (.sig hoặc .json) theo thỏa thuận này",
+      "cleanup_old_test_data": "Xóa các thỏa thuận có ID chứa test / gossip / demo / pr khỏi kho lưu cục bộ của bạn",
+      "node_offline_sign": "Node phải online để ký",
+      "sign_to_confirm": "Ký thỏa thuận này để xác nhận sự tham gia của bạn",
+      "node_offline_fund": "Node phải online để nạp tiền ký quỹ",
+      "fund_escrow_action": "Khóa số tiền của thỏa thuận vào ký quỹ HTLC",
+      "node_offline_release": "Node phải online để giải phóng tiền",
+      "release_to_counterparty": "Giải phóng tiền cho đối tác",
+      "node_offline_dispute": "Node phải online để mở tranh chấp",
+      "mark_disputed": "Đánh dấu thỏa thuận này là đang tranh chấp — cần chứng thực từ trọng tài để giải quyết",
+      "node_offline_refund": "Node phải online để hoàn tiền",
+      "view_audit": "Xem bản ghi kiểm tra đầy đủ trên chain"
     },
     "buttons": {
       "import_invoice": "Hóa đơn nhập khẩu",
       "import_pack": "Gói nhập khẩu",
       "browse": "Duyệt qua",
-      "delete_agreement": "Xóa thỏa thuận"
+      "delete_agreement": "Xóa thỏa thuận",
+      "cleanup_old_test_data": "Dọn dẹp dữ liệu test cũ ({{count}})",
+      "export_pack": "Xuất gói"
     },
     "page_views": {
       "agreements": "Thỏa thuận",
@@ -744,12 +983,19 @@
       "seller": "Người bán",
       "signer_wallet": "Địa chỉ ví của người ký",
       "role": "Vai trò:",
-      "reason": "Lý do:"
+      "reason": "Lý do:",
+      "agreement_short": "Thỏa thuận",
+      "signer_prefix": "người ký"
     },
     "placeholders": {
       "your_wallet_address": "Địa chỉ ví của bạn",
       "secret_preimage": "Tùy chọn · hệ lục phân 64 ký tự",
-      "dispute_reason": "Mô tả sự cố xảy ra — điều này được chia sẻ với người giải quyết."
+      "dispute_reason": "Mô tả sự cố xảy ra — điều này được chia sẻ với người giải quyết.",
+      "output_pack_path": "/path/to/output.pack.json",
+      "proof_json_path": "/path/to/proof.json",
+      "pack_json_path": "/path/to/agreement.pack.json",
+      "invoice_json_path": "/path/to/invoice.json",
+      "hash_64_hex": "64 ký tự hex"
     },
     "modals": {
       "submit_proof_title": "Gửi bằng chứng",
@@ -757,16 +1003,117 @@
       "import_invoice_title": "Hóa đơn nhập khẩu",
       "open_dispute_title": "Tranh chấp mở?",
       "audit_title": "Kiểm tra thỏa thuận",
-      "sign_title": "Ký thỏa thuận"
+      "sign_title": "Ký thỏa thuận",
+      "delete_confirm_prefix": "Xóa thỏa thuận",
+      "delete_confirm_body": "Hành động này chỉ xóa thỏa thuận khỏi kho lưu cục bộ. Bản sao của đối tác không bị ảnh hưởng. Chỉ những thỏa thuận chưa được nạp tiền (mở/chờ) mới có thể xóa.",
+      "cleanup_title": "Dọn dẹp dữ liệu test cũ",
+      "cleanup_found": "Đã tìm thấy {{count}} thỏa thuận có id chứa test, gossip, demo hoặc pr.",
+      "cleanup_disclaimer": "Hành động này chỉ xóa chúng khỏi kho lưu cục bộ. Bản sao của đối tác không bị ảnh hưởng. Các HTLC đang hoạt động trên chain không bị tác động — tiền vẫn cần được giải phóng hoặc hoàn trả riêng.",
+      "cleanup_remove_count": "Xóa {{count}}",
+      "release_funds_title": "Giải phóng tiền?",
+      "release_funds_body_prefix": "Thao tác này sẽ giải phóng",
+      "release_funds_body_suffix": "cho người bán.",
+      "fund_escrow_title": "Nạp ký quỹ?",
+      "fund_escrow_body_prefix": "Thao tác này sẽ khóa",
+      "fund_escrow_body_suffix": "vào ký quỹ HTLC. Tiền sẽ được giải phóng cho đối tác khi bằng chứng được chấp nhận, hoặc hoàn lại sau thời điểm hết hạn.",
+      "import_pack_format_prefix": "Định dạng được chấp nhận:",
+      "import_pack_format_suffix": "— xuất bởi Bên A",
+      "import_invoice_subtitle": "Chọn một tệp hóa đơn JSON để điền sẵn vào thỏa thuận mới trên trang Settlement."
     },
     "audit": {
-      "fetching": "Đang tìm nạp bản ghi kiểm tra…"
+      "fetching": "Đang tìm nạp bản ghi kiểm tra…",
+      "no_data": "RPC kiểm tra không trả về dữ liệu",
+      "show_raw_json": "Hiện JSON thô",
+      "hide_raw_json": "Ẩn JSON thô"
     },
     "empty": {
       "no_signatures": "Chưa có chữ ký nào được xác minh. Sử dụng nút ở trên để xác minh một.",
       "no_wallet_addresses": "Không có địa chỉ ví",
       "no_disputes": "Không có tranh chấp.",
-      "disputes_offline": "(Nút đang ngoại tuyến - danh sách tranh chấp có thể không có sẵn.)"
+      "disputes_offline": "(Nút đang ngoại tuyến - danh sách tranh chấp có thể không có sẵn.)",
+      "no_agreements_found": "Không tìm thấy thỏa thuận nào",
+      "with_status": "với trạng thái",
+      "matching": "khớp với",
+      "go_to_settlement_cta": "Vào Settlement để tạo thỏa thuận đầu tiên →"
+    },
+    "scope": {
+      "my": "Thỏa thuận của tôi",
+      "all": "Tất cả"
+    },
+    "dialog_titles": {
+      "save_agreement_pack": "Lưu Gói Thỏa thuận",
+      "select_proof_file": "Chọn tệp Bằng chứng (.json)",
+      "select_pack_file": "Chọn Gói Thỏa thuận (.pack.json)",
+      "select_invoice_file": "Chọn tệp Hóa đơn JSON",
+      "select_signature_file": "Chọn tệp Chữ ký"
+    },
+    "timeline": {
+      "created": "Đã tạo",
+      "funded": "Đã nạp tiền",
+      "proof_submitted": "Đã gửi bằng chứng",
+      "released": "Đã giải phóng",
+      "refunded": "Đã hoàn tiền"
+    },
+    "detail_labels": {
+      "template": "Mẫu",
+      "created": "Đã tạo",
+      "deadline": "Hạn chót",
+      "proof_status": "Trạng thái bằng chứng",
+      "release_eligible": "Đủ điều kiện giải phóng",
+      "kind": "Loại",
+      "threshold": "Ngưỡng",
+      "attestors": "Người chứng thực",
+      "parties": "Các bên",
+      "amount": "Số lượng",
+      "payer": "Người trả",
+      "payee": "Người nhận",
+      "outcome": "Kết quả",
+      "satisfied": "Đã thỏa mãn",
+      "reason": "Lý do"
+    },
+    "detail_values": {
+      "none": "không có",
+      "party": "bên",
+      "parties": "các bên"
+    },
+    "sections": {
+      "policy": "Chính sách",
+      "proofs": "Bằng chứng",
+      "timeline": "Dòng thời gian ({{count}} sự kiện)",
+      "proofs_count": "Bằng chứng ({{count}})",
+      "funding_legs": "Nạp tiền ({{count}} nhánh)",
+      "linked_transactions": "Giao dịch liên kết ({{count}})"
+    },
+    "warnings": {
+      "proof_finality_body": "Hãy chờ thêm xác nhận khối trước khi giải phóng — việc tổ chức lại chain có thể đảo ngược bằng chứng.",
+      "open_dispute_body": "Mở tranh chấp đồng nghĩa với việc thỏa thuận cần một trọng tài xem xét bằng chứng từ cả hai bên. Hãy chắc chắn bạn có lý do chính đáng và bằng chứng hỗ trợ trước khi tiếp tục. Hành động này không thể hoàn tác."
+    },
+    "helpers": {
+      "sign_confirms_participation": "Việc ký xác nhận sự tham gia của bạn. Cả hai bên phải ký trước khi nạp tiền.",
+      "sign_modal_body": "Việc ký thỏa thuận này bằng khóa ví của bạn xác nhận sự tham gia của bạn. Cả hai bên phải ký trước khi nạp tiền.",
+      "no_hash_on_file": "Không có hash lưu trữ cho thỏa thuận này — hãy dán hash do đối tác chia sẻ.",
+      "no_file_selected": "Chưa chọn tệp",
+      "secret_auto_loaded": "Đã tự động tải từ kho agreement-secrets cục bộ",
+      "secret_required_hint": "Bắt buộc nếu bạn không tự tạo thỏa thuận này. Để trống nếu ví của bạn tự dẫn xuất.",
+      "use_invoice_hint": "Nhấn Sử dụng Hóa đơn này sẽ chuyển sang Settlement với mẫu OTC đã được điền sẵn. Bạn có thể đổi mẫu, sửa các trường và xác nhận trước khi tạo thỏa thuận.",
+      "signer_unknown": "không xác định",
+      "rejected": "đã từ chối",
+      "role_buyer_suffix": "(người mua)",
+      "role_seller_suffix": "(người bán)",
+      "signer_not_party": "Địa chỉ này không phải người mua hay người bán — chữ ký sẽ được ghi nhận nhưng không có vai trò bên nào."
+    },
+    "form_errors": {
+      "hash_required": "Cần nhập hash thỏa thuận",
+      "proof_type_required": "Hãy chọn loại bằng chứng",
+      "attested_by_required": "Cần địa chỉ chứng thực",
+      "evidence_required": "Mô tả sự việc trong phần Tóm tắt Bằng chứng",
+      "secret_must_be_64_hex": "Phải đúng 64 ký tự hex (0-9, a-f)."
+    },
+    "disputes": {
+      "opened_prefix": "đã mở",
+      "resolved_prefix": "· đã giải quyết",
+      "open_this_agreement": "Mở thỏa thuận này",
+      "agreement_not_in_list": "Thỏa thuận không có trong danh sách hiện tại — hãy thử làm mới chế độ xem Thỏa thuận"
     }
   },
   "settlement": {
@@ -971,14 +1318,72 @@
       "confirm_large_amount": "Bạn sắp khóa {{amount}} IRM trong ký quỹ.\n\nĐây là một số tiền lớn. Xác nhận bạn đã nhập số thập phân chính xác.",
       "remote_label": "xa",
       "remote_tooltip": "Ưu đãi này là của người bán khác và không thể xóa khỏi cửa hàng địa phương của bạn.",
-      "delete_tooltip": "Xóa ưu đãi này khỏi cửa hàng địa phương của bạn"
+      "delete_tooltip": "Xóa ưu đãi này khỏi cửa hàng địa phương của bạn",
+      "modal_title": "Tạo lệnh bán",
+      "modal_subtitle": "Đăng đề nghị lên sổ lệnh — IRM sẽ bị khóa ngay khi người mua nhận.",
+      "post_offer_button": "Đăng đề nghị",
+      "lock_info_prefix": "IRM của bạn bị khóa ngay khi người mua cam kết. Sau đó bạn nhận thanh toán off-chain từ người mua và nhấn",
+      "confirm_received_label": "Xác nhận đã nhận",
+      "lock_info_suffix": "để giải phóng. Hoặc mở tranh chấp nếu họ không trả tiền.",
+      "amount_to_sell_label": "Số IRM cần bán",
+      "price_per_irm_label": "Giá mỗi IRM tính bằng USDT",
+      "buyer_pays_total_prefix": "Người mua trả tổng cộng",
+      "buyer_pays_total_amount": "{{amount}} USDT",
+      "payment_method_label": "Phương thức thanh toán",
+      "your_payment_details_label": "Thông tin thanh toán của bạn",
+      "payment_details_placeholder": "ví dụ IBAN DE89 3704 0044 0532 0130 00 hoặc PayPal: seller@example.com",
+      "payment_details_helper": "Người mua sẽ thấy các thông tin này sau khi nhận đề nghị.",
+      "payment_options": {
+        "bank_transfer": "Chuyển khoản ngân hàng",
+        "paypal": "PayPal",
+        "usdt_trc20": "USDT (TRC-20)",
+        "usdt_erc20": "USDT (ERC-20)",
+        "sepa": "SEPA",
+        "cash": "Tiền mặt",
+        "other": "Khác"
+      },
+      "errors": {
+        "positive_irm_amount": "Nhập số IRM dương",
+        "positive_usdt_price": "Nhập giá USDT dương cho mỗi IRM",
+        "select_payment_method": "Chọn một phương thức thanh toán",
+        "payment_details_required": "Nhập thông tin thanh toán để người mua biết cách trả tiền"
+      },
+      "toasts": {
+        "offer_posted": "Đã đăng đề nghị. IRM sẽ bị khóa ngay khi người mua cam kết."
+      }
     },
     "take_offer": {
       "title": "Nhận ưu đãi",
       "completed_trades": "Giao dịch đã hoàn thành",
       "take_button": "Nhận ưu đãi",
       "taking": "Lấy…",
-      "title_modal": "Nhận ưu đãi này"
+      "title_modal": "Nhận ưu đãi này",
+      "set_buyer_address_first": "Thiết lập địa chỉ người mua trước",
+      "error_agreement_id_missing": "Đã nhận đề nghị nhưng thiếu id thỏa thuận trong phản hồi",
+      "irm_locked_send_payment": "IRM đã được khóa trong ký quỹ. Hãy gửi thanh toán off-chain.",
+      "dispute_reason_buyer_cancelled": "người mua hủy trước khi thanh toán",
+      "dispute_opened_refund_hint": "Đã mở tranh chấp. Bạn có thể yêu cầu hoàn tiền từ trang Thỏa thuận sau khi hết hạn.",
+      "enter_payment_reference": "Nhập id giao dịch hoặc ghi chú để người bán có thể xác minh thanh toán của bạn",
+      "payment_reported_seller_notified": "Đã báo cáo thanh toán. Người bán đã được thông báo.",
+      "step_of_two": "Bước {{step}} trên 2",
+      "step1_intro": "Xác nhận sẽ khóa IRM của người bán trong ký quỹ. Sau đó bạn có một hạn chót để gửi thanh toán off-chain và báo cáo giao dịch.",
+      "you_receive": "Bạn nhận:",
+      "payment_method": "Phương thức thanh toán:",
+      "seller": "Người bán:",
+      "buyer_you": "Người mua (bạn):",
+      "not_set": "- chưa thiết lập -",
+      "cancel": "Hủy",
+      "confirm_take": "Xác nhận nhận",
+      "irm_locked_in_escrow": "IRM đã được khóa trong ký quỹ",
+      "step2_intro": "IRM của người bán đã được khóa. Hãy gửi thanh toán off-chain, sau đó nhập tham chiếu giao dịch bên dưới và nhấn \"Tôi đã gửi thanh toán\".",
+      "sellers_payment_details": "Thông tin thanh toán của người bán",
+      "no_payment_details": "Không có chi tiết trong đề nghị. Hãy liên hệ trực tiếp người bán để biết hướng dẫn thanh toán.",
+      "your_transaction_reference": "Tham chiếu giao dịch của bạn",
+      "payment_reference_placeholder": "Mã wire ngân hàng, txid PayPal, txid blockchain, v.v.",
+      "payment_reference_hint": "Người bán nhìn thấy chính xác chuỗi này. Bất cứ thứ gì họ có thể dùng để xác nhận thanh toán đã đến đều được - mã tham chiếu, id giao dịch, tên người gửi, v.v.",
+      "cancel_opens_dispute_warning": "Nếu bạn hủy ở đây, một tranh chấp sẽ mở. Bạn có thể yêu cầu hoàn tiền sau khi hết hạn từ trang Thỏa thuận.",
+      "cancel_and_dispute": "Hủy và tranh chấp",
+      "i_have_sent_payment": "Tôi đã gửi thanh toán"
     },
     "feeds": {
       "discover_button": "Khám phá nguồn cấp dữ liệu",
@@ -1026,7 +1431,189 @@
     },
     "swap": {
       "fuel_banner_title": "IRM cung cấp sức mạnh cho lớp Thanh toán.",
-      "fuel_banner_body": "Đổi BTC, LTC hoặc DOGE lấy IRM để bắt đầu giao dịch không cần tin tưởng."
+      "fuel_banner_body": "Đổi BTC, LTC hoặc DOGE lấy IRM để bắt đầu giao dịch không cần tin tưởng.",
+      "pair_not_available": "Cặp này chưa khả dụng",
+      "own_order_hint": "Đó là lệnh của chính bạn. Dùng bảng My Swaps bên phải để hủy.",
+      "not_available_yet": "Chưa khả dụng",
+      "how_it_works_title": "Cách swap {{pair}} hoạt động",
+      "how_it_works_step1": "Chọn một lệnh từ sổ bên trái, hoặc đăng lệnh của riêng bạn.",
+      "how_it_works_step2": "IRM của người bán được khóa trong ký quỹ ngay khi lệnh được nhận.",
+      "how_it_works_step3": "Người mua gửi {{quote}} đến địa chỉ của người bán.",
+      "how_it_works_step4": "Sau khi thanh toán xác nhận, IRM tự động được giải phóng cho người mua."
+    },
+    "header": {
+      "subtitle_otc": "OTC ngang hàng. Khóa IRM trong ký quỹ, hoán đổi lấy bất cứ thứ gì.",
+      "subtitle_swap": "Hoán đổi nguyên tử giữa IRM và các chain khác. Không cần tin cậy. Không cầu nối.",
+      "advanced_flows": "Luồng nâng cao",
+      "advanced_flows_tooltip": "Mở các luồng settlement cấp thấp hơn."
+    },
+    "mode_tabs": {
+      "otc": "OTC P2P",
+      "swap": "Hoán đổi giao ngay"
+    },
+    "my_trades": {
+      "title": "Giao dịch của tôi",
+      "tab_active": "Đang hoạt động",
+      "tab_completed": "Đã hoàn tất",
+      "tab_all": "Tất cả",
+      "empty_active": "Không có giao dịch đang hoạt động. Nhận một đề nghị từ sổ lệnh để bắt đầu.",
+      "empty_completed": "Chưa có giao dịch nào hoàn tất.",
+      "empty_all": "Chưa có giao dịch nào. Nhận một đề nghị từ sổ lệnh để bắt đầu.",
+      "side_buy": "MUA",
+      "side_sell": "BÁN"
+    },
+    "trade_status": {
+      "released": "Đã giải phóng",
+      "refunded": "đã hoàn tiền",
+      "expired": "đã hết hạn",
+      "cancelled": "đã hủy",
+      "disputed": "Đang tranh chấp",
+      "confirming": "Đang xác nhận",
+      "locked": "Đã khóa",
+      "proposed": "Đã đề xuất",
+      "drafting": "Đang soạn"
+    },
+    "order_book": {
+      "title": "Sổ lệnh",
+      "create_order": "Tạo lệnh",
+      "offers_count_one": "đề nghị",
+      "offers_count_other": "đề nghị",
+      "offers_count": "đề nghị",
+      "hidden_tooltip_one": "{{count}} đề nghị bị ẩn vì không có giá báo",
+      "hidden_tooltip_other": "{{count}} đề nghị bị ẩn vì không có giá báo",
+      "hidden_tooltip": "{{count}} đề nghị bị ẩn vì không có giá báo",
+      "hidden_suffix": "{{count}} đã ẩn",
+      "show_taken": "Hiện đã nhận",
+      "sort": {
+        "price_asc": "Giá ↑",
+        "price_desc": "Giá ↓",
+        "newest": "Mới nhất",
+        "best_rep": "Uy tín cao nhất"
+      },
+      "updated_ago": "Cập nhật {{time}}",
+      "refreshing": "Đang làm mới…",
+      "refreshing_lower": "đang làm mới…",
+      "empty_prefix": "Chưa có đề nghị nào trong sổ lệnh. Nhấn",
+      "empty_suffix": "để đăng đề nghị đầu tiên.",
+      "col_amount_irm": "Số IRM",
+      "col_price_per_irm": "Giá / IRM",
+      "col_total": "Tổng",
+      "col_payment": "Thanh toán",
+      "col_seller": "Người bán",
+      "col_rep": "Uy tín",
+      "col_age": "Tuổi",
+      "rep_tooltip": "{{stars}} trên 5, {{completed}} đã hoàn thành",
+      "no_reputation": "Chưa có uy tín",
+      "taken": "Đã nhận",
+      "take": "Nhận"
+    },
+    "pair_order_book": {
+      "header_title": "Sổ lệnh {{pair}}",
+      "open_shown_summary": "{{open}} đang mở · {{shown}} đang hiển thị",
+      "updated_label": "đã cập nhật",
+      "new_swap": "Swap mới",
+      "direction_both": "Cả hai",
+      "direction_sell_irm": "Bán IRM",
+      "direction_buy_irm": "Mua IRM",
+      "sort_price_asc": "Giá tốt nhất trước",
+      "sort_price_desc": "Giá cao nhất trước",
+      "sort_recent": "Mới nhất trước",
+      "hide_my_orders": "Ẩn lệnh của tôi",
+      "loading_orders": "Đang tải lệnh {{pair}}…",
+      "empty_state": "Không có lệnh {{pair}} nào đang mở. Hãy là người đầu tiên — đăng một lệnh bằng nút Swap mới ở trên.",
+      "side_sells_irm": "Bán IRM",
+      "side_buys_irm": "Mua IRM",
+      "badge_yours": "Của bạn",
+      "escrow_protected": "Được bảo vệ bởi ký quỹ",
+      "maker_line": "Maker {{address}} · {{ago}}",
+      "needs_confirmations": "Cần {{count}} xác nhận phía {{network}}",
+      "needs_confirmations_plural": "Cần {{count}} xác nhận phía {{network}}",
+      "relative_recent": "gần đây",
+      "relative_just_now": "vừa xong",
+      "relative_blocks_ago": "{{count}} khối trước",
+      "relative_blocks_ago_one": "{{count}} khối trước",
+      "relative_hours_ago": "{{count}} giờ trước",
+      "relative_days_ago": "{{count}} ngày trước"
+    },
+    "resolver_picker": {
+      "title": "Chọn trọng tài",
+      "intro": "Trọng tài là bên thứ ba đã được xác minh, người quyết định ai nhận IRM khi người mua và người bán không thể đồng thuận. Trọng tài nhận một khoản phí nhỏ, được khấu trừ từ số tiền tranh chấp khi giao dịch kết thúc.",
+      "nominated_section_title": "Trọng tài được đề cử cho giao dịch này",
+      "primary_label": "Chính",
+      "fallback_label": "Dự phòng",
+      "fee_with_value": "Phí: {{value}}",
+      "no_nominated_notice": "Giao dịch này được tạo mà không có trọng tài đề cử. Cả hai bên có thể đồng ký một đề cử mới từ luồng tái đề cử trọng tài của ví trước khi bất kỳ trọng tài nào bên dưới có thể hành động.",
+      "available_section_title": "Trọng tài có sẵn",
+      "registry_unreachable": "Endpoint sổ đăng ký trọng tài không thể tiếp cận trên node này ({{error}}). Dùng luồng tái đề cử trọng tài từ ví để khám phá ứng viên trực tiếp qua CLI resolver-list.",
+      "empty_registry_before": "Chưa có trọng tài nào đăng ký trên node này. Trọng tài đăng ký bằng cách gọi",
+      "empty_registry_after": "sau khi địa chỉ của họ đã xuất hiện trong output coinbase gần đây.",
+      "unnamed_resolver": "Trọng tài không tên",
+      "no_reputation_yet": "chưa có uy tín",
+      "agreements_hint": "Dùng trang Thỏa thuận để gửi thêm bằng chứng cho trọng tài và theo dõi quá trình giải quyết tranh chấp. Cả hai bên có thể gửi bằng chứng bất cứ lúc nào trước khi trọng tài quyết định.",
+      "close": "Đóng"
+    },
+    "seller_review": {
+      "toast_released": "Đã giải phóng IRM. Người mua đã có tiền.",
+      "dispute_reason": "người bán chưa nhận được thanh toán off-chain",
+      "toast_dispute_opened": "Đã mở tranh chấp. Một trọng tài sẽ xem xét bằng chứng.",
+      "empty_state": "Không có giao dịch đến nào đang chờ bạn. Khi người mua nhận một trong các đề nghị của bạn và báo cáo thanh toán, nó sẽ hiển thị ở đây.",
+      "section_title": "Giao dịch đến cần xác minh",
+      "waiting_count": "{{count}} đang chờ",
+      "status_releasing": "Đang giải phóng",
+      "status_funded": "Đã nạp tiền",
+      "buyer_label": "Người mua:",
+      "buyer_claims_paid": "Người mua khẳng định đã gửi thanh toán {{time}}",
+      "no_reference": "(không có tham chiếu giao dịch)",
+      "no_payment_yet": "Người mua chưa báo cáo gửi thanh toán. Hãy chờ, hoặc mở tranh chấp nếu đã quá hạn.",
+      "open_dispute_button": "Không có thanh toán - mở tranh chấp",
+      "confirm_release_button": "Xác nhận đã nhận và giải phóng",
+      "loading_trades": "Đang tải giao dịch...",
+      "time_ago_seconds": "{{count}} giây trước",
+      "time_ago_minutes": "{{count}} phút trước",
+      "time_ago_hours": "{{count}} giờ trước",
+      "time_ago_days": "{{count}} ngày trước"
+    },
+    "take_swap": {
+      "buy_irm": "Mua IRM",
+      "sell_irm": "Bán IRM",
+      "toast_no_wallet": "Không có địa chỉ ví Irium đang hoạt động. Hãy mở ví trước.",
+      "toast_min_blocks": "Hạn chót hoàn tiền phải ít nhất 10 khối",
+      "toast_locked_buyer": "Lệnh đã khóa. Hãy gửi thanh toán {{code}} và báo cáo.",
+      "toast_locked_seller": "Lệnh đã khóa. IRM của người bán đang trong ký quỹ.",
+      "toast_need_ref": "Nhập id giao dịch hoặc ghi chú để người bán xác minh thanh toán {{code}} của bạn",
+      "toast_payment_reported": "Đã báo cáo thanh toán. Người bán đã được thông báo.",
+      "toast_dispute_info": "Có thể mở tranh chấp từ trang Thỏa thuận. Hãy hủy ở đây và quay lại đó.",
+      "modal_title": "{{label}} trên {{pair}}",
+      "step_of_2": "Bước {{step}} trên 2",
+      "intro_buyer": "Xác nhận sẽ khóa IRM của người bán trong ký quỹ. Sau đó bạn sẽ gửi {{code}} đến địa chỉ hiển thị tiếp theo.",
+      "intro_seller": "Xác nhận sẽ tạo một ký quỹ tương ứng bằng IRM của bạn. Người mua sẽ gửi {{code}} đến địa chỉ của bạn.",
+      "you_receive": "Bạn nhận",
+      "you_pay": "Bạn trả",
+      "you_send": "Bạn gửi",
+      "price": "Giá",
+      "maker": "Maker",
+      "maker_foreign_address": "Địa chỉ {{code}} của Maker",
+      "needs": "Cần",
+      "confirmation_one": "{{count}} xác nhận {{code}}",
+      "confirmation_other": "{{count}} xác nhận {{code}}",
+      "refund_deadline_label": "Hạn chót hoàn tiền (khối Irium)",
+      "refund_deadline_hint": "Nếu thanh toán không được xác nhận trước hạn chót này, tiền của bạn có thể được hoàn lại.",
+      "cancel": "Hủy",
+      "confirm_action": "Xác nhận {{label}}",
+      "escrow_locked": "Ký quỹ đã khóa",
+      "escrow_locked_buyer": "Hãy gửi thanh toán {{code}} đến địa chỉ bên dưới. Khi thanh toán xác nhận, IRM tự động được giải phóng vào ví của bạn.",
+      "escrow_locked_seller": "IRM của bạn đang trong ký quỹ. Người mua sẽ gửi {{code}} đến địa chỉ của bạn. Khi thanh toán của họ xác nhận, IRM được giải phóng cho họ và luồng người mua tự kết thúc.",
+      "send_to_label": "Gửi {{code}} đến",
+      "exact_amount_label": "Số {{code}} chính xác",
+      "required_memo_label": "Ghi chú thanh toán bắt buộc",
+      "memo_hint": "Hầu hết ví {{name}} đưa cái này vào như một trường dữ liệu phụ trên thanh toán. Nó liên kết thanh toán của bạn với giao dịch này để IRM có thể tự động giải phóng.",
+      "tx_reference_label": "Tham chiếu giao dịch của bạn",
+      "tx_reference_placeholder": "id giao dịch hoặc ghi chú {{code}}",
+      "tx_reference_hint": "Người bán nhìn thấy chính xác chuỗi này. Bất cứ thứ gì họ có thể dùng để xác nhận thanh toán đều được.",
+      "cancel_warning": "Nếu bạn hủy ngay, tiền của bạn sẽ bị khóa cho đến hạn chót hoàn tiền ở trên.",
+      "cancel_and_dispute": "Hủy và tranh chấp",
+      "i_have_sent": "Tôi đã gửi {{code}}",
+      "watching_escrow": "Đang theo dõi ký quỹ"
     }
   },
   "miner": {
@@ -1047,7 +1634,11 @@
       "uptime": "Thời gian hoạt động",
       "difficulty": "Khó khăn",
       "temperature": "Nhiệt độ",
-      "power": "Quyền lực"
+      "power": "Quyền lực",
+      "est_daily_irm": "IRM ước tính/ngày",
+      "na_linux_only": "N/A (chỉ Linux)",
+      "pool_difficulty": "Độ khó pool",
+      "pool_hashrate": "Hashrate pool"
     },
     "buttons": {
       "start_mining": "Bắt đầu khai thác",
@@ -1056,7 +1647,23 @@
       "connect_pool": "Kết nối với hồ bơi",
       "disconnect": "Ngắt kết nối",
       "confirm_disconnect": "Xác nhận ngắt kết nối?",
-      "detect_gpus": "Phát hiện GPU"
+      "detect_gpus": "Phát hiện GPU",
+      "view_wallet": "Xem ví",
+      "starting": "Đang khởi động…",
+      "connecting": "Đang kết nối…",
+      "start_gpu_mining": "Bắt đầu đào GPU",
+      "stop_gpu": "Dừng GPU",
+      "scanning": "Đang quét…",
+      "yes": "Có",
+      "no": "Không",
+      "close": "Đóng",
+      "done": "Xong",
+      "ok": "OK",
+      "start": "Bắt đầu",
+      "stop": "Dừng",
+      "refresh": "Làm mới",
+      "view_pool_stats": "Xem thống kê Pool",
+      "view_pool_stats_tooltip": "Mở thống kê thợ đào trực tiếp của pool công cộng trong Block Explorer"
     },
     "fields": {
       "mining_address_label": "Địa chỉ khai thác",
@@ -1080,21 +1687,49 @@
       "intensity_label": "Cường độ — {{value}}%",
       "intensity_mac_note": "Cường độ được giới hạn ở mức 50% trên macOS để ngăn cơ quan giám sát GPU tiêu diệt hạt nhân giữa đợt. Công cụ khai thác GPU tự động phát hiện các điểm giám sát và dừng lại ngay lập tức nếu nó vẫn nhìn thấy chúng.",
       "pool_preset": "Đặt trước hồ bơi",
-      "stratum_worker_use_wallet": "Use my wallet"
+      "stratum_worker_use_wallet": "Use my wallet",
+      "intensity_hint": "Cường độ cao hơn = nhiều hashrate hơn, tiêu thụ điện nhiều hơn",
+      "core_active_tooltip": "Core {{n}} (đang chạy)",
+      "core_idle_tooltip": "Core {{n}} (rảnh)",
+      "stratum_worker_placeholder": "walletAddress.workerName",
+      "stratum_worker_autofill_tooltip": "Tự động điền: {{address}}.rig1",
+      "stratum_password_hint": "Để trống để dùng \"x\" (mặc định cho hầu hết các pool)"
     },
     "found_blocks": {
       "section_title": "Khối tìm thấy",
       "empty": "Chưa tìm thấy khối nào trong phiên này.",
-      "open_in_explorer_tooltip": "Mở khối này trong Explorer"
+      "open_in_explorer_tooltip": "Mở khối này trong Explorer",
+      "hide_orphans_tooltip": "Ẩn các khối bị thợ đào khác giành mất",
+      "reveal_orphans_tooltip_one": "Hiện {{count}} ứng cử viên bị mồ côi",
+      "reveal_orphans_tooltip_other": "Hiện {{count}} ứng cử viên bị mồ côi",
+      "hide_orphans_button": "Ẩn khối mồ côi ({{count}})",
+      "show_orphans_button": "Hiện khối mồ côi ({{count}})",
+      "all_orphaned": "Chưa có khối nào được xác nhận — tất cả ứng cử viên đến nay đều mồ côi.",
+      "orphaned_tooltip": "Mồ côi — bị thợ đào khác giành",
+      "orphaned_long_tooltip": "Khối chuẩn tại độ cao này đã được thợ đào khác đào — chúng tôi ghi nhận ứng cử viên của mình nhưng đã thua cuộc đua.",
+      "orphaned_badge": "mồ côi",
+      "block_height_tooltip": "Độ cao khối {{height}}",
+      "won_by_another": "Bị thợ đào khác giành",
+      "hash_unavailable": "hash không có sẵn trong bản build miner này",
+      "reward_not_indexed_tooltip": "Phần thưởng chưa được node lập chỉ mục — giá trị sẽ điền khi đã trưởng thành",
+      "reward_unknown_tooltip": "Phần thưởng không xác định — stdout của miner không báo cáo",
+      "estimate_marker": "~ ước tính"
     },
     "shares": {
       "accepted": "Đã chấp nhận",
       "rejected": "Vật bị loại bỏ",
-      "ratio": "Tỷ lệ"
+      "ratio": "Tỷ lệ",
+      "last_share": "Share gần nhất"
     },
     "asic_info": {
       "headline": "Kết nối ASIC hoặc GPU của bạn với nhóm khai thác thông qua Stratum",
-      "after_install": "Sau khi cài đặt, khởi động lại Irium Core."
+      "after_install": "Sau khi cài đặt, khởi động lại Irium Core.",
+      "external_title": "Đào pool bằng ASIC hoặc GPU bên ngoài",
+      "external_body_before_url": "Trỏ phần mềm đào ASIC hoặc GPU trực tiếp vào URL pool ở trên (ví dụ ",
+      "external_body_after_url": "). Irium Core giám sát thống kê share phía pool hiển thị tại đây; hashrate cục bộ của phần cứng do chính miner báo cáo.",
+      "connect_button_intro_before": "Nút ",
+      "connect_button_intro_middle": " bên dưới bắt đầu đào pool bằng CPU của bạn qua sidecar ",
+      "connect_button_intro_after": " đi kèm — chỉ hữu ích nếu bạn cũng muốn máy này đóng góp hashrate CPU cho pool. ASIC bên ngoài không cần nút này."
     },
     "toasts": {
       "miner_started": "Công cụ khai thác CPU đã bắt đầu",
@@ -1114,17 +1749,42 @@
       "connecting_to_pool": "Đang kết nối với hồ bơi…",
       "pool_disconnected_reconnecting": "Nhóm bị ngắt kết nối - đang kết nối lại…",
       "pool_connection_lost": "Kết nối bể bơi bị mất. Vui lòng kết nối lại.",
-      "pool_error": "Lỗi nhóm: {{message}}"
+      "pool_error": "Lỗi nhóm: {{message}}",
+      "no_device_selected": "Chưa chọn thiết bị — dùng thiết bị mặc định 0",
+      "solo_listening_on": "Solo Stratum đang lắng nghe trên {{addr}}",
+      "solo_failed_start": "Không khởi động được Solo Stratum",
+      "solo_stopped": "Đã dừng Solo Stratum",
+      "solo_failed_stop": "Không dừng được Solo Stratum",
+      "copied": "Đã sao chép"
     },
     "page_subtitle": "SHA-256d · CPU · GPU · Hỗ trợ nhóm ASIC",
     "tooltips": {
       "copy_address": "Sao chép địa chỉ",
-      "copy_full_hash": "Sao chép toàn bộ hàm băm"
+      "copy_full_hash": "Sao chép toàn bộ hàm băm",
+      "copy": "Sao chép"
     },
     "pool_configuration": "Cấu hình nhóm",
     "opencl": {
       "detected_title": "Đã phát hiện phần cứng OpenCL",
-      "none_detected": "Không phát hiện thấy GPU hỗ trợ OpenCL"
+      "none_detected": "Không phát hiện thấy GPU hỗ trợ OpenCL",
+      "no_gpu_idle_message": "Không phát hiện GPU tương thích — xem mục Cấu hình bên dưới",
+      "select_platform": "Chọn nền tảng và bắt đầu đào",
+      "no_compatible_gpu": "Không phát hiện GPU tương thích",
+      "install_drivers_before": "Đào GPU cần OpenCL runtime. Cài driver của hãng GPU của bạn (NVIDIA, AMD hoặc Intel OpenCL SDK) và nhấn ",
+      "install_drivers_after": ".",
+      "supports_pool_and_solo": "Sau khi kích hoạt, GPU miner hỗ trợ cả đào pool (Stratum) lẫn đào solo (RPC node trực tiếp).",
+      "read_docs": "Đọc tài liệu GPU Miner",
+      "no_platforms_found": "Không tìm thấy nền tảng OpenCL nào.",
+      "install_icd_before": "Cài driver GPU và ICD loader, rồi nhấn ",
+      "install_icd_after": " lại.",
+      "platform_n": "Nền tảng {{n}}",
+      "discrete_gpu": "GPU rời",
+      "device_n": "Thiết bị {{n}}",
+      "fix_intro": "Để khắc phục, cài driver OpenCL cho GPU của bạn:",
+      "fix_nvidia": "Cài lại driver GPU từ nvidia.com",
+      "fix_amd": "Cài AMD Software Adrenalin từ amd.com",
+      "fix_intel": "Cài Intel Graphics Driver từ intel.com",
+      "scanning": "Đang quét thiết bị OpenCL…"
     },
     "unexpected_exit": {
       "title": "Miner stopped unexpectedly",
@@ -1133,6 +1793,75 @@
       "restart_cpu": "Restart CPU Miner",
       "restart_gpu": "Restart GPU Miner",
       "dismiss": "Dismiss"
+    },
+    "activity": {
+      "share_accepted": "Share được chấp nhận",
+      "share_rejected": "Share bị từ chối",
+      "share_rejected_with_detail": "Share bị từ chối — {{detail}}",
+      "pool_error": "Lỗi pool",
+      "pool_error_with_detail": "Lỗi pool — {{detail}}",
+      "mining_active": "Đang đào",
+      "block_hash_marker": "· khối #{{height}}",
+      "section_title": "Hoạt động gần đây",
+      "last_count": "{{count}} gần nhất",
+      "waiting_for_first_share": "Đang chờ share đầu tiên…"
+    },
+    "status": {
+      "loading": "Đang tải…",
+      "mining_active": "Đang đào",
+      "mining_active_syncing": "Đang đào — Đồng bộ khối…",
+      "cpu_idle": "CPU rảnh",
+      "gpu_active": "GPU hoạt động",
+      "gpu_idle": "GPU rảnh",
+      "pool_connected": "Pool đã kết nối",
+      "pool_disconnected": "Pool đã ngắt kết nối",
+      "live_badge": "Trực tiếp",
+      "syncing_badge": "Đang đồng bộ"
+    },
+    "sync": {
+      "node_syncing_height": "Node đang đồng bộ — độ cao {{localHeight}} / mạng {{networkTip}}",
+      "warming_up_header": "Đang khởi động thợ đào — chờ tốc độ share đầu tiên…",
+      "node_syncing_body": "Node vẫn đang đuổi kịp đỉnh mạng. Đào đã bật nhưng không share nào được chấp nhận cho đến khi chain cục bộ khớp. Việc này thường xong trong vài phút.",
+      "warming_up_body": "Sidecar miner đã khởi động. Chỉ số hashrate đầu tiên sẽ xuất hiện trong 1-3 giây — không cần thao tác."
+    },
+    "block_info": {
+      "mining_block_n": "Đào khối #{{height}}",
+      "previous_block": "Khối trước",
+      "last_confirmed_block": "khối đã xác nhận gần nhất",
+      "network_difficulty": "Độ khó mạng"
+    },
+    "solo": {
+      "title": "Cầu nối Solo Stratum",
+      "subtitle": "Chạy ASIC vào iriumd của riêng bạn. Không phí pool, không phụ thuộc pool.",
+      "listening": "Đang lắng nghe",
+      "stopped": "Đã dừng",
+      "listen_address_label": "Địa chỉ lắng nghe",
+      "listen_default_before": "Mặc định ",
+      "listen_default_after": " gắn vào mọi interface để ASIC trong LAN của bạn có thể truy cập.",
+      "asic_connection_string": "Chuỗi kết nối ASIC",
+      "bullet_replace_host_before": "• Thay ",
+      "bullet_replace_host_after": " bằng IP LAN của máy bạn (hoặc IP VPS).",
+      "bullet_worker_username_before": "• Worker username: Q-address của bạn theo sau bởi ",
+      "bullet_worker_username_after": ". Password: chuỗi bất kỳ.",
+      "bullet_bridge_serves_before": "• Cầu nối phục vụ ",
+      "bullet_bridge_serves_middle": " & ",
+      "bullet_bridge_serves_after": " trên iriumd cục bộ của bạn."
+    },
+    "found_block_banner": {
+      "title": "Đã đào được khối #{{height}}!",
+      "body": "Thợ đào {{kind}} của bạn vừa thắng cuộc đua mạng — 50 IRM đang trên đường tới (trưởng thành sau 100 khối).",
+      "dismiss_aria": "Bỏ qua"
+    },
+    "tabs_v2": {
+      "cpu": "CPU Miner",
+      "gpu": "GPU Miner",
+      "stratum": "Pool / Stratum",
+      "solo": "Solo Stratum"
+    },
+    "pool_presets": {
+      "irium_official_cpu_gpu": "Pool chính thức Irium (CPU/GPU)",
+      "irium_official_asic": "Pool chính thức Irium (ASIC)",
+      "custom": "Tùy chỉnh"
     }
   },
   "onboarding": {
@@ -1162,7 +1891,8 @@
       "generating": "Đang tạo ví…",
       "show_recovery": "Hiển thị cụm từ khôi phục",
       "i_wrote_it_down": "Tôi đã viết nó ra",
-      "continue_to_wallet": "Tiếp tục tới Ví"
+      "continue_to_wallet": "Tiếp tục tới Ví",
+      "generating_sub": "Đang tạo ví BIP32 HD với seed phrase 24 từ…"
     },
     "import": {
       "tab_mnemonic": "Cụm từ khôi phục",
@@ -1199,6 +1929,153 @@
       "too_short": "Password must be at least 4 characters",
       "required": "Password is required",
       "continue": "Continue"
+    },
+    "splash": {
+      "subtitle_full_node": "VÍ DESKTOP FULL NODE",
+      "status_initializing": "Đang khởi tạo runtime…",
+      "status_loading_crypto": "Đang tải mô-đun mã hóa…",
+      "status_verifying_binary": "Đang xác minh tính toàn vẹn binary…",
+      "status_establishing_context": "Đang thiết lập ngữ cảnh bảo mật…",
+      "status_ready": "Sẵn sàng"
+    },
+    "rail": {
+      "system_check": "Kiểm tra hệ thống",
+      "bootstrap": "Bootstrap",
+      "network_sync": "Đồng bộ mạng",
+      "wallet_setup": "Thiết lập ví",
+      "backup_secure": "Sao lưu & Bảo mật"
+    },
+    "binary_check": {
+      "subtitle": "Đang xác minh các binary node bắt buộc có trên máy này.",
+      "iriumd_desc": "Daemon full node",
+      "irium_wallet_desc": "CLI ví & marketplace",
+      "irium_miner_desc": "CPU miner",
+      "all_verified": "Đã xác minh tất cả binary. Đang tiếp tục…",
+      "missing_binaries": "Thiếu binary. Đặt tệp thực thi vào src-tauri/binaries/",
+      "retry": "Thử lại",
+      "skip_advanced": "Bỏ qua (nâng cao)"
+    },
+    "bootstrap": {
+      "subtitle": "Đang cấu hình seed node, trust anchor và khối genesis.",
+      "creating_data_dir": "Đang tạo thư mục dữ liệu…",
+      "writing_seedlist": "Đang ghi seedlist.txt bootstrap…",
+      "writing_static_peers": "Đang ghi static_peers.txt…",
+      "installing_anchors": "Đang cài đặt anchors.json genesis…",
+      "installing_trust_signatures": "Đang cài đặt chữ ký tin cậy…",
+      "complete": "Cấu hình bootstrap hoàn tất.",
+      "error_prefix": "Lỗi",
+      "skip_continue": "Bỏ qua (vẫn tiếp tục)"
+    },
+    "network_sync": {
+      "subtitle": "Đang tải dữ liệu blockchain cục bộ và kết nối mạng P2P Irium.",
+      "port_in_use_message": "Cổng 38291 đã được sử dụng. Có thể một node Irium khác đang chạy nền. Kiểm tra khay hệ thống xem có Irium Core đang chạy không, hoặc mở Task Manager và kết thúc các tiến trình iriumd.exe, sau đó khởi động lại ứng dụng.",
+      "add_peer_format_error": "Dùng định dạng IP:PORT (ví dụ 1.2.3.4:38291)",
+      "add_peer_rejected": "Node đã từ chối địa chỉ",
+      "add_peer_unreachable": "Không thể tiếp cận node",
+      "starting_iriumd": "Đang khởi động iriumd…",
+      "loading_blockchain_data": "Đang tải dữ liệu blockchain…",
+      "starting_node": "Đang khởi động node…",
+      "discovering": "đang khám phá…",
+      "searching_for_peers": "Đang tìm peer trên mạng Irium",
+      "checking_connectivity": "Đang kiểm tra kết nối mạng…",
+      "network_reachable": "Mạng truy cập được — đang khởi động node…",
+      "port_blocked_title": "Cổng 38291 có vẻ đang bị chặn outbound",
+      "port_blocked_body_before": "Không thể tiếp cận mạng Irium. Kiểm tra router hoặc tường lửa — cổng",
+      "port_blocked_body_after": "phải được mở cho kết nối TCP outbound.",
+      "restarting_node": "Đang khởi động lại node…",
+      "retry_connection": "Thử lại kết nối",
+      "still_connecting_title": "Vẫn đang kết nối peer…",
+      "still_connecting_body": "Node đang tiếp cận mạng Irium. Việc này thường hoàn tất trong 30 giây — hãy kiên nhẫn.",
+      "connecting_for": "Đang kết nối trong {{seconds}} giây…",
+      "add_peer_manually": "Thêm peer thủ công",
+      "add_peer_button": "Thêm peer",
+      "added_peer": "đã thêm {{addr}}",
+      "continuing_in": "Tiếp tục sau {{seconds}} giây…",
+      "syncing_background": "Đang đồng bộ ngầm…",
+      "continue_anyway": "Vẫn tiếp tục →"
+    },
+    "wallet_setup_subtitle": "Tạo ví HD mới hoặc khôi phục từ ví hiện có.",
+    "wallet_setup_errors": {
+      "failed_create": "Tạo ví thất bại",
+      "no_wallet_pending": "Không có ví nào chờ mã hóa",
+      "failed_set_password": "Đặt mật khẩu ví thất bại",
+      "import_failed": "Nhập thất bại"
+    },
+    "wallet_password": {
+      "title": "Đặt mật khẩu ví",
+      "subtitle": "Mã hóa tệp ví của bạn. Bắt buộc trước khi tiếp tục.",
+      "placeholder": "Chọn mật khẩu mạnh (8+ ký tự)",
+      "confirm_placeholder": "Xác nhận mật khẩu",
+      "warning": "Mật khẩu này không thể khôi phục nếu bị quên. Viết ra và cất giữ an toàn. Seed phrase là cách duy nhất để khôi phục ví mà không cần mật khẩu này.",
+      "continue": "Mã hóa & Tiếp tục",
+      "too_short": "Mật khẩu phải có ít nhất 8 ký tự",
+      "mismatch": "Mật khẩu không khớp",
+      "encrypting": "Đang mã hóa ví…",
+      "encrypting_sub": "Đang áp dụng khóa dẫn xuất từ PBKDF2 cho tệp ví.",
+      "hide": "ẩn",
+      "show": "hiện"
+    },
+    "wallet_restored_sub": "Ví của bạn đã được nhập thành công.",
+    "restored": {
+      "primary_address": "Địa chỉ chính",
+      "address_pending": "Địa chỉ sẽ xuất hiện trên Dashboard khi node đồng bộ xong.",
+      "additional_addresses": "Tìm thấy {{count}} địa chỉ bổ sung",
+      "balance_will_load": "Số dư và lịch sử giao dịch của bạn sẽ tự động tải trên Dashboard khi node đồng bộ.",
+      "continue_to_dashboard": "Tiếp tục đến Dashboard"
+    },
+    "import_form": {
+      "subtitle": "Chọn phương thức khôi phục bên dưới.",
+      "tab_mnemonic_label": "Seed phrase",
+      "tab_wif_label": "Khóa WIF",
+      "tab_privkey_label": "Khóa riêng tư",
+      "mnemonic_placeholder": "từ1 từ2 từ3 … từ24",
+      "mnemonic_hint": "Mnemonic BIP32 — 12 hoặc 24 từ cách nhau bởi khoảng trắng",
+      "wif_placeholder": "5Jxx… hoặc Kxx… hoặc Lxx…",
+      "wif_hint": "Wallet Import Format (khóa riêng tư mã hóa Base58Check)",
+      "privkey_placeholder": "0x1a2b3c4d… (64 ký tự hex)",
+      "privkey_hint": "Khóa riêng tư thô 256-bit ở dạng hex",
+      "back": "Quay lại",
+      "importing": "Đang nhập…"
+    },
+    "choose": {
+      "create_description": "Tạo ví BIP32 HD mới với seed phrase 24 từ.",
+      "import_description": "Khôi phục qua seed phrase, khóa WIF hoặc khóa riêng tư thô."
+    },
+    "backup": {
+      "field_address_label": "Địa chỉ ví",
+      "field_wif_label": "Khóa WIF",
+      "field_mnemonic_label": "Cụm khôi phục (24 từ)",
+      "field_wif_warning": "WIF là khóa riêng tư của bạn ở dạng di động. Bất kỳ ai có nó đều kiểm soát tiền tại địa chỉ này.",
+      "field_mnemonic_warning": "Viết 24 từ này theo đúng thứ tự. Không thể khôi phục nếu mất.",
+      "copy": "Sao chép",
+      "copied": "Đã sao chép!",
+      "hide": "Ẩn",
+      "reveal": "Hiện",
+      "click_to_reveal": "Nhấn để hiện",
+      "confirm_address": "Tôi đã lưu địa chỉ ví",
+      "confirm_wif": "Tôi đã lưu khóa WIF an toàn",
+      "confirm_mnemonic": "Tôi đã viết cụm khôi phục ra giấy offline",
+      "loading": "Đang tải…",
+      "wif_read_failed": "(đọc WIF thất bại — dùng bảng Bảo mật sau khi khởi chạy",
+      "shown_once_before": "Thông tin này chỉ hiển thị",
+      "shown_once_emphasis": "một lần duy nhất",
+      "shown_once_after": ". Lưu trữ mọi thứ offline trước khi tiếp tục.",
+      "critical_warning_strong": "Bạn sẽ không thể khôi phục ví",
+      "critical_warning_body": "nếu mất cụm khôi phục hoặc khóa WIF. Irium Core không có sao lưu đám mây. Hãy viết tất cả ra ngay bây giờ.",
+      "items_confirmed": "{{count}} trên {{total}} mục đã xác nhận",
+      "launch_dashboard": "Khởi chạy Dashboard",
+      "confirm_all_to_continue": "Xác nhận cả 4 mục để tiếp tục"
+    },
+    "welcome_screen": {
+      "welcome_to": "Chào mừng đến với",
+      "tagline": "Ví desktop full-node cho blockchain Irium. Gửi, nhận, giao dịch và settlement — tất cả ngang hàng, tất cả on-chain.",
+      "wizard_intro": "Trình hướng dẫn này sẽ cấu hình node, đồng bộ chain và tạo hoặc khôi phục ví của bạn.",
+      "chip_full_node": "Full Node",
+      "chip_hd_wallet": "Ví HD",
+      "chip_p2p_trade": "Giao dịch P2P",
+      "chip_on_chain_settlement": "Settlement on-chain",
+      "chip_privacy_first": "Quyền riêng tư hàng đầu",
+      "get_started": "Bắt đầu"
     }
   },
   "reputation": {
@@ -1426,7 +2303,26 @@
       "hashrate_avg_window": "Trung bình {{minutes}}phút",
       "confidence_low": "Độ tin cậy thấp",
       "confidence_medium": "Độ tin cậy trung bình",
-      "confidence_high": "Độ tin cậy cao"
+      "confidence_high": "Độ tin cậy cao",
+      "asic_port_with_443": "cổng {{port}} + 443",
+      "active_miners": "Thợ đào đang hoạt động",
+      "worker_count_one": "{{count}} worker",
+      "worker_count_other": "{{count}} workers",
+      "your_miners_pinned": "Thợ đào của bạn được ghim lên đầu",
+      "hide_offline": "Ẩn offline ({{count}})",
+      "show_offline": "Hiện thợ đào offline ({{count}})",
+      "no_miners_reporting": "Không có thợ đào nào đang báo cáo.",
+      "col_worker": "Worker",
+      "col_accepted": "Chấp nhận",
+      "col_rejected_15m": "Từ chối (15 phút)",
+      "col_rejected_15m_tooltip": "Share bị từ chối chỉ trong 15 phút gần nhất. Tổng tích lũy (kể từ khi khởi động lại stratum) khiến worker hiển thị tổng bùng phát khởi động cũ ngay cả sau khi đã phục hồi.",
+      "col_reject_pct_15m": "% từ chối (15 phút)",
+      "col_reject_pct_15m_tooltip": "Tỷ lệ từ chối lăn trong 15 phút gần nhất. Tỷ lệ tích lũy từ khi khởi động lại khiến worker bị mắc kẹt ở giai đoạn bùng phát khởi động ngay cả sau khi đã phục hồi.",
+      "col_hashrate_15m": "Hashrate (15 phút)",
+      "col_blocks": "Khối",
+      "col_blocks_tooltip": "Số khối worker này tìm được tại pool. Được điền bởi stats-proxy; hiển thị '—' cho đến khi proxy cập nhật số khối theo worker.",
+      "col_last_share": "Share gần nhất",
+      "yours_badge": "của bạn"
     },
     "richlist": {
       "title": "Những người nắm giữ IRM hàng đầu",
@@ -1464,7 +2360,8 @@
       "load_more_loading": "Đang tải 500 hàng đầu…",
       "load_error": "Không tải được danh sách phong phú: {{reason}}",
       "empty": "Chưa có số dư P2PKH trên chuỗi.",
-      "node_offline_hint": "Bắt đầu nút trên Bảng điều khiển để tải danh sách phong phú."
+      "node_offline_hint": "Bắt đầu nút trên Bảng điều khiển để tải danh sách phong phú.",
+      "sr_total_supply": "{{total}} IRM ngữ cảnh tổng cung cho trình đọc màn hình"
     },
     "solo_pool": {
       "title": "Solo Pool",
@@ -1503,6 +2400,63 @@
       "blocks_per_day_suffix": "block/ngày",
       "irm_per_day_suffix": "IRM/ngày",
       "disclaimer": "Chỉ ước tính — thu nhập thực tế phụ thuộc vào may mắn, phí pool và thay đổi độ khó. Máy tính sử dụng hashrate mạng trực tiếp, làm mới mỗi 60 giây."
+    },
+    "mining_overview": {
+      "title": "Tổng quan đào mạng",
+      "subtitle": "Một màn hình tổng quan về mạng, pool và việc đào của bạn. Làm mới mỗi 30 giây.",
+      "network_summary": "Tóm tắt mạng",
+      "pool_mining": "Đào pool",
+      "your_mining": "Đào của bạn",
+      "network_hashrate": "Hashrate mạng",
+      "difficulty": "Độ khó",
+      "avg_block_time": "Thời gian khối TB",
+      "est_active_miners": "Thợ đào ước tính",
+      "network_wide_estimate": "ước tính toàn mạng",
+      "pool_hashrate": "Hashrate pool",
+      "estimate_sub": "ước tính",
+      "active_pool_miners": "Thợ đào pool đang hoạt động",
+      "pool_blocks_found": "Khối pool đã tìm được",
+      "all_time": "toàn thời gian",
+      "pool_share": "Pool / Mạng",
+      "share_of_network_hashrate": "tỷ lệ hashrate mạng",
+      "your_hashrate": "Hashrate của bạn",
+      "collecting": "đang thu thập…",
+      "pool_workers_one": "{{count}} pool worker",
+      "pool_workers_other": "{{count}} pool workers",
+      "mode": "Chế độ",
+      "mode_pool": "Pool",
+      "mode_solo": "Solo",
+      "not_mining": "không đào",
+      "connected_via_stratum": "kết nối qua stratum",
+      "direct_to_local_node": "trực tiếp tới node cục bộ",
+      "on_pool": "trên pool.iriumlabs.org",
+      "on_solo_bridge": "trên cầu nối solo-stratum",
+      "accepted_shares": "Share đã chấp nhận",
+      "none": "không có",
+      "pool_lifetime": "pool, trọn đời",
+      "last_share": "Share gần nhất",
+      "blocks_you_found": "Khối bạn đã tìm",
+      "from_pool_worker": "từ pool worker",
+      "this_session": "phiên này",
+      "pool_blocks_today": "Khối Pool Hôm Nay",
+      "today": "hôm nay"
+    },
+    "relative_time": {
+      "just_now": "vừa xong",
+      "seconds_ago_one": "{{count}} giây trước",
+      "seconds_ago_other": "{{count}} giây trước",
+      "minutes_ago_one": "{{count}} phút trước",
+      "minutes_ago_other": "{{count}} phút trước",
+      "hours_ago_one": "{{count}} giờ trước",
+      "hours_ago_other": "{{count}} giờ trước",
+      "days_ago_one": "{{count}} ngày trước",
+      "days_ago_other": "{{count}} ngày trước"
+    },
+    "founder_card": {
+      "title": "Địa chỉ Vesting của Người sáng lập",
+      "description": "Địa chỉ này giữ 3.500.000 IRM bị khóa qua timelock CLTV tại genesis. Số dư hiển thị là 0 vì tiền bị khóa dùng script đặc biệt không được tính vào số dư khả dụng.",
+      "unlocks_at": "Mở khóa tại khối #{{height}}",
+      "blocks_remaining": "(~{{count}} khối còn lại)"
     }
   },
   "help": {
@@ -2146,7 +3100,10 @@
       "errors": {
         "buyer_required": "Nhập địa chỉ Irium của người mua.",
         "amount_required": "Nhập số IRM bạn muốn khóa.",
-        "receiving_required": "Cho người mua biết bạn mong đợi gì đáp lại."
+        "receiving_required": "Cho người mua biết bạn mong đợi gì đáp lại.",
+        "no_agreement_id": "Tạo thỏa thuận không trả về id",
+        "fund_after_create_failed": "Đã tạo thỏa thuận nhưng nạp tiền thất bại. Mở trang Thỏa thuận để thử lại.",
+        "payment_ref_required": "Nhập tham chiếu giao dịch để người bán có thể xác minh thanh toán của bạn."
       },
       "review": {
         "you_lock": "Bạn đang khóa",
@@ -2154,7 +3111,14 @@
         "deadline": "Thời hạn",
         "deadline_value": "Nếu không thanh toán trong {{hours}} giờ, IRM của bạn sẽ trở lại tự động.",
         "lock_funds": "Khóa tiền",
-        "tx_note": "Việc này sẽ tạo một giao dịch trên blockchain Irium."
+        "tx_note": "Việc này sẽ tạo một giao dịch trên blockchain Irium.",
+        "you_lock_short": "Bạn khóa",
+        "buyer_pays_you": "Người mua trả bạn",
+        "payment_deadline": "Hạn chót thanh toán",
+        "hours_from_now": "{{hours}} giờ kể từ bây giờ",
+        "buyer_address": "Địa chỉ người mua",
+        "lock_my_irm": "Khóa IRM của tôi",
+        "tx_broadcast_note": "Một giao dịch blockchain sẽ được phát. Việc này có thể mất chút thời gian để xác nhận."
       },
       "share": {
         "title": "Chia sẻ với người mua",
@@ -2174,7 +3138,25 @@
         "receiving_placeholder": "ví dụ: 200 USDT, chuyển khoản ngân hàng, tiền mặt",
         "deadline_label": "Giao dịch này nên mở trong bao lâu?",
         "deadline_helper": "Nếu họ không thanh toán trong thời gian này, IRM của bạn sẽ trở lại tự động.",
-        "release_button": "Tôi đã nhận thanh toán — giải phóng tiền cho người mua"
+        "release_button": "Tôi đã nhận thanh toán — giải phóng tiền cho người mua",
+        "buyer_address_short_label": "Địa chỉ người mua",
+        "buyer_address_helper": "Địa chỉ nhận IRM khi bạn xác nhận người mua đã trả tiền.",
+        "amount_label_short": "Số IRM cần bán",
+        "amount_helper_short": "Được giữ trong ký quỹ cho đến khi bạn xác nhận thanh toán của người mua.",
+        "receiving_label_short": "Bạn nhận lại gì",
+        "receiving_placeholder_detailed": "ví dụ 50 USDT qua chuyển khoản SEPA",
+        "deadline_label_short": "Hạn chót để người mua thanh toán",
+        "deadline_helper_refund": "Nếu thanh toán không đến trước hạn chót, bạn có thể yêu cầu hoàn tiền.",
+        "locked_hero_title": "IRM của bạn đã được khóa và bảo vệ",
+        "locked_hero_body": "Người mua không thể lấy nếu bạn không xác nhận. Chia sẻ mã giao dịch bên dưới để họ tham gia, rồi chờ thanh toán.",
+        "share_code_title": "Chia sẻ mã giao dịch này",
+        "share_code_body": "Người mua dán mã này vào ví của họ để tham gia giao dịch.",
+        "header1_title": "Thiết lập giao dịch bán",
+        "header1_subtitle": "Cho chúng tôi biết người mua là ai và bạn muốn bán bao nhiêu IRM.",
+        "header2_title": "Xem lại và khóa",
+        "header2_subtitle": "Xác nhận các chi tiết. Khóa sẽ gửi IRM vào ký quỹ.",
+        "header3_title": "Giao dịch của bạn đang hoạt động",
+        "header3_subtitle": "Chia sẻ mã giao dịch với người mua và chờ thanh toán."
       },
       "buying": {
         "step2_title": "Dán mã giao dịch từ người bán",
@@ -2193,12 +3175,42 @@
         "status_waiting": "Đang chờ người bán xác nhận đã nhận thanh toán.",
         "status_releasing": "Đã xác nhận thanh toán — IRM đang trên đường đi.",
         "status_complete": "Hoàn thành — IRM đã đến wallet của bạn.",
-        "view_agreements": "Xem trong agreement"
+        "view_agreements": "Xem trong agreement",
+        "review_commit_intro": "Xác nhận chi tiết giao dịch bên dưới. Khi tiếp tục, bạn cam kết với giao dịch này. Sau bước này, hãy gửi thanh toán off-chain cho người bán và báo cáo nó từ màn hình tiếp theo.",
+        "seller_is_locking": "Người bán đang khóa",
+        "seller_short_label": "Người bán",
+        "details_did_not_load": "Chi tiết giao dịch không tải được. Bạn vẫn có thể tiếp tục, nhưng hãy xác minh số IRM với người bán trước khi trả tiền.",
+        "continue_and_link": "Tiếp tục và liên kết",
+        "trade_complete_title": "Giao dịch hoàn tất",
+        "trade_complete_body": "IRM đã đến ví của bạn.",
+        "seller_locked_for_you_title": "IRM của người bán đã được khóa cho bạn",
+        "seller_locked_for_you_body": "Gửi thanh toán off-chain cho người bán, sau đó báo cáo tham chiếu giao dịch của bạn bên dưới.",
+        "report_payment_title": "Báo cáo thanh toán của bạn",
+        "report_payment_body": "Sau khi gửi thanh toán off-chain, dán bất kỳ tham chiếu nào mà người bán có thể dùng để xác nhận đã nhận - mã wire ngân hàng, id giao dịch PayPal, v.v.",
+        "report_payment_placeholder": "Mã wire ngân hàng, txid PayPal, txid blockchain, v.v.",
+        "cancel_open_dispute": "Hủy và mở tranh chấp",
+        "payment_reported": "Đã báo cáo thanh toán",
+        "i_have_sent_payment": "Tôi đã gửi thanh toán",
+        "header1_title": "Dán mã giao dịch của người bán",
+        "header1_subtitle": "Người bán sẽ gửi cho bạn một mã sau khi họ khóa IRM.",
+        "header2_title": "Xem lại giao dịch",
+        "header2_subtitle": "Đảm bảo số lượng và người bán khớp với những gì bạn mong đợi.",
+        "header3_title": "Giao dịch của bạn đang hoạt động",
+        "header3_subtitle": "Gửi thanh toán off-chain, sau đó báo cáo để người bán có thể giải phóng IRM."
       },
       "fuel_banner_title": "Bạn cần IRM để tạo thanh toán.",
       "fuel_banner_prefix": "Đi tới",
       "fuel_banner_link": "Thị trường → Hoán đổi Spot",
-      "fuel_banner_suffix": "để có được IRM trước."
+      "fuel_banner_suffix": "để có được IRM trước.",
+      "toast_buyer_linked": "Phía bạn đã được liên kết với giao dịch. Hãy gửi thanh toán off-chain cho người bán.",
+      "toast_payment_reported": "Đã báo cáo thanh toán. Đang chờ người bán xác nhận.",
+      "toast_dispute_opened": "Đã mở tranh chấp. Một trọng tài sẽ xem xét bằng chứng.",
+      "dispute_reason_buyer": "người mua không thể hoàn thành giao dịch",
+      "choose_selling_title": "Tôi đang bán IRM",
+      "choose_selling_body": "Khóa IRM của bạn trong ký quỹ. Người mua trả off-chain, sau đó bạn giải phóng.",
+      "choose_buying_title": "Tôi đang mua IRM",
+      "choose_buying_body": "Dán mã giao dịch của người bán. Gửi thanh toán cho họ, sau đó xác nhận để nhận IRM.",
+      "view_resolvers": "Xem trọng tài có sẵn"
     },
     "pay_for_work": {
       "step1_title": "Thanh toán một lần hay theo mốc?",
@@ -2250,7 +3262,12 @@
       "claim_refund": "Yêu cầu hoàn tiền",
       "toast_released": "Đã giải phóng thanh toán cho nhà thầu.",
       "toast_release_pending": "Đã ghi lại hoàn thành. Tiền sẽ giải phóng sau khi xác nhận vài block tiếp theo.",
-      "toast_refunded": "Đã yêu cầu hoàn tiền — tiền đang trở lại wallet của bạn."
+      "toast_refunded": "Đã yêu cầu hoàn tiền — tiền đang trở lại wallet của bạn.",
+      "toast_fund_failed": "Đã tạo thỏa thuận nhưng nạp tiền thất bại. Tìm nó trong trang Thỏa thuận để thử nạp lại.",
+      "which_milestone": "Cột mốc nào?",
+      "milestone_option": "Cột mốc {{index}} trên {{total}}",
+      "milestone_helper": "Đánh dấu Hoàn thành sẽ giải phóng phần IRM bị khóa của cột mốc này. Nhà thầu nhận 1/{{count}} tổng số mỗi cột mốc.",
+      "mark_complete_milestone": "Đánh dấu Hoàn thành — Giải phóng thanh toán (cột mốc {{index}})"
     },
     "deposit": {
       "step1_title": "Thiết lập tiền đặt cọc",

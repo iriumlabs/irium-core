@@ -152,7 +152,9 @@
       "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
       "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
       "rpc_token_test_remote": "Test remote",
-      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated",
+      "hide_token": "Sembunyikan token",
+      "show_token": "Tampilkan token"
     },
     "buttons": {
       "test_connection": "Uji koneksi",
@@ -195,7 +197,9 @@
       "onboarding_reset": "Reset orientasi — mulai ulang aplikasi untuk melihat wizard",
       "update_check_internet": "Tidak dapat memeriksa pembaruan. Periksa koneksi internet Anda.",
       "connection_failed": "Koneksi gagal",
-      "update_failed": "Pembaruan gagal"
+      "update_failed": "Pembaruan gagal",
+      "metrics_http_error": "Status OK, tetapi /metrics mengembalikan HTTP {{status}}",
+      "metrics_unreachable": "Status OK, tetapi /metrics tidak dapat dijangkau: {{error}}"
     },
     "page_subtitle": "Konfigurasikan koneksi node Anda, jalur dompet, dan preferensi tampilan.",
     "update_banner": {
@@ -261,7 +265,14 @@
       "retry": "Mencoba kembali",
       "external_ip_label": "IP eksternal",
       "detecting_paragraph": "Menunggu hingga 60 detik hingga rekan masuk mengonfirmasi keterjangkauan. PEX memerlukan waktu untuk menyebarkan alamat Anda ke node lain setelah dimulai.",
-      "inactive_paragraph": "UPnP gagal dan tidak ada rekan masuk yang tiba. Konfigurasikan penerusan port manual pada router Anda (TCP 38291) atau aktifkan UPnP, lalu klik Coba Lagi. Koneksi keluar masih berfungsi dalam kondisi ini."
+      "inactive_paragraph": "UPnP gagal dan tidak ada rekan masuk yang tiba. Konfigurasikan penerusan port manual pada router Anda (TCP 38291) atau aktifkan UPnP, lalu klik Coba Lagi. Koneksi keluar masih berfungsi dalam kondisi ini.",
+      "diag_chosen_lan_ip": "IP LAN yang dipilih",
+      "diag_router_ip": "IP Router",
+      "diag_control_url": "URL Kontrol",
+      "diag_external_ip": "IP Eksternal",
+      "diag_private_double_nat": "(privat — NAT ganda)",
+      "diag_add_port_mapping_tries": "Percobaan AddPortMapping",
+      "diag_last_fault": "Kesalahan terakhir"
     },
     "security_info": {
       "wallet_local": "Irium Core menyimpan file dompet Anda secara lokal. Kunci pribadi Anda tidak pernah meninggalkan mesin Anda. File dompet dienkripsi. Selalu buat cadangan frase awal Anda dan simpan secara offline.",
@@ -325,11 +336,14 @@
       "reset_state_success": "Status diatur ulang — cadangan di {{path}}",
       "reset_state_no_backup": "Tidak ada status untuk dicadangkan — status baru dibuat",
       "reset_state_rebuilding": "node sedang dimulai ulang — membangun ulang set UTXO dari block lokal (5-15 menit)",
-      "reset_state_failed": "Pengaturan ulang gagal: {{reason}}"
+      "reset_state_failed": "Pengaturan ulang gagal: {{reason}}",
+      "external_ip_placeholder": "mis. 203.0.113.42"
     },
     "developer_info": {
       "reset_onboarding": "Setel ulang orientasi",
-      "reset_onboarding_description": "Tampilkan kembali wizard pengaturan yang dijalankan pertama kali pada peluncuran berikutnya"
+      "reset_onboarding_description": "Tampilkan kembali wizard pengaturan yang dijalankan pertama kali pada peluncuran berikutnya",
+      "show_legacy_settlement": "Tampilkan UI settlement lama",
+      "show_legacy_settlement_description": "Gunakan halaman Settlement template-grid asli alih-alih alur SafeTrade / PayForWork / Deposit yang baru. Berlaku pada navigasi /settlement berikutnya."
     },
     "action_bar": {
       "are_you_sure": "Apa kamu yakin?",
@@ -469,7 +483,27 @@
       "rename_wallet_file": "Ganti nama file dompet",
       "delete_wallet_file": "Hapus file dompet ini secara permanen",
       "manage_wallets": "Kelola dompet",
-      "manage_description": "File dompet, impor, alamat tersembunyi"
+      "manage_description": "File dompet, impor, alamat tersembunyi",
+      "manage_button": "Kelola",
+      "copy_address": "Salin alamat",
+      "add_address_button": "Tambah Alamat",
+      "generating": "Membuat…",
+      "empty_state": "Belum ada alamat. Buka Kelola untuk menambahkan.",
+      "add_address_confirm_title": "Tambah alamat baru?",
+      "add_address_confirm_body": "Ini akan menurunkan alamat berikutnya dari seed dompet Anda. Alamat tidak dapat dihapus dari berkas dompet setelah dibuat — hanya disembunyikan dari daftar yang terlihat.",
+      "set_primary_button": "Jadikan Utama",
+      "primary_button_short": "Utama",
+      "export_wif_short_tooltip": "Ekspor WIF",
+      "wif_short": "WIF",
+      "qr_short": "QR",
+      "hide_button_short": "Sembunyikan",
+      "no_addresses_panel": "Belum ada alamat.",
+      "panel_description": "Alamat diturunkan dari seed dompet Anda dan tidak dapat dihapus secara permanen. Gunakan Sembunyikan untuk menghapusnya dari tampilan.",
+      "label_placeholder_primary": "mis. Utama · Mining",
+      "label_placeholder_other": "mis. Mining",
+      "edit_label": "Edit label",
+      "add_custom_label": "Tambah label kustom",
+      "address_qr_label": "QR Alamat"
     },
     "send": {
       "title": "Kirim IRM",
@@ -499,12 +533,44 @@
         "unconfirmed": "Dana Anda belum dikonfirmasi. Tunggu minimal 1 konfirmasi sebelum mengirim.",
         "double_spend": "Transaksi ini bertentangan dengan transaksi lain yang tertunda. Harap tunggu dan coba lagi.",
         "generic": "Transaksi tidak dapat disiarkan. Silakan periksa apakah node sedang online dan coba lagi.",
-        "fallback": "Transaksi gagal. Silakan coba lagi."
-      }
+        "fallback": "Transaksi gagal. Silakan coba lagi.",
+        "insufficient_for_fee": "Dana tidak cukup untuk biaya jaringan. Saldo alamat {{balance}} sat; biaya minimum {{fee}} sat.",
+        "cannot_compute_max": "Tidak dapat menghitung maks — {{reason}}",
+        "node_still_syncing": "Node masih bersinkronisasi ({{persisted}}/{{height}} blok). Tutup dialog ini, tunggu sampai sinkronisasi selesai, dan coba lagi.",
+        "not_accepted_mempool": "Transaksi tidak diterima oleh mempool node"
+      },
+      "button_label": "Kirim",
+      "node_offline_tooltip": "Node harus online untuk mengirim",
+      "node_syncing_tooltip": "Node sedang bersinkronisasi — mohon tunggu sebelum mengirim",
+      "max_button": "MAKS",
+      "no_spendable_funds_suffix": " — Tidak ada dana yang dapat dibelanjakan",
+      "no_spendable_in_wallet": "Dompet ini tidak memiliki dana yang dapat dibelanjakan.",
+      "estimated_fee_25k": "Perkiraan biaya: ~25.000 sat",
+      "estimated_fee_label": "Perkiraan biaya",
+      "estimated_fee_value_25k": "~25.000 sat",
+      "amount_sats_label": "Jumlah (sat)",
+      "confirm_send_prefix": "Kirim",
+      "confirm_send_to_suffix": "ke",
+      "back_button": "← Kembali",
+      "transaction_sent_title": "Transaksi Terkirim",
+      "transaction_sent_subtitle": "Transaksi Anda akan muncul di blok berikutnya",
+      "transaction_sent_explanation": "Transaksi Anda ditandatangani secara kriptografis dengan private key Anda dan disiarkan ke jaringan. Akan diamankan secara permanen ketika dimasukkan ke dalam blok berikutnya yang di-mining.",
+      "status_signed": "DITANDATANGANI",
+      "private_key_verified": "Private key terverifikasi",
+      "status_confirming": "MENGONFIRMASI",
+      "next_mined_block": "Blok berikutnya yang di-mining",
+      "transaction_id_label": "ID Transaksi",
+      "copy_transaction_id": "Salin ID transaksi",
+      "view_in_explorer": "Lihat di Explorer"
     },
     "receive": {
       "title": "Terima IRM",
-      "scan_qr_hint": "Pindai kode QR ini atau salin alamat di bawah"
+      "scan_qr_hint": "Pindai kode QR ini atau salin alamat di bawah",
+      "button_label": "Terima",
+      "send_to_this_address": "Kirim IRM ke alamat ini:",
+      "no_address_short": "Tidak ada alamat",
+      "no_address_available": "Tidak ada alamat tersedia",
+      "copy_address_button": "Salin Alamat"
     },
     "security": {
       "section_title": "Keamanan",
@@ -519,7 +585,16 @@
       "seed_modal_title": "Frase pemulihan Anda",
       "seed_modal_warning": "Tuliskan ini di atas kertas. Siapa pun yang memiliki 24 kata ini dapat membelanjakan dana Anda.",
       "wif_label": "Kunci pribadi WIF",
-      "backup_warning": "File ini berisi semua kunci pribadi Anda. Simpan dengan aman."
+      "backup_warning": "File ini berisi semua kunci pribadi Anda. Simpan dengan aman.",
+      "backup_subsection": "Backup",
+      "restore_subsection": "Pulihkan",
+      "export_wif_dialog_title": "Ekspor WIF Key",
+      "export_wif_private_key_dialog_title": "Ekspor WIF Private Key",
+      "text_file_filter": "Teks",
+      "backup_dialog_title": "Simpan Backup Dompet",
+      "select_backup_dialog_title": "Pilih Berkas Backup Dompet",
+      "backup_filter_name": "Backup Dompet",
+      "all_files_filter": "Semua Berkas"
     },
     "transactions": {
       "section_title": "Transaksi",
@@ -529,7 +604,17 @@
       "confirmations": "{{count}} konfirmasi",
       "pending": "Tertunda",
       "received": "Diterima",
-      "sent": "Terkirim"
+      "sent": "Terkirim",
+      "confirmed": "Dikonfirmasi",
+      "for_address": "untuk {{address}}",
+      "mempool_awaiting": "Mempool · menunggu konfirmasi",
+      "miner_label": "Miner: {{address}}",
+      "fee_label": "Biaya: {{amount}} sat",
+      "txid_label": "TXID: {{txid}}",
+      "conf_short": "{{count}} konf",
+      "block_number": "Blok #{{height}}",
+      "open_in_explorer": "Buka di Explorer",
+      "copy_txid": "Salin TXID"
     },
     "toasts": {
       "send_success": "Terkirim — txid {{txid}}",
@@ -565,7 +650,13 @@
       "wif_copied": "WIF disalin",
       "name_invalid_chars": "Nama dompet tidak boleh berisi: / \\ : * ? \" < > |",
       "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
-      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up.",
+      "node_syncing_wait": "Node sinkronisasi — {{persisted}}/{{height}} blok. Mohon tunggu.",
+      "failed_add_address": "Gagal menambah alamat: {{reason}}",
+      "no_recovery_data": "Tidak ada data pemulihan ditemukan di dompet",
+      "wallet_deleted": "Menghapus {{name}}",
+      "seed_copied": "Seed disalin",
+      "invalid_wallet_path": "Biner dompet mengembalikan path tidak valid: {{path}}"
     },
     "encryption": {
       "migration_title": "Encrypt your wallet",
@@ -588,6 +679,120 @@
       "needs_migration_status": "Wallet on disk uses the legacy unencrypted format and must be encrypted before use.",
       "plaintext_backup_warning": "Plaintext backup file(s) detected at {{paths}}. Delete after verifying the migration succeeded.",
       "recover_link": "Forgot your password? Recover with seed phrase"
+    },
+    "no_wallet_loaded": "Tidak ada dompet yang dimuat — buat atau impor di bawah",
+    "balance_label": "Saldo",
+    "balance_label_for_address": "Saldo · Alamat {{index}}",
+    "satoshis_amount": "{{amount}} satoshi",
+    "unconfirmed": "belum dikonfirmasi",
+    "wallet_wide": "(seluruh dompet)",
+    "syncing_tooltip": "Tunggu node selesai bersinkronisasi sebelum mengirim. Mengirim sekarang dapat gagal dengan error verifikasi tanda tangan karena set UTXO masih dalam pembangunan kembali.",
+    "syncing_progress": "Sinkronisasi…",
+    "gaps_count": "{{count}} gap",
+    "common": {
+      "cancel": "Batal",
+      "done": "Selesai",
+      "reveal": "Tampilkan",
+      "hide": "Sembunyikan",
+      "copy": "Salin",
+      "delete": "Hapus",
+      "loading": "Memuat…"
+    },
+    "seed": {
+      "recovery_phrase_title": "Frasa Pemulihan",
+      "wallet_seed_title": "Seed Dompet",
+      "recovery_phrase_warning": "Jangan pernah membagikan frasa pemulihan Anda. Siapa pun dengan 24 kata ini dapat mengakses semua dana Anda. Simpan secara offline dengan aman.",
+      "wallet_seed_warning": "Jangan pernah membagikan seed dompet Anda. Nilai hex ini memberikan akses penuh ke semua dana. Simpan secara offline dengan aman.",
+      "custom_seed_hint": "Dompet ini menggunakan seed kustom. Backup seed hex ini untuk memulihkan.",
+      "copy_phrase": "Salin Frasa",
+      "copy_seed": "Salin Seed"
+    },
+    "restore": {
+      "title": "Pulihkan dari Backup",
+      "warning_body": "Ini akan menimpa data dompet Anda saat ini. Pastikan Anda memiliki WIF key atau berkas backup sebelum melanjutkan. Node akan restart otomatis setelah pemulihan selesai agar status dompet baru terbaca dengan bersih.",
+      "restore_button": "Pulihkan Dompet"
+    },
+    "create_modal": {
+      "create_title": "Buat Dompet",
+      "import_title": "Impor Dompet",
+      "create_new_tab": "Buat Baru",
+      "import_tab": "Impor",
+      "generate_description": "Buat dompet BIP39 baru dengan frasa pemulihan 24 kata.",
+      "creating": "Membuat…",
+      "create_new_wallet_button": "Buat Dompet Baru",
+      "save_warning": "Simpan frasa pemulihan 24 kata Anda secara offline — dapat memulihkan seluruh dompet Anda. WIF key Anda mencadangkan satu alamat. Keduanya tidak dapat dipulihkan jika hilang.",
+      "address_label": "Alamat",
+      "recovery_phrase_label": "Frasa Pemulihan (24 kata)",
+      "recovery_phrase_hint": "(salah satu frasa memulihkan dompet Anda)",
+      "wif_label": "WIF Key",
+      "wif_hint": "(private key Anda dalam format portabel)",
+      "loading_wif": "Memuat WIF…",
+      "export_wif_to_file": "Ekspor WIF ke Berkas",
+      "saved_confirmation": "Saya telah menyimpan frasa pemulihan dan WIF key saya dengan aman.",
+      "import_notice_lead": "Ini akan mengimpor dompet baru. Dompet Anda saat ini tetap utuh dan dapat dialihkan kembali dari",
+      "seed_phrase_method": "Seed Phrase",
+      "wif_key_method": "WIF Key",
+      "seed_phrase_input_label": "Seed Phrase (12 atau 24 kata)",
+      "seed_phrase_placeholder": "kata1 kata2 kata3 …",
+      "bip39_hint": "Frasa pemulihan BIP39 dipisahkan spasi.",
+      "wif_placeholder": "5J… atau K… atau L…",
+      "wif_format_hint": "Wallet Import Format — dimulai dengan 5, K, atau L.",
+      "import_button": "Impor"
+    },
+    "new_address": {
+      "title": "Alamat Baru",
+      "derived_lead": "Alamat baru telah diturunkan dari seed BIP32 dompet Anda. Anda",
+      "derived_emphasis": "frasa pemulihan tidak berubah",
+      "derived_trail": "— alamat ini berbagi berkas dompet yang sama dengan alamat Anda yang sudah ada.",
+      "copy_address": "Salin alamat",
+      "wif_private_key_label": "WIF Private Key",
+      "wif_warning": "Siapa pun dengan WIF ini dapat membelanjakan dana di alamat ini. Simpan secara offline.",
+      "copy_wif": "Salin WIF",
+      "recovery_reminder_lead": "Alamat ini berbagi frasa pemulihan dompet Anda. Untuk melihatnya, buka",
+      "recovery_reminder_path": "Security → Show Recovery Phrase"
+    },
+    "files": {
+      "section_title": "Berkas Dompet",
+      "section_description": "Setiap berkas memiliki seed sendiri. Alihkan untuk memuat dompet lain.",
+      "no_files_found": "Tidak ada berkas dompet ditemukan di ~/.irium/",
+      "rename_placeholder": "nama-dompet",
+      "active_badge": "Aktif",
+      "switch_button": "Alihkan",
+      "create_new_wallet_file": "Buat Berkas Dompet Baru",
+      "create_new_advanced_hint": "(lanjutan — seed terpisah)",
+      "create_new_description": "Membuat berkas dompet terpisah dengan seed sendiri. Dompet Anda saat ini tetap ada di disk dan dapat dialihkan kembali dari daftar ini."
+    },
+    "hidden": {
+      "section_title": "Alamat Tersembunyi",
+      "still_in_file": "(masih dalam berkas dompet)",
+      "description": "Alamat tidak dapat dihapus secara permanen dari berkas dompet. Alamat tersembunyi dihapus dari tampilan tetapi tetap dapat dipulihkan — klik Tampilkan untuk mengembalikannya.",
+      "unhide_button": "Tampilkan"
+    },
+    "delete_file": {
+      "confirm_title": "Hapus berkas dompet ini secara permanen?",
+      "address_count": "{{count}} alamat",
+      "address_count_one": "{{count}} alamat",
+      "warning_label": "PERINGATAN:",
+      "warning_funds_lead": "Dompet ini berisi dana. Menghapusnya tanpa backup berarti kehilangan permanen",
+      "warning_funds_trail": ". Pastikan Anda telah mengekspor WIF key atau frasa seed sebelum melanjutkan.",
+      "warning_unknown_lead": "Saldo tidak dapat dikonfirmasi — node mungkin offline. Jika dompet ini menyimpan dana dan Anda belum mem-backup frasa seed atau WIF key, penghapusan akan",
+      "warning_unknown_emphasis": "menghilangkan secara permanen",
+      "warning_unknown_trail": "mereka.",
+      "warning_zero_lead": "Ini akan menghapus berkas dari disk. Jika Anda belum mem-backup frasa seed atau WIF key untuk dompet ini, semua dana di dalamnya akan",
+      "warning_zero_emphasis": "hilang secara permanen",
+      "warning_zero_trail": ". Ini tidak dapat dibatalkan.",
+      "type_prompt_prefix": "Ketik",
+      "type_prompt_word": "DELETE",
+      "type_prompt_suffix": "untuk konfirmasi",
+      "deleting": "Menghapus…",
+      "delete_forever": "Hapus selamanya"
+    },
+    "hide_address": {
+      "confirm_title": "Sembunyikan alamat ini?",
+      "body_lead": "Alamat tetap dalam berkas dompet — hanya daftar yang terlihat yang diperbarui. Anda dapat",
+      "body_emphasis": "menampilkannya",
+      "body_trail": "kembali nanti dari bagian Alamat Tersembunyi.",
+      "confirm_button": "Sembunyikan alamat"
     }
   },
   "agreements": {
@@ -621,7 +826,18 @@
       "share_text": "Bagikan Teks",
       "delete": "Menghapus",
       "submitting": "Mengirimkan…",
-      "sign": "Tanda"
+      "sign": "Tanda",
+      "fund_escrow": "Danai Escrow",
+      "release_to_counterparty": "Lepas ke Pihak Lain",
+      "submit_proof": "Ajukan Bukti",
+      "refund": "Kembalikan Dana",
+      "agreement_expired": "Perjanjian Kedaluwarsa",
+      "create_and_submit_proof": "Buat & Ajukan Bukti",
+      "confirm_release": "Konfirmasi Pelepasan",
+      "confirm_fund": "Konfirmasi Pendanaan",
+      "confirm_open_dispute": "Konfirmasi Buka Sengketa",
+      "use_this_invoice": "Gunakan Invoice Ini →",
+      "verify_signature_file": "Verifikasi Berkas Tanda Tangan…"
     },
     "proof_modal": {
       "title": "Kirimkan bukti",
@@ -634,7 +850,15 @@
       "evidence_summary": "Ringkasan Bukti",
       "evidence_placeholder": "misalnya Pembayaran $50 diterima melalui transfer bank, referensi #12345.",
       "submit_button": "Kirimkan bukti",
-      "submitting": "Mengirimkan…"
+      "submitting": "Mengirimkan…",
+      "intro": "Buat bukti yang ditandatangani di aplikasi, atau unggah yang sudah Anda miliki.",
+      "mode_create": "Buat dari Bukti",
+      "mode_upload": "Unggah Berkas",
+      "mode_create_sub": "Buat di aplikasi",
+      "mode_upload_sub": "Gunakan berkas yang ada",
+      "upload_note_prefix": "Gunakan tab ini hanya jika Anda sudah memiliki berkas bukti — misalnya, yang ditandatangani oleh pihak lain atau saksi untuk Anda, atau yang Anda buat melalui",
+      "upload_note_middle": "Jika Anda mengajukan bukti milik sendiri, gunakan tab",
+      "upload_note_suffix": "di atas — tab tersebut membuat dan mengajukan bukti tanpa keluar dari aplikasi."
     },
     "toasts": {
       "agreement_signed": "Perjanjian ditandatangani.",
@@ -663,7 +887,9 @@
       "signature_valid": "Tanda tangan sah (penandatangan {{signer}})",
       "signature_invalid": "Tanda tangan tidak valid: {{reason}}",
       "agreement_signed_short": "Perjanjian ditandatangani.",
-      "sign_failed": "Penandatanganan gagal"
+      "sign_failed": "Penandatanganan gagal",
+      "cleanup_removed": "Menghapus {{count}} perjanjian",
+      "cleanup_removed_with_failures": "Menghapus {{count}} perjanjian ({{failed}} gagal)"
     },
     "refund": {
       "blocked_default": "Kelayakan pengembalian dana tidak diketahui",
@@ -685,13 +911,26 @@
       "share_text": "Salin ringkasan teks biasa dari perjanjian ini ke papan klip",
       "delete_local": "Hapus perjanjian ini dari toko lokal Anda. Salinan pihak lawan tidak terpengaruh.",
       "save_friendly_name": "Simpan nama ramah untuk perjanjian ini (disimpan secara lokal)",
-      "verify_signature_file": "Verifikasi file tanda tangan (.sig atau .json) terhadap perjanjian ini"
+      "verify_signature_file": "Verifikasi file tanda tangan (.sig atau .json) terhadap perjanjian ini",
+      "cleanup_old_test_data": "Hapus perjanjian dengan ID yang mengandung test / gossip / demo / pr dari penyimpanan lokal Anda",
+      "node_offline_sign": "Node harus online untuk menandatangani",
+      "sign_to_confirm": "Tandatangani perjanjian ini untuk mengonfirmasi partisipasi Anda",
+      "node_offline_fund": "Node harus online untuk mendanai escrow",
+      "fund_escrow_action": "Kunci jumlah perjanjian ke dalam escrow HTLC",
+      "node_offline_release": "Node harus online untuk melepas dana",
+      "release_to_counterparty": "Lepas dana ke pihak lain",
+      "node_offline_dispute": "Node harus online untuk membuka sengketa",
+      "mark_disputed": "Tandai perjanjian ini sebagai sengketa — memerlukan atestasi penengah untuk diselesaikan",
+      "node_offline_refund": "Node harus online untuk pengembalian dana",
+      "view_audit": "Lihat catatan audit on-chain lengkap"
     },
     "buttons": {
       "import_invoice": "Impor Faktur",
       "import_pack": "Paket Impor",
       "browse": "Jelajahi",
-      "delete_agreement": "Hapus Perjanjian"
+      "delete_agreement": "Hapus Perjanjian",
+      "cleanup_old_test_data": "Bersihkan data uji lama ({{count}})",
+      "export_pack": "Ekspor Paket"
     },
     "page_views": {
       "agreements": "Perjanjian",
@@ -744,12 +983,19 @@
       "seller": "Penjual",
       "signer_wallet": "Alamat dompet penandatangan",
       "role": "Peran:",
-      "reason": "Alasan:"
+      "reason": "Alasan:",
+      "agreement_short": "Perjanjian",
+      "signer_prefix": "penandatangan"
     },
     "placeholders": {
       "your_wallet_address": "Alamat dompet Anda",
       "secret_preimage": "Opsional · heksa 64 karakter",
-      "dispute_reason": "Jelaskan apa yang salah — hal ini dibagikan kepada penyelesainya."
+      "dispute_reason": "Jelaskan apa yang salah — hal ini dibagikan kepada penyelesainya.",
+      "output_pack_path": "/path/to/output.pack.json",
+      "proof_json_path": "/path/to/proof.json",
+      "pack_json_path": "/path/to/agreement.pack.json",
+      "invoice_json_path": "/path/to/invoice.json",
+      "hash_64_hex": "64 karakter hex"
     },
     "modals": {
       "submit_proof_title": "Kirim Bukti",
@@ -757,16 +1003,117 @@
       "import_invoice_title": "Impor Faktur",
       "open_dispute_title": "Sengketa Terbuka?",
       "audit_title": "Audit Perjanjian",
-      "sign_title": "Menandatangani Perjanjian"
+      "sign_title": "Menandatangani Perjanjian",
+      "delete_confirm_prefix": "Hapus perjanjian",
+      "delete_confirm_body": "Ini hanya menghapus perjanjian dari penyimpanan lokal Anda. Salinan pihak lain tidak terpengaruh. Hanya perjanjian yang belum didanai (open/pending) yang dapat dihapus.",
+      "cleanup_title": "Bersihkan data uji lama",
+      "cleanup_found": "Ditemukan {{count}} perjanjian dengan id yang mengandung test, gossip, demo, atau pr.",
+      "cleanup_disclaimer": "Ini hanya menghapusnya dari penyimpanan lokal Anda. Salinan pihak lain tidak terpengaruh. HTLC on-chain yang aktif tidak disentuh — dana tetap perlu dilepas atau dikembalikan secara terpisah.",
+      "cleanup_remove_count": "Hapus {{count}}",
+      "release_funds_title": "Lepas Dana?",
+      "release_funds_body_prefix": "Ini akan melepas",
+      "release_funds_body_suffix": "ke penjual.",
+      "fund_escrow_title": "Danai Escrow?",
+      "fund_escrow_body_prefix": "Ini akan mengunci",
+      "fund_escrow_body_suffix": "ke dalam escrow HTLC. Dana dilepas ke pihak lain saat bukti diterima, atau dikembalikan setelah tinggi blok timeout.",
+      "import_pack_format_prefix": "Format yang diterima:",
+      "import_pack_format_suffix": "— diekspor oleh Pihak A",
+      "import_invoice_subtitle": "Pilih invoice JSON untuk mengisi otomatis perjanjian baru di halaman Settlement."
     },
     "audit": {
-      "fetching": "Mengambil catatan audit…"
+      "fetching": "Mengambil catatan audit…",
+      "no_data": "Audit RPC tidak mengembalikan data",
+      "show_raw_json": "Tampilkan JSON mentah",
+      "hide_raw_json": "Sembunyikan JSON mentah"
     },
     "empty": {
       "no_signatures": "Belum ada tanda tangan yang diverifikasi. Gunakan tombol di atas untuk memverifikasinya.",
       "no_wallet_addresses": "Tidak ada alamat dompet",
       "no_disputes": "Tidak ada perselisihan.",
-      "disputes_offline": "(Node sedang offline — daftar sengketa mungkin tidak tersedia.)"
+      "disputes_offline": "(Node sedang offline — daftar sengketa mungkin tidak tersedia.)",
+      "no_agreements_found": "Tidak ada perjanjian ditemukan",
+      "with_status": "dengan status",
+      "matching": "yang cocok",
+      "go_to_settlement_cta": "Buka Settlement untuk membuat perjanjian pertama Anda →"
+    },
+    "scope": {
+      "my": "Perjanjian Saya",
+      "all": "Semua"
+    },
+    "dialog_titles": {
+      "save_agreement_pack": "Simpan Paket Perjanjian",
+      "select_proof_file": "Pilih Berkas Bukti (.json)",
+      "select_pack_file": "Pilih Paket Perjanjian (.pack.json)",
+      "select_invoice_file": "Pilih Berkas Invoice JSON",
+      "select_signature_file": "Pilih Berkas Tanda Tangan"
+    },
+    "timeline": {
+      "created": "Dibuat",
+      "funded": "Didanai",
+      "proof_submitted": "Bukti Diajukan",
+      "released": "Dilepas",
+      "refunded": "Dikembalikan"
+    },
+    "detail_labels": {
+      "template": "Templat",
+      "created": "Dibuat",
+      "deadline": "Tenggat waktu",
+      "proof_status": "Status Bukti",
+      "release_eligible": "Layak Dilepas",
+      "kind": "Jenis",
+      "threshold": "Ambang Batas",
+      "attestors": "Saksi",
+      "parties": "Pihak",
+      "amount": "Jumlah",
+      "payer": "Pembayar",
+      "payee": "Penerima",
+      "outcome": "Hasil",
+      "satisfied": "Terpenuhi",
+      "reason": "Alasan"
+    },
+    "detail_values": {
+      "none": "tidak ada",
+      "party": "pihak",
+      "parties": "pihak"
+    },
+    "sections": {
+      "policy": "Kebijakan",
+      "proofs": "Bukti",
+      "timeline": "Linimasa ({{count}} peristiwa)",
+      "proofs_count": "Bukti ({{count}})",
+      "funding_legs": "Pendanaan ({{count}} bagian)",
+      "linked_transactions": "Transaksi Terhubung ({{count}})"
+    },
+    "warnings": {
+      "proof_finality_body": "Tunggu lebih banyak konfirmasi blok sebelum melepas — reorg chain bisa membatalkan bukti.",
+      "open_dispute_body": "Membuka sengketa berarti perjanjian memerlukan penengah untuk meninjau bukti dari kedua belah pihak. Pastikan Anda memiliki alasan kuat dan bukti pendukung sebelum melanjutkan. Tindakan ini tidak dapat dibatalkan."
+    },
+    "helpers": {
+      "sign_confirms_participation": "Menandatangani mengonfirmasi partisipasi Anda. Kedua belah pihak harus menandatangani sebelum pendanaan.",
+      "sign_modal_body": "Menandatangani perjanjian ini dengan kunci dompet Anda mengonfirmasi partisipasi Anda. Kedua belah pihak harus menandatangani sebelum pendanaan.",
+      "no_hash_on_file": "Tidak ada hash tersimpan untuk perjanjian ini — tempel hash yang dibagikan oleh pihak lain.",
+      "no_file_selected": "Tidak ada berkas yang dipilih",
+      "secret_auto_loaded": "Dimuat otomatis dari penyimpanan agreement-secrets lokal",
+      "secret_required_hint": "Diperlukan jika Anda bukan yang membuat perjanjian ini sendiri. Kosongkan jika dompet Anda menurunkannya secara otomatis.",
+      "use_invoice_hint": "Klik Gunakan Invoice Ini akan menuju ke Settlement dengan templat OTC sudah terisi. Anda dapat mengubah templat, mengedit bidang, dan mengonfirmasi sebelum membuat perjanjian.",
+      "signer_unknown": "tidak diketahui",
+      "rejected": "ditolak",
+      "role_buyer_suffix": "(pembeli)",
+      "role_seller_suffix": "(penjual)",
+      "signer_not_party": "Alamat ini bukan pembeli atau penjual — penandatanganan akan dicatat tanpa peran sebagai pihak."
+    },
+    "form_errors": {
+      "hash_required": "Hash perjanjian wajib diisi",
+      "proof_type_required": "Pilih jenis bukti",
+      "attested_by_required": "Alamat penyaksi wajib diisi",
+      "evidence_required": "Jelaskan apa yang terjadi di Ringkasan Bukti",
+      "secret_must_be_64_hex": "Harus tepat 64 karakter hex (0-9, a-f)."
+    },
+    "disputes": {
+      "opened_prefix": "dibuka",
+      "resolved_prefix": "· diselesaikan",
+      "open_this_agreement": "Buka perjanjian ini",
+      "agreement_not_in_list": "Perjanjian tidak ada di daftar saat ini — coba muat ulang tampilan Perjanjian"
     }
   },
   "settlement": {
@@ -971,14 +1318,72 @@
       "confirm_large_amount": "Anda akan mengunci {{amount}} IRM di escrow.\n\nIni adalah jumlah yang besar. Konfirmasikan bahwa Anda mengetik desimal dengan benar.",
       "remote_label": "terpencil",
       "remote_tooltip": "Penawaran ini berasal dari penjual lain dan tidak dapat dihapus dari toko lokal Anda.",
-      "delete_tooltip": "Hapus penawaran ini dari toko lokal Anda"
+      "delete_tooltip": "Hapus penawaran ini dari toko lokal Anda",
+      "modal_title": "Buat Pesanan Jual",
+      "modal_subtitle": "Pasang penawaran ke order book — IRM terkunci saat pembeli mengambilnya.",
+      "post_offer_button": "Pasang Penawaran",
+      "lock_info_prefix": "IRM Anda terkunci saat pembeli berkomitmen. Anda kemudian menerima pembayaran off-chain dari pembeli dan mengklik",
+      "confirm_received_label": "Konfirmasi diterima",
+      "lock_info_suffix": "untuk melepas. Atau buka sengketa jika mereka tidak membayar.",
+      "amount_to_sell_label": "Jumlah IRM yang dijual",
+      "price_per_irm_label": "Harga per IRM dalam USDT",
+      "buyer_pays_total_prefix": "Pembeli membayar total",
+      "buyer_pays_total_amount": "{{amount}} USDT",
+      "payment_method_label": "Metode pembayaran",
+      "your_payment_details_label": "Detail pembayaran Anda",
+      "payment_details_placeholder": "mis. IBAN DE89 3704 0044 0532 0130 00 atau PayPal: seller@example.com",
+      "payment_details_helper": "Pembeli melihat detail ini setelah mengambil penawaran.",
+      "payment_options": {
+        "bank_transfer": "Transfer bank",
+        "paypal": "PayPal",
+        "usdt_trc20": "USDT (TRC-20)",
+        "usdt_erc20": "USDT (ERC-20)",
+        "sepa": "SEPA",
+        "cash": "Tunai",
+        "other": "Lainnya"
+      },
+      "errors": {
+        "positive_irm_amount": "Masukkan jumlah IRM yang positif",
+        "positive_usdt_price": "Masukkan harga USDT per IRM yang positif",
+        "select_payment_method": "Pilih metode pembayaran",
+        "payment_details_required": "Masukkan detail pembayaran Anda agar pembeli tahu cara membayar"
+      },
+      "toasts": {
+        "offer_posted": "Penawaran dipasang. IRM akan terkunci saat pembeli berkomitmen."
+      }
     },
     "take_offer": {
       "title": "Ambil Penawaran",
       "completed_trades": "Perdagangan selesai",
       "take_button": "Terima tawaran",
       "taking": "Memukau…",
-      "title_modal": "Ambil Penawaran Ini"
+      "title_modal": "Ambil Penawaran Ini",
+      "set_buyer_address_first": "Atur alamat pembeli Anda terlebih dahulu",
+      "error_agreement_id_missing": "Penawaran diambil tetapi id perjanjian hilang dalam respons",
+      "irm_locked_send_payment": "IRM kini terkunci di escrow. Kirim pembayaran off-chain.",
+      "dispute_reason_buyer_cancelled": "pembeli membatalkan sebelum pembayaran",
+      "dispute_opened_refund_hint": "Sengketa dibuka. Anda dapat mengklaim pengembalian dana dari halaman Agreements setelah timeout.",
+      "enter_payment_reference": "Masukkan id transaksi atau catatan agar penjual dapat memverifikasi pembayaran Anda",
+      "payment_reported_seller_notified": "Pembayaran dilaporkan. Penjual telah diberi tahu.",
+      "step_of_two": "Langkah {{step}} dari 2",
+      "step1_intro": "Konfirmasi akan mengunci IRM penjual di escrow. Anda kemudian memiliki tenggat waktu untuk mengirim pembayaran off-chain dan melaporkan transaksi.",
+      "you_receive": "Anda terima:",
+      "payment_method": "Metode pembayaran:",
+      "seller": "Penjual:",
+      "buyer_you": "Pembeli (Anda):",
+      "not_set": "- tidak diatur -",
+      "cancel": "Batal",
+      "confirm_take": "Konfirmasi Ambil",
+      "irm_locked_in_escrow": "IRM terkunci di escrow",
+      "step2_intro": "IRM penjual terkunci. Kirim pembayaran off-chain, lalu masukkan referensi transaksi Anda di bawah dan klik \"Saya telah mengirim pembayaran\".",
+      "sellers_payment_details": "Detail pembayaran penjual",
+      "no_payment_details": "Tidak ada detail dalam penawaran. Hubungi penjual langsung untuk instruksi pembayaran.",
+      "your_transaction_reference": "Referensi transaksi Anda",
+      "payment_reference_placeholder": "Referensi transfer bank, txid PayPal, txid blockchain, dll.",
+      "payment_reference_hint": "Penjual melihat ini persis. Apa pun yang dapat mereka gunakan untuk mengonfirmasi pembayaran Anda tiba bisa digunakan - nomor referensi, id transaksi, nama pengirim, dll.",
+      "cancel_opens_dispute_warning": "Jika Anda membatalkan di sini, sengketa terbuka. Anda dapat mengklaim pengembalian dana setelah timeout dari halaman Agreements.",
+      "cancel_and_dispute": "Batalkan dan sengketakan",
+      "i_have_sent_payment": "Saya telah mengirim pembayaran"
     },
     "feeds": {
       "discover_button": "Temukan feed",
@@ -1026,7 +1431,189 @@
     },
     "swap": {
       "fuel_banner_title": "IRM menggerakkan lapisan Settlement.",
-      "fuel_banner_body": "Tukar BTC, LTC, atau DOGE menjadi IRM untuk mulai trading tanpa kepercayaan."
+      "fuel_banner_body": "Tukar BTC, LTC, atau DOGE menjadi IRM untuk mulai trading tanpa kepercayaan.",
+      "pair_not_available": "Pasangan ini belum tersedia",
+      "own_order_hint": "Itu pesanan Anda sendiri. Gunakan panel My Swaps di sebelah kanan untuk membatalkannya.",
+      "not_available_yet": "Belum tersedia",
+      "how_it_works_title": "Cara kerja swap {{pair}}",
+      "how_it_works_step1": "Pilih pesanan dari order book di sebelah kiri, atau pasang milik Anda sendiri.",
+      "how_it_works_step2": "IRM penjual terkunci di escrow saat pesanan diambil.",
+      "how_it_works_step3": "Pembeli mengirim {{quote}} ke alamat penjual.",
+      "how_it_works_step4": "Setelah pembayaran terkonfirmasi, IRM dilepas ke pembeli secara otomatis."
+    },
+    "header": {
+      "subtitle_otc": "OTC peer-to-peer. Kunci IRM di escrow, tukar dengan apa pun.",
+      "subtitle_swap": "Atomic swap antara IRM dan chain lain. Tanpa kepercayaan. Tanpa bridge.",
+      "advanced_flows": "Alur lanjutan",
+      "advanced_flows_tooltip": "Buka alur settlement tingkat rendah."
+    },
+    "mode_tabs": {
+      "otc": "OTC P2P",
+      "swap": "Spot Swap"
+    },
+    "my_trades": {
+      "title": "Perdagangan Saya",
+      "tab_active": "Aktif",
+      "tab_completed": "Selesai",
+      "tab_all": "Semua",
+      "empty_active": "Tidak ada perdagangan aktif. Ambil penawaran dari order book untuk memulai.",
+      "empty_completed": "Belum ada perdagangan yang selesai.",
+      "empty_all": "Belum ada perdagangan. Ambil penawaran dari order book untuk memulai.",
+      "side_buy": "BELI",
+      "side_sell": "JUAL"
+    },
+    "trade_status": {
+      "released": "Dilepas",
+      "refunded": "dikembalikan",
+      "expired": "kedaluwarsa",
+      "cancelled": "dibatalkan",
+      "disputed": "Disengketakan",
+      "confirming": "Mengonfirmasi",
+      "locked": "Terkunci",
+      "proposed": "Diajukan",
+      "drafting": "Penyusunan"
+    },
+    "order_book": {
+      "title": "Order Book",
+      "create_order": "Buat Pesanan",
+      "offers_count_one": "penawaran",
+      "offers_count_other": "penawaran",
+      "offers_count": "penawaran",
+      "hidden_tooltip_one": "{{count}} penawaran disembunyikan karena tidak memiliki harga yang ditawarkan",
+      "hidden_tooltip_other": "{{count}} penawaran disembunyikan karena tidak memiliki harga yang ditawarkan",
+      "hidden_tooltip": "{{count}} penawaran disembunyikan karena tidak memiliki harga yang ditawarkan",
+      "hidden_suffix": "{{count}} disembunyikan",
+      "show_taken": "Tampilkan yang sudah diambil",
+      "sort": {
+        "price_asc": "Harga ↑",
+        "price_desc": "Harga ↓",
+        "newest": "Terbaru",
+        "best_rep": "Reputasi Terbaik"
+      },
+      "updated_ago": "Diperbarui {{time}}",
+      "refreshing": "Memuat ulang…",
+      "refreshing_lower": "memuat ulang…",
+      "empty_prefix": "Belum ada penawaran di order book. Klik",
+      "empty_suffix": "untuk memasang yang pertama.",
+      "col_amount_irm": "Jumlah IRM",
+      "col_price_per_irm": "Harga / IRM",
+      "col_total": "Total",
+      "col_payment": "Pembayaran",
+      "col_seller": "Penjual",
+      "col_rep": "Reputasi",
+      "col_age": "Usia",
+      "rep_tooltip": "{{stars}} dari 5, {{completed}} selesai",
+      "no_reputation": "Tidak ada reputasi",
+      "taken": "Diambil",
+      "take": "Ambil"
+    },
+    "pair_order_book": {
+      "header_title": "Order book {{pair}}",
+      "open_shown_summary": "{{open}} terbuka · {{shown}} ditampilkan",
+      "updated_label": "diperbarui",
+      "new_swap": "Swap baru",
+      "direction_both": "Keduanya",
+      "direction_sell_irm": "Jual IRM",
+      "direction_buy_irm": "Beli IRM",
+      "sort_price_asc": "Harga terbaik dulu",
+      "sort_price_desc": "Harga tertinggi dulu",
+      "sort_recent": "Terbaru dulu",
+      "hide_my_orders": "Sembunyikan pesanan saya",
+      "loading_orders": "Memuat pesanan {{pair}}…",
+      "empty_state": "Tidak ada pesanan {{pair}} terbuka. Jadilah yang pertama — pasang dengan tombol Swap baru di atas.",
+      "side_sells_irm": "Menjual IRM",
+      "side_buys_irm": "Membeli IRM",
+      "badge_yours": "Milik Anda",
+      "escrow_protected": "Dilindungi escrow",
+      "maker_line": "Maker {{address}} · {{ago}}",
+      "needs_confirmations": "Memerlukan {{count}} konfirmasi di sisi {{network}}",
+      "needs_confirmations_plural": "Memerlukan {{count}} konfirmasi di sisi {{network}}",
+      "relative_recent": "baru-baru ini",
+      "relative_just_now": "baru saja",
+      "relative_blocks_ago": "{{count}} blok lalu",
+      "relative_blocks_ago_one": "{{count}} blok lalu",
+      "relative_hours_ago": "{{count}}j lalu",
+      "relative_days_ago": "{{count}}h lalu"
+    },
+    "resolver_picker": {
+      "title": "Pemilihan penengah",
+      "intro": "Penengah adalah pihak ketiga terverifikasi yang memutuskan siapa yang mendapatkan IRM ketika pembeli dan penjual tidak dapat sepakat. Penengah memperoleh biaya kecil, yang dipotong dari jumlah yang disengketakan saat perdagangan diselesaikan.",
+      "nominated_section_title": "Penengah yang dinominasikan untuk perdagangan ini",
+      "primary_label": "Utama",
+      "fallback_label": "Cadangan",
+      "fee_with_value": "Biaya: {{value}}",
+      "no_nominated_notice": "Perdagangan ini dibuat tanpa penengah yang dinominasikan. Kedua belah pihak dapat menandatangani bersama nominasi baru dari alur re-nominasi penengah di dompet sebelum penengah mana pun di bawah dapat bertindak.",
+      "available_section_title": "Penengah yang tersedia",
+      "registry_unreachable": "Endpoint registry penengah tidak dapat dijangkau di node ini ({{error}}). Gunakan alur re-nominasi penengah dari dompet Anda untuk menemukan kandidat langsung melalui CLI resolver-list.",
+      "empty_registry_before": "Belum ada penengah yang terdaftar di node ini. Penengah mendaftar dengan memanggil",
+      "empty_registry_after": "setelah alamat mereka muncul di output coinbase terbaru.",
+      "unnamed_resolver": "Penengah tanpa nama",
+      "no_reputation_yet": "belum ada reputasi",
+      "agreements_hint": "Gunakan halaman Agreements untuk mengajukan bukti tambahan ke penengah dan mengikuti perkembangan penyelesaian sengketa. Kedua belah pihak dapat mengajukan bukti kapan saja sebelum penengah memutuskan.",
+      "close": "Tutup"
+    },
+    "seller_review": {
+      "toast_released": "IRM dilepas. Pembeli kini memiliki dana.",
+      "dispute_reason": "penjual tidak menerima pembayaran off-chain",
+      "toast_dispute_opened": "Sengketa dibuka. Penengah akan meninjau bukti.",
+      "empty_state": "Tidak ada perdagangan masuk yang menunggu Anda. Saat pembeli mengambil salah satu penawaran Anda dan melaporkan pembayaran, akan muncul di sini.",
+      "section_title": "Perdagangan masuk untuk diverifikasi",
+      "waiting_count": "{{count}} menunggu",
+      "status_releasing": "Melepas",
+      "status_funded": "Didanai",
+      "buyer_label": "Pembeli:",
+      "buyer_claims_paid": "Pembeli mengklaim pembayaran dikirim {{time}}",
+      "no_reference": "(tidak ada referensi transaksi yang diberikan)",
+      "no_payment_yet": "Pembeli belum melaporkan pengiriman pembayaran. Tunggu, atau buka sengketa jika tenggat waktu telah lewat.",
+      "open_dispute_button": "Tidak ada pembayaran - buka sengketa",
+      "confirm_release_button": "Konfirmasi diterima dan lepas",
+      "loading_trades": "Memuat perdagangan...",
+      "time_ago_seconds": "{{count}}d lalu",
+      "time_ago_minutes": "{{count}}m lalu",
+      "time_ago_hours": "{{count}}j lalu",
+      "time_ago_days": "{{count}}h lalu"
+    },
+    "take_swap": {
+      "buy_irm": "Beli IRM",
+      "sell_irm": "Jual IRM",
+      "toast_no_wallet": "Tidak ada alamat dompet Irium aktif. Buka dompet terlebih dahulu.",
+      "toast_min_blocks": "Tenggat pengembalian dana harus minimal 10 blok",
+      "toast_locked_buyer": "Pesanan terkunci. Kirim pembayaran {{code}} dan laporkan.",
+      "toast_locked_seller": "Pesanan terkunci. IRM penjual ada di escrow.",
+      "toast_need_ref": "Masukkan id transaksi atau catatan agar penjual dapat memverifikasi pembayaran {{code}} Anda",
+      "toast_payment_reported": "Pembayaran dilaporkan. Penjual telah diberi tahu.",
+      "toast_dispute_info": "Sengketa dapat dibuka dari halaman Agreements. Batalkan di sini untuk sekarang dan kunjungi kembali di sana.",
+      "modal_title": "{{label}} di {{pair}}",
+      "step_of_2": "Langkah {{step}} dari 2",
+      "intro_buyer": "Konfirmasi akan mengunci IRM penjual di escrow. Anda kemudian akan mengirim {{code}} ke alamat yang ditampilkan selanjutnya.",
+      "intro_seller": "Konfirmasi akan membuat escrow yang cocok dengan IRM Anda. Pembeli akan mengirim {{code}} ke alamat Anda.",
+      "you_receive": "Anda terima",
+      "you_pay": "Anda bayar",
+      "you_send": "Anda kirim",
+      "price": "Harga",
+      "maker": "Maker",
+      "maker_foreign_address": "Alamat {{code}} maker",
+      "needs": "Membutuhkan",
+      "confirmation_one": "{{count}} konfirmasi {{code}}",
+      "confirmation_other": "{{count}} konfirmasi {{code}}",
+      "refund_deadline_label": "Tenggat pengembalian dana (blok Irium)",
+      "refund_deadline_hint": "Jika pembayaran tidak dikonfirmasi sampai tenggat ini, dana Anda dapat dikembalikan.",
+      "cancel": "Batal",
+      "confirm_action": "Konfirmasi {{label}}",
+      "escrow_locked": "Escrow terkunci",
+      "escrow_locked_buyer": "Kirim pembayaran {{code}} ke alamat di bawah. Setelah pembayaran Anda terkonfirmasi, IRM dilepas ke dompet Anda secara otomatis.",
+      "escrow_locked_seller": "IRM Anda ada di escrow. Pembeli akan mengirim {{code}} ke alamat Anda. Saat pembayaran mereka terkonfirmasi, IRM dilepas ke mereka dan alur pembeli selesai sendiri.",
+      "send_to_label": "Kirim {{code}} ke",
+      "exact_amount_label": "Jumlah {{code}} yang tepat",
+      "required_memo_label": "Memo pembayaran yang wajib",
+      "memo_hint": "Sebagian besar dompet {{name}} menyertakan ini sebagai bidang data tambahan pada pembayaran. Ini menghubungkan pembayaran Anda dengan perdagangan ini sehingga IRM dapat dilepas secara otomatis.",
+      "tx_reference_label": "Referensi transaksi Anda",
+      "tx_reference_placeholder": "id transaksi atau catatan {{code}}",
+      "tx_reference_hint": "Penjual melihat ini persis. Apa pun yang dapat mereka gunakan untuk mengonfirmasi pembayaran Anda bisa digunakan.",
+      "cancel_warning": "Jika Anda membatalkan sekarang, dana Anda tetap terkunci sampai tenggat pengembalian dana di atas.",
+      "cancel_and_dispute": "Batalkan dan sengketakan",
+      "i_have_sent": "Saya telah mengirim {{code}}",
+      "watching_escrow": "Memantau escrow"
     }
   },
   "miner": {
@@ -1047,7 +1634,11 @@
       "uptime": "Waktu aktif",
       "difficulty": "Kesulitan",
       "temperature": "Suhu",
-      "power": "Kekuatan"
+      "power": "Kekuatan",
+      "est_daily_irm": "Perkiraan IRM Harian",
+      "na_linux_only": "N/A (khusus Linux)",
+      "pool_difficulty": "Kesulitan Pool",
+      "pool_hashrate": "Hashrate Pool"
     },
     "buttons": {
       "start_mining": "Mulai menambang",
@@ -1056,7 +1647,23 @@
       "connect_pool": "Hubungkan ke kolam",
       "disconnect": "Memutuskan",
       "confirm_disconnect": "Konfirmasikan pemutusan sambungan?",
-      "detect_gpus": "Deteksi GPU"
+      "detect_gpus": "Deteksi GPU",
+      "view_wallet": "Lihat dompet",
+      "starting": "Memulai…",
+      "connecting": "Menghubungkan…",
+      "start_gpu_mining": "Mulai GPU Mining",
+      "stop_gpu": "Hentikan GPU",
+      "scanning": "Memindai…",
+      "yes": "Ya",
+      "no": "Tidak",
+      "close": "Tutup",
+      "done": "Selesai",
+      "ok": "OK",
+      "start": "Mulai",
+      "stop": "Hentikan",
+      "refresh": "Muat ulang",
+      "view_pool_stats": "Lihat Statistik Pool",
+      "view_pool_stats_tooltip": "Buka statistik miner langsung pool publik di Block Explorer"
     },
     "fields": {
       "mining_address_label": "Alamat Penambangan",
@@ -1080,21 +1687,49 @@
       "intensity_label": "Intensitas — {{value}}%",
       "intensity_mac_note": "Intensitas dibatasi hingga 50% di macOS untuk mencegah pengawas GPU mematikan kernel di tengah batch. Penambang GPU secara otomatis mendeteksi penghentian pengawas dan berhenti dengan bersih jika ia tetap melihatnya.",
       "pool_preset": "Prasetel Kolam Renang",
-      "stratum_worker_use_wallet": "Use my wallet"
+      "stratum_worker_use_wallet": "Use my wallet",
+      "intensity_hint": "Intensitas lebih tinggi = hashrate lebih tinggi, konsumsi daya lebih tinggi",
+      "core_active_tooltip": "Core {{n}} (aktif)",
+      "core_idle_tooltip": "Core {{n}} (idle)",
+      "stratum_worker_placeholder": "walletAddress.workerName",
+      "stratum_worker_autofill_tooltip": "Isi otomatis: {{address}}.rig1",
+      "stratum_password_hint": "Kosongkan untuk menggunakan \"x\" (default untuk sebagian besar pool)"
     },
     "found_blocks": {
       "section_title": "Blok yang Ditemukan",
       "empty": "Belum ada blok yang ditemukan di sesi ini.",
-      "open_in_explorer_tooltip": "Buka blok ini di Explorer"
+      "open_in_explorer_tooltip": "Buka blok ini di Explorer",
+      "hide_orphans_tooltip": "Sembunyikan blok yang dimenangkan miner lain",
+      "reveal_orphans_tooltip_one": "Tampilkan {{count}} kandidat yang ter-orphan",
+      "reveal_orphans_tooltip_other": "Tampilkan {{count}} kandidat yang ter-orphan",
+      "hide_orphans_button": "Sembunyikan orphan ({{count}})",
+      "show_orphans_button": "Tampilkan orphan ({{count}})",
+      "all_orphaned": "Belum ada blok terkonfirmasi — semua kandidat sejauh ini ter-orphan.",
+      "orphaned_tooltip": "Ter-orphan — dimenangkan miner lain",
+      "orphaned_long_tooltip": "Blok kanonik pada tinggi ini di-mining oleh alamat lain — kami mencatat kandidat kami tetapi kalah dalam perlombaan.",
+      "orphaned_badge": "ter-orphan",
+      "block_height_tooltip": "Tinggi blok {{height}}",
+      "won_by_another": "Dimenangkan miner lain",
+      "hash_unavailable": "hash tidak tersedia dari build miner ini",
+      "reward_not_indexed_tooltip": "Hadiah belum diindeks oleh node — nilai akan terisi setelah matang",
+      "reward_unknown_tooltip": "Hadiah tidak diketahui — stdout miner tidak melaporkannya",
+      "estimate_marker": "~ perkiraan"
     },
     "shares": {
       "accepted": "Diterima",
       "rejected": "Ditolak",
-      "ratio": "Perbandingan"
+      "ratio": "Perbandingan",
+      "last_share": "Share terakhir"
     },
     "asic_info": {
       "headline": "Hubungkan ASIC atau GPU Anda ke kumpulan penambangan melalui Stratum",
-      "after_install": "Setelah menginstal, restart Irium Core."
+      "after_install": "Setelah menginstal, restart Irium Core.",
+      "external_title": "Pool mining dengan ASIC atau GPU eksternal",
+      "external_body_before_url": "Arahkan software mining ASIC atau GPU Anda langsung ke URL pool di atas (mis. ",
+      "external_body_after_url": "). Irium Core memantau statistik share sisi pool yang ditampilkan di sini; hashrate lokal hardware Anda dilaporkan oleh miner itu sendiri.",
+      "connect_button_intro_before": "Tombol ",
+      "connect_button_intro_middle": " di bawah memulai pool mining menggunakan CPU Anda melalui sidecar ",
+      "connect_button_intro_after": " bawaan — berguna hanya jika Anda juga ingin mesin ini menyumbangkan hashrate CPU ke pool. ASIC eksternal tidak memerlukan tombol ini."
     },
     "toasts": {
       "miner_started": "Penambang CPU dimulai",
@@ -1114,17 +1749,42 @@
       "connecting_to_pool": "Menghubungkan ke kolam…",
       "pool_disconnected_reconnecting": "Kolam renang terputus — menyambungkan kembali…",
       "pool_connection_lost": "Koneksi kolam renang terputus. Harap sambungkan kembali.",
-      "pool_error": "Kesalahan kumpulan: {{message}}"
+      "pool_error": "Kesalahan kumpulan: {{message}}",
+      "no_device_selected": "Tidak ada perangkat dipilih — menggunakan perangkat default 0",
+      "solo_listening_on": "Solo Stratum mendengarkan di {{addr}}",
+      "solo_failed_start": "Gagal memulai solo Stratum",
+      "solo_stopped": "Solo Stratum berhenti",
+      "solo_failed_stop": "Gagal menghentikan solo Stratum",
+      "copied": "Disalin"
     },
     "page_subtitle": "SHA-256d · CPU · GPU · Dukungan kumpulan ASIC",
     "tooltips": {
       "copy_address": "Salin alamat",
-      "copy_full_hash": "Salin hash lengkap"
+      "copy_full_hash": "Salin hash lengkap",
+      "copy": "Salin"
     },
     "pool_configuration": "Konfigurasi Kolam",
     "opencl": {
       "detected_title": "Perangkat Keras OpenCL Terdeteksi",
-      "none_detected": "Tidak ada GPU berkemampuan OpenCL yang terdeteksi"
+      "none_detected": "Tidak ada GPU berkemampuan OpenCL yang terdeteksi",
+      "no_gpu_idle_message": "Tidak ada GPU kompatibel terdeteksi — lihat Konfigurasi di bawah",
+      "select_platform": "Pilih platform dan mulai mining",
+      "no_compatible_gpu": "Tidak ada GPU kompatibel terdeteksi",
+      "install_drivers_before": "GPU mining memerlukan runtime OpenCL. Pasang driver vendor GPU Anda (NVIDIA, AMD, atau Intel OpenCL SDK) dan klik ",
+      "install_drivers_after": ".",
+      "supports_pool_and_solo": "Setelah diaktifkan, miner GPU mendukung mining pool (Stratum) dan solo (RPC node langsung).",
+      "read_docs": "Baca dokumentasi GPU Miner",
+      "no_platforms_found": "Tidak ada platform OpenCL ditemukan.",
+      "install_icd_before": "Pasang driver GPU dan ICD loader Anda, lalu klik ",
+      "install_icd_after": " lagi.",
+      "platform_n": "Platform {{n}}",
+      "discrete_gpu": "GPU diskrit",
+      "device_n": "Perangkat {{n}}",
+      "fix_intro": "Untuk memperbaikinya, pasang driver OpenCL untuk GPU Anda:",
+      "fix_nvidia": "Pasang ulang driver GPU dari nvidia.com",
+      "fix_amd": "Pasang AMD Software Adrenalin dari amd.com",
+      "fix_intel": "Pasang Intel Graphics Driver dari intel.com",
+      "scanning": "Memindai perangkat OpenCL…"
     },
     "unexpected_exit": {
       "title": "Miner stopped unexpectedly",
@@ -1133,6 +1793,75 @@
       "restart_cpu": "Restart CPU Miner",
       "restart_gpu": "Restart GPU Miner",
       "dismiss": "Dismiss"
+    },
+    "activity": {
+      "share_accepted": "Share diterima",
+      "share_rejected": "Share ditolak",
+      "share_rejected_with_detail": "Share ditolak — {{detail}}",
+      "pool_error": "Error pool",
+      "pool_error_with_detail": "Error pool — {{detail}}",
+      "mining_active": "Mining Aktif",
+      "block_hash_marker": "· blok #{{height}}",
+      "section_title": "Aktivitas Terbaru",
+      "last_count": "{{count}} terakhir",
+      "waiting_for_first_share": "Menunggu share pertama…"
+    },
+    "status": {
+      "loading": "Memuat…",
+      "mining_active": "Mining Aktif",
+      "mining_active_syncing": "Mining Aktif — Sinkronisasi blok…",
+      "cpu_idle": "CPU Idle",
+      "gpu_active": "GPU Aktif",
+      "gpu_idle": "GPU Idle",
+      "pool_connected": "Pool Terhubung",
+      "pool_disconnected": "Pool Terputus",
+      "live_badge": "Live",
+      "syncing_badge": "Sinkronisasi"
+    },
+    "sync": {
+      "node_syncing_height": "Node sinkronisasi — tinggi {{localHeight}} / jaringan {{networkTip}}",
+      "warming_up_header": "Memanaskan miner — menunggu laju share pertama…",
+      "node_syncing_body": "Node masih mengejar puncak jaringan. Mining aktif tapi tidak ada share yang akan diterima sampai chain lokal cocok. Biasanya selesai dalam beberapa menit.",
+      "warming_up_body": "Sidecar miner telah dimulai. Pembacaan hashrate pertama muncul dalam 1-3 detik — tidak ada tindakan yang diperlukan."
+    },
+    "block_info": {
+      "mining_block_n": "Mining blok #{{height}}",
+      "previous_block": "Blok sebelumnya",
+      "last_confirmed_block": "blok terakhir yang dikonfirmasi",
+      "network_difficulty": "Kesulitan jaringan"
+    },
+    "solo": {
+      "title": "Solo Stratum Bridge",
+      "subtitle": "Jalankan ASIC terhadap iriumd Anda sendiri. Tanpa biaya pool, tanpa ketergantungan pool.",
+      "listening": "Mendengarkan",
+      "stopped": "Berhenti",
+      "listen_address_label": "Alamat dengar",
+      "listen_default_before": "Default ",
+      "listen_default_after": " mengikat setiap interface sehingga ASIC di LAN Anda dapat menjangkaunya.",
+      "asic_connection_string": "String koneksi ASIC",
+      "bullet_replace_host_before": "• Ganti ",
+      "bullet_replace_host_after": " dengan IP LAN mesin Anda (atau IP VPS).",
+      "bullet_worker_username_before": "• Username worker: Q-address Anda diikuti dengan ",
+      "bullet_worker_username_after": ". Password: string apa pun.",
+      "bullet_bridge_serves_before": "• Bridge melayani ",
+      "bullet_bridge_serves_middle": " & ",
+      "bullet_bridge_serves_after": " di iriumd lokal Anda."
+    },
+    "found_block_banner": {
+      "title": "Blok #{{height}} berhasil di-mining!",
+      "body": "Miner {{kind}} Anda baru saja memenangkan perlombaan jaringan — 50 IRM dalam perjalanan (matang dalam 100 blok).",
+      "dismiss_aria": "Tutup"
+    },
+    "tabs_v2": {
+      "cpu": "CPU Miner",
+      "gpu": "GPU Miner",
+      "stratum": "Pool / Stratum",
+      "solo": "Solo Stratum"
+    },
+    "pool_presets": {
+      "irium_official_cpu_gpu": "Irium Official Pool (CPU/GPU)",
+      "irium_official_asic": "Irium Official Pool (ASIC)",
+      "custom": "Kustom"
     }
   },
   "onboarding": {
@@ -1162,7 +1891,8 @@
       "generating": "Menghasilkan dompet…",
       "show_recovery": "Tampilkan frasa pemulihan",
       "i_wrote_it_down": "Saya menuliskannya",
-      "continue_to_wallet": "Lanjutkan ke Dompet"
+      "continue_to_wallet": "Lanjutkan ke Dompet",
+      "generating_sub": "Membuat dompet BIP32 HD dengan seed phrase 24 kata…"
     },
     "import": {
       "tab_mnemonic": "Frase pemulihan",
@@ -1199,6 +1929,153 @@
       "too_short": "Password must be at least 4 characters",
       "required": "Password is required",
       "continue": "Continue"
+    },
+    "splash": {
+      "subtitle_full_node": "DOMPET DESKTOP FULL NODE",
+      "status_initializing": "Menginisialisasi runtime…",
+      "status_loading_crypto": "Memuat modul kriptografi…",
+      "status_verifying_binary": "Memverifikasi integritas biner…",
+      "status_establishing_context": "Membangun konteks aman…",
+      "status_ready": "Siap"
+    },
+    "rail": {
+      "system_check": "Cek Sistem",
+      "bootstrap": "Bootstrap",
+      "network_sync": "Sinkronisasi Jaringan",
+      "wallet_setup": "Pengaturan Dompet",
+      "backup_secure": "Backup & Amankan"
+    },
+    "binary_check": {
+      "subtitle": "Memverifikasi biner node yang dibutuhkan ada di mesin ini.",
+      "iriumd_desc": "Daemon full node",
+      "irium_wallet_desc": "CLI dompet & marketplace",
+      "irium_miner_desc": "CPU miner",
+      "all_verified": "Semua biner terverifikasi. Melanjutkan…",
+      "missing_binaries": "Biner tidak ditemukan. Letakkan executable di src-tauri/binaries/",
+      "retry": "Coba lagi",
+      "skip_advanced": "Lewati (lanjutan)"
+    },
+    "bootstrap": {
+      "subtitle": "Mengonfigurasi seed node, trust anchor, dan blok genesis.",
+      "creating_data_dir": "Membuat direktori data…",
+      "writing_seedlist": "Menulis bootstrap seedlist.txt…",
+      "writing_static_peers": "Menulis static_peers.txt…",
+      "installing_anchors": "Memasang anchors.json genesis…",
+      "installing_trust_signatures": "Memasang trust signature…",
+      "complete": "Konfigurasi bootstrap selesai.",
+      "error_prefix": "Error",
+      "skip_continue": "Lewati (lanjutkan saja)"
+    },
+    "network_sync": {
+      "subtitle": "Memuat data blockchain lokal dan menghubungkan ke jaringan P2P Irium.",
+      "port_in_use_message": "Port 38291 sudah digunakan. Mungkin ada node Irium lain yang berjalan di background. Periksa system tray Anda untuk instance Irium Core yang sudah ada, atau buka Task Manager dan akhiri proses iriumd.exe apa pun, lalu restart aplikasi.",
+      "add_peer_format_error": "Gunakan format IP:PORT (mis. 1.2.3.4:38291)",
+      "add_peer_rejected": "Node menolak alamat tersebut",
+      "add_peer_unreachable": "Tidak dapat menjangkau node",
+      "starting_iriumd": "Memulai iriumd…",
+      "loading_blockchain_data": "Memuat data blockchain…",
+      "starting_node": "Memulai node…",
+      "discovering": "menemukan…",
+      "searching_for_peers": "Mencari peer di jaringan Irium",
+      "checking_connectivity": "Memeriksa konektivitas jaringan…",
+      "network_reachable": "Jaringan dapat dijangkau — memulai node…",
+      "port_blocked_title": "Port 38291 tampaknya diblokir untuk koneksi keluar",
+      "port_blocked_body_before": "Jaringan Irium tidak dapat dijangkau. Periksa router atau firewall Anda — port",
+      "port_blocked_body_after": "harus terbuka untuk koneksi TCP keluar.",
+      "restarting_node": "Memulai ulang node…",
+      "retry_connection": "Coba lagi koneksi",
+      "still_connecting_title": "Masih menghubungkan ke peer…",
+      "still_connecting_body": "Node sedang menjangkau jaringan Irium. Biasanya selesai dalam 30 detik — mohon tunggu.",
+      "connecting_for": "Menghubungkan selama {{seconds}}d…",
+      "add_peer_manually": "Tambah peer secara manual",
+      "add_peer_button": "Tambah Peer",
+      "added_peer": "menambahkan {{addr}}",
+      "continuing_in": "Melanjutkan dalam {{seconds}}d…",
+      "syncing_background": "Sinkronisasi di background…",
+      "continue_anyway": "Lanjutkan saja →"
+    },
+    "wallet_setup_subtitle": "Buat dompet HD baru atau pulihkan dari dompet yang sudah ada.",
+    "wallet_setup_errors": {
+      "failed_create": "Gagal membuat dompet",
+      "no_wallet_pending": "Tidak ada dompet yang menunggu enkripsi",
+      "failed_set_password": "Gagal mengatur password dompet",
+      "import_failed": "Impor gagal"
+    },
+    "wallet_password": {
+      "title": "Atur password dompet",
+      "subtitle": "Mengenkripsi berkas dompet Anda. Wajib sebelum melanjutkan.",
+      "placeholder": "Pilih password yang kuat (8+ karakter)",
+      "confirm_placeholder": "Konfirmasi password",
+      "warning": "Password ini tidak dapat dipulihkan jika lupa. Tulis dan simpan di tempat aman. Seed phrase Anda adalah satu-satunya cara untuk memulihkan dompet tanpa password ini.",
+      "continue": "Enkripsi & Lanjutkan",
+      "too_short": "Password harus minimal 8 karakter",
+      "mismatch": "Password tidak cocok",
+      "encrypting": "Mengenkripsi dompet…",
+      "encrypting_sub": "Menerapkan kunci turunan PBKDF2 ke berkas dompet Anda.",
+      "hide": "sembunyikan",
+      "show": "tampilkan"
+    },
+    "wallet_restored_sub": "Dompet Anda berhasil diimpor.",
+    "restored": {
+      "primary_address": "Alamat Utama",
+      "address_pending": "Alamat akan muncul di Dashboard setelah node selesai sinkronisasi.",
+      "additional_addresses": "{{count}} alamat tambahan ditemukan",
+      "balance_will_load": "Saldo dan riwayat transaksi Anda akan dimuat otomatis di Dashboard seiring node bersinkronisasi.",
+      "continue_to_dashboard": "Lanjutkan ke Dashboard"
+    },
+    "import_form": {
+      "subtitle": "Pilih metode pemulihan Anda di bawah.",
+      "tab_mnemonic_label": "Seed Phrase",
+      "tab_wif_label": "WIF Key",
+      "tab_privkey_label": "Private Key",
+      "mnemonic_placeholder": "kata1 kata2 kata3 … kata24",
+      "mnemonic_hint": "Mnemonic BIP32 — 12 atau 24 kata dipisahkan spasi",
+      "wif_placeholder": "5Jxx… atau Kxx… atau Lxx…",
+      "wif_hint": "Wallet Import Format (private key terkode Base58Check)",
+      "privkey_placeholder": "0x1a2b3c4d… (64 karakter hex)",
+      "privkey_hint": "Private key 256-bit mentah dalam heksadesimal",
+      "back": "Kembali",
+      "importing": "Mengimpor…"
+    },
+    "choose": {
+      "create_description": "Buat dompet BIP32 HD baru dengan seed phrase 24 kata.",
+      "import_description": "Pulihkan via seed phrase, WIF key, atau private key mentah."
+    },
+    "backup": {
+      "field_address_label": "Alamat Dompet",
+      "field_wif_label": "WIF Key",
+      "field_mnemonic_label": "Frasa Pemulihan (24 kata)",
+      "field_wif_warning": "WIF adalah private key Anda dalam format portabel. Siapa pun yang memilikinya mengendalikan dana di alamat ini.",
+      "field_mnemonic_warning": "Tulis 24 kata ini secara berurutan. Tidak dapat dipulihkan jika hilang.",
+      "copy": "Salin",
+      "copied": "Disalin!",
+      "hide": "Sembunyikan",
+      "reveal": "Tampilkan",
+      "click_to_reveal": "Klik untuk menampilkan",
+      "confirm_address": "Saya telah menyimpan alamat dompet saya",
+      "confirm_wif": "Saya telah menyimpan WIF key dengan aman",
+      "confirm_mnemonic": "Saya telah menulis frasa pemulihan saya secara offline",
+      "loading": "Memuat…",
+      "wif_read_failed": "(pembacaan WIF gagal — gunakan panel Security setelah peluncuran",
+      "shown_once_before": "Informasi ini ditampilkan",
+      "shown_once_emphasis": "hanya satu kali",
+      "shown_once_after": ". Simpan setiap item secara offline sebelum melanjutkan.",
+      "critical_warning_strong": "Anda tidak akan dapat memulihkan dompet Anda",
+      "critical_warning_body": "jika Anda kehilangan frasa pemulihan atau WIF key. Irium Core tidak memiliki backup cloud. Tulis semuanya sekarang.",
+      "items_confirmed": "{{count}} dari {{total}} item dikonfirmasi",
+      "launch_dashboard": "Luncurkan Dashboard",
+      "confirm_all_to_continue": "Konfirmasi semua 4 item untuk melanjutkan"
+    },
+    "welcome_screen": {
+      "welcome_to": "Selamat datang di",
+      "tagline": "Dompet desktop full-node Anda untuk blockchain Irium. Kirim, terima, perdagangkan, dan selesaikan — semua peer-to-peer, semua on-chain.",
+      "wizard_intro": "Wizard pengaturan ini akan mengonfigurasi node Anda, mensinkronkan chain, dan membuat atau memulihkan dompet Anda.",
+      "chip_full_node": "Full Node",
+      "chip_hd_wallet": "HD Wallet",
+      "chip_p2p_trade": "Perdagangan P2P",
+      "chip_on_chain_settlement": "Settlement On-Chain",
+      "chip_privacy_first": "Privasi Utama",
+      "get_started": "Mulai"
     }
   },
   "reputation": {
@@ -1426,7 +2303,26 @@
       "hashrate_avg_window": "{{minutes}}menit rata-rata",
       "confidence_low": "Kepercayaan diri yang rendah",
       "confidence_medium": "Kepercayaan diri sedang",
-      "confidence_high": "Kepercayaan diri yang tinggi"
+      "confidence_high": "Kepercayaan diri yang tinggi",
+      "asic_port_with_443": "port {{port}} + 443",
+      "active_miners": "Miner Aktif",
+      "worker_count_one": "{{count}} worker",
+      "worker_count_other": "{{count}} worker",
+      "your_miners_pinned": "Miner Anda disematkan di atas",
+      "hide_offline": "Sembunyikan offline ({{count}})",
+      "show_offline": "Tampilkan miner offline ({{count}})",
+      "no_miners_reporting": "Tidak ada miner aktif yang melaporkan.",
+      "col_worker": "Worker",
+      "col_accepted": "Diterima",
+      "col_rejected_15m": "Ditolak (15m)",
+      "col_rejected_15m_tooltip": "Share yang ditolak dalam 15 menit terakhir saja. Hitungan kumulatif (sejak stratum direstart) membuat worker terus menampilkan total burst warmup yang basi bahkan setelah pulih.",
+      "col_reject_pct_15m": "Tolak % (15m)",
+      "col_reject_pct_15m_tooltip": "Tingkat penolakan bergulir selama 15 menit terakhir. Tingkat kumulatif-sejak-restart membuat worker terjebak pada burst warmup pasca-restart bahkan setelah pulih.",
+      "col_hashrate_15m": "Hashrate (15m)",
+      "col_blocks": "Blok",
+      "col_blocks_tooltip": "Blok yang ditemukan oleh worker ini di pool. Diisi oleh stats-proxy; menampilkan '—' sampai proxy mengisi kredit blok per worker.",
+      "col_last_share": "Share Terakhir",
+      "yours_badge": "milikmu"
     },
     "richlist": {
       "title": "Pemegang IRM Teratas",
@@ -1464,7 +2360,8 @@
       "load_more_loading": "Memuat 500 teratas…",
       "load_error": "Gagal memuat daftar kaya: {{reason}}",
       "empty": "Belum ada saldo P2PKH di rantai.",
-      "node_offline_hint": "Mulai node di Dasbor untuk memuat daftar kaya."
+      "node_offline_hint": "Mulai node di Dasbor untuk memuat daftar kaya.",
+      "sr_total_supply": "Konteks total pasokan {{total}} IRM untuk pembaca layar"
     },
     "solo_pool": {
       "title": "Solo Pool",
@@ -1503,6 +2400,63 @@
       "blocks_per_day_suffix": "block/hari",
       "irm_per_day_suffix": "IRM/hari",
       "disclaimer": "Hanya perkiraan — pendapatan sebenarnya bergantung pada keberuntungan, biaya pool, dan perubahan kesulitan. Kalkulator menggunakan hashrate jaringan langsung, diperbarui setiap 60 detik."
+    },
+    "mining_overview": {
+      "title": "Ikhtisar Mining Jaringan",
+      "subtitle": "Tampilan satu layar untuk jaringan, pool, dan mining Anda sendiri. Diperbarui setiap 30 detik.",
+      "network_summary": "Ringkasan Jaringan",
+      "pool_mining": "Pool Mining",
+      "your_mining": "Mining Anda",
+      "network_hashrate": "Hashrate Jaringan",
+      "difficulty": "Kesulitan",
+      "avg_block_time": "Rata-rata Waktu Blok",
+      "est_active_miners": "Perkiraan Miner Aktif",
+      "network_wide_estimate": "perkiraan seluruh jaringan",
+      "pool_hashrate": "Hashrate Pool",
+      "estimate_sub": "perkiraan",
+      "active_pool_miners": "Miner Pool Aktif",
+      "pool_blocks_found": "Blok Pool Ditemukan",
+      "all_time": "sepanjang waktu",
+      "pool_share": "Pool / Jaringan",
+      "share_of_network_hashrate": "bagian dari hashrate jaringan",
+      "your_hashrate": "Hashrate Anda",
+      "collecting": "mengumpulkan…",
+      "pool_workers_one": "{{count}} worker pool",
+      "pool_workers_other": "{{count}} worker pool",
+      "mode": "Mode",
+      "mode_pool": "Pool",
+      "mode_solo": "Solo",
+      "not_mining": "tidak sedang mining",
+      "connected_via_stratum": "terhubung via stratum",
+      "direct_to_local_node": "langsung ke node lokal",
+      "on_pool": "di pool.iriumlabs.org",
+      "on_solo_bridge": "di solo-stratum bridge",
+      "accepted_shares": "Share Diterima",
+      "none": "tidak ada",
+      "pool_lifetime": "pool, seumur hidup",
+      "last_share": "Share Terakhir",
+      "blocks_you_found": "Blok yang Anda Temukan",
+      "from_pool_worker": "dari worker pool",
+      "this_session": "sesi ini",
+      "pool_blocks_today": "Blok Pool Hari Ini",
+      "today": "hari ini"
+    },
+    "relative_time": {
+      "just_now": "baru saja",
+      "seconds_ago_one": "{{count}} detik lalu",
+      "seconds_ago_other": "{{count}} detik lalu",
+      "minutes_ago_one": "{{count}} menit lalu",
+      "minutes_ago_other": "{{count}} menit lalu",
+      "hours_ago_one": "{{count}} jam lalu",
+      "hours_ago_other": "{{count}} jam lalu",
+      "days_ago_one": "{{count}} hari lalu",
+      "days_ago_other": "{{count}} hari lalu"
+    },
+    "founder_card": {
+      "title": "Alamat Vesting Pendiri",
+      "description": "Alamat ini menyimpan 3.500.000 IRM yang dikunci melalui timelock CLTV saat genesis. Saldo ditampilkan sebagai 0 karena dana yang terkunci menggunakan script khusus yang tidak dihitung sebagai saldo yang dapat dibelanjakan.",
+      "unlocks_at": "Terbuka pada blok #{{height}}",
+      "blocks_remaining": "(~{{count}} blok tersisa)"
     }
   },
   "help": {
@@ -2146,7 +3100,10 @@
       "errors": {
         "buyer_required": "Masukkan alamat Irium pembeli.",
         "amount_required": "Masukkan berapa IRM yang ingin Anda kunci.",
-        "receiving_required": "Beri tahu pembeli Anda apa yang Anda harapkan sebagai imbalan."
+        "receiving_required": "Beri tahu pembeli Anda apa yang Anda harapkan sebagai imbalan.",
+        "no_agreement_id": "Pembuatan perjanjian tidak mengembalikan id",
+        "fund_after_create_failed": "Perjanjian dibuat tetapi pendanaan gagal. Buka halaman Agreements untuk mencoba lagi.",
+        "payment_ref_required": "Masukkan referensi transaksi agar penjual dapat memverifikasi pembayaran Anda."
       },
       "review": {
         "you_lock": "Anda mengunci",
@@ -2154,7 +3111,14 @@
         "deadline": "Tenggat waktu",
         "deadline_value": "Jika tidak dibayar dalam {{hours}} jam, IRM Anda kembali otomatis.",
         "lock_funds": "Kunci Dana",
-        "tx_note": "Ini akan membuat transaksi di blockchain Irium."
+        "tx_note": "Ini akan membuat transaksi di blockchain Irium.",
+        "you_lock_short": "Anda mengunci",
+        "buyer_pays_you": "Pembeli membayar Anda",
+        "payment_deadline": "Tenggat pembayaran",
+        "hours_from_now": "{{hours}} jam dari sekarang",
+        "buyer_address": "Alamat pembeli",
+        "lock_my_irm": "Kunci IRM saya",
+        "tx_broadcast_note": "Transaksi blockchain akan disiarkan. Ini mungkin memerlukan waktu sebentar untuk dikonfirmasi."
       },
       "share": {
         "title": "Bagikan ini dengan pembeli Anda",
@@ -2174,7 +3138,25 @@
         "receiving_placeholder": "mis. 200 USDT, transfer bank, tunai",
         "deadline_label": "Berapa lama perdagangan ini harus tetap terbuka?",
         "deadline_helper": "Jika mereka tidak membayar dalam waktu ini, IRM Anda kembali otomatis.",
-        "release_button": "Saya menerima pembayaran — Lepaskan dana ke pembeli"
+        "release_button": "Saya menerima pembayaran — Lepaskan dana ke pembeli",
+        "buyer_address_short_label": "Alamat pembeli",
+        "buyer_address_helper": "Alamat yang menerima IRM saat Anda mengonfirmasi pembeli telah membayar.",
+        "amount_label_short": "Jumlah IRM yang dijual",
+        "amount_helper_short": "Disimpan di escrow sampai Anda mengonfirmasi pembayaran pembeli.",
+        "receiving_label_short": "Apa yang Anda terima sebagai gantinya",
+        "receiving_placeholder_detailed": "mis. 50 USDT via transfer bank SEPA",
+        "deadline_label_short": "Tenggat waktu pembeli membayar",
+        "deadline_helper_refund": "Jika tidak ada pembayaran sampai tenggat waktu, Anda dapat mengklaim pengembalian dana.",
+        "locked_hero_title": "IRM Anda kini terkunci dan terlindungi",
+        "locked_hero_body": "Pembeli tidak dapat mengambilnya tanpa konfirmasi Anda. Bagikan kode perdagangan di bawah agar mereka bisa bergabung, lalu tunggu pembayaran mereka.",
+        "share_code_title": "Bagikan kode perdagangan ini",
+        "share_code_body": "Pembeli menempelkan kode ini di dompet mereka untuk bergabung dalam perdagangan.",
+        "header1_title": "Atur perdagangan jual Anda",
+        "header1_subtitle": "Beri tahu kami siapa pembelinya dan berapa banyak IRM yang ingin Anda jual.",
+        "header2_title": "Tinjau dan kunci",
+        "header2_subtitle": "Konfirmasi detailnya. Mengunci mengirim IRM ke escrow.",
+        "header3_title": "Perdagangan Anda sedang berlangsung",
+        "header3_subtitle": "Bagikan kode perdagangan dengan pembeli dan tunggu pembayaran mereka."
       },
       "buying": {
         "step2_title": "Tempel kode perdagangan dari penjual Anda",
@@ -2193,12 +3175,42 @@
         "status_waiting": "Menunggu penjual mengonfirmasi pembayaran diterima.",
         "status_releasing": "Pembayaran dikonfirmasi — IRM dalam perjalanan.",
         "status_complete": "Selesai — IRM telah tiba di wallet Anda.",
-        "view_agreements": "Lihat di Agreement"
+        "view_agreements": "Lihat di Agreement",
+        "review_commit_intro": "Konfirmasi detail perdagangan di bawah. Dengan melanjutkan, Anda berkomitmen pada perdagangan ini. Setelah langkah ini, kirim pembayaran off-chain ke penjual dan laporkan dari layar berikutnya.",
+        "seller_is_locking": "Penjual sedang mengunci",
+        "seller_short_label": "Penjual",
+        "details_did_not_load": "Detail perdagangan tidak dimuat. Anda tetap dapat melanjutkan, tetapi verifikasi jumlah IRM dengan penjual sebelum membayar.",
+        "continue_and_link": "Lanjutkan dan hubungkan",
+        "trade_complete_title": "Perdagangan selesai",
+        "trade_complete_body": "IRM telah tiba di dompet Anda.",
+        "seller_locked_for_you_title": "IRM penjual terkunci untuk Anda",
+        "seller_locked_for_you_body": "Kirim pembayaran off-chain ke penjual, lalu laporkan referensi transaksi Anda di bawah.",
+        "report_payment_title": "Laporkan pembayaran Anda",
+        "report_payment_body": "Setelah Anda mengirim pembayaran off-chain, tempel referensi apa pun yang dapat digunakan penjual untuk mengonfirmasi pembayaran tiba - referensi transfer bank, id transaksi PayPal, dll.",
+        "report_payment_placeholder": "Referensi transfer bank, txid PayPal, txid blockchain, dll.",
+        "cancel_open_dispute": "Batalkan dan buka sengketa",
+        "payment_reported": "Pembayaran dilaporkan",
+        "i_have_sent_payment": "Saya telah mengirim pembayaran",
+        "header1_title": "Tempel kode perdagangan penjual",
+        "header1_subtitle": "Penjual akan mengirim Anda kode setelah mereka mengunci IRM mereka.",
+        "header2_title": "Tinjau perdagangan",
+        "header2_subtitle": "Pastikan jumlah dan penjual sesuai dengan yang Anda harapkan.",
+        "header3_title": "Perdagangan Anda sedang berlangsung",
+        "header3_subtitle": "Kirim pembayaran off-chain, lalu laporkan agar penjual dapat melepas IRM."
       },
       "fuel_banner_title": "Anda memerlukan IRM untuk membuat settlement.",
       "fuel_banner_prefix": "Pergi ke",
       "fuel_banner_link": "Marketplace → Spot Swap",
-      "fuel_banner_suffix": "untuk memperoleh IRM terlebih dahulu."
+      "fuel_banner_suffix": "untuk memperoleh IRM terlebih dahulu.",
+      "toast_buyer_linked": "Sisi Anda kini terhubung ke perdagangan. Kirim pembayaran off-chain ke penjual.",
+      "toast_payment_reported": "Pembayaran dilaporkan. Menunggu konfirmasi dari penjual.",
+      "toast_dispute_opened": "Sengketa dibuka. Penengah akan meninjau bukti.",
+      "dispute_reason_buyer": "pembeli tidak dapat menyelesaikan perdagangan",
+      "choose_selling_title": "Saya menjual IRM",
+      "choose_selling_body": "Kunci IRM Anda di escrow. Pembeli membayar Anda off-chain, lalu Anda melepas.",
+      "choose_buying_title": "Saya membeli IRM",
+      "choose_buying_body": "Tempel kode perdagangan penjual. Kirim mereka pembayaran, lalu konfirmasi untuk menerima IRM.",
+      "view_resolvers": "Lihat penengah yang tersedia"
     },
     "pay_for_work": {
       "step1_title": "Pembayaran tunggal atau per tonggak?",
@@ -2250,7 +3262,12 @@
       "claim_refund": "Klaim Pengembalian Dana",
       "toast_released": "Pembayaran dilepaskan ke kontraktor.",
       "toast_release_pending": "Penyelesaian dicatat. Dana akan dilepaskan setelah konfirmasi beberapa block berikutnya.",
-      "toast_refunded": "Pengembalian dana diklaim — dana kembali ke wallet Anda."
+      "toast_refunded": "Pengembalian dana diklaim — dana kembali ke wallet Anda.",
+      "toast_fund_failed": "Perjanjian dibuat tetapi pendanaan gagal. Temukan di halaman Agreements Anda untuk mencoba pendanaan lagi.",
+      "which_milestone": "Milestone mana?",
+      "milestone_option": "Milestone {{index}} dari {{total}}",
+      "milestone_helper": "Tandai Selesai melepas bagian milestone ini dari IRM yang terkunci. Kontraktor menerima 1/{{count}} dari total per milestone.",
+      "mark_complete_milestone": "Tandai Selesai — Lepas Pembayaran (milestone {{index}})"
     },
     "deposit": {
       "step1_title": "Atur deposit Anda",

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowRight, RefreshCw } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { offers, agreements, reputation, wallet } from '../lib/tauri';
@@ -91,14 +92,16 @@ function classifyTrades(agreementsList: Agreement[], myAddrs: Set<string>): MyTr
 // Lifecycle → status pill. The visual intent line groups the lifecycle
 // states into the four buckets the trade UI surfaces: warn (in flight),
 // success (released), danger (disputed/failed), neutral (drafting).
-function statusPillFor(state: string) {
-  if (state === 'released') return { intent: 'success' as const, label: 'Released' };
-  if (['refunded', 'expired', 'cancelled'].includes(state)) return { intent: 'danger' as const, label: state };
-  if (state === 'disputed_metadata_only') return { intent: 'danger' as const, label: 'Disputed' };
-  if (state === 'partially_released') return { intent: 'warn' as const, label: 'Confirming' };
-  if (state === 'funded') return { intent: 'warn' as const, label: 'Locked' };
-  if (state === 'proposed') return { intent: 'info' as const, label: 'Proposed' };
-  if (state === 'draft') return { intent: 'neutral' as const, label: 'Drafting' };
+function statusPillFor(state: string, t: (key: string) => string) {
+  if (state === 'released') return { intent: 'success' as const, label: t('marketplace.trade_status.released') };
+  if (state === 'refunded') return { intent: 'danger' as const, label: t('marketplace.trade_status.refunded') };
+  if (state === 'expired') return { intent: 'danger' as const, label: t('marketplace.trade_status.expired') };
+  if (state === 'cancelled') return { intent: 'danger' as const, label: t('marketplace.trade_status.cancelled') };
+  if (state === 'disputed_metadata_only') return { intent: 'danger' as const, label: t('marketplace.trade_status.disputed') };
+  if (state === 'partially_released') return { intent: 'warn' as const, label: t('marketplace.trade_status.confirming') };
+  if (state === 'funded') return { intent: 'warn' as const, label: t('marketplace.trade_status.locked') };
+  if (state === 'proposed') return { intent: 'info' as const, label: t('marketplace.trade_status.proposed') };
+  if (state === 'draft') return { intent: 'neutral' as const, label: t('marketplace.trade_status.drafting') };
   return { intent: 'neutral' as const, label: state };
 }
 
@@ -109,6 +112,7 @@ function shortId(s: string): string {
 }
 
 export default function MarketplacePage() {
+  const { t } = useTranslation();
   const [offerList, setOfferList] = useState<Offer[]>([]);
   const [myTrades, setMyTrades] = useState<MyTradeRow[]>([]);
   const [myAddrs, setMyAddrs] = useState<Set<string>>(new Set());
@@ -236,11 +240,11 @@ export default function MarketplacePage() {
             below pulls double-duty as the section divider. */}
         <div className="flex items-center justify-between gap-4 mb-3">
           <div className="min-w-0">
-            <h1 className="text-[20px] font-semibold tracking-tight text-[#eaecef]">Marketplace</h1>
+            <h1 className="text-[20px] font-semibold tracking-tight text-[#eaecef]">{t('marketplace.page_title')}</h1>
             <p className="text-[12px] text-[#b7bdc6] mt-0.5">
               {mode === 'otc'
-                ? 'Peer-to-peer OTC. Lock IRM in escrow, swap for anything.'
-                : 'Atomic swaps between IRM and other chains. Trustless. No bridge.'}
+                ? t('marketplace.header.subtitle_otc')
+                : t('marketplace.header.subtitle_swap')}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -250,9 +254,9 @@ export default function MarketplacePage() {
             <Link
               to="/settlement-hub"
               className="text-[12px] inline-flex items-center gap-1.5 text-[#b7bdc6] hover:text-[#eaecef] transition-colors"
-              title="Open the lower-level settlement flows."
+              title={t('marketplace.header.advanced_flows_tooltip')}
             >
-              Advanced flows <ArrowRight size={11} />
+              {t('marketplace.header.advanced_flows')} <ArrowRight size={11} />
             </Link>
           </div>
         </div>
@@ -265,8 +269,8 @@ export default function MarketplacePage() {
             value={mode}
             onChange={setMode}
             tabs={[
-              { id: 'otc',  label: 'OTC P2P' },
-              { id: 'swap', label: 'Spot Swap' },
+              { id: 'otc',  label: t('marketplace.mode_tabs.otc') },
+              { id: 'swap', label: t('marketplace.mode_tabs.swap') },
             ]}
           />
         </div>
@@ -316,26 +320,26 @@ export default function MarketplacePage() {
               Pill primitive for sides + lifecycle. */}
           <div className="bg-[#181a20] border border-[#2b3139] rounded-lg p-4 min-w-0">
             <div className="flex items-center justify-between gap-2 mb-3">
-              <h3 className="text-[13px] font-semibold text-[#eaecef]">My Trades</h3>
+              <h3 className="text-[13px] font-semibold text-[#eaecef]">{t('marketplace.my_trades.title')}</h3>
               <Tabs<MyTradesTab>
                 variant="pill"
                 size="sm"
                 value={myTradesTab}
                 onChange={setMyTradesTab}
                 tabs={[
-                  { id: 'active',    label: 'Active', count: activeCount },
-                  { id: 'completed', label: 'Completed' },
-                  { id: 'all',       label: 'All' },
+                  { id: 'active',    label: t('marketplace.my_trades.tab_active'), count: activeCount },
+                  { id: 'completed', label: t('marketplace.my_trades.tab_completed') },
+                  { id: 'all',       label: t('marketplace.my_trades.tab_all') },
                 ]}
               />
             </div>
             {tabFiltered.length === 0 ? (
               <div className="text-[12px] py-8 text-center text-[#5e6673]">
                 {myTradesTab === 'active'
-                  ? 'No active trades. Take an offer from the order book to start.'
+                  ? t('marketplace.my_trades.empty_active')
                   : myTradesTab === 'completed'
-                    ? 'No completed trades yet.'
-                    : 'No trades yet. Take an offer from the order book to start.'}
+                    ? t('marketplace.my_trades.empty_completed')
+                    : t('marketplace.my_trades.empty_all')}
               </div>
             ) : (
               <div className="space-y-0.5 -mx-2">
@@ -346,7 +350,7 @@ export default function MarketplacePage() {
                   const amount = (agreement as unknown as { total_amount?: number; amount?: number }).total_amount
                     ?? (agreement as unknown as { amount?: number }).amount ?? 0;
                   const active = id === view.activeTradeAgreementId;
-                  const status = statusPillFor(state);
+                  const status = statusPillFor(state, t);
                   const actionable = state === 'funded' || state === 'partially_released';
                   return (
                     <button
@@ -358,7 +362,7 @@ export default function MarketplacePage() {
                       } ${actionable ? 'border-l-2 border-l-[#fcd535]' : ''}`}
                     >
                       <Pill intent={side === 'buying' ? 'buy' : 'sell'} size="xs">
-                        {side === 'buying' ? 'BUY' : 'SELL'}
+                        {side === 'buying' ? t('marketplace.my_trades.side_buy') : t('marketplace.my_trades.side_sell')}
                       </Pill>
                       <span className="font-mono tabular-nums text-[#eaecef] truncate">
                         {formatIRM(amount)}

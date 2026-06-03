@@ -357,7 +357,7 @@ export default function Settings() {
       }, 500);
     } else {
       updateSettings({ [key]: value } as Partial<typeof local>);
-      toast.success('Settings saved', { duration: 2000 });
+      toast.success(t('common.settings_saved'), { duration: 2000 });
     }
   };
 
@@ -394,12 +394,12 @@ export default function Settings() {
         });
         if (!metricsResp.ok) {
           setRpcOk(true);
-          toast(`Status OK, but /metrics returned HTTP ${metricsResp.status}`);
+          toast(t('settings.toasts.metrics_http_error', { status: metricsResp.status }));
           return;
         }
       } catch (e) {
         setRpcOk(true);
-        toast(`Status OK, but /metrics unreachable: ${e instanceof Error ? e.message : String(e)}`);
+        toast(t('settings.toasts.metrics_unreachable', { error: e instanceof Error ? e.message : String(e) }));
         return;
       }
       setRpcOk(true);
@@ -999,7 +999,7 @@ export default function Settings() {
                   type="button"
                   onClick={() => setShowRpcToken((v) => !v)}
                   className="btn-secondary px-3 py-2 text-xs flex items-center gap-1.5 shrink-0"
-                  aria-label={showRpcToken ? "Hide token" : "Show token"}
+                  aria-label={showRpcToken ? t('settings.fields.hide_token') : t('settings.fields.show_token')}
                 >
                   {showRpcToken ? <EyeOff size={13} /> : <Eye size={13} />}
                 </button>
@@ -1330,35 +1330,35 @@ export default function Settings() {
                   {upnpDiag && (statusKind === 'detecting' || statusKind === 'inactive') && (
                     <div className="mt-2 rounded-md border border-white/8 bg-white/[0.02] px-3 py-2 space-y-1 text-[11px] font-mono">
                       <div className="flex justify-between gap-3">
-                        <span className="text-white/40">Chosen LAN IP</span>
+                        <span className="text-white/40">{t('settings.port_reachability.diag_chosen_lan_ip')}</span>
                         <span className="text-white/75">{upnpDiag.local_ipv4_chosen ?? '—'}</span>
                       </div>
                       <div className="flex justify-between gap-3">
-                        <span className="text-white/40">Router IP</span>
+                        <span className="text-white/40">{t('settings.port_reachability.diag_router_ip')}</span>
                         <span className="text-white/75">{upnpDiag.gateway_ipv4 ?? '—'}</span>
                       </div>
                       <div className="flex justify-between gap-3">
-                        <span className="text-white/40">Control URL</span>
+                        <span className="text-white/40">{t('settings.port_reachability.diag_control_url')}</span>
                         <span className="text-white/70 truncate max-w-[60%]" title={upnpDiag.control_url ?? ''}>
                           {upnpDiag.control_url ? upnpDiag.control_url.replace(/^https?:\/\//, '') : '—'}
                         </span>
                       </div>
                       <div className="flex justify-between gap-3">
-                        <span className="text-white/40">External IP</span>
+                        <span className="text-white/40">{t('settings.port_reachability.diag_external_ip')}</span>
                         <span className="text-white/75">
                           {upnpDiag.external_ip ?? '—'}
                           {upnpDiag.external_ip && upnpDiag.external_ip_routable === false && (
-                            <span className="text-amber-300/80 ml-1.5">(private — double NAT)</span>
+                            <span className="text-amber-300/80 ml-1.5">{t('settings.port_reachability.diag_private_double_nat')}</span>
                           )}
                         </span>
                       </div>
                       <div className="flex justify-between gap-3">
-                        <span className="text-white/40">AddPortMapping tries</span>
+                        <span className="text-white/40">{t('settings.port_reachability.diag_add_port_mapping_tries')}</span>
                         <span className="text-white/70">{upnpDiag.add_port_mapping_attempts}</span>
                       </div>
                       {upnpDiag.last_fault && (
                         <div className="pt-1 mt-1 border-t border-white/8">
-                          <div className="text-white/40 mb-0.5">Last fault</div>
+                          <div className="text-white/40 mb-0.5">{t('settings.port_reachability.diag_last_fault')}</div>
                           <div className="text-rose-300/85 break-all leading-snug">{upnpDiag.last_fault}</div>
                         </div>
                       )}
@@ -1743,7 +1743,7 @@ export default function Settings() {
                     type="text"
                     value={local.external_ip ?? ''}
                     onChange={(e) => patch('external_ip', e.target.value || undefined)}
-                    placeholder="e.g. 203.0.113.42"
+                    placeholder={t('settings.node_data_info.external_ip_placeholder')}
                     className="input flex-1 text-xs"
                   />
                   <button
@@ -1860,8 +1860,8 @@ export default function Settings() {
               </button>
             </FieldRow>
             <FieldRow
-              label="Show legacy settlement UI"
-              description="Use the original template-grid Settlement page instead of the new SafeTrade / PayForWork / Deposit flows. Takes effect on next /settlement navigation."
+              label={t('settings.developer_info.show_legacy_settlement')}
+              description={t('settings.developer_info.show_legacy_settlement_description')}
             >
               <Toggle checked={showLegacySettlement} onChange={setShowLegacySettlement} />
             </FieldRow>

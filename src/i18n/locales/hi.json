@@ -152,7 +152,9 @@
       "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
       "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
       "rpc_token_test_remote": "Test remote",
-      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated",
+      "hide_token": "टोकन छिपाएं",
+      "show_token": "टोकन दिखाएं"
     },
     "buttons": {
       "test_connection": "कनेक्शन का परीक्षण करें",
@@ -195,7 +197,9 @@
       "onboarding_reset": "ऑनबोर्डिंग रीसेट - विज़ार्ड देखने के लिए ऐप को पुनरारंभ करें",
       "update_check_internet": "अद्यतनों की जाँच नहीं की जा सकी. अपना इंटरनेट कनेक्शन जांचें.",
       "connection_failed": "कनेक्शन विफल",
-      "update_failed": "भार बढ़ाना विफल हुवा"
+      "update_failed": "भार बढ़ाना विफल हुवा",
+      "metrics_http_error": "स्थिति OK, लेकिन /metrics ने HTTP {{status}} लौटाया",
+      "metrics_unreachable": "स्थिति OK, लेकिन /metrics पहुँच योग्य नहीं: {{error}}"
     },
     "page_subtitle": "अपना नोड कनेक्शन, वॉलेट पथ और प्रदर्शन प्राथमिकताएँ कॉन्फ़िगर करें।",
     "update_banner": {
@@ -261,7 +265,14 @@
       "retry": "पुन: प्रयास करें",
       "external_ip_label": "बाहरी आईपी",
       "detecting_paragraph": "पहुंच की पुष्टि के लिए आने वाले सहकर्मी के लिए 60 के दशक तक प्रतीक्षा करना। PEX को प्रारंभ के बाद आपके पते को अन्य नोड्स तक प्रसारित करने के लिए एक क्षण की आवश्यकता होती है।",
-      "inactive_paragraph": "UPnP विफल हो गया और कोई इनबाउंड सहकर्मी नहीं आया। अपने राउटर (TCP 38291) पर मैन्युअल पोर्ट फ़ॉरवर्डिंग कॉन्फ़िगर करें या UPnP सक्षम करें, फिर पुनः प्रयास करें पर क्लिक करें। इस स्थिति में आउटबाउंड कनेक्शन अभी भी काम करते हैं।"
+      "inactive_paragraph": "UPnP विफल हो गया और कोई इनबाउंड सहकर्मी नहीं आया। अपने राउटर (TCP 38291) पर मैन्युअल पोर्ट फ़ॉरवर्डिंग कॉन्फ़िगर करें या UPnP सक्षम करें, फिर पुनः प्रयास करें पर क्लिक करें। इस स्थिति में आउटबाउंड कनेक्शन अभी भी काम करते हैं।",
+      "diag_chosen_lan_ip": "चुना गया LAN IP",
+      "diag_router_ip": "राउटर IP",
+      "diag_control_url": "Control URL",
+      "diag_external_ip": "बाहरी IP",
+      "diag_private_double_nat": "(निजी — double NAT)",
+      "diag_add_port_mapping_tries": "AddPortMapping प्रयास",
+      "diag_last_fault": "अंतिम दोष"
     },
     "security_info": {
       "wallet_local": "इरियम कोर आपकी वॉलेट फ़ाइल को स्थानीय रूप से संग्रहीत करता है। आपकी निजी कुंजियाँ आपकी मशीन को कभी नहीं छोड़तीं। वॉलेट फ़ाइल एन्क्रिप्टेड है. हमेशा अपने बीज वाक्यांश का बैकअप लें और इसे ऑफ़लाइन रखें।",
@@ -325,11 +336,14 @@
       "reset_state_success": "स्थिति रीसेट की गई — बैकअप {{path}} पर",
       "reset_state_no_backup": "बैकअप के लिए कोई मौजूदा स्थिति नहीं — नई स्थिति बनाई गई",
       "reset_state_rebuilding": "node पुनः शुरू हो रहा है — लोकल block से UTXO सेट फिर से बना रहा है (5-15 मिनट)",
-      "reset_state_failed": "रीसेट विफल: {{reason}}"
+      "reset_state_failed": "रीसेट विफल: {{reason}}",
+      "external_ip_placeholder": "उदा. 203.0.113.42"
     },
     "developer_info": {
       "reset_onboarding": "ऑनबोर्डिंग रीसेट करें",
-      "reset_onboarding_description": "अगले लॉन्च पर प्रथम-रन सेटअप विज़ार्ड फिर से दिखाएं"
+      "reset_onboarding_description": "अगले लॉन्च पर प्रथम-रन सेटअप विज़ार्ड फिर से दिखाएं",
+      "show_legacy_settlement": "लीगेसी settlement UI दिखाएं",
+      "show_legacy_settlement_description": "नए SafeTrade / PayForWork / Deposit प्रवाह के बजाय मूल टेम्पलेट-ग्रिड Settlement पेज का उपयोग करें। अगले /settlement नेविगेशन पर प्रभावी होगा।"
     },
     "action_bar": {
       "are_you_sure": "क्या आपको यकीन है?",
@@ -469,7 +483,27 @@
       "rename_wallet_file": "वॉलेट फ़ाइल का नाम बदलें",
       "delete_wallet_file": "इस वॉलेट फ़ाइल को स्थायी रूप से हटा दें",
       "manage_wallets": "बटुए प्रबंधित करें",
-      "manage_description": "वॉलेट फ़ाइलें, आयात, छिपे हुए पते"
+      "manage_description": "वॉलेट फ़ाइलें, आयात, छिपे हुए पते",
+      "manage_button": "प्रबंधित करें",
+      "copy_address": "पता कॉपी करें",
+      "add_address_button": "पता जोड़ें",
+      "generating": "जेनरेट हो रहा है…",
+      "empty_state": "अभी तक कोई पता नहीं। एक जोड़ने के लिए Manage खोलें।",
+      "add_address_confirm_title": "एक नया पता जोड़ें?",
+      "add_address_confirm_body": "यह आपके वॉलेट seed से अगला पता डिराइव करेगा। एक बार बनाए जाने पर पते को वॉलेट फाइल से हटाया नहीं जा सकता — केवल दिखने वाली सूची से छिपाया जा सकता है।",
+      "set_primary_button": "प्राथमिक सेट करें",
+      "primary_button_short": "प्राथमिक",
+      "export_wif_short_tooltip": "WIF निर्यात करें",
+      "wif_short": "WIF",
+      "qr_short": "QR",
+      "hide_button_short": "छिपाएं",
+      "no_addresses_panel": "अभी तक कोई पता नहीं।",
+      "panel_description": "पते आपके वॉलेट seed से डिराइव होते हैं और स्थायी रूप से हटाए नहीं जा सकते। उन्हें दृश्य से हटाने के लिए Hide का उपयोग करें।",
+      "label_placeholder_primary": "उदा. प्राथमिक · माइनिंग",
+      "label_placeholder_other": "उदा. माइनिंग",
+      "edit_label": "लेबल संपादित करें",
+      "add_custom_label": "एक कस्टम लेबल जोड़ें",
+      "address_qr_label": "पता QR"
     },
     "send": {
       "title": "IRMTIKER भेजें",
@@ -499,12 +533,44 @@
         "unconfirmed": "आपके फंड की अभी तक पुष्टि नहीं हुई है. भेजने से पहले कम से कम 1 पुष्टिकरण की प्रतीक्षा करें।",
         "double_spend": "यह लेन-देन किसी अन्य लंबित लेन-देन के साथ टकराव करता है। कृपया प्रतीक्षा करें और पुनः प्रयास करें.",
         "generic": "लेन-देन प्रसारित नहीं किया जा सका. कृपया जांचें कि नोड ऑनलाइन है और पुनः प्रयास करें।",
-        "fallback": "लेन - देन विफल। कृपया पुन: प्रयास करें।"
-      }
+        "fallback": "लेन - देन विफल। कृपया पुन: प्रयास करें।",
+        "insufficient_for_fee": "नेटवर्क शुल्क के लिए अपर्याप्त फंड। पता बैलेंस {{balance}} sats; न्यूनतम शुल्क {{fee}} sats।",
+        "cannot_compute_max": "max गणना नहीं की जा सकी — {{reason}}",
+        "node_still_syncing": "नोड अभी भी सिंक हो रहा है ({{persisted}}/{{height}} ब्लॉक्स)। कृपया इस डायलॉग को बंद करें, सिंक पूरा होने तक प्रतीक्षा करें, और पुनः प्रयास करें।",
+        "not_accepted_mempool": "लेन-देन नोड mempool द्वारा स्वीकार नहीं किया गया"
+      },
+      "button_label": "भेजें",
+      "node_offline_tooltip": "भेजने के लिए नोड ऑनलाइन होना चाहिए",
+      "node_syncing_tooltip": "नोड सिंक हो रहा है — भेजने से पहले प्रतीक्षा करें",
+      "max_button": "MAX",
+      "no_spendable_funds_suffix": " — कोई खर्च योग्य फंड नहीं",
+      "no_spendable_in_wallet": "इस वॉलेट में कोई खर्च योग्य फंड नहीं है।",
+      "estimated_fee_25k": "अनुमानित शुल्क: ~25,000 sats",
+      "estimated_fee_label": "अनुमानित शुल्क",
+      "estimated_fee_value_25k": "~25,000 sats",
+      "amount_sats_label": "राशि (sats)",
+      "confirm_send_prefix": "भेजें",
+      "confirm_send_to_suffix": "को",
+      "back_button": "← वापस",
+      "transaction_sent_title": "लेन-देन भेजा गया",
+      "transaction_sent_subtitle": "आपका लेन-देन अगले ब्लॉक में दिखाई देगा",
+      "transaction_sent_explanation": "आपका लेन-देन आपकी निजी की से क्रिप्टोग्राफिक रूप से साइन किया गया है और नेटवर्क पर ब्रॉडकास्ट किया गया है। यह अगले माइन ब्लॉक में शामिल होने पर स्थायी रूप से सुरक्षित होगा।",
+      "status_signed": "SIGNED",
+      "private_key_verified": "निजी की सत्यापित",
+      "status_confirming": "CONFIRMING",
+      "next_mined_block": "अगला माइन ब्लॉक",
+      "transaction_id_label": "लेन-देन ID",
+      "copy_transaction_id": "लेन-देन ID कॉपी करें",
+      "view_in_explorer": "Explorer में देखें"
     },
     "receive": {
       "title": "IRMTIKER प्राप्त करें",
-      "scan_qr_hint": "इस QR कोड को स्कैन करें या नीचे दिए गए पते को कॉपी करें"
+      "scan_qr_hint": "इस QR कोड को स्कैन करें या नीचे दिए गए पते को कॉपी करें",
+      "button_label": "प्राप्त करें",
+      "send_to_this_address": "इस पते पर IRM भेजें:",
+      "no_address_short": "कोई पता नहीं",
+      "no_address_available": "कोई पता उपलब्ध नहीं",
+      "copy_address_button": "पता कॉपी करें"
     },
     "security": {
       "section_title": "सुरक्षा",
@@ -519,7 +585,16 @@
       "seed_modal_title": "आपका पुनर्प्राप्ति वाक्यांश",
       "seed_modal_warning": "इसे कागज पर लिख लें. इन 24 शब्दों वाला कोई भी व्यक्ति आपका पैसा खर्च कर सकता है।",
       "wif_label": "WIF निजी कुंजी",
-      "backup_warning": "इस फ़ाइल में आपकी सभी निजी कुंजियाँ शामिल हैं। इसे सुरक्षित रूप से संग्रहित करें."
+      "backup_warning": "इस फ़ाइल में आपकी सभी निजी कुंजियाँ शामिल हैं। इसे सुरक्षित रूप से संग्रहित करें.",
+      "backup_subsection": "बैकअप",
+      "restore_subsection": "पुनर्स्थापित करें",
+      "export_wif_dialog_title": "WIF की निर्यात करें",
+      "export_wif_private_key_dialog_title": "WIF निजी की निर्यात करें",
+      "text_file_filter": "Text",
+      "backup_dialog_title": "वॉलेट बैकअप सहेजें",
+      "select_backup_dialog_title": "वॉलेट बैकअप फाइल चुनें",
+      "backup_filter_name": "वॉलेट बैकअप",
+      "all_files_filter": "सभी फाइलें"
     },
     "transactions": {
       "section_title": "लेनदेन",
@@ -529,7 +604,17 @@
       "confirmations": "{{count}} पुष्टिकरण",
       "pending": "लंबित",
       "received": "प्राप्त",
-      "sent": "भेजा"
+      "sent": "भेजा",
+      "confirmed": "पुष्ट",
+      "for_address": "{{address}} के लिए",
+      "mempool_awaiting": "Mempool · पुष्टि की प्रतीक्षा",
+      "miner_label": "माइनर: {{address}}",
+      "fee_label": "शुल्क: {{amount}} sats",
+      "txid_label": "TXID: {{txid}}",
+      "conf_short": "{{count}} conf",
+      "block_number": "ब्लॉक #{{height}}",
+      "open_in_explorer": "Explorer में खोलें",
+      "copy_txid": "TXID कॉपी करें"
     },
     "toasts": {
       "send_success": "भेजा गया - txid {{txid}}",
@@ -565,7 +650,13 @@
       "wif_copied": "WIF की प्रतिलिपि बनाई गई",
       "name_invalid_chars": "वॉलेट नाम में शामिल नहीं हो सकता: / \\ : * ? \" < > |",
       "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
-      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up.",
+      "node_syncing_wait": "नोड सिंक हो रहा है — {{persisted}}/{{height}} ब्लॉक्स। कृपया प्रतीक्षा करें।",
+      "failed_add_address": "पता जोड़ने में विफल: {{reason}}",
+      "no_recovery_data": "वॉलेट में कोई रिकवरी डेटा नहीं मिला",
+      "wallet_deleted": "{{name}} हटाया गया",
+      "seed_copied": "Seed कॉपी हो गया",
+      "invalid_wallet_path": "वॉलेट बाइनरी ने अमान्य पथ लौटाया: {{path}}"
     },
     "encryption": {
       "migration_title": "Encrypt your wallet",
@@ -588,6 +679,120 @@
       "needs_migration_status": "Wallet on disk uses the legacy unencrypted format and must be encrypted before use.",
       "plaintext_backup_warning": "Plaintext backup file(s) detected at {{paths}}. Delete after verifying the migration succeeded.",
       "recover_link": "Forgot your password? Recover with seed phrase"
+    },
+    "no_wallet_loaded": "कोई वॉलेट लोड नहीं — नीचे बनाएं या इम्पोर्ट करें",
+    "balance_label": "बैलेंस",
+    "balance_label_for_address": "बैलेंस · पता {{index}}",
+    "satoshis_amount": "{{amount}} satoshis",
+    "unconfirmed": "अपुष्ट",
+    "wallet_wide": "(वॉलेट-व्यापी)",
+    "syncing_tooltip": "भेजने से पहले नोड के सिंक पूरा होने की प्रतीक्षा करें। अभी भेजने पर सिग्नेचर सत्यापन त्रुटि के साथ विफल हो सकता है क्योंकि UTXO सेट अभी भी पुनर्निर्माण हो रहा है।",
+    "syncing_progress": "सिंक हो रहा है…",
+    "gaps_count": "{{count}} अंतराल",
+    "common": {
+      "cancel": "रद्द करें",
+      "done": "पूरा",
+      "reveal": "दिखाएं",
+      "hide": "छिपाएं",
+      "copy": "कॉपी करें",
+      "delete": "हटाएं",
+      "loading": "लोड हो रहा है…"
+    },
+    "seed": {
+      "recovery_phrase_title": "रिकवरी फ्रेज़",
+      "wallet_seed_title": "वॉलेट Seed",
+      "recovery_phrase_warning": "कभी भी अपना रिकवरी फ्रेज़ साझा न करें। इन 24 शब्दों के साथ कोई भी आपके सभी फंड तक पहुँच सकता है। इसे ऑफलाइन सुरक्षित रूप से संग्रहित करें।",
+      "wallet_seed_warning": "कभी भी अपना वॉलेट seed साझा न करें। यह hex मान सभी फंड तक पूर्ण पहुँच देता है। इसे ऑफलाइन सुरक्षित रूप से संग्रहित करें।",
+      "custom_seed_hint": "यह वॉलेट एक कस्टम seed का उपयोग करता है। पुनर्स्थापित करने के लिए इस hex seed का बैकअप लें।",
+      "copy_phrase": "फ्रेज़ कॉपी करें",
+      "copy_seed": "Seed कॉपी करें"
+    },
+    "restore": {
+      "title": "बैकअप से पुनर्स्थापित करें",
+      "warning_body": "यह आपके वर्तमान वॉलेट डेटा को अधिलेखित कर देगा। जारी रखने से पहले सुनिश्चित करें कि आपके पास अपनी WIF की या बैकअप फाइल है। पुनर्स्थापना पूरी होने पर नोड स्वचालित रूप से पुनरारंभ हो जाएगा ताकि नई वॉलेट स्थिति सही ढंग से उठाई जा सके।",
+      "restore_button": "वॉलेट पुनर्स्थापित करें"
+    },
+    "create_modal": {
+      "create_title": "वॉलेट बनाएं",
+      "import_title": "वॉलेट इम्पोर्ट करें",
+      "create_new_tab": "नया बनाएं",
+      "import_tab": "इम्पोर्ट",
+      "generate_description": "24-शब्द रिकवरी फ्रेज़ के साथ एक नया BIP39 वॉलेट जेनरेट करें।",
+      "creating": "बना रहे हैं…",
+      "create_new_wallet_button": "नया वॉलेट बनाएं",
+      "save_warning": "अपने 24-शब्द रिकवरी फ्रेज़ को ऑफलाइन सहेजें — यह आपके पूरे वॉलेट को पुनर्स्थापित कर सकता है। आपकी WIF की एक एकल पते का बैकअप है। दोनों में से कोई भी खोने पर पुनर्प्राप्त नहीं किया जा सकता।",
+      "address_label": "पता",
+      "recovery_phrase_label": "रिकवरी फ्रेज़ (24 शब्द)",
+      "recovery_phrase_hint": "(कोई भी एक फ्रेज़ आपके वॉलेट को पुनर्स्थापित करता है)",
+      "wif_label": "WIF की",
+      "wif_hint": "(आपकी निजी की पोर्टेबल फॉर्मेट में)",
+      "loading_wif": "WIF लोड हो रहा है…",
+      "export_wif_to_file": "WIF को फाइल में निर्यात करें",
+      "saved_confirmation": "मैंने अपना रिकवरी फ्रेज़ और WIF की सुरक्षित रूप से सहेज लिया है।",
+      "import_notice_lead": "यह एक नया वॉलेट इम्पोर्ट करेगा। आपका वर्तमान वॉलेट अछूता रहेगा और इससे वापस स्विच किया जा सकता है",
+      "seed_phrase_method": "Seed Phrase",
+      "wif_key_method": "WIF की",
+      "seed_phrase_input_label": "Seed Phrase (12 या 24 शब्द)",
+      "seed_phrase_placeholder": "शब्द1 शब्द2 शब्द3 …",
+      "bip39_hint": "स्पेस से अलग BIP39 रिकवरी फ्रेज़।",
+      "wif_placeholder": "5J… या K… या L…",
+      "wif_format_hint": "WIF — 5, K, या L से शुरू होता है।",
+      "import_button": "इम्पोर्ट करें"
+    },
+    "new_address": {
+      "title": "नया पता",
+      "derived_lead": "आपके वॉलेट के BIP32 seed से एक नया पता डिराइव किया गया है। आपका",
+      "derived_emphasis": "रिकवरी फ्रेज़ नहीं बदला है",
+      "derived_trail": "— यह पता आपके मौजूदा पतों के साथ वही वॉलेट फाइल साझा करता है।",
+      "copy_address": "पता कॉपी करें",
+      "wif_private_key_label": "WIF निजी की",
+      "wif_warning": "इस WIF वाला कोई भी इस पते पर फंड खर्च कर सकता है। इसे ऑफलाइन संग्रहित करें।",
+      "copy_wif": "WIF कॉपी करें",
+      "recovery_reminder_lead": "यह पता आपका वॉलेट रिकवरी फ्रेज़ साझा करता है। इसे देखने के लिए, जाएं",
+      "recovery_reminder_path": "Security → Show Recovery Phrase"
+    },
+    "files": {
+      "section_title": "वॉलेट फाइलें",
+      "section_description": "प्रत्येक फाइल का अपना seed होता है। अलग वॉलेट लोड करने के लिए स्विच करें।",
+      "no_files_found": "~/.irium/ में कोई वॉलेट फाइल नहीं मिली",
+      "rename_placeholder": "wallet-name",
+      "active_badge": "सक्रिय",
+      "switch_button": "स्विच करें",
+      "create_new_wallet_file": "नई वॉलेट फाइल बनाएं",
+      "create_new_advanced_hint": "(उन्नत — अलग seed)",
+      "create_new_description": "अपने स्वयं के seed के साथ एक अलग वॉलेट फाइल बनाता है। आपका वर्तमान वॉलेट डिस्क पर रहता है और इस सूची से वापस स्विच किया जा सकता है।"
+    },
+    "hidden": {
+      "section_title": "छिपे हुए पते",
+      "still_in_file": "(अभी भी वॉलेट फाइल में)",
+      "description": "पते वॉलेट फाइल से स्थायी रूप से नहीं हटाए जा सकते। छिपे हुए पते दृश्य से हटा दिए जाते हैं लेकिन पुनर्प्राप्त किए जा सकते हैं — उन्हें वापस लाने के लिए Unhide क्लिक करें।",
+      "unhide_button": "अनहाइड करें"
+    },
+    "delete_file": {
+      "confirm_title": "इस वॉलेट फाइल को स्थायी रूप से हटाएं?",
+      "address_count": "{{count}} पते",
+      "address_count_one": "{{count}} पता",
+      "warning_label": "चेतावनी:",
+      "warning_funds_lead": "इस वॉलेट में फंड हैं। बिना बैकअप के इसे हटाने का मतलब है स्थायी हानि",
+      "warning_funds_trail": ". आगे बढ़ने से पहले सुनिश्चित करें कि आपने अपनी WIF कीज़ या seed phrase निर्यात कर लिया है।",
+      "warning_unknown_lead": "बैलेंस की पुष्टि नहीं की जा सकी — नोड ऑफलाइन हो सकता है। यदि इस वॉलेट में फंड थे और आपने seed phrase या WIF कीज़ का बैकअप नहीं लिया है, तो हटाने से",
+      "warning_unknown_emphasis": "स्थायी रूप से खो जाएंगे",
+      "warning_unknown_trail": "वे।",
+      "warning_zero_lead": "यह फाइल को डिस्क से हटा देगा। यदि आपने इस वॉलेट के लिए seed phrase या WIF कीज़ का बैकअप नहीं लिया है, तो इसमें सभी फंड",
+      "warning_zero_emphasis": "स्थायी रूप से खो जाएंगे",
+      "warning_zero_trail": "। यह पूर्ववत नहीं किया जा सकता।",
+      "type_prompt_prefix": "टाइप करें",
+      "type_prompt_word": "DELETE",
+      "type_prompt_suffix": "पुष्टि करने के लिए",
+      "deleting": "हटा रहे हैं…",
+      "delete_forever": "हमेशा के लिए हटाएं"
+    },
+    "hide_address": {
+      "confirm_title": "इस पते को छिपाएं?",
+      "body_lead": "पता वॉलेट फाइल में रहता है — केवल दिखने वाली सूची अपडेट होती है। आप कर सकते हैं",
+      "body_emphasis": "अनहाइड",
+      "body_trail": "बाद में Hidden Addresses अनुभाग से।",
+      "confirm_button": "पता छिपाएं"
     }
   },
   "agreements": {
@@ -621,7 +826,18 @@
       "share_text": "पाठ साझा करें",
       "delete": "मिटाना",
       "submitting": "सबमिट किया जा रहा है...",
-      "sign": "संकेत"
+      "sign": "संकेत",
+      "fund_escrow": "एस्क्रो फंड करें",
+      "release_to_counterparty": "सामने वाली पार्टी को रिलीज़ करें",
+      "submit_proof": "प्रूफ जमा करें",
+      "refund": "रिफंड",
+      "agreement_expired": "अनुबंध समाप्त",
+      "create_and_submit_proof": "प्रूफ बनाएं और जमा करें",
+      "confirm_release": "रिलीज़ की पुष्टि करें",
+      "confirm_fund": "फंड की पुष्टि करें",
+      "confirm_open_dispute": "विवाद खोलने की पुष्टि करें",
+      "use_this_invoice": "इस इनवॉइस का उपयोग करें →",
+      "verify_signature_file": "Signature फाइल सत्यापित करें…"
     },
     "proof_modal": {
       "title": "प्रमाण प्रस्तुत करें",
@@ -634,7 +850,15 @@
       "evidence_summary": "साक्ष्य सारांश",
       "evidence_placeholder": "जैसे $50 का भुगतान बैंक हस्तांतरण के माध्यम से प्राप्त हुआ, संदर्भ #12345।",
       "submit_button": "प्रमाण प्रस्तुत करें",
-      "submitting": "सबमिट किया जा रहा है..."
+      "submitting": "सबमिट किया जा रहा है...",
+      "intro": "ऐप के अंदर साइन्ड प्रूफ बनाएं, या जो पहले से है उसे अपलोड करें।",
+      "mode_create": "साक्ष्य से बनाएं",
+      "mode_upload": "फाइल अपलोड करें",
+      "mode_create_sub": "ऐप के अंदर बनाएं",
+      "mode_upload_sub": "मौजूदा फाइल का उपयोग करें",
+      "upload_note_prefix": "इस टैब का उपयोग केवल तभी करें जब आपके पास पहले से प्रूफ फाइल हो — उदाहरण के लिए, सामने वाली पार्टी या अटेस्टर ने आपके लिए साइन किया हो, या जो आपने इसके माध्यम से बनाया हो",
+      "upload_note_middle": "यदि आप अपना खुद का प्रूफ जमा कर रहे हैं, तो उपयोग करें",
+      "upload_note_suffix": "ऊपर वाला टैब — यह ऐप छोड़े बिना प्रूफ बनाता और जमा करता है।"
     },
     "toasts": {
       "agreement_signed": "समझौते पर हस्ताक्षर किये गये।",
@@ -663,7 +887,9 @@
       "signature_valid": "हस्ताक्षर मान्य (हस्ताक्षरकर्ता {{signer}})",
       "signature_invalid": "हस्ताक्षर अमान्य: {{reason}}",
       "agreement_signed_short": "समझौते पर हस्ताक्षर किये गये।",
-      "sign_failed": "साइन फेल"
+      "sign_failed": "साइन फेल",
+      "cleanup_removed": "{{count}} अनुबंध हटा दिए गए",
+      "cleanup_removed_with_failures": "{{count}} अनुबंध हटा दिए गए ({{failed}} विफल)"
     },
     "refund": {
       "blocked_default": "धनवापसी पात्रता अज्ञात",
@@ -685,13 +911,26 @@
       "share_text": "इस अनुबंध के सादे-पाठ सारांश को क्लिपबोर्ड पर कॉपी करें",
       "delete_local": "इस अनुबंध को अपने स्थानीय स्टोर से हटा दें. प्रतिपक्ष की प्रति प्रभावित नहीं होती.",
       "save_friendly_name": "इस अनुबंध के लिए एक अनुकूल नाम सहेजें (स्थानीय रूप से संग्रहीत)",
-      "verify_signature_file": "इस अनुबंध के विरुद्ध एक हस्ताक्षर फ़ाइल (.sig या .json) सत्यापित करें"
+      "verify_signature_file": "इस अनुबंध के विरुद्ध एक हस्ताक्षर फ़ाइल (.sig या .json) सत्यापित करें",
+      "cleanup_old_test_data": "आपके लोकल स्टोर से उन अनुबंधों को हटाएं जिनकी ID में test / gossip / demo / pr शामिल है",
+      "node_offline_sign": "साइन करने के लिए नोड ऑनलाइन होना चाहिए",
+      "sign_to_confirm": "अपनी भागीदारी की पुष्टि के लिए इस अनुबंध पर साइन करें",
+      "node_offline_fund": "एस्क्रो फंड करने के लिए नोड ऑनलाइन होना चाहिए",
+      "fund_escrow_action": "अनुबंध राशि को HTLC एस्क्रो में लॉक करें",
+      "node_offline_release": "फंड रिलीज़ करने के लिए नोड ऑनलाइन होना चाहिए",
+      "release_to_counterparty": "सामने वाली पार्टी को फंड रिलीज़ करें",
+      "node_offline_dispute": "विवाद खोलने के लिए नोड ऑनलाइन होना चाहिए",
+      "mark_disputed": "इस अनुबंध को विवादित चिह्नित करें — निपटान के लिए मध्यस्थ अटेस्टेशन की आवश्यकता होगी",
+      "node_offline_refund": "रिफंड के लिए नोड ऑनलाइन होना चाहिए",
+      "view_audit": "पूरा ऑन-चेन ऑडिट रिकॉर्ड देखें"
     },
     "buttons": {
       "import_invoice": "आयात चालान",
       "import_pack": "आयात पैक",
       "browse": "ब्राउज़",
-      "delete_agreement": "अनुबंध हटाएं"
+      "delete_agreement": "अनुबंध हटाएं",
+      "cleanup_old_test_data": "पुराना टेस्ट डेटा साफ करें ({{count}})",
+      "export_pack": "Pack निर्यात करें"
     },
     "page_views": {
       "agreements": "करार",
@@ -744,12 +983,19 @@
       "seller": "विक्रेता",
       "signer_wallet": "हस्ताक्षरकर्ता बटुआ पता",
       "role": "भूमिका:",
-      "reason": "कारण:"
+      "reason": "कारण:",
+      "agreement_short": "अनुबंध",
+      "signer_prefix": "साइनर"
     },
     "placeholders": {
       "your_wallet_address": "आपका बटुआ पता",
       "secret_preimage": "वैकल्पिक · 64-वर्ण हेक्स",
-      "dispute_reason": "बताएं कि क्या गलत हुआ - इसे रिज़ॉल्वर के साथ साझा किया जाता है।"
+      "dispute_reason": "बताएं कि क्या गलत हुआ - इसे रिज़ॉल्वर के साथ साझा किया जाता है।",
+      "output_pack_path": "/path/to/output.pack.json",
+      "proof_json_path": "/path/to/proof.json",
+      "pack_json_path": "/path/to/agreement.pack.json",
+      "invoice_json_path": "/path/to/invoice.json",
+      "hash_64_hex": "64-वर्ण hex"
     },
     "modals": {
       "submit_proof_title": "सबूत जमा करें",
@@ -757,16 +1003,117 @@
       "import_invoice_title": "आयात चालान",
       "open_dispute_title": "खुला विवाद?",
       "audit_title": "अनुबंध लेखापरीक्षा",
-      "sign_title": "समझौते पर हस्ताक्षर करें"
+      "sign_title": "समझौते पर हस्ताक्षर करें",
+      "delete_confirm_prefix": "अनुबंध हटाएं",
+      "delete_confirm_body": "यह अनुबंध को केवल आपके लोकल स्टोर से हटाता है। सामने वाली पार्टी की कॉपी प्रभावित नहीं होती। केवल बिना फंड किए (खुले/लंबित) अनुबंध ही हटाए जा सकते हैं।",
+      "cleanup_title": "पुराना टेस्ट डेटा साफ करें",
+      "cleanup_found": "ऐसी ID वाले {{count}} अनुबंध मिले जिनमें test, gossip, demo, या pr शामिल है।",
+      "cleanup_disclaimer": "यह उन्हें केवल आपके लोकल स्टोर से हटाता है। सामने वाली पार्टी की कॉपी प्रभावित नहीं होती। ऑन-चेन सक्रिय HTLC नहीं छुए जाते — फंड को अलग से रिलीज़ या रिफंड करना होगा।",
+      "cleanup_remove_count": "{{count}} हटाएं",
+      "release_funds_title": "फंड रिलीज़ करें?",
+      "release_funds_body_prefix": "यह रिलीज़ करेगा",
+      "release_funds_body_suffix": "विक्रेता को।",
+      "fund_escrow_title": "एस्क्रो फंड करें?",
+      "fund_escrow_body_prefix": "यह लॉक करेगा",
+      "fund_escrow_body_suffix": "HTLC एस्क्रो में। प्रूफ स्वीकृति पर फंड सामने वाली पार्टी को रिलीज़ होते हैं, या टाइमआउट ऊंचाई के बाद रिफंड होते हैं।",
+      "import_pack_format_prefix": "स्वीकृत प्रारूप:",
+      "import_pack_format_suffix": "— पार्टी A द्वारा निर्यात किया गया",
+      "import_invoice_subtitle": "Settlement पेज पर नया अनुबंध पहले से भरने के लिए एक invoice JSON चुनें।"
     },
     "audit": {
-      "fetching": "ऑडिट रिकॉर्ड लाया जा रहा है..."
+      "fetching": "ऑडिट रिकॉर्ड लाया जा रहा है...",
+      "no_data": "Audit RPC ने कोई डेटा नहीं लौटाया",
+      "show_raw_json": "कच्चा JSON दिखाएं",
+      "hide_raw_json": "कच्चा JSON छिपाएं"
     },
     "empty": {
       "no_signatures": "अभी तक कोई हस्ताक्षर सत्यापित नहीं है. किसी को सत्यापित करने के लिए ऊपर दिए गए बटन का उपयोग करें।",
       "no_wallet_addresses": "कोई वॉलेट पता नहीं",
       "no_disputes": "कोई विवाद नहीं.",
-      "disputes_offline": "(नोड ऑफ़लाइन है - विवाद सूची अनुपलब्ध हो सकती है।)"
+      "disputes_offline": "(नोड ऑफ़लाइन है - विवाद सूची अनुपलब्ध हो सकती है।)",
+      "no_agreements_found": "कोई अनुबंध नहीं मिला",
+      "with_status": "स्थिति के साथ",
+      "matching": "मिलान करते हुए",
+      "go_to_settlement_cta": "अपना पहला अनुबंध बनाने के लिए Settlement पर जाएं →"
+    },
+    "scope": {
+      "my": "मेरे अनुबंध",
+      "all": "सभी"
+    },
+    "dialog_titles": {
+      "save_agreement_pack": "Agreement Pack सहेजें",
+      "select_proof_file": "प्रूफ फाइल चुनें (.json)",
+      "select_pack_file": "Agreement Pack चुनें (.pack.json)",
+      "select_invoice_file": "Invoice JSON चुनें",
+      "select_signature_file": "Signature फाइल चुनें"
+    },
+    "timeline": {
+      "created": "बनाया गया",
+      "funded": "फंड किया गया",
+      "proof_submitted": "प्रूफ जमा किया गया",
+      "released": "रिलीज़ किया गया",
+      "refunded": "रिफंड किया गया"
+    },
+    "detail_labels": {
+      "template": "टेम्पलेट",
+      "created": "बनाया गया",
+      "deadline": "समय सीमा",
+      "proof_status": "प्रूफ स्थिति",
+      "release_eligible": "रिलीज़ के योग्य",
+      "kind": "प्रकार",
+      "threshold": "थ्रेशोल्ड",
+      "attestors": "अटेस्टर्स",
+      "parties": "पक्ष",
+      "amount": "राशि",
+      "payer": "भुगतानकर्ता",
+      "payee": "प्राप्तकर्ता",
+      "outcome": "परिणाम",
+      "satisfied": "संतुष्ट",
+      "reason": "कारण"
+    },
+    "detail_values": {
+      "none": "कोई नहीं",
+      "party": "पक्ष",
+      "parties": "पक्ष"
+    },
+    "sections": {
+      "policy": "नीति",
+      "proofs": "प्रूफ्स",
+      "timeline": "टाइमलाइन ({{count}} इवेंट)",
+      "proofs_count": "प्रूफ्स ({{count}})",
+      "funding_legs": "फंडिंग ({{count}} लेग)",
+      "linked_transactions": "लिंक किए गए लेन-देन ({{count}})"
+    },
+    "warnings": {
+      "proof_finality_body": "रिलीज़ करने से पहले और ब्लॉक कन्फर्मेशन की प्रतीक्षा करें — चेन रीऑर्ग प्रूफ को रोलबैक कर सकता है।",
+      "open_dispute_body": "विवाद खोलने का मतलब है कि अनुबंध की समीक्षा के लिए एक मध्यस्थ की आवश्यकता होगी जो दोनों पक्षों के साक्ष्य देखेगा। आगे बढ़ने से पहले सुनिश्चित करें कि आपके पास अच्छा कारण और सहायक प्रमाण है। यह कार्रवाई पूर्ववत नहीं की जा सकती।"
+    },
+    "helpers": {
+      "sign_confirms_participation": "साइन करना आपकी भागीदारी की पुष्टि करता है। फंडिंग से पहले दोनों पक्षों को साइन करना होगा।",
+      "sign_modal_body": "अपनी वॉलेट की से इस अनुबंध पर साइन करना आपकी भागीदारी की पुष्टि करता है। फंडिंग से पहले दोनों पक्षों को साइन करना होगा।",
+      "no_hash_on_file": "इस अनुबंध के लिए कोई हैश फाइल पर नहीं है — सामने वाली पार्टी द्वारा साझा किया हैश पेस्ट करें।",
+      "no_file_selected": "कोई फाइल नहीं चुनी गई",
+      "secret_auto_loaded": "लोकल agreement-secrets स्टोर से ऑटो-लोड किया गया",
+      "secret_required_hint": "अगर आपने यह अनुबंध स्वयं नहीं बनाया है तो आवश्यक है। अगर आपका वॉलेट इसे ऑटो-डिराइव करता है तो खाली छोड़ें।",
+      "use_invoice_hint": "Use This Invoice क्लिक करने से OTC टेम्पलेट पहले से भरा हुआ Settlement पर पहुंच जाएगा। अनुबंध बनाने से पहले आप टेम्पलेट बदल सकते हैं, फील्ड्स संपादित कर सकते हैं और पुष्टि कर सकते हैं।",
+      "signer_unknown": "अज्ञात",
+      "rejected": "अस्वीकृत",
+      "role_buyer_suffix": "(खरीदार)",
+      "role_seller_suffix": "(विक्रेता)",
+      "signer_not_party": "यह पता खरीदार या विक्रेता नहीं है — साइनिंग बिना पार्टी रोल के दर्ज की जाएगी।"
+    },
+    "form_errors": {
+      "hash_required": "अनुबंध हैश आवश्यक है",
+      "proof_type_required": "प्रूफ प्रकार चुनें",
+      "attested_by_required": "अटेस्टेड-बाय पता आवश्यक है",
+      "evidence_required": "साक्ष्य सारांश में बताएं कि क्या हुआ",
+      "secret_must_be_64_hex": "ठीक 64 hex वर्ण होने चाहिए (0-9, a-f)।"
+    },
+    "disputes": {
+      "opened_prefix": "खोला गया",
+      "resolved_prefix": "· हल किया गया",
+      "open_this_agreement": "यह अनुबंध खोलें",
+      "agreement_not_in_list": "अनुबंध वर्तमान सूची में नहीं है — Agreements व्यू रीफ्रेश करके देखें"
     }
   },
   "settlement": {
@@ -971,14 +1318,72 @@
       "confirm_large_amount": "आप एस्क्रो में {{amount}} IRM को लॉक करने वाले हैं।\n\nयह एक बड़ी रकम है. पुष्टि करें कि आपने दशमलव सही ढंग से टाइप किया है।",
       "remote_label": "दूर",
       "remote_tooltip": "यह ऑफ़र किसी अन्य विक्रेता का है और इसे आपके स्थानीय स्टोर से हटाया नहीं जा सकता।",
-      "delete_tooltip": "इस ऑफ़र को अपने स्थानीय स्टोर से हटा दें"
+      "delete_tooltip": "इस ऑफ़र को अपने स्थानीय स्टोर से हटा दें",
+      "modal_title": "विक्रय ऑर्डर बनाएं",
+      "modal_subtitle": "ऑर्डर बुक पर ऑफर पोस्ट करें — खरीदार के स्वीकार करते ही IRM लॉक हो जाएगा।",
+      "post_offer_button": "ऑफर पोस्ट करें",
+      "lock_info_prefix": "खरीदार के कमिट करते ही आपका IRM लॉक हो जाता है। फिर आप खरीदार का ऑफ-चेन भुगतान प्राप्त करते हैं और क्लिक करते हैं",
+      "confirm_received_label": "प्राप्त की पुष्टि करें",
+      "lock_info_suffix": "रिलीज़ करने के लिए। या यदि वे भुगतान नहीं करते तो विवाद खोलें।",
+      "amount_to_sell_label": "बेचने के लिए IRM की मात्रा",
+      "price_per_irm_label": "USDT में प्रति IRM कीमत",
+      "buyer_pays_total_prefix": "खरीदार कुल भुगतान करेगा",
+      "buyer_pays_total_amount": "{{amount}} USDT",
+      "payment_method_label": "भुगतान विधि",
+      "your_payment_details_label": "आपके भुगतान विवरण",
+      "payment_details_placeholder": "उदा. IBAN DE89 3704 0044 0532 0130 00 या PayPal: seller@example.com",
+      "payment_details_helper": "खरीदार ऑफर लेने के बाद ये विवरण देखता है।",
+      "payment_options": {
+        "bank_transfer": "बैंक ट्रांसफर",
+        "paypal": "PayPal",
+        "usdt_trc20": "USDT (TRC-20)",
+        "usdt_erc20": "USDT (ERC-20)",
+        "sepa": "SEPA",
+        "cash": "नकद",
+        "other": "अन्य"
+      },
+      "errors": {
+        "positive_irm_amount": "धनात्मक IRM राशि दर्ज करें",
+        "positive_usdt_price": "प्रति IRM धनात्मक USDT कीमत दर्ज करें",
+        "select_payment_method": "भुगतान विधि चुनें",
+        "payment_details_required": "अपने भुगतान विवरण दर्ज करें ताकि खरीदार को पता हो कि कैसे भुगतान करना है"
+      },
+      "toasts": {
+        "offer_posted": "ऑफर पोस्ट हो गया। खरीदार के कमिट करते ही IRM लॉक हो जाएगा।"
+      }
     },
     "take_offer": {
       "title": "ऑफर लीजिए",
       "completed_trades": "पूर्ण व्यापार",
       "take_button": "प्रस्ताव लीजिए",
       "taking": "ले रहा हूँ...",
-      "title_modal": "यह ऑफर लें"
+      "title_modal": "यह ऑफर लें",
+      "set_buyer_address_first": "पहले अपना खरीदार पता सेट करें",
+      "error_agreement_id_missing": "ऑफर लिया गया लेकिन प्रतिक्रिया में अनुबंध id नहीं है",
+      "irm_locked_send_payment": "IRM अब एस्क्रो में लॉक है। ऑफ-चेन भुगतान भेजें।",
+      "dispute_reason_buyer_cancelled": "खरीदार ने भुगतान से पहले रद्द किया",
+      "dispute_opened_refund_hint": "विवाद खोला गया। टाइमआउट के बाद आप Agreements पेज से अपने रिफंड का दावा कर सकते हैं।",
+      "enter_payment_reference": "एक लेन-देन id या नोट दर्ज करें ताकि विक्रेता आपके भुगतान को सत्यापित कर सके",
+      "payment_reported_seller_notified": "भुगतान रिपोर्ट किया गया। विक्रेता को सूचित किया गया है।",
+      "step_of_two": "चरण {{step}} / 2",
+      "step1_intro": "पुष्टि करने से विक्रेता का IRM एस्क्रो में लॉक हो जाएगा। फिर आपके पास ऑफ-चेन भुगतान भेजने और लेन-देन रिपोर्ट करने के लिए एक समय सीमा होगी।",
+      "you_receive": "आप प्राप्त करते हैं:",
+      "payment_method": "भुगतान विधि:",
+      "seller": "विक्रेता:",
+      "buyer_you": "खरीदार (आप):",
+      "not_set": "- सेट नहीं -",
+      "cancel": "रद्द करें",
+      "confirm_take": "लेने की पुष्टि करें",
+      "irm_locked_in_escrow": "IRM एस्क्रो में लॉक है",
+      "step2_intro": "विक्रेता का IRM लॉक है। ऑफ-चेन भुगतान भेजें, फिर नीचे अपना लेन-देन संदर्भ दर्ज करें और \"मैंने भुगतान भेज दिया है\" क्लिक करें।",
+      "sellers_payment_details": "विक्रेता के भुगतान विवरण",
+      "no_payment_details": "ऑफर में कोई विवरण नहीं। भुगतान निर्देशों के लिए सीधे विक्रेता से संपर्क करें।",
+      "your_transaction_reference": "आपका लेन-देन संदर्भ",
+      "payment_reference_placeholder": "बैंक वायर संदर्भ, PayPal txid, ब्लॉकचेन txid, आदि।",
+      "payment_reference_hint": "विक्रेता इसे ठीक वैसा ही देखता है। कुछ भी जिसका उपयोग वे आपके भुगतान आगमन की पुष्टि के लिए कर सकें - संदर्भ संख्या, लेन-देन id, भेजने वाले का नाम, आदि।",
+      "cancel_opens_dispute_warning": "यदि आप यहाँ रद्द करते हैं, तो विवाद खुलता है। टाइमआउट के बाद आप Agreements पेज से रिफंड का दावा कर सकते हैं।",
+      "cancel_and_dispute": "रद्द करें और विवाद करें",
+      "i_have_sent_payment": "मैंने भुगतान भेज दिया है"
     },
     "feeds": {
       "discover_button": "फ़ीड खोजें",
@@ -1026,7 +1431,189 @@
     },
     "swap": {
       "fuel_banner_title": "IRM सेटलमेंट परत को शक्ति देता है।",
-      "fuel_banner_body": "भरोसे के बिना ट्रेडिंग शुरू करने के लिए BTC, LTC या DOGE को IRM में बदलें।"
+      "fuel_banner_body": "भरोसे के बिना ट्रेडिंग शुरू करने के लिए BTC, LTC या DOGE को IRM में बदलें।",
+      "pair_not_available": "यह जोड़ी अभी उपलब्ध नहीं है",
+      "own_order_hint": "यह आपका अपना ऑर्डर है। इसे रद्द करने के लिए दाईं ओर My Swaps पैनल का उपयोग करें।",
+      "not_available_yet": "अभी उपलब्ध नहीं",
+      "how_it_works_title": "{{pair}} स्वैप कैसे काम करते हैं",
+      "how_it_works_step1": "बाईं ओर की बुक से एक ऑर्डर चुनें, या अपना खुद का पोस्ट करें।",
+      "how_it_works_step2": "ऑर्डर लिए जाते ही विक्रेता का IRM एस्क्रो में लॉक हो जाता है।",
+      "how_it_works_step3": "खरीदार विक्रेता के पते पर {{quote}} भेजता है।",
+      "how_it_works_step4": "एक बार भुगतान पुष्ट होने पर, IRM स्वचालित रूप से खरीदार को रिलीज़ हो जाता है।"
+    },
+    "header": {
+      "subtitle_otc": "Peer-to-peer OTC। IRM को एस्क्रो में लॉक करें, किसी भी चीज़ के लिए स्वैप करें।",
+      "subtitle_swap": "IRM और अन्य चेन के बीच एटॉमिक स्वैप। बिना भरोसे का। कोई ब्रिज नहीं।",
+      "advanced_flows": "उन्नत प्रवाह",
+      "advanced_flows_tooltip": "निचले-स्तर के settlement प्रवाह खोलें।"
+    },
+    "mode_tabs": {
+      "otc": "OTC P2P",
+      "swap": "Spot स्वैप"
+    },
+    "my_trades": {
+      "title": "मेरे व्यापार",
+      "tab_active": "सक्रिय",
+      "tab_completed": "पूर्ण",
+      "tab_all": "सभी",
+      "empty_active": "कोई सक्रिय व्यापार नहीं। शुरू करने के लिए ऑर्डर बुक से एक ऑफर लें।",
+      "empty_completed": "अभी तक कोई पूर्ण व्यापार नहीं।",
+      "empty_all": "अभी तक कोई व्यापार नहीं। शुरू करने के लिए ऑर्डर बुक से एक ऑफर लें।",
+      "side_buy": "खरीदें",
+      "side_sell": "बेचें"
+    },
+    "trade_status": {
+      "released": "रिलीज़ किया गया",
+      "refunded": "रिफंड किया गया",
+      "expired": "समाप्त",
+      "cancelled": "रद्द",
+      "disputed": "विवादित",
+      "confirming": "पुष्टि हो रही है",
+      "locked": "लॉक्ड",
+      "proposed": "प्रस्तावित",
+      "drafting": "ड्राफ्ट हो रहा है"
+    },
+    "order_book": {
+      "title": "ऑर्डर बुक",
+      "create_order": "ऑर्डर बनाएं",
+      "offers_count_one": "ऑफर",
+      "offers_count_other": "ऑफर्स",
+      "offers_count": "ऑफर्स",
+      "hidden_tooltip_one": "{{count}} ऑफर छिपाया गया क्योंकि उसमें कोई कीमत नहीं थी",
+      "hidden_tooltip_other": "{{count}} ऑफर्स छिपाए गए क्योंकि उनमें कोई कीमत नहीं थी",
+      "hidden_tooltip": "{{count}} ऑफर्स छिपाए गए क्योंकि उनमें कोई कीमत नहीं थी",
+      "hidden_suffix": "{{count}} छिपे हुए",
+      "show_taken": "लिए गए दिखाएं",
+      "sort": {
+        "price_asc": "कीमत ↑",
+        "price_desc": "कीमत ↓",
+        "newest": "नवीनतम",
+        "best_rep": "बेस्ट रेप"
+      },
+      "updated_ago": "अपडेट {{time}}",
+      "refreshing": "रीफ्रेश हो रहा है…",
+      "refreshing_lower": "रीफ्रेश हो रहा है…",
+      "empty_prefix": "अभी तक बुक में कोई ऑफर नहीं। क्लिक करें",
+      "empty_suffix": "पहला पोस्ट करने के लिए।",
+      "col_amount_irm": "IRM की मात्रा",
+      "col_price_per_irm": "प्रति IRM कीमत",
+      "col_total": "कुल",
+      "col_payment": "भुगतान",
+      "col_seller": "विक्रेता",
+      "col_rep": "रेप",
+      "col_age": "आयु",
+      "rep_tooltip": "5 में से {{stars}}, {{completed}} पूर्ण",
+      "no_reputation": "कोई प्रतिष्ठा नहीं",
+      "taken": "लिया गया",
+      "take": "लें"
+    },
+    "pair_order_book": {
+      "header_title": "{{pair}} ऑर्डर बुक",
+      "open_shown_summary": "{{open}} खुले · {{shown}} दिखाए गए",
+      "updated_label": "अपडेट किया गया",
+      "new_swap": "नया स्वैप",
+      "direction_both": "दोनों",
+      "direction_sell_irm": "IRM बेचें",
+      "direction_buy_irm": "IRM खरीदें",
+      "sort_price_asc": "सर्वोत्तम कीमत पहले",
+      "sort_price_desc": "उच्चतम कीमत पहले",
+      "sort_recent": "नवीनतम पहले",
+      "hide_my_orders": "मेरे ऑर्डर छिपाएं",
+      "loading_orders": "{{pair}} ऑर्डर लोड हो रहे हैं…",
+      "empty_state": "कोई खुला {{pair}} ऑर्डर नहीं। पहले बनें — ऊपर New swap बटन से एक पोस्ट करें।",
+      "side_sells_irm": "IRM बेचता है",
+      "side_buys_irm": "IRM खरीदता है",
+      "badge_yours": "आपका",
+      "escrow_protected": "एस्क्रो सुरक्षित",
+      "maker_line": "Maker {{address}} · {{ago}}",
+      "needs_confirmations": "{{network}} पक्ष पर {{count}} पुष्टि की आवश्यकता",
+      "needs_confirmations_plural": "{{network}} पक्ष पर {{count}} पुष्टियों की आवश्यकता",
+      "relative_recent": "हाल में",
+      "relative_just_now": "अभी-अभी",
+      "relative_blocks_ago": "{{count}} ब्लॉक्स पहले",
+      "relative_blocks_ago_one": "{{count}} ब्लॉक पहले",
+      "relative_hours_ago": "{{count}}h पहले",
+      "relative_days_ago": "{{count}}d पहले"
+    },
+    "resolver_picker": {
+      "title": "मध्यस्थ चयन",
+      "intro": "एक मध्यस्थ एक सत्यापित तीसरा पक्ष है जो तय करता है कि जब खरीदार और विक्रेता सहमत नहीं हो पाते तो IRM किसे मिलेगा। मध्यस्थ एक छोटा शुल्क कमाता है, जो व्यापार के निपटारे पर विवादित राशि से कटता है।",
+      "nominated_section_title": "इस व्यापार के लिए नामांकित मध्यस्थ",
+      "primary_label": "प्राथमिक",
+      "fallback_label": "विकल्प",
+      "fee_with_value": "शुल्क: {{value}}",
+      "no_nominated_notice": "यह व्यापार बिना नामांकित मध्यस्थों के बनाया गया था। नीचे कोई भी मध्यस्थ कार्य कर सके इससे पहले दोनों पक्ष वॉलेट के मध्यस्थ पुनः-नामांकन प्रवाह से एक नया नामांकन सह-साइन कर सकते हैं।",
+      "available_section_title": "उपलब्ध मध्यस्थ",
+      "registry_unreachable": "इस नोड पर मध्यस्थ रजिस्ट्री एंडपॉइंट पहुँच योग्य नहीं है ({{error}})। resolver-list CLI के माध्यम से सीधे उम्मीदवार खोजने के लिए अपने वॉलेट से मध्यस्थ पुनः-नामांकन प्रवाह का उपयोग करें।",
+      "empty_registry_before": "इस नोड पर अभी तक किसी मध्यस्थ ने रजिस्टर नहीं किया है। मध्यस्थ कॉल करके रजिस्टर करते हैं",
+      "empty_registry_after": "उनके पते के हाल के coinbase आउटपुट में प्रकट होने के बाद।",
+      "unnamed_resolver": "अनाम मध्यस्थ",
+      "no_reputation_yet": "अभी तक कोई प्रतिष्ठा नहीं",
+      "agreements_hint": "मध्यस्थ को अतिरिक्त साक्ष्य जमा करने और विवाद समाधान को देखने के लिए Agreements पेज का उपयोग करें। मध्यस्थ के निर्णय लेने से पहले दोनों पक्ष किसी भी समय साक्ष्य जमा कर सकते हैं।",
+      "close": "बंद करें"
+    },
+    "seller_review": {
+      "toast_released": "IRM रिलीज़ किया गया। अब खरीदार के पास फंड हैं।",
+      "dispute_reason": "विक्रेता को ऑफ-चेन भुगतान प्राप्त नहीं हुआ",
+      "toast_dispute_opened": "विवाद खोला गया। एक मध्यस्थ साक्ष्य की समीक्षा करेगा।",
+      "empty_state": "आपके लिए कोई आने वाला व्यापार प्रतीक्षारत नहीं। जब कोई खरीदार आपके ऑफरों में से एक लेता है और भुगतान रिपोर्ट करता है, तो यह यहाँ दिखाई देता है।",
+      "section_title": "सत्यापित करने के लिए आने वाले व्यापार",
+      "waiting_count": "{{count}} प्रतीक्षारत",
+      "status_releasing": "रिलीज़ हो रहा है",
+      "status_funded": "फंड किया गया",
+      "buyer_label": "खरीदार:",
+      "buyer_claims_paid": "खरीदार दावा करता है कि भुगतान {{time}} भेजा गया",
+      "no_reference": "(कोई लेन-देन संदर्भ नहीं दिया गया)",
+      "no_payment_yet": "खरीदार ने अभी तक भुगतान भेजने की रिपोर्ट नहीं की है। प्रतीक्षा करें, या यदि समय सीमा बीत चुकी है तो विवाद खोलें।",
+      "open_dispute_button": "कोई भुगतान नहीं - विवाद खोलें",
+      "confirm_release_button": "प्राप्त की पुष्टि करें और रिलीज़ करें",
+      "loading_trades": "व्यापार लोड हो रहे हैं...",
+      "time_ago_seconds": "{{count}}s पहले",
+      "time_ago_minutes": "{{count}}m पहले",
+      "time_ago_hours": "{{count}}h पहले",
+      "time_ago_days": "{{count}}d पहले"
+    },
+    "take_swap": {
+      "buy_irm": "IRM खरीदें",
+      "sell_irm": "IRM बेचें",
+      "toast_no_wallet": "कोई सक्रिय Irium वॉलेट पता नहीं। पहले एक वॉलेट खोलें।",
+      "toast_min_blocks": "रिफंड समय सीमा कम से कम 10 ब्लॉक होनी चाहिए",
+      "toast_locked_buyer": "ऑर्डर लॉक। {{code}} भुगतान भेजें और इसे रिपोर्ट करें।",
+      "toast_locked_seller": "ऑर्डर लॉक। विक्रेता का IRM एस्क्रो में है।",
+      "toast_need_ref": "एक लेन-देन id या नोट दर्ज करें ताकि विक्रेता आपके {{code}} भुगतान को सत्यापित कर सके",
+      "toast_payment_reported": "भुगतान रिपोर्ट किया गया। विक्रेता को सूचित किया गया है।",
+      "toast_dispute_info": "Agreements पेज से एक विवाद खोला जा सकता है। फिलहाल यहाँ रद्द करें और वहाँ इसे फिर से देखें।",
+      "modal_title": "{{pair}} पर {{label}}",
+      "step_of_2": "चरण {{step}} / 2",
+      "intro_buyer": "पुष्टि करने से विक्रेता का IRM एस्क्रो में लॉक हो जाएगा। फिर आप दिखाए गए पते पर {{code}} भेजेंगे।",
+      "intro_seller": "पुष्टि करने से आपके IRM के साथ एक मेल खाता एस्क्रो बनेगा। खरीदार आपके पते पर {{code}} भेजेगा।",
+      "you_receive": "आप प्राप्त करते हैं",
+      "you_pay": "आप भुगतान करते हैं",
+      "you_send": "आप भेजते हैं",
+      "price": "कीमत",
+      "maker": "Maker",
+      "maker_foreign_address": "Maker {{code}} पता",
+      "needs": "आवश्यक",
+      "confirmation_one": "{{count}} {{code}} पुष्टि",
+      "confirmation_other": "{{count}} {{code}} पुष्टियाँ",
+      "refund_deadline_label": "रिफंड समय सीमा (Irium ब्लॉक्स)",
+      "refund_deadline_hint": "यदि इस समय सीमा तक भुगतान पुष्ट नहीं होता, तो आपके फंड रिफंड हो सकते हैं।",
+      "cancel": "रद्द करें",
+      "confirm_action": "{{label}} की पुष्टि करें",
+      "escrow_locked": "एस्क्रो लॉक है",
+      "escrow_locked_buyer": "नीचे दिए गए पते पर {{code}} भुगतान भेजें। एक बार आपका भुगतान पुष्ट होने पर, IRM स्वचालित रूप से आपके वॉलेट में रिलीज़ हो जाता है।",
+      "escrow_locked_seller": "आपका IRM एस्क्रो में है। खरीदार आपके पते पर {{code}} भेजेगा। जब उनका भुगतान पुष्ट होगा, IRM उन्हें रिलीज़ हो जाएगा और खरीदार प्रवाह स्वयं समाप्त हो जाएगा।",
+      "send_to_label": "{{code}} इन पर भेजें",
+      "exact_amount_label": "ठीक {{code}} राशि",
+      "required_memo_label": "आवश्यक भुगतान memo",
+      "memo_hint": "अधिकांश {{name}} वॉलेट इसे भुगतान पर एक अतिरिक्त डेटा फ़ील्ड के रूप में शामिल करते हैं। यह आपके भुगतान को इस व्यापार से जोड़ता है ताकि IRM स्वचालित रूप से रिलीज़ हो सके।",
+      "tx_reference_label": "आपका लेन-देन संदर्भ",
+      "tx_reference_placeholder": "{{code}} लेन-देन id या नोट",
+      "tx_reference_hint": "विक्रेता इसे ठीक वैसा ही देखता है। कुछ भी जिसका उपयोग वे आपके भुगतान की पुष्टि के लिए कर सकें, काम करता है।",
+      "cancel_warning": "यदि आप अभी रद्द करते हैं, तो आपके फंड ऊपर दी गई रिफंड समय सीमा तक लॉक रहते हैं।",
+      "cancel_and_dispute": "रद्द करें और विवाद करें",
+      "i_have_sent": "मैंने {{code}} भेज दिया है",
+      "watching_escrow": "एस्क्रो देख रहे हैं"
     }
   },
   "miner": {
@@ -1047,7 +1634,11 @@
       "uptime": "अपटाइम",
       "difficulty": "कठिनाई",
       "temperature": "तापमान",
-      "power": "शक्ति"
+      "power": "शक्ति",
+      "est_daily_irm": "अनुमानित दैनिक IRM",
+      "na_linux_only": "N/A (केवल Linux)",
+      "pool_difficulty": "पूल कठिनाई",
+      "pool_hashrate": "पूल हैशरेट"
     },
     "buttons": {
       "start_mining": "खनन शुरू करें",
@@ -1056,7 +1647,23 @@
       "connect_pool": "पूल से कनेक्ट करें",
       "disconnect": "डिस्कनेक्ट",
       "confirm_disconnect": "डिस्कनेक्ट की पुष्टि करें?",
-      "detect_gpus": "जीपीयू का पता लगाएं"
+      "detect_gpus": "जीपीयू का पता लगाएं",
+      "view_wallet": "वॉलेट देखें",
+      "starting": "शुरू हो रहा है…",
+      "connecting": "कनेक्ट हो रहा है…",
+      "start_gpu_mining": "GPU माइनिंग शुरू करें",
+      "stop_gpu": "GPU रोकें",
+      "scanning": "स्कैन हो रहा है…",
+      "yes": "हाँ",
+      "no": "नहीं",
+      "close": "बंद करें",
+      "done": "पूरा",
+      "ok": "ठीक है",
+      "start": "शुरू करें",
+      "stop": "रोकें",
+      "refresh": "रीफ्रेश करें",
+      "view_pool_stats": "पूल आँकड़े देखें",
+      "view_pool_stats_tooltip": "Block Explorer में सार्वजनिक पूल के लाइव माइनर आँकड़े खोलें"
     },
     "fields": {
       "mining_address_label": "खनन पता",
@@ -1080,21 +1687,49 @@
       "intensity_label": "तीव्रता - {{value}}%",
       "intensity_mac_note": "GPU वॉचडॉग को बैच के मध्य में कर्नेल को नष्ट करने से रोकने के लिए macOS पर तीव्रता 50% तक सीमित कर दी गई है। जीपीयू माइनर स्वचालित रूप से वॉचडॉग स्टालों का पता लगाता है और अगर वह उन्हें देखता है तो सफाई से रुक जाता है।",
       "pool_preset": "पूल प्रीसेट",
-      "stratum_worker_use_wallet": "Use my wallet"
+      "stratum_worker_use_wallet": "Use my wallet",
+      "intensity_hint": "अधिक तीव्रता = अधिक हैशरेट, अधिक बिजली खपत",
+      "core_active_tooltip": "Core {{n}} (सक्रिय)",
+      "core_idle_tooltip": "Core {{n}} (निष्क्रिय)",
+      "stratum_worker_placeholder": "walletAddress.workerName",
+      "stratum_worker_autofill_tooltip": "ऑटो-फिल: {{address}}.rig1",
+      "stratum_password_hint": "अधिकांश पूलों के लिए डिफ़ॉल्ट \"x\" उपयोग करने के लिए खाली छोड़ें"
     },
     "found_blocks": {
       "section_title": "ब्लॉक मिले",
       "empty": "इस सत्र में अभी तक कोई ब्लॉक नहीं मिला.",
-      "open_in_explorer_tooltip": "इस ब्लॉक को एक्सप्लोरर में खोलें"
+      "open_in_explorer_tooltip": "इस ब्लॉक को एक्सप्लोरर में खोलें",
+      "hide_orphans_tooltip": "किसी अन्य माइनर द्वारा जीते गए ब्लॉक्स छिपाएं",
+      "reveal_orphans_tooltip_one": "{{count}} orphaned उम्मीदवार दिखाएं",
+      "reveal_orphans_tooltip_other": "{{count}} orphaned उम्मीदवार दिखाएं",
+      "hide_orphans_button": "Orphans छिपाएं ({{count}})",
+      "show_orphans_button": "Orphans दिखाएं ({{count}})",
+      "all_orphaned": "अभी तक कोई पुष्ट ब्लॉक नहीं — अब तक के सभी उम्मीदवार orphan हो गए थे।",
+      "orphaned_tooltip": "Orphaned — किसी अन्य माइनर द्वारा जीता गया",
+      "orphaned_long_tooltip": "इस ऊंचाई पर canonical ब्लॉक किसी अन्य पते द्वारा माइन किया गया था — हमने अपना उम्मीदवार रिकॉर्ड किया लेकिन दौड़ हार गए।",
+      "orphaned_badge": "orphaned",
+      "block_height_tooltip": "ब्लॉक ऊंचाई {{height}}",
+      "won_by_another": "किसी अन्य माइनर द्वारा जीता गया",
+      "hash_unavailable": "इस माइनर बिल्ड से हैश उपलब्ध नहीं",
+      "reward_not_indexed_tooltip": "रिवॉर्ड अभी तक नोड द्वारा अनुक्रमित नहीं — मैच्योर होने पर मान भर जाएगा",
+      "reward_unknown_tooltip": "रिवॉर्ड अज्ञात — माइनर stdout इसे रिपोर्ट नहीं करता",
+      "estimate_marker": "~ अनुमानित"
     },
     "shares": {
       "accepted": "स्वीकृत",
       "rejected": "अस्वीकार कर दिया",
-      "ratio": "अनुपात"
+      "ratio": "अनुपात",
+      "last_share": "अंतिम शेयर"
     },
     "asic_info": {
       "headline": "अपने ASIC या GPU को स्ट्रैटम के माध्यम से एक खनन पूल से कनेक्ट करें",
-      "after_install": "इंस्टॉल करने के बाद, इरियम कोर को पुनरारंभ करें।"
+      "after_install": "इंस्टॉल करने के बाद, इरियम कोर को पुनरारंभ करें।",
+      "external_title": "बाहरी ASIC या GPU के साथ पूल माइनिंग",
+      "external_body_before_url": "अपने ASIC या GPU माइनिंग सॉफ़्टवेयर को सीधे ऊपर दिए पूल URL पर पॉइंट करें (उदा. ",
+      "external_body_after_url": ")। Irium Core यहां दिखाए गए पूल-साइड शेयर आँकड़ों की निगरानी करता है; आपके हार्डवेयर की स्थानीय हैशरेट माइनर स्वयं रिपोर्ट करता है।",
+      "connect_button_intro_before": "नीचे ",
+      "connect_button_intro_middle": " बटन बंडल किए ",
+      "connect_button_intro_after": " sidecar के माध्यम से आपके CPU का उपयोग करके पूल माइनिंग शुरू करता है — केवल तभी उपयोगी यदि आप चाहते हैं कि यह मशीन भी पूल में CPU हैशरेट का योगदान दे। बाहरी ASIC को इस बटन की आवश्यकता नहीं।"
     },
     "toasts": {
       "miner_started": "सीपीयू माइनर प्रारंभ हुआ",
@@ -1114,17 +1749,42 @@
       "connecting_to_pool": "पूल से कनेक्ट हो रहा है…",
       "pool_disconnected_reconnecting": "पूल डिस्कनेक्ट हो गया - पुनः कनेक्ट हो रहा है...",
       "pool_connection_lost": "पूल कनेक्शन टूट गया. कृपया पुनः कनेक्ट करें.",
-      "pool_error": "पूल त्रुटि: {{message}}"
+      "pool_error": "पूल त्रुटि: {{message}}",
+      "no_device_selected": "कोई डिवाइस नहीं चुना गया — डिफ़ॉल्ट डिवाइस 0 का उपयोग कर रहे हैं",
+      "solo_listening_on": "Solo Stratum {{addr}} पर सुन रहा है",
+      "solo_failed_start": "Solo Stratum शुरू करने में विफल",
+      "solo_stopped": "Solo Stratum रोका गया",
+      "solo_failed_stop": "Solo Stratum रोकने में विफल",
+      "copied": "कॉपी हो गया"
     },
     "page_subtitle": "SHA-256d · सीपीयू · जीपीयू · एएसआईसी पूल समर्थन",
     "tooltips": {
       "copy_address": "पता कॉपी करें",
-      "copy_full_hash": "पूर्ण हैश कॉपी करें"
+      "copy_full_hash": "पूर्ण हैश कॉपी करें",
+      "copy": "कॉपी करें"
     },
     "pool_configuration": "पूल विन्यास",
     "opencl": {
       "detected_title": "ओपनसीएल हार्डवेयर का पता चला",
-      "none_detected": "कोई ओपनसीएल-सक्षम जीपीयू नहीं मिला"
+      "none_detected": "कोई ओपनसीएल-सक्षम जीपीयू नहीं मिला",
+      "no_gpu_idle_message": "कोई संगत GPU नहीं मिला — नीचे Configuration देखें",
+      "select_platform": "एक प्लेटफॉर्म चुनें और माइनिंग शुरू करें",
+      "no_compatible_gpu": "कोई संगत GPU नहीं मिला",
+      "install_drivers_before": "GPU माइनिंग के लिए OpenCL runtime आवश्यक है। अपने GPU विक्रेता के ड्राइवर (NVIDIA, AMD, या Intel OpenCL SDK) इंस्टॉल करें और क्लिक करें ",
+      "install_drivers_after": "।",
+      "supports_pool_and_solo": "एक बार सक्षम होने के बाद, GPU माइनर पूल (Stratum) और सोलो (सीधे नोड RPC) दोनों माइनिंग का समर्थन करता है।",
+      "read_docs": "GPU माइनर दस्तावेज़ पढ़ें",
+      "no_platforms_found": "कोई OpenCL प्लेटफॉर्म नहीं मिला।",
+      "install_icd_before": "अपना GPU ड्राइवर और ICD लोडर इंस्टॉल करें, फिर क्लिक करें ",
+      "install_icd_after": " फिर से।",
+      "platform_n": "प्लेटफॉर्म {{n}}",
+      "discrete_gpu": "डिस्क्रीट GPU",
+      "device_n": "डिवाइस {{n}}",
+      "fix_intro": "इसे ठीक करने के लिए, अपने GPU के लिए OpenCL ड्राइवर इंस्टॉल करें:",
+      "fix_nvidia": "nvidia.com से अपना GPU ड्राइवर पुनः इंस्टॉल करें",
+      "fix_amd": "amd.com से AMD Software Adrenalin इंस्टॉल करें",
+      "fix_intel": "intel.com से Intel Graphics Driver इंस्टॉल करें",
+      "scanning": "OpenCL डिवाइसेज़ के लिए स्कैन हो रहा है…"
     },
     "unexpected_exit": {
       "title": "Miner stopped unexpectedly",
@@ -1133,6 +1793,75 @@
       "restart_cpu": "Restart CPU Miner",
       "restart_gpu": "Restart GPU Miner",
       "dismiss": "Dismiss"
+    },
+    "activity": {
+      "share_accepted": "शेयर स्वीकृत",
+      "share_rejected": "शेयर अस्वीकृत",
+      "share_rejected_with_detail": "शेयर अस्वीकृत — {{detail}}",
+      "pool_error": "पूल त्रुटि",
+      "pool_error_with_detail": "पूल त्रुटि — {{detail}}",
+      "mining_active": "माइनिंग सक्रिय",
+      "block_hash_marker": "· ब्लॉक #{{height}}",
+      "section_title": "हाल की गतिविधि",
+      "last_count": "अंतिम {{count}}",
+      "waiting_for_first_share": "पहले शेयर की प्रतीक्षा…"
+    },
+    "status": {
+      "loading": "लोड हो रहा है…",
+      "mining_active": "माइनिंग सक्रिय",
+      "mining_active_syncing": "माइनिंग सक्रिय — ब्लॉक्स सिंक हो रहे हैं…",
+      "cpu_idle": "CPU निष्क्रिय",
+      "gpu_active": "GPU सक्रिय",
+      "gpu_idle": "GPU निष्क्रिय",
+      "pool_connected": "पूल कनेक्टेड",
+      "pool_disconnected": "पूल डिस्कनेक्टेड",
+      "live_badge": "लाइव",
+      "syncing_badge": "सिंक हो रहा है"
+    },
+    "sync": {
+      "node_syncing_height": "नोड सिंक हो रहा है — ऊंचाई {{localHeight}} / नेटवर्क {{networkTip}}",
+      "warming_up_header": "माइनर वार्म अप हो रहा है — पहली शेयर दर की प्रतीक्षा…",
+      "node_syncing_body": "नोड अभी भी नेटवर्क टिप को पकड़ रहा है। माइनिंग सक्षम है लेकिन जब तक लोकल चेन मेल नहीं खाती तब तक कोई शेयर स्वीकार नहीं किए जाएंगे। यह आमतौर पर कुछ मिनटों में पूरा हो जाता है।",
+      "warming_up_body": "माइनर sidecar शुरू हो गया है। पहली हैशरेट रीडिंग 1-3 सेकंड में आ जाती है — कोई कार्रवाई आवश्यक नहीं।"
+    },
+    "block_info": {
+      "mining_block_n": "ब्लॉक #{{height}} माइन हो रहा है",
+      "previous_block": "पिछला ब्लॉक",
+      "last_confirmed_block": "अंतिम पुष्ट ब्लॉक",
+      "network_difficulty": "नेटवर्क कठिनाई"
+    },
+    "solo": {
+      "title": "Solo Stratum Bridge",
+      "subtitle": "अपने स्वयं के iriumd के विरुद्ध ASIC चलाएं। कोई पूल शुल्क नहीं, कोई पूल निर्भरता नहीं।",
+      "listening": "सुन रहा है",
+      "stopped": "रोका गया",
+      "listen_address_label": "Listen पता",
+      "listen_default_before": "डिफ़ॉल्ट ",
+      "listen_default_after": " हर इंटरफ़ेस को बाइंड करता है ताकि आपके LAN पर ASIC उस तक पहुँच सके।",
+      "asic_connection_string": "ASIC कनेक्शन स्ट्रिंग",
+      "bullet_replace_host_before": "• बदलें ",
+      "bullet_replace_host_after": " अपनी मशीन के LAN IP (या VPS IP) के साथ।",
+      "bullet_worker_username_before": "• Worker उपयोगकर्ता नाम: आपका Q-पता उसके बाद ",
+      "bullet_worker_username_after": "। पासवर्ड: कोई भी स्ट्रिंग।",
+      "bullet_bridge_serves_before": "• Bridge सर्व करता है ",
+      "bullet_bridge_serves_middle": " और ",
+      "bullet_bridge_serves_after": " आपके लोकल iriumd पर।"
+    },
+    "found_block_banner": {
+      "title": "ब्लॉक #{{height}} माइन हो गया!",
+      "body": "आपके {{kind}} माइनर ने नेटवर्क की दौड़ अभी जीती — 50 IRM रास्ते में है (100 ब्लॉक्स में मैच्योर होगा)।",
+      "dismiss_aria": "खारिज करें"
+    },
+    "tabs_v2": {
+      "cpu": "CPU माइनर",
+      "gpu": "GPU माइनर",
+      "stratum": "पूल / Stratum",
+      "solo": "Solo Stratum"
+    },
+    "pool_presets": {
+      "irium_official_cpu_gpu": "Irium आधिकारिक पूल (CPU/GPU)",
+      "irium_official_asic": "Irium आधिकारिक पूल (ASIC)",
+      "custom": "कस्टम"
     }
   },
   "onboarding": {
@@ -1162,7 +1891,8 @@
       "generating": "वॉलेट जनरेट किया जा रहा है...",
       "show_recovery": "पुनर्प्राप्ति वाक्यांश दिखाएँ",
       "i_wrote_it_down": "मैंने इसे लिख लिया",
-      "continue_to_wallet": "वॉलेट जारी रखें"
+      "continue_to_wallet": "वॉलेट जारी रखें",
+      "generating_sub": "24-शब्द seed phrase के साथ BIP32 HD वॉलेट बनाया जा रहा है…"
     },
     "import": {
       "tab_mnemonic": "पुनर्प्राप्ति वाक्यांश",
@@ -1199,6 +1929,153 @@
       "too_short": "Password must be at least 4 characters",
       "required": "Password is required",
       "continue": "Continue"
+    },
+    "splash": {
+      "subtitle_full_node": "फुल नोड डेस्कटॉप वॉलेट",
+      "status_initializing": "रनटाइम प्रारंभ हो रहा है…",
+      "status_loading_crypto": "क्रिप्टोग्राफिक मॉड्यूल लोड हो रहे हैं…",
+      "status_verifying_binary": "बाइनरी इंटीग्रिटी सत्यापित हो रही है…",
+      "status_establishing_context": "सुरक्षित संदर्भ स्थापित हो रहा है…",
+      "status_ready": "तैयार"
+    },
+    "rail": {
+      "system_check": "सिस्टम जाँच",
+      "bootstrap": "Bootstrap",
+      "network_sync": "नेटवर्क सिंक",
+      "wallet_setup": "वॉलेट सेटअप",
+      "backup_secure": "बैकअप और सुरक्षित करें"
+    },
+    "binary_check": {
+      "subtitle": "इस मशीन पर आवश्यक नोड बाइनरीज़ की उपस्थिति सत्यापित कर रहे हैं।",
+      "iriumd_desc": "फुल नोड डेमन",
+      "irium_wallet_desc": "वॉलेट और marketplace CLI",
+      "irium_miner_desc": "CPU माइनर",
+      "all_verified": "सभी बाइनरीज़ सत्यापित। जारी रखा जा रहा है…",
+      "missing_binaries": "बाइनरीज़ अनुपस्थित। एक्जीक्यूटेबल्स को src-tauri/binaries/ में रखें",
+      "retry": "पुनः प्रयास करें",
+      "skip_advanced": "छोड़ें (उन्नत)"
+    },
+    "bootstrap": {
+      "subtitle": "Seed नोड्स, ट्रस्ट एंकर्स, और genesis ब्लॉक कॉन्फ़िगर हो रहे हैं।",
+      "creating_data_dir": "डेटा डायरेक्टरी बनाई जा रही है…",
+      "writing_seedlist": "bootstrap seedlist.txt लिखी जा रही है…",
+      "writing_static_peers": "static_peers.txt लिखी जा रही है…",
+      "installing_anchors": "genesis anchors.json इंस्टॉल हो रही है…",
+      "installing_trust_signatures": "ट्रस्ट सिग्नेचर इंस्टॉल हो रहे हैं…",
+      "complete": "Bootstrap कॉन्फ़िगरेशन पूर्ण।",
+      "error_prefix": "त्रुटि",
+      "skip_continue": "छोड़ें (फिर भी जारी रखें)"
+    },
+    "network_sync": {
+      "subtitle": "लोकल ब्लॉकचेन डेटा लोड हो रहा है और Irium P2P नेटवर्क से कनेक्ट हो रहे हैं।",
+      "port_in_use_message": "पोर्ट 38291 पहले से उपयोग में है। पृष्ठभूमि में एक और Irium नोड चल रहा हो सकता है। अपने सिस्टम ट्रे में मौजूदा Irium Core इंस्टेंस के लिए जाँच करें, या Task Manager खोलें और किसी भी iriumd.exe प्रोसेस को समाप्त करें, फिर ऐप पुनरारंभ करें।",
+      "add_peer_format_error": "IP:PORT प्रारूप का उपयोग करें (उदा. 1.2.3.4:38291)",
+      "add_peer_rejected": "नोड ने पता अस्वीकार किया",
+      "add_peer_unreachable": "नोड तक पहुँच नहीं सका",
+      "starting_iriumd": "iriumd शुरू हो रहा है…",
+      "loading_blockchain_data": "ब्लॉकचेन डेटा लोड हो रहा है…",
+      "starting_node": "नोड शुरू हो रहा है…",
+      "discovering": "खोज रहा है…",
+      "searching_for_peers": "Irium नेटवर्क पर peers खोज रहे हैं",
+      "checking_connectivity": "नेटवर्क कनेक्टिविटी जाँच रहे हैं…",
+      "network_reachable": "नेटवर्क पहुँच योग्य — नोड शुरू हो रहा है…",
+      "port_blocked_title": "पोर्ट 38291 आउटबाउंड ब्लॉक्ड प्रतीत होता है",
+      "port_blocked_body_before": "Irium नेटवर्क तक पहुँचा नहीं जा सकता। अपना राउटर या firewall जाँचें — पोर्ट",
+      "port_blocked_body_after": "आउटबाउंड TCP कनेक्शन के लिए खुला होना चाहिए।",
+      "restarting_node": "नोड पुनरारंभ हो रहा है…",
+      "retry_connection": "कनेक्शन पुनः प्रयास करें",
+      "still_connecting_title": "अभी भी peers से कनेक्ट हो रहे हैं…",
+      "still_connecting_body": "नोड Irium नेटवर्क तक पहुँच रहा है। यह आमतौर पर 30 सेकंड में पूरा हो जाता है — थोड़ा प्रतीक्षा करें।",
+      "connecting_for": "{{seconds}}s से कनेक्ट हो रहे हैं…",
+      "add_peer_manually": "Peer मैन्युअली जोड़ें",
+      "add_peer_button": "Peer जोड़ें",
+      "added_peer": "{{addr}} जोड़ा गया",
+      "continuing_in": "{{seconds}}s में जारी रखा जाएगा…",
+      "syncing_background": "पृष्ठभूमि में सिंक हो रहा है…",
+      "continue_anyway": "फिर भी जारी रखें →"
+    },
+    "wallet_setup_subtitle": "एक नया HD वॉलेट बनाएं या मौजूदा वॉलेट से पुनर्स्थापित करें।",
+    "wallet_setup_errors": {
+      "failed_create": "वॉलेट बनाने में विफल",
+      "no_wallet_pending": "एन्क्रिप्शन के लिए कोई वॉलेट लंबित नहीं",
+      "failed_set_password": "वॉलेट पासवर्ड सेट करने में विफल",
+      "import_failed": "इम्पोर्ट विफल"
+    },
+    "wallet_password": {
+      "title": "एक वॉलेट पासवर्ड सेट करें",
+      "subtitle": "आपकी वॉलेट फाइल को एन्क्रिप्ट करता है। जारी रखने से पहले आवश्यक।",
+      "placeholder": "एक मजबूत पासवर्ड चुनें (8+ वर्ण)",
+      "confirm_placeholder": "पासवर्ड की पुष्टि करें",
+      "warning": "यह पासवर्ड भूलने पर पुनर्प्राप्त नहीं किया जा सकता। इसे लिखकर सुरक्षित स्थान पर रखें। आपका seed phrase ही इस पासवर्ड के बिना वॉलेट को पुनर्स्थापित करने का एकमात्र तरीका है।",
+      "continue": "एन्क्रिप्ट करें और जारी रखें",
+      "too_short": "पासवर्ड कम से कम 8 वर्णों का होना चाहिए",
+      "mismatch": "पासवर्ड मेल नहीं खाते",
+      "encrypting": "वॉलेट एन्क्रिप्ट हो रहा है…",
+      "encrypting_sub": "आपकी वॉलेट फाइल पर PBKDF2-डिराइव्ड की लागू हो रही है।",
+      "hide": "छिपाएं",
+      "show": "दिखाएं"
+    },
+    "wallet_restored_sub": "आपका वॉलेट सफलतापूर्वक इम्पोर्ट हो गया है।",
+    "restored": {
+      "primary_address": "प्राथमिक पता",
+      "address_pending": "नोड के सिंक पूरा होने पर Dashboard पर पता दिखाई देगा।",
+      "additional_addresses": "{{count}} अतिरिक्त पते मिले",
+      "balance_will_load": "नोड के सिंक होने पर Dashboard पर आपका बैलेंस और लेन-देन इतिहास स्वचालित रूप से लोड हो जाएगा।",
+      "continue_to_dashboard": "Dashboard पर जारी रखें"
+    },
+    "import_form": {
+      "subtitle": "नीचे अपनी पुनर्स्थापना विधि चुनें।",
+      "tab_mnemonic_label": "Seed Phrase",
+      "tab_wif_label": "WIF की",
+      "tab_privkey_label": "निजी की",
+      "mnemonic_placeholder": "शब्द1 शब्द2 शब्द3 … शब्द24",
+      "mnemonic_hint": "BIP32 mnemonic — 12 या 24 स्पेस-अलग शब्द",
+      "wif_placeholder": "5Jxx… या Kxx… या Lxx…",
+      "wif_hint": "WIF (Base58Check-एन्कोडेड निजी की)",
+      "privkey_placeholder": "0x1a2b3c4d… (64 hex वर्ण)",
+      "privkey_hint": "हेक्साडेसिमल में कच्ची 256-बिट निजी की",
+      "back": "वापस",
+      "importing": "इम्पोर्ट हो रहा है…"
+    },
+    "choose": {
+      "create_description": "24-शब्द seed phrase के साथ एक नया BIP32 HD वॉलेट जेनरेट करें।",
+      "import_description": "Seed phrase, WIF की, या कच्ची निजी की के माध्यम से पुनर्स्थापित करें।"
+    },
+    "backup": {
+      "field_address_label": "वॉलेट पता",
+      "field_wif_label": "WIF की",
+      "field_mnemonic_label": "रिकवरी फ्रेज़ (24 शब्द)",
+      "field_wif_warning": "WIF आपकी निजी की पोर्टेबल फॉर्मेट में है। इसे रखने वाला कोई भी इस पते के फंड को नियंत्रित करता है।",
+      "field_mnemonic_warning": "इन 24 शब्दों को क्रम में लिखें। खोने पर पुनर्प्राप्त नहीं किया जा सकता।",
+      "copy": "कॉपी करें",
+      "copied": "कॉपी हो गया!",
+      "hide": "छिपाएं",
+      "reveal": "दिखाएं",
+      "click_to_reveal": "दिखाने के लिए क्लिक करें",
+      "confirm_address": "मैंने अपना वॉलेट पता सहेज लिया है",
+      "confirm_wif": "मैंने अपनी WIF की सुरक्षित रूप से संग्रहित कर ली है",
+      "confirm_mnemonic": "मैंने अपना रिकवरी फ्रेज़ ऑफलाइन लिख लिया है",
+      "loading": "लोड हो रहा है…",
+      "wif_read_failed": "(WIF रीड विफल — लॉन्च के बाद Security पैनल का उपयोग करें",
+      "shown_once_before": "यह जानकारी दिखाई जा रही है",
+      "shown_once_emphasis": "केवल एक बार",
+      "shown_once_after": "। जारी रखने से पहले प्रत्येक आइटम को ऑफलाइन संग्रहित करें।",
+      "critical_warning_strong": "आप अपना वॉलेट पुनर्प्राप्त नहीं कर पाएंगे",
+      "critical_warning_body": "यदि आप अपना रिकवरी फ्रेज़ या WIF की खो देते हैं। Irium Core के पास कोई क्लाउड बैकअप नहीं है। अभी सब कुछ लिख लें।",
+      "items_confirmed": "{{total}} में से {{count}} आइटम पुष्ट",
+      "launch_dashboard": "Dashboard लॉन्च करें",
+      "confirm_all_to_continue": "जारी रखने के लिए सभी 4 आइटम की पुष्टि करें"
+    },
+    "welcome_screen": {
+      "welcome_to": "स्वागत है",
+      "tagline": "Irium ब्लॉकचेन के लिए आपका फुल-नोड डेस्कटॉप वॉलेट। भेजें, प्राप्त करें, व्यापार करें, और निपटान करें — सब peer-to-peer, सब ऑन-चेन।",
+      "wizard_intro": "यह सेटअप विज़ार्ड आपके नोड को कॉन्फ़िगर करेगा, चेन को सिंक करेगा, और आपका वॉलेट बनाएगा या पुनर्स्थापित करेगा।",
+      "chip_full_node": "फुल नोड",
+      "chip_hd_wallet": "HD वॉलेट",
+      "chip_p2p_trade": "P2P व्यापार",
+      "chip_on_chain_settlement": "ऑन-चेन निपटान",
+      "chip_privacy_first": "गोपनीयता पहले",
+      "get_started": "शुरू करें"
     }
   },
   "reputation": {
@@ -1426,7 +2303,26 @@
       "hashrate_avg_window": "{{minutes}}मिनट औसत",
       "confidence_low": "कम आत्मविश्वास",
       "confidence_medium": "मध्यम आत्मविश्वास",
-      "confidence_high": "उच्च आत्मविश्वास"
+      "confidence_high": "उच्च आत्मविश्वास",
+      "asic_port_with_443": "पोर्ट {{port}} + 443",
+      "active_miners": "सक्रिय माइनर्स",
+      "worker_count_one": "{{count}} वर्कर",
+      "worker_count_other": "{{count}} वर्कर्स",
+      "your_miners_pinned": "आपके माइनर्स ऊपर पिन किए गए",
+      "hide_offline": "ऑफलाइन छिपाएं ({{count}})",
+      "show_offline": "ऑफलाइन माइनर्स दिखाएं ({{count}})",
+      "no_miners_reporting": "कोई सक्रिय माइनर रिपोर्ट नहीं कर रहा।",
+      "col_worker": "वर्कर",
+      "col_accepted": "स्वीकृत",
+      "col_rejected_15m": "अस्वीकृत (15m)",
+      "col_rejected_15m_tooltip": "केवल पिछले 15 मिनट में अस्वीकृत शेयर। संचयी गिनती (Stratum रीस्टार्ट के बाद से) वर्कर को रिकवर होने के बाद भी पुराने warmup-burst कुल पर अटका रखती थी।",
+      "col_reject_pct_15m": "अस्वीकृति % (15m)",
+      "col_reject_pct_15m_tooltip": "पिछले 15 मिनट की रोलिंग अस्वीकृति दर। रीस्टार्ट-से-संचयी दर वर्कर को रिकवर होने के बाद भी रीस्टार्ट-बाद warmup burst पर अटका रखती थी।",
+      "col_hashrate_15m": "हैशरेट (15m)",
+      "col_blocks": "ब्लॉक्स",
+      "col_blocks_tooltip": "इस वर्कर द्वारा पूल पर मिले ब्लॉक्स। stats-proxy द्वारा भरा गया; जब तक proxy प्रति-वर्कर ब्लॉक क्रेडिट बैकफिल नहीं करता तब तक '—' दिखाता है।",
+      "col_last_share": "अंतिम शेयर",
+      "yours_badge": "आपका"
     },
     "richlist": {
       "title": "शीर्ष IRMTIKER धारक",
@@ -1464,7 +2360,8 @@
       "load_more_loading": "शीर्ष 500 लोड हो रहा है...",
       "load_error": "समृद्ध सूची लोड करने में विफल: {{reason}}",
       "empty": "श्रृंखला पर अभी तक कोई P2PKH शेष नहीं है।",
-      "node_offline_hint": "समृद्ध सूची लोड करने के लिए डैशबोर्ड पर नोड प्रारंभ करें।"
+      "node_offline_hint": "समृद्ध सूची लोड करने के लिए डैशबोर्ड पर नोड प्रारंभ करें।",
+      "sr_total_supply": "स्क्रीन रीडर्स के लिए {{total}} IRM कुल आपूर्ति संदर्भ"
     },
     "solo_pool": {
       "title": "Solo Pool",
@@ -1503,6 +2400,63 @@
       "blocks_per_day_suffix": "block/दिन",
       "irm_per_day_suffix": "IRM/दिन",
       "disclaimer": "केवल अनुमान — वास्तविक कमाई किस्मत, पूल शुल्क और कठिनाई में बदलाव पर निर्भर करती है। कैलकुलेटर लाइव नेटवर्क हैशरेट का उपयोग करता है, हर 60 सेकंड में रिफ्रेश होता है।"
+    },
+    "mining_overview": {
+      "title": "नेटवर्क माइनिंग अवलोकन",
+      "subtitle": "नेटवर्क, पूल और आपकी अपनी माइनिंग का एक-स्क्रीन व्यू। हर 30 सेकंड में रीफ्रेश होता है।",
+      "network_summary": "नेटवर्क सारांश",
+      "pool_mining": "पूल माइनिंग",
+      "your_mining": "आपकी माइनिंग",
+      "network_hashrate": "नेटवर्क हैशरेट",
+      "difficulty": "कठिनाई",
+      "avg_block_time": "औसत ब्लॉक समय",
+      "est_active_miners": "अनुमानित सक्रिय माइनर्स",
+      "network_wide_estimate": "नेटवर्क-व्यापी अनुमान",
+      "pool_hashrate": "पूल हैशरेट",
+      "estimate_sub": "अनुमान",
+      "active_pool_miners": "सक्रिय पूल माइनर्स",
+      "pool_blocks_found": "पूल द्वारा मिले ब्लॉक्स",
+      "all_time": "सर्वकालिक",
+      "pool_share": "पूल / नेटवर्क",
+      "share_of_network_hashrate": "नेटवर्क हैशरेट का शेयर",
+      "your_hashrate": "आपका हैशरेट",
+      "collecting": "एकत्र किया जा रहा है…",
+      "pool_workers_one": "{{count}} पूल वर्कर",
+      "pool_workers_other": "{{count}} पूल वर्कर्स",
+      "mode": "मोड",
+      "mode_pool": "पूल",
+      "mode_solo": "सोलो",
+      "not_mining": "माइनिंग नहीं कर रहे",
+      "connected_via_stratum": "Stratum के माध्यम से जुड़ा",
+      "direct_to_local_node": "सीधे लोकल नोड से",
+      "on_pool": "pool.iriumlabs.org पर",
+      "on_solo_bridge": "solo-stratum ब्रिज पर",
+      "accepted_shares": "स्वीकृत शेयर्स",
+      "none": "कोई नहीं",
+      "pool_lifetime": "पूल, जीवनकाल",
+      "last_share": "अंतिम शेयर",
+      "blocks_you_found": "आपके द्वारा मिले ब्लॉक्स",
+      "from_pool_worker": "पूल वर्कर से",
+      "this_session": "इस सत्र में",
+      "pool_blocks_today": "आज पूल ब्लॉक",
+      "today": "आज"
+    },
+    "relative_time": {
+      "just_now": "अभी-अभी",
+      "seconds_ago_one": "{{count}} सेकंड पहले",
+      "seconds_ago_other": "{{count}} सेकंड पहले",
+      "minutes_ago_one": "{{count}} मिनट पहले",
+      "minutes_ago_other": "{{count}} मिनट पहले",
+      "hours_ago_one": "{{count}} घंटा पहले",
+      "hours_ago_other": "{{count}} घंटे पहले",
+      "days_ago_one": "{{count}} दिन पहले",
+      "days_ago_other": "{{count}} दिन पहले"
+    },
+    "founder_card": {
+      "title": "Founder Vesting पता",
+      "description": "यह पता genesis पर CLTV टाइमलॉक के माध्यम से लॉक 3,500,000 IRM रखता है। बैलेंस 0 दिखता है क्योंकि लॉक फंड एक विशेष स्क्रिप्ट का उपयोग करते हैं जो खर्च योग्य बैलेंस के रूप में नहीं गिना जाता।",
+      "unlocks_at": "ब्लॉक #{{height}} पर अनलॉक होगा",
+      "blocks_remaining": "(~{{count}} ब्लॉक शेष)"
     }
   },
   "help": {
@@ -2146,7 +3100,10 @@
       "errors": {
         "buyer_required": "खरीदार का Irium पता दर्ज करें।",
         "amount_required": "लॉक करने के लिए IRM राशि दर्ज करें।",
-        "receiving_required": "अपने खरीदार को बताएँ कि आप बदले में क्या उम्मीद कर रहे हैं।"
+        "receiving_required": "अपने खरीदार को बताएँ कि आप बदले में क्या उम्मीद कर रहे हैं।",
+        "no_agreement_id": "अनुबंध निर्माण ने कोई id नहीं लौटाई",
+        "fund_after_create_failed": "अनुबंध बनाया गया लेकिन फंडिंग विफल। पुनः प्रयास के लिए Agreements पेज खोलें।",
+        "payment_ref_required": "एक लेन-देन संदर्भ दर्ज करें ताकि विक्रेता आपके भुगतान को सत्यापित कर सके।"
       },
       "review": {
         "you_lock": "आप लॉक कर रहे हैं",
@@ -2154,7 +3111,14 @@
         "deadline": "समय सीमा",
         "deadline_value": "यदि {{hours}} घंटे में भुगतान नहीं हुआ, तो आपका IRM स्वतः वापस आ जाता है।",
         "lock_funds": "फंड लॉक करें",
-        "tx_note": "इससे Irium ब्लॉकचेन पर एक ट्रांज़ैक्शन बनेगा।"
+        "tx_note": "इससे Irium ब्लॉकचेन पर एक ट्रांज़ैक्शन बनेगा।",
+        "you_lock_short": "आप लॉक करते हैं",
+        "buyer_pays_you": "खरीदार आपको भुगतान करता है",
+        "payment_deadline": "भुगतान की समय सीमा",
+        "hours_from_now": "अभी से {{hours}} घंटे",
+        "buyer_address": "खरीदार का पता",
+        "lock_my_irm": "मेरा IRM लॉक करें",
+        "tx_broadcast_note": "एक ब्लॉकचेन लेन-देन ब्रॉडकास्ट किया जाएगा। पुष्टि होने में कुछ क्षण लग सकते हैं।"
       },
       "share": {
         "title": "इसे अपने खरीदार के साथ साझा करें",
@@ -2174,7 +3138,25 @@
         "receiving_placeholder": "उदा. 200 USDT, बैंक ट्रांसफर, नकद",
         "deadline_label": "इस ट्रेड को कितने समय तक खुला रहना चाहिए?",
         "deadline_helper": "यदि वे इस समय के भीतर भुगतान नहीं करते, तो आपका IRM स्वतः वापस आ जाता है।",
-        "release_button": "मुझे भुगतान मिल गया — खरीदार को फंड जारी करें"
+        "release_button": "मुझे भुगतान मिल गया — खरीदार को फंड जारी करें",
+        "buyer_address_short_label": "खरीदार का पता",
+        "buyer_address_helper": "वह पता जो IRM प्राप्त करता है जब आप पुष्टि करते हैं कि खरीदार ने भुगतान किया।",
+        "amount_label_short": "बेचने के लिए IRM की मात्रा",
+        "amount_helper_short": "जब तक आप खरीदार के भुगतान की पुष्टि नहीं करते तब तक एस्क्रो में रखा जाएगा।",
+        "receiving_label_short": "बदले में आप क्या प्राप्त करेंगे",
+        "receiving_placeholder_detailed": "उदा. SEPA बैंक ट्रांसफर के माध्यम से 50 USDT",
+        "deadline_label_short": "खरीदार के भुगतान की समय सीमा",
+        "deadline_helper_refund": "यदि समय सीमा तक भुगतान नहीं आता तो आप रिफंड का दावा कर सकते हैं।",
+        "locked_hero_title": "आपका IRM अब लॉक्ड और सुरक्षित है",
+        "locked_hero_body": "खरीदार आपकी पुष्टि के बिना इसे नहीं ले सकता। नीचे deal code साझा करें ताकि वे जुड़ सकें, फिर उनके भुगतान की प्रतीक्षा करें।",
+        "share_code_title": "यह deal code साझा करें",
+        "share_code_body": "खरीदार व्यापार में शामिल होने के लिए इस कोड को अपने वॉलेट में पेस्ट करता है।",
+        "header1_title": "अपना विक्रय व्यापार सेट करें",
+        "header1_subtitle": "हमें बताएं कि खरीदार कौन है और आप कितना IRM बेचना चाहते हैं।",
+        "header2_title": "समीक्षा करें और लॉक करें",
+        "header2_subtitle": "विवरण की पुष्टि करें। लॉक करना IRM को एस्क्रो में भेजता है।",
+        "header3_title": "आपका व्यापार लाइव है",
+        "header3_subtitle": "खरीदार के साथ deal code साझा करें और उनके भुगतान की प्रतीक्षा करें।"
       },
       "buying": {
         "step2_title": "अपने विक्रेता से ट्रेड कोड पेस्ट करें",
@@ -2193,12 +3175,42 @@
         "status_waiting": "विक्रेता के भुगतान प्राप्ति की पुष्टि की प्रतीक्षा।",
         "status_releasing": "भुगतान की पुष्टि — IRM रास्ते में है।",
         "status_complete": "पूर्ण — IRM आपके wallet में पहुँच गया है।",
-        "view_agreements": "agreement में देखें"
+        "view_agreements": "agreement में देखें",
+        "review_commit_intro": "नीचे व्यापार के विवरण की पुष्टि करें। जारी रखने पर, आप इस व्यापार के लिए प्रतिबद्ध होते हैं। इस चरण के बाद, विक्रेता को ऑफ-चेन भुगतान भेजें और अगली स्क्रीन से इसे रिपोर्ट करें।",
+        "seller_is_locking": "विक्रेता लॉक कर रहा है",
+        "seller_short_label": "विक्रेता",
+        "details_did_not_load": "व्यापार विवरण लोड नहीं हुए। आप फिर भी जारी रख सकते हैं, लेकिन भुगतान करने से पहले विक्रेता के साथ IRM राशि सत्यापित करें।",
+        "continue_and_link": "जारी रखें और लिंक करें",
+        "trade_complete_title": "व्यापार पूर्ण",
+        "trade_complete_body": "IRM आपके वॉलेट में आ गया है।",
+        "seller_locked_for_you_title": "विक्रेता का IRM आपके लिए लॉक है",
+        "seller_locked_for_you_body": "विक्रेता को ऑफ-चेन भुगतान भेजें, फिर नीचे अपना लेन-देन संदर्भ रिपोर्ट करें।",
+        "report_payment_title": "अपना भुगतान रिपोर्ट करें",
+        "report_payment_body": "ऑफ-चेन भुगतान भेजने के बाद, कोई भी संदर्भ पेस्ट करें जिसका उपयोग विक्रेता पुष्टि के लिए कर सके - बैंक वायर संदर्भ, PayPal लेन-देन id, आदि।",
+        "report_payment_placeholder": "बैंक वायर संदर्भ, PayPal txid, ब्लॉकचेन txid, आदि।",
+        "cancel_open_dispute": "रद्द करें और विवाद खोलें",
+        "payment_reported": "भुगतान रिपोर्ट किया गया",
+        "i_have_sent_payment": "मैंने भुगतान भेज दिया है",
+        "header1_title": "विक्रेता का deal code पेस्ट करें",
+        "header1_subtitle": "विक्रेता ने आपको IRM लॉक करने के बाद एक कोड भेजा होगा।",
+        "header2_title": "व्यापार की समीक्षा करें",
+        "header2_subtitle": "सुनिश्चित करें कि मात्रा और विक्रेता आपकी अपेक्षा से मेल खाते हैं।",
+        "header3_title": "आपका व्यापार लाइव है",
+        "header3_subtitle": "ऑफ-चेन भुगतान भेजें, फिर उसे रिपोर्ट करें ताकि विक्रेता IRM रिलीज़ कर सके।"
       },
       "fuel_banner_title": "सेटलमेंट बनाने के लिए आपको IRM की आवश्यकता है।",
       "fuel_banner_prefix": "जाएँ",
       "fuel_banner_link": "मार्केटप्लेस → स्पॉट स्वैप",
-      "fuel_banner_suffix": "पहले IRM प्राप्त करने के लिए।"
+      "fuel_banner_suffix": "पहले IRM प्राप्त करने के लिए।",
+      "toast_buyer_linked": "आपका पक्ष अब व्यापार से लिंक है। विक्रेता को ऑफ-चेन भुगतान भेजें।",
+      "toast_payment_reported": "भुगतान रिपोर्ट किया गया। विक्रेता द्वारा पुष्टि की प्रतीक्षा है।",
+      "toast_dispute_opened": "विवाद खोला गया। एक मध्यस्थ साक्ष्य की समीक्षा करेगा।",
+      "dispute_reason_buyer": "खरीदार व्यापार पूरा नहीं कर सकता",
+      "choose_selling_title": "मैं IRM बेच रहा हूँ",
+      "choose_selling_body": "अपना IRM एस्क्रो में लॉक करें। खरीदार आपको ऑफ-चेन भुगतान करता है, फिर आप रिलीज़ करते हैं।",
+      "choose_buying_title": "मैं IRM खरीद रहा हूँ",
+      "choose_buying_body": "विक्रेता का deal code पेस्ट करें। उन्हें भुगतान भेजें, फिर IRM प्राप्त करने के लिए पुष्टि करें।",
+      "view_resolvers": "उपलब्ध मध्यस्थ देखें"
     },
     "pay_for_work": {
       "step1_title": "एकल भुगतान या माइलस्टोन द्वारा?",
@@ -2250,7 +3262,12 @@
       "claim_refund": "रिफंड क्लेम करें",
       "toast_released": "भुगतान ठेकेदार को जारी किया गया।",
       "toast_release_pending": "पूर्णता रिकॉर्ड की गई। अगले कुछ block की पुष्टि के बाद फंड जारी होंगे।",
-      "toast_refunded": "रिफंड क्लेम किया गया — फंड आपके wallet में लौट रहे हैं।"
+      "toast_refunded": "रिफंड क्लेम किया गया — फंड आपके wallet में लौट रहे हैं।",
+      "toast_fund_failed": "अनुबंध बनाया गया लेकिन फंडिंग विफल। फंडिंग पुनः प्रयास करने के लिए अपने Agreements पेज पर इसे खोजें।",
+      "which_milestone": "कौन-सा माइलस्टोन?",
+      "milestone_option": "{{total}} में से माइलस्टोन {{index}}",
+      "milestone_helper": "Mark Complete इस माइलस्टोन के हिस्से का लॉक IRM रिलीज़ करता है। ठेकेदार प्रति माइलस्टोन कुल का 1/{{count}} प्राप्त करता है।",
+      "mark_complete_milestone": "पूर्ण के रूप में चिह्नित करें — भुगतान रिलीज़ करें (माइलस्टोन {{index}})"
     },
     "deposit": {
       "step1_title": "अपना जमा सेट करें",

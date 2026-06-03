@@ -373,7 +373,11 @@ export default function AgreementsPage() {
       for (const id of cleanupCandidates) {
         try { await agreements.remove(id); ok++; } catch { fail++; }
       }
-      toast.success(`Removed ${ok} agreement${ok === 1 ? '' : 's'}${fail > 0 ? ` (${fail} failed)` : ''}`);
+      toast.success(
+        fail > 0
+          ? t('agreements.toasts.cleanup_removed_with_failures', { count: ok, failed: fail })
+          : t('agreements.toasts.cleanup_removed', { count: ok }),
+      );
       setCleanupCandidates(null);
       await loadData();
     } finally {
@@ -464,7 +468,7 @@ export default function AgreementsPage() {
                 scope === s ? 'bg-irium-500/30 text-irium-300' : 'text-white/50 hover:text-white'
               }`}
             >
-              {s === 'my' ? 'My Agreements' : 'All'}
+              {s === 'my' ? t('agreements.scope.my') : t('agreements.scope.all')}
             </button>
           ))}
         </div>
@@ -475,9 +479,9 @@ export default function AgreementsPage() {
             <button
               onClick={() => setCleanupCandidates(matches)}
               className="ml-auto text-xs text-white/45 hover:text-rose-300 transition-colors flex items-center gap-1.5 cursor-pointer"
-              title="Remove agreements with IDs containing test / gossip / demo / pr from your local store"
+              title={t('agreements.tooltips.cleanup_old_test_data')}
             >
-              <Trash2 size={11} /> Clean up old test data ({matches.length})
+              <Trash2 size={11} /> {t('agreements.buttons.cleanup_old_test_data', { count: matches.length })}
             </button>
           );
         })()}
@@ -535,17 +539,17 @@ export default function AgreementsPage() {
       ) : filteredAgreements.length === 0 ? (
         <div className="text-center py-20 text-white/40 text-sm flex flex-col items-center gap-3">
           <div>
-            No agreements found
+            {t('agreements.empty.no_agreements_found')}
             {filter !== 'all' && (
               <span>
                 {' '}
-                with status <strong>{filter}</strong>
+                {t('agreements.empty.with_status')} <strong>{filter}</strong>
               </span>
             )}
             {searchQuery && (
               <span>
                 {' '}
-                matching <strong>"{searchQuery}"</strong>
+                {t('agreements.empty.matching')} <strong>"{searchQuery}"</strong>
               </span>
             )}
             .
@@ -555,7 +559,7 @@ export default function AgreementsPage() {
               onClick={() => navigate('/settlement')}
               className="btn-primary text-sm py-2 px-4 mt-1"
             >
-              Go to Settlement to create your first agreement →
+              {t('agreements.empty.go_to_settlement_cta')}
             </button>
           )}
         </div>
@@ -747,20 +751,20 @@ export default function AgreementsPage() {
                 <Trash2 size={16} className="text-red-400" /> {t('agreements.buttons.delete_agreement')}
               </h2>
               <p className="text-sm text-white/60 mb-1">
-                Delete agreement <span className="font-mono text-white/80">{deleteAgreementId.slice(0, 20)}…</span>?
+                {t('agreements.modals.delete_confirm_prefix')} <span className="font-mono text-white/80">{deleteAgreementId.slice(0, 20)}…</span>?
               </p>
               <p className="text-xs text-white/40 mb-5">
-                This removes the agreement from your local store only. The counterparty's copy is not affected. Only unfunded (open/pending) agreements can be deleted.
+                {t('agreements.modals.delete_confirm_body')}
               </p>
               <div className="flex gap-3 justify-end">
                 <button className="btn-ghost text-sm py-1.5 px-4" onClick={() => setDeleteAgreementId(null)}>
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   className="btn-primary text-sm py-1.5 px-4 bg-red-600 hover:bg-red-500"
                   onClick={() => handleDeleteAgreement(deleteAgreementId)}
                 >
-                  Delete
+                  {t('common.delete')}
                 </button>
               </div>
             </motion.div>
@@ -789,13 +793,13 @@ export default function AgreementsPage() {
               exit={{ scale: 0.95, opacity: 0 }}
             >
               <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
-                <Trash2 size={16} className="text-rose-400" /> Clean up old test data
+                <Trash2 size={16} className="text-rose-400" /> {t('agreements.modals.cleanup_title')}
               </h2>
               <p className="text-sm text-white/60 mb-2">
-                Found {cleanupCandidates.length} agreement{cleanupCandidates.length === 1 ? '' : 's'} with an id containing <span className="font-mono text-white/80">test</span>, <span className="font-mono text-white/80">gossip</span>, <span className="font-mono text-white/80">demo</span>, or <span className="font-mono text-white/80">pr</span>.
+                {t('agreements.modals.cleanup_found', { count: cleanupCandidates.length })}
               </p>
               <p className="text-xs text-white/40 mb-3">
-                This removes them from your local store only. The counterparty's copy is not affected. Active on-chain HTLCs are not touched — funds still need to be released or refunded separately.
+                {t('agreements.modals.cleanup_disclaimer')}
               </p>
               {cleanupCandidates.length > 0 && (
                 <div className="max-h-48 overflow-y-auto rounded-lg bg-white/[0.03] border border-white/8 p-2 mb-4 space-y-1">
@@ -810,7 +814,7 @@ export default function AgreementsPage() {
                   onClick={() => setCleanupCandidates(null)}
                   disabled={cleanupRunning}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   className="btn-primary text-sm py-1.5 px-4 bg-rose-600 hover:bg-rose-500 flex items-center gap-1.5"
@@ -818,7 +822,7 @@ export default function AgreementsPage() {
                   disabled={cleanupRunning || cleanupCandidates.length === 0}
                 >
                   {cleanupRunning ? <RefreshCw size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                  Remove {cleanupCandidates.length}
+                  {t('agreements.modals.cleanup_remove_count', { count: cleanupCandidates.length })}
                 </button>
               </div>
             </motion.div>
@@ -858,19 +862,20 @@ function AgreementTimeline({
   proofStatus?: string;
   hasProofs: boolean;
 }) {
+  const { t } = useTranslation();
   const isRefunded = status === 'refunded';
   const steps = [
-    { label: 'Created', done: true },
+    { label: t('agreements.timeline.created'), done: true },
     {
-      label: 'Funded',
+      label: t('agreements.timeline.funded'),
       done: status === 'funded' || status === 'released' || status === 'refunded',
     },
     {
-      label: 'Proof Submitted',
+      label: t('agreements.timeline.proof_submitted'),
       done: hasProofs || (proofStatus !== undefined && proofStatus !== 'none'),
     },
     {
-      label: isRefunded ? 'Refunded' : 'Released',
+      label: isRefunded ? t('agreements.timeline.refunded') : t('agreements.timeline.released'),
       done: status === 'released' || status === 'refunded',
     },
   ];
@@ -961,7 +966,7 @@ function ExportPackRow({ agreementId }: { agreementId: string }) {
     const path = await openSavePicker({
       defaultName: `agreement-${agreementId.slice(0, 8)}.pack.json`,
       extensions: ['json'],
-      title: 'Save Agreement Pack',
+      title: t('agreements.dialog_titles.save_agreement_pack'),
     });
     if (path) setOutPath(path);
     setBrowsing(false);
@@ -989,7 +994,7 @@ function ExportPackRow({ agreementId }: { agreementId: string }) {
         className="btn-ghost text-xs py-1.5 px-3 text-irium-400 hover:text-irium-300"
       >
         <Download size={12} />
-        Export Pack
+        {t('agreements.buttons.export_pack')}
       </button>
     );
   }
@@ -1001,7 +1006,7 @@ function ExportPackRow({ agreementId }: { agreementId: string }) {
           autoFocus
           value={outPath}
           onChange={(e) => setOutPath(e.target.value)}
-          placeholder="/path/to/output.pack.json"
+          placeholder={t('agreements.placeholders.output_pack_path')}
           className="input text-xs flex-1"
           style={{ fontFamily: '"JetBrains Mono", monospace' }}
           onKeyDown={(e) => { if (e.key === 'Enter') handleExport(); if (e.key === 'Escape') setShowInput(false); }}
@@ -1019,7 +1024,7 @@ function ExportPackRow({ agreementId }: { agreementId: string }) {
           disabled={!outPath.trim() || exporting}
           className="btn-primary text-xs py-1.5 px-3 flex-shrink-0"
         >
-          {exporting ? <RefreshCw size={12} className="animate-spin" /> : 'Save'}
+          {exporting ? <RefreshCw size={12} className="animate-spin" /> : t('common.save')}
         </button>
         <button onClick={() => setShowInput(false)} className="btn-ghost py-1.5 px-2">
           <X size={12} />
@@ -1240,19 +1245,19 @@ function AgreementCard({
                     <span className="font-mono text-white/70">—</span>
                   )}
                 </div>
-                <Detail label="Template" value={a.template ?? '—'} />
+                <Detail label={t('agreements.detail_labels.template')} value={a.template ?? '—'} />
                 <Detail
-                  label="Created"
+                  label={t('agreements.detail_labels.created')}
                   value={a.created_at ? timeAgo(a.created_at) : '—'}
                 />
                 <Detail
-                  label="Deadline"
+                  label={t('agreements.detail_labels.deadline')}
                   value={a.deadline ? timeAgo(a.deadline) : '—'}
                 />
-                <Detail label="Proof Status" value={a.proof_status ?? 'none'} />
+                <Detail label={t('agreements.detail_labels.proof_status')} value={a.proof_status ?? t('agreements.detail_values.none')} />
                 <Detail
-                  label="Release Eligible"
-                  value={a.release_eligible ? 'Yes' : 'No'}
+                  label={t('agreements.detail_labels.release_eligible')}
+                  value={a.release_eligible ? t('common.yes') : t('common.no')}
                 />
               </div>
 
@@ -1287,7 +1292,7 @@ function AgreementCard({
                     {statusInfo?.proof_depth != null && (
                       <span> (depth: {statusInfo.proof_depth}/{finalityDepth})</span>
                     )}
-                    . Wait for more block confirmations before releasing — a chain reorg could roll the proof back.
+                    . {t('agreements.warnings.proof_finality_body')}
                   </span>
                 </div>
               )}
@@ -1296,15 +1301,15 @@ function AgreementCard({
               {a.policy && (
                 <div className="glass rounded-lg p-3 text-xs space-y-1">
                   <div className="font-display font-semibold text-white/70 mb-2">
-                    Policy
+                    {t('agreements.sections.policy')}
                   </div>
-                  <Detail label="Kind" value={a.policy.kind} />
+                  <Detail label={t('agreements.detail_labels.kind')} value={a.policy.kind} />
                   <Detail
-                    label="Threshold"
+                    label={t('agreements.detail_labels.threshold')}
                     value={String(a.policy.threshold ?? 1)}
                   />
                   <Detail
-                    label="Attestors"
+                    label={t('agreements.detail_labels.attestors')}
                     value={(a.policy.attestors ?? []).join(', ') || '—'}
                   />
                 </div>
@@ -1314,7 +1319,7 @@ function AgreementCard({
               {(agreementProofs ?? []).length > 0 && (
                 <div>
                   <div className="font-display font-semibold text-white/70 text-xs mb-2">
-                    Proofs
+                    {t('agreements.sections.proofs')}
                   </div>
                   {(agreementProofs ?? []).map((p) => (
                     <div
@@ -1348,14 +1353,14 @@ function AgreementCard({
                     <button
                       onClick={onSign}
                       disabled={actionLoading || !isOnline}
-                      title={!isOnline ? 'Node must be online to sign' : 'Sign this agreement to confirm your participation'}
+                      title={!isOnline ? t('agreements.tooltips.node_offline_sign') : t('agreements.tooltips.sign_to_confirm')}
                       className="w-full btn-primary py-2 px-4 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed bg-amber-500 hover:bg-amber-400 border-amber-300/40"
                     >
                       <PenLine size={14} /> {t('agreements.actions.action_required_sign')}
                     </button>
                   </div>
                   <p className="text-[11px] text-amber-300/70 mt-1.5 ml-1">
-                    Signing confirms your participation. Both parties must sign before funding.
+                    {t('agreements.helpers.sign_confirms_participation')}
                   </p>
                 </div>
               )}
@@ -1374,10 +1379,10 @@ function AgreementCard({
                   <button
                     onClick={onFund}
                     disabled={actionLoading || !isOnline}
-                    title={!isOnline ? 'Node must be online to fund escrow' : 'Lock the agreement amount into the HTLC escrow'}
+                    title={!isOnline ? t('agreements.tooltips.node_offline_fund') : t('agreements.tooltips.fund_escrow_action')}
                     className="btn-primary text-xs py-1.5 px-3 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    Fund Escrow
+                    {t('agreements.actions.fund_escrow')}
                   </button>
                 )}
 
@@ -1387,10 +1392,10 @@ function AgreementCard({
                       <button
                         onClick={onRelease}
                         disabled={actionLoading || !isOnline}
-                        title={!isOnline ? 'Node must be online to release funds' : 'Release funds to counterparty'}
+                        title={!isOnline ? t('agreements.tooltips.node_offline_release') : t('agreements.tooltips.release_to_counterparty')}
                         className="btn-primary text-xs py-1.5 px-3 disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        Release to Counterparty
+                        {t('agreements.actions.release_to_counterparty')}
                       </button>
                     )}
                     <button
@@ -1398,12 +1403,12 @@ function AgreementCard({
                       className="btn-secondary text-xs py-1.5 px-3"
                       title={t('agreements.tooltips.submit_proof_delivery')}
                     >
-                      Submit Proof
+                      {t('agreements.actions.submit_proof')}
                     </button>
                     <button
                       onClick={onDispute}
                       disabled={actionLoading || !isOnline}
-                      title={!isOnline ? 'Node must be online to open a dispute' : 'Mark this agreement as disputed — requires a resolver attestation to settle'}
+                      title={!isOnline ? t('agreements.tooltips.node_offline_dispute') : t('agreements.tooltips.mark_disputed')}
                       className="btn-ghost text-xs py-1.5 px-3 text-amber-400 hover:text-amber-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
                     >
                       <AlertCircle size={12} /> {t('agreements.actions.open_dispute')}
@@ -1413,14 +1418,14 @@ function AgreementCard({
                       disabled={actionLoading || !isOnline || refundBlocked}
                       title={
                         !isOnline
-                          ? 'Node must be online to refund'
+                          ? t('agreements.tooltips.node_offline_refund')
                           : refundBlocked
-                          ? (refundElig?.reason ?? 'Timeout not yet reached')
+                          ? (refundElig?.reason ?? t('agreements.refund.timeout_not_reached'))
                           : undefined
                       }
                       className="btn-ghost text-xs py-1.5 px-3 text-red-400 hover:text-red-300 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      Refund
+                      {t('agreements.actions.refund')}
                     </button>
                     <ExportPackRow agreementId={a.id} />
                   </>
@@ -1440,10 +1445,10 @@ function AgreementCard({
                   <>
                     <button
                       disabled
-                      title="A resolver attestation is required to settle this dispute. Contact your designated resolver."
+                      title={t('agreements.tooltips.resolver_required')}
                       className="btn-ghost text-xs py-1.5 px-3 text-white/40 cursor-not-allowed flex items-center gap-1"
                     >
-                      <AlertCircle size={12} /> Awaiting Resolver
+                      <AlertCircle size={12} /> {t('agreements.actions.awaiting_resolver')}
                     </button>
                     <ExportPackRow agreementId={a.id} />
                   </>
@@ -1459,7 +1464,7 @@ function AgreementCard({
                       title={t('agreements.tooltips.deadline_passed')}
                       className="btn-ghost text-xs py-1.5 px-3 text-white/40 cursor-not-allowed"
                     >
-                      Agreement Expired
+                      {t('agreements.actions.agreement_expired')}
                     </button>
                     <ExportPackRow agreementId={a.id} />
                   </>
@@ -1475,7 +1480,7 @@ function AgreementCard({
                     can render its policy + funding-leg + event view. */}
                 <button
                   onClick={onViewAudit}
-                  title="View full on-chain audit record"
+                  title={t('agreements.tooltips.view_audit')}
                   className="btn-ghost text-xs py-1.5 px-3 text-irium-400 hover:text-irium-300 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
                 >
                   <FileText size={12} /> {t('agreements.actions.view_audit')}
@@ -1494,20 +1499,20 @@ function AgreementCard({
                       `Template: ${a.template ?? '—'}`,
                     ];
                     navigator.clipboard.writeText(lines.join('\n'));
-                    toast.success('Copied');
+                    toast.success(t('agreements.toasts.copied'));
                   }}
-                  title="Copy a plain-text summary of this agreement to clipboard"
+                  title={t('agreements.tooltips.share_text')}
                   className="btn-ghost text-xs py-1.5 px-3 text-irium-400 hover:text-irium-300 flex items-center gap-1"
                 >
-                  <Copy size={12} /> Share Text
+                  <Copy size={12} /> {t('agreements.actions.share_text')}
                 </button>
                 {isUnfunded && onDelete && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                    title="Delete this agreement from your local store. The counterparty's copy is not affected."
+                    title={t('agreements.tooltips.delete_local')}
                     className="btn-ghost text-xs py-1.5 px-3 text-red-400 hover:text-red-300 flex items-center gap-1"
                   >
-                    <Trash2 size={12} /> Delete
+                    <Trash2 size={12} /> {t('agreements.actions.delete')}
                   </button>
                 )}
               </div>
@@ -1527,7 +1532,7 @@ function AgreementCard({
               <div className="flex items-center gap-2 pt-3 border-t border-white/[0.05]">
                 <input
                   type="text"
-                  placeholder='Friendly name (e.g. "Laptop from John")'
+                  placeholder={t('agreements.card.friendly_name_placeholder')}
                   maxLength={100}
                   value={labelDraft}
                   onChange={(e) => setLabelDraft(e.target.value)}
@@ -1540,7 +1545,7 @@ function AgreementCard({
                   className="btn-secondary text-xs py-1.5 px-3 flex-shrink-0"
                   title={t('agreements.tooltips.save_friendly_name')}
                 >
-                  Save Label
+                  {t('agreements.card.save_label')}
                 </button>
               </div>
             </div>
@@ -1647,7 +1652,7 @@ function ProofModal({
     setBrowsing(true);
     const path = await openFilePicker({
       extensions: ['json'],
-      title: 'Select Proof File (.json)',
+      title: t('agreements.dialog_titles.select_proof_file'),
     });
     if (path) onPathChange(path);
     setBrowsing(false);
@@ -1677,11 +1682,11 @@ function ProofModal({
   const handleCreateSubmit = async () => {
     setCreateError(null);
     const hash = agreementHash.trim();
-    if (!hash) { setCreateError('Agreement hash required'); return; }
-    if (!proofType) { setCreateError('Pick a proof type'); return; }
+    if (!hash) { setCreateError(t('agreements.form_errors.hash_required')); return; }
+    if (!proofType) { setCreateError(t('agreements.form_errors.proof_type_required')); return; }
     const attestor = (attestedBy.trim() || selectedAddress).trim();
-    if (!attestor) { setCreateError('Attested-by address required'); return; }
-    if (!evidenceSummary.trim()) { setCreateError('Describe what happened in the Evidence Summary'); return; }
+    if (!attestor) { setCreateError(t('agreements.form_errors.attested_by_required')); return; }
+    if (!evidenceSummary.trim()) { setCreateError(t('agreements.form_errors.evidence_required')); return; }
     setSubmitting(true);
     try {
       const result = await proofs.createAndSubmit({
@@ -1728,7 +1733,7 @@ function ProofModal({
           </button>
         </div>
         <p className="text-xs mb-4" style={{ color: 'rgba(238,240,255,0.35)' }}>
-          Build a signed proof in-app, or upload one you already have.
+          {t('agreements.proof_modal.intro')}
         </p>
 
         {/* Mode toggle — default "create" so normal users can build the
@@ -1746,9 +1751,9 @@ function ProofModal({
                   : 'text-white/40 hover:text-white/70'
               }`}
             >
-              <div>{m === 'create' ? 'Create from Evidence' : 'Upload File'}</div>
+              <div>{m === 'create' ? t('agreements.proof_modal.mode_create') : t('agreements.proof_modal.mode_upload')}</div>
               <div className="text-[10px] font-normal opacity-70 mt-0.5">
-                {m === 'create' ? 'Build in-app' : 'Use existing file'}
+                {m === 'create' ? t('agreements.proof_modal.mode_create_sub') : t('agreements.proof_modal.mode_upload_sub')}
               </div>
             </button>
           ))}
@@ -1761,7 +1766,7 @@ function ProofModal({
                 <label className="label">{t('agreements.labels.agreement_hash')}</label>
                 <input
                   className="input font-mono text-xs"
-                  placeholder="64-character hex"
+                  placeholder={t('agreements.placeholders.hash_64_hex')}
                   value={agreementHash}
                   onChange={(e) => { setAgreementHash(e.target.value); setCreateError(null); }}
                   spellCheck={false}
@@ -1769,7 +1774,7 @@ function ProofModal({
                 />
                 {!agreementHashDefault && (
                   <p className="text-[11px] text-white/30 mt-1">
-                    No hash on file for this agreement — paste the hash shared by the counterparty.
+                    {t('agreements.helpers.no_hash_on_file')}
                   </p>
                 )}
               </div>
@@ -1803,7 +1808,7 @@ function ProofModal({
                   autoComplete="off"
                 />
                 <p className="text-[11px] text-white/30 mt-1">
-                  Pre-filled with your selected wallet address.
+                  {t('agreements.proof_modal.attested_by_hint')}
                 </p>
               </div>
 
@@ -1812,7 +1817,7 @@ function ProofModal({
                 <textarea
                   className="input resize-none"
                   rows={4}
-                  placeholder="e.g. Payment of $50 received via bank transfer, reference #12345."
+                  placeholder={t('agreements.proof_modal.evidence_placeholder')}
                   maxLength={2000}
                   value={evidenceSummary}
                   onChange={(e) => setEvidenceSummary(e.target.value)}
@@ -1834,7 +1839,7 @@ function ProofModal({
 
             <div className="flex gap-3">
               <button onClick={onClose} className="btn-secondary flex-1 justify-center">
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleCreateSubmit}
@@ -1843,7 +1848,7 @@ function ProofModal({
               >
                 {submitting
                   ? <><RefreshCw size={14} className="animate-spin" /> {t('agreements.actions.submitting')}</>
-                  : 'Create & Submit Proof'
+                  : t('agreements.actions.create_and_submit_proof')
                 }
               </button>
             </div>
@@ -1865,7 +1870,7 @@ function ProofModal({
                   <div className="text-xs" style={{ color: 'rgba(238,240,255,0.35)' }}>
                     {proofFilePath
                       ? proofFilePath.split(/[\\/]/).pop()
-                      : 'No file selected'}
+                      : t('agreements.helpers.no_file_selected')}
                   </div>
                 </div>
                 <button
@@ -1885,7 +1890,7 @@ function ProofModal({
                 <input
                   value={proofFilePath}
                   onChange={(e) => onPathChange(e.target.value)}
-                  placeholder="/path/to/proof.json"
+                  placeholder={t('agreements.placeholders.proof_json_path')}
                   className="input text-xs flex-1"
                   style={{ fontFamily: '"JetBrains Mono", monospace' }}
                 />
@@ -1899,18 +1904,18 @@ function ProofModal({
             >
               <span style={{ color: '#60a5fa', flexShrink: 0 }}>ℹ</span>
               <span style={{ color: 'rgba(238,240,255,0.50)' }}>
-                Use this tab only if you already have a proof file — for example, one a counterparty or attestor signed for you, or one you produced via{' '}
+                {t('agreements.proof_modal.upload_note_prefix')}{' '}
                 <span className="font-mono text-white/70">irium-wallet agreement-proof-create</span>.
-                {' '}If you are submitting your own proof, use the{' '}
+                {' '}{t('agreements.proof_modal.upload_note_middle')}{' '}
                 <strong className="text-white/80">{t('agreements.labels.create_from_evidence')}</strong>
-                {' '}tab above — it builds and submits the proof without leaving the app.
+                {' '}{t('agreements.proof_modal.upload_note_suffix')}
               </span>
             </div>
 
             {/* Actions */}
             <div className="flex gap-3">
               <button onClick={onClose} className="btn-secondary flex-1 justify-center">
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleSubmit}
@@ -1919,7 +1924,7 @@ function ProofModal({
               >
                 {submitting
                   ? <><RefreshCw size={14} className="animate-spin" /> {t('agreements.actions.submitting')}</>
-                  : 'Submit Proof'
+                  : t('agreements.actions.submit_proof')
                 }
               </button>
             </div>
@@ -1980,7 +1985,7 @@ function ReleaseModal({ agreement, onClose, onSuccess, isOnline }: ReleaseModalP
   const trimmedSecret = secret.trim();
   const secretError =
     trimmedSecret.length > 0 && !/^[0-9a-fA-F]{64}$/.test(trimmedSecret)
-      ? 'Must be exactly 64 hex characters (0-9, a-f).'
+      ? t('agreements.form_errors.secret_must_be_64_hex')
       : null;
 
   const handleConfirm = async () => {
@@ -2022,7 +2027,7 @@ function ReleaseModal({ agreement, onClose, onSuccess, isOnline }: ReleaseModalP
         className="glass-heavy w-full max-w-md rounded-2xl p-6"
       >
         <h2 className="font-display font-bold text-xl text-white mb-3 text-center">
-          Release Funds?
+          {t('agreements.modals.release_funds_title')}
         </h2>
 
         {/* Large gradient amount */}
@@ -2031,11 +2036,11 @@ function ReleaseModal({ agreement, onClose, onSuccess, isOnline }: ReleaseModalP
         </div>
 
         <p className="text-white/50 text-sm mb-5 text-center">
-          This will release{' '}
+          {t('agreements.modals.release_funds_body_prefix')}{' '}
           <span className="text-white/70 font-semibold">
             {formatIRM(agreement.amount)}
           </span>{' '}
-          to the seller.
+          {t('agreements.modals.release_funds_body_suffix')}
         </p>
 
         {/* Secret preimage input — optional. The binary's auto-derive path
@@ -2057,29 +2062,29 @@ function ReleaseModal({ agreement, onClose, onSuccess, isOnline }: ReleaseModalP
             <p className="text-xs text-red-400 mt-1">{secretError}</p>
           ) : autoLoaded ? (
             <p className="text-xs text-emerald-400/80 mt-1 flex items-center gap-1">
-              <CheckCircle2 size={11} /> Auto-loaded from local agreement-secrets store
+              <CheckCircle2 size={11} /> {t('agreements.helpers.secret_auto_loaded')}
             </p>
           ) : (
             <p className="text-xs text-white/40 mt-1">
-              Required if you did not create this agreement yourself. Leave blank if your wallet auto-derives it.
+              {t('agreements.helpers.secret_required_hint')}
             </p>
           )}
         </div>
 
         <div className="flex gap-3">
           <button onClick={onClose} className="btn-secondary flex-1 justify-center">
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleConfirm}
             disabled={releasing || !isOnline || !!secretError}
-            title={!isOnline ? 'Node must be online to release funds' : undefined}
+            title={!isOnline ? t('agreements.tooltips.node_offline_release') : undefined}
             className="btn-primary flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {releasing ? (
               <RefreshCw size={14} className="animate-spin" />
             ) : (
-              'Confirm Release'
+              t('agreements.actions.confirm_release')
             )}
           </button>
         </div>
@@ -2138,7 +2143,7 @@ function FundModal({ agreement, onClose, onSuccess, isOnline }: FundModalProps) 
         className="glass-heavy w-full max-w-sm rounded-2xl p-6 text-center"
       >
         <h2 className="font-display font-bold text-xl text-white mb-3">
-          Fund Escrow?
+          {t('agreements.modals.fund_escrow_title')}
         </h2>
 
         <div className="font-display font-bold text-3xl gradient-text mb-3">
@@ -2146,27 +2151,27 @@ function FundModal({ agreement, onClose, onSuccess, isOnline }: FundModalProps) 
         </div>
 
         <p className="text-white/50 text-sm mb-6">
-          This will lock{' '}
+          {t('agreements.modals.fund_escrow_body_prefix')}{' '}
           <span className="text-white/70 font-semibold">
             {formatIRM(agreement.amount)}
           </span>{' '}
-          into the HTLC escrow. Funds release to the counterparty on proof acceptance, or refund after the timeout height.
+          {t('agreements.modals.fund_escrow_body_suffix')}
         </p>
 
         <div className="flex gap-3">
           <button onClick={onClose} className="btn-secondary flex-1 justify-center">
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleConfirm}
             disabled={funding || !isOnline}
-            title={!isOnline ? 'Node must be online to fund escrow' : undefined}
+            title={!isOnline ? t('agreements.tooltips.node_offline_fund') : undefined}
             className="btn-primary flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {funding ? (
               <RefreshCw size={14} className="animate-spin" />
             ) : (
-              'Confirm Fund'
+              t('agreements.actions.confirm_fund')
             )}
           </button>
         </div>
@@ -2193,7 +2198,7 @@ function ImportPackModal({ onClose, onSuccess }: ImportPackModalProps) {
     setBrowsing(true);
     const path = await openFilePicker({
       extensions: ['json'],
-      title: 'Select Agreement Pack (.pack.json)',
+      title: t('agreements.dialog_titles.select_pack_file'),
     });
     if (path) setFilePath(path);
     setBrowsing(false);
@@ -2233,7 +2238,7 @@ function ImportPackModal({ onClose, onSuccess }: ImportPackModalProps) {
           <div>
             <h2 className="font-display font-bold text-lg text-white">{t('agreements.modals.import_pack_title')}</h2>
             <p className="text-white/40 text-xs mt-0.5">
-              Accepted format: <span className="font-mono text-irium-300">.pack.json</span> — exported by Party A
+              {t('agreements.modals.import_pack_format_prefix')} <span className="font-mono text-irium-300">.pack.json</span> {t('agreements.modals.import_pack_format_suffix')}
             </p>
           </div>
           <button onClick={onClose} className="btn-ghost text-white/40">
@@ -2254,7 +2259,7 @@ function ImportPackModal({ onClose, onSuccess }: ImportPackModalProps) {
             <div className="flex-1 min-w-0">
               <div className="text-sm font-display font-semibold text-white mb-0.5">{t('agreements.labels.pack_file')}</div>
               <div className="text-xs" style={{ color: 'rgba(238,240,255,0.35)' }}>
-                {filePath ? filePath.split(/[\\/]/).pop() : 'No file selected'}
+                {filePath ? filePath.split(/[\\/]/).pop() : t('agreements.helpers.no_file_selected')}
               </div>
             </div>
             <button
@@ -2273,7 +2278,7 @@ function ImportPackModal({ onClose, onSuccess }: ImportPackModalProps) {
             autoFocus
             value={filePath}
             onChange={(e) => setFilePath(e.target.value)}
-            placeholder="/path/to/agreement.pack.json"
+            placeholder={t('agreements.placeholders.pack_json_path')}
             className="input text-xs w-full"
             style={{ fontFamily: '"JetBrains Mono", monospace' }}
             onKeyDown={(e) => { if (e.key === 'Enter') handleImport(); }}
@@ -2282,14 +2287,14 @@ function ImportPackModal({ onClose, onSuccess }: ImportPackModalProps) {
 
         <div className="flex gap-3">
           <button onClick={onClose} className="btn-secondary flex-1 justify-center">
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleImport}
             disabled={!filePath.trim() || importing}
             className="btn-primary flex-1 justify-center"
           >
-            {importing ? <RefreshCw size={14} className="animate-spin" /> : 'Import Pack'}
+            {importing ? <RefreshCw size={14} className="animate-spin" /> : t('agreements.buttons.import_pack')}
           </button>
         </div>
       </motion.div>
@@ -2321,7 +2326,7 @@ function ImportInvoiceModal({ onClose, onUseInvoice }: ImportInvoiceModalProps) 
     setBrowsing(true);
     const path = await openFilePicker({
       extensions: ['json'],
-      title: 'Select Invoice JSON',
+      title: t('agreements.dialog_titles.select_invoice_file'),
     });
     if (path) setFilePath(path);
     setBrowsing(false);
@@ -2366,7 +2371,7 @@ function ImportInvoiceModal({ onClose, onUseInvoice }: ImportInvoiceModalProps) 
           <div>
             <h2 className="font-display font-bold text-lg text-white">{t('agreements.modals.import_invoice_title')}</h2>
             <p className="text-white/40 text-xs mt-0.5">
-              Pick an invoice JSON to pre-fill a new agreement on the Settlement page.
+              {t('agreements.modals.import_invoice_subtitle')}
             </p>
           </div>
           <button onClick={onClose} className="btn-ghost text-white/40">
@@ -2388,7 +2393,7 @@ function ImportInvoiceModal({ onClose, onUseInvoice }: ImportInvoiceModalProps) 
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-display font-semibold text-white mb-0.5">{t('agreements.labels.invoice_file')}</div>
                   <div className="text-xs" style={{ color: 'rgba(238,240,255,0.35)' }}>
-                    {filePath ? filePath.split(/[\\/]/).pop() : 'No file selected'}
+                    {filePath ? filePath.split(/[\\/]/).pop() : t('agreements.helpers.no_file_selected')}
                   </div>
                 </div>
                 <button
@@ -2406,7 +2411,7 @@ function ImportInvoiceModal({ onClose, onUseInvoice }: ImportInvoiceModalProps) 
                 autoFocus
                 value={filePath}
                 onChange={(e) => setFilePath(e.target.value)}
-                placeholder="/path/to/invoice.json"
+                placeholder={t('agreements.placeholders.invoice_json_path')}
                 className="input text-xs w-full"
                 style={{ fontFamily: '"JetBrains Mono", monospace' }}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleImport(); }}
@@ -2419,7 +2424,7 @@ function ImportInvoiceModal({ onClose, onUseInvoice }: ImportInvoiceModalProps) 
                 disabled={!filePath.trim() || importing}
                 className="btn-primary flex-1 justify-center"
               >
-                {importing ? <RefreshCw size={14} className="animate-spin" /> : 'Import'}
+                {importing ? <RefreshCw size={14} className="animate-spin" /> : t('common.import')}
               </button>
             </div>
           </>
@@ -2454,8 +2459,7 @@ function ImportInvoiceModal({ onClose, onUseInvoice }: ImportInvoiceModalProps) 
               )}
             </div>
             <p className="text-[11px] text-white/45 mb-4">
-              Clicking <strong>Use This Invoice</strong> jumps to Settlement with the OTC template pre-filled.
-              You can change the template, edit fields, and confirm before creating the agreement.
+              {t('agreements.helpers.use_invoice_hint')}
             </p>
             <div className="flex gap-3">
               <button onClick={onClose} className="btn-secondary flex-1 justify-center">{t('common.close')}</button>
@@ -2463,7 +2467,7 @@ function ImportInvoiceModal({ onClose, onUseInvoice }: ImportInvoiceModalProps) 
                 onClick={() => onUseInvoice(parsed)}
                 className="btn-primary flex-1 justify-center"
               >
-                Use This Invoice →
+                {t('agreements.actions.use_this_invoice')}
               </button>
             </div>
           </>
@@ -2535,11 +2539,11 @@ function DisputeModal({ agreement, onClose, onSuccess, isOnline }: DisputeModalP
         {/* Agreement summary */}
         <div className="glass rounded-lg p-3 mb-4 text-xs space-y-1">
           <div className="flex justify-between">
-            <span className="text-white/40">Agreement</span>
+            <span className="text-white/40">{t('agreements.labels.agreement_short')}</span>
             <span className="font-mono text-white/70">{agreement.id.slice(0, 18)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-white/40">Amount</span>
+            <span className="text-white/40">{t('agreements.labels.amount')}</span>
             <span className="font-display font-semibold gradient-text">
               {formatIRM(agreement.amount)}
             </span>
@@ -2557,7 +2561,7 @@ function DisputeModal({ agreement, onClose, onSuccess, isOnline }: DisputeModalP
         >
           <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
           <span>
-            Opening a dispute means the agreement needs a resolver to review the evidence from both sides. Make sure you have a good reason and supporting proof before proceeding. This action cannot be undone.
+            {t('agreements.warnings.open_dispute_body')}
           </span>
         </div>
 
@@ -2576,19 +2580,19 @@ function DisputeModal({ agreement, onClose, onSuccess, isOnline }: DisputeModalP
 
         <div className="flex gap-3">
           <button onClick={onClose} className="btn-secondary flex-1 justify-center">
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleConfirm}
             disabled={submitting || !isOnline}
-            title={!isOnline ? 'Node must be online to open a dispute' : undefined}
+            title={!isOnline ? t('agreements.tooltips.node_offline_dispute') : undefined}
             className="btn-primary flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ background: '#ef4444' }}
           >
             {submitting ? (
               <RefreshCw size={14} className="animate-spin" />
             ) : (
-              'Confirm Open Dispute'
+              t('agreements.actions.confirm_open_dispute')
             )}
           </button>
         </div>
@@ -2635,7 +2639,7 @@ function AuditModal({ agreementId, onClose }: AuditModalProps) {
         if (res) {
           setData(res);
         } else {
-          setError('Audit RPC returned no data');
+          setError(t('agreements.audit.no_data'));
         }
       } catch (e) {
         if (mounted) setError(String(e));
@@ -2703,19 +2707,19 @@ function AuditModal({ agreementId, onClose }: AuditModalProps) {
               <div className="glass rounded-lg p-3 text-xs space-y-1.5">
                 <div className="font-display font-semibold text-white/70 mb-2">{t('agreements.labels.agreement')}</div>
                 {parties && (
-                  <Detail label="Parties" value={`${parties.length} ${parties.length === 1 ? 'party' : 'parties'}`} />
+                  <Detail label={t('agreements.detail_labels.parties')} value={`${parties.length} ${parties.length === 1 ? t('agreements.detail_values.party') : t('agreements.detail_values.parties')}`} />
                 )}
                 {agreement.template_type != null && (
-                  <Detail label="Template" value={String(agreement.template_type)} />
+                  <Detail label={t('agreements.detail_labels.template')} value={String(agreement.template_type)} />
                 )}
                 {typeof agreement.total_amount === 'number' && (
-                  <Detail label="Amount" value={formatIRM(agreement.total_amount as number)} />
+                  <Detail label={t('agreements.detail_labels.amount')} value={formatIRM(agreement.total_amount as number)} />
                 )}
                 {agreement.payer != null && (
-                  <Detail label="Payer" value={truncateAddr(String(agreement.payer), 8, 6)} />
+                  <Detail label={t('agreements.detail_labels.payer')} value={truncateAddr(String(agreement.payer), 8, 6)} />
                 )}
                 {agreement.payee != null && (
-                  <Detail label="Payee" value={truncateAddr(String(agreement.payee), 8, 6)} />
+                  <Detail label={t('agreements.detail_labels.payee')} value={truncateAddr(String(agreement.payee), 8, 6)} />
                 )}
               </div>
             )}
@@ -2724,7 +2728,7 @@ function AuditModal({ agreementId, onClose }: AuditModalProps) {
             {(events?.length ?? 0) > 0 && (
               <div>
                 <div className="font-display font-semibold text-white/70 text-xs mb-2">
-                  Timeline ({events!.length} event{events!.length !== 1 ? 's' : ''})
+                  {t('agreements.sections.timeline', { count: events!.length })}
                 </div>
                 <div className="space-y-1.5">
                   {events!.map((e, i) => {
@@ -2747,7 +2751,7 @@ function AuditModal({ agreementId, onClose }: AuditModalProps) {
             {(auditProofs?.length ?? 0) > 0 && (
               <div>
                 <div className="font-display font-semibold text-white/70 text-xs mb-2">
-                  Proofs ({auditProofs!.length})
+                  {t('agreements.sections.proofs_count', { count: auditProofs!.length })}
                 </div>
                 <div className="space-y-1.5">
                   {auditProofs!.map((p, i) => {
@@ -2769,7 +2773,7 @@ function AuditModal({ agreementId, onClose }: AuditModalProps) {
             {(fundingLegs?.length ?? 0) > 0 && (
               <div>
                 <div className="font-display font-semibold text-white/70 text-xs mb-2">
-                  Funding ({fundingLegs!.length} leg{fundingLegs!.length !== 1 ? 's' : ''})
+                  {t('agreements.sections.funding_legs', { count: fundingLegs!.length })}
                 </div>
                 <div className="space-y-1.5">
                   {fundingLegs!.map((l, i) => {
@@ -2800,7 +2804,7 @@ function AuditModal({ agreementId, onClose }: AuditModalProps) {
             {(linkedTxs?.length ?? 0) > 0 && (
               <div>
                 <div className="font-display font-semibold text-white/70 text-xs mb-2">
-                  Linked Transactions ({linkedTxs!.length})
+                  {t('agreements.sections.linked_transactions', { count: linkedTxs!.length })}
                 </div>
                 <div className="space-y-1.5">
                   {linkedTxs!.map((t, i) => {
@@ -2821,10 +2825,10 @@ function AuditModal({ agreementId, onClose }: AuditModalProps) {
             {policy && (
               <div className="glass rounded-lg p-3 text-xs space-y-1.5">
                 <div className="font-display font-semibold text-white/70 mb-2">{t('agreements.labels.policy')}</div>
-                {policy.outcome != null && <Detail label="Outcome" value={String(policy.outcome)} />}
-                {policy.satisfied != null && <Detail label="Satisfied" value={policy.satisfied ? 'Yes' : 'No'} />}
-                {policy.reason != null && <Detail label="Reason" value={String(policy.reason)} />}
-                {policy.kind != null && <Detail label="Kind" value={String(policy.kind)} />}
+                {policy.outcome != null && <Detail label={t('agreements.detail_labels.outcome')} value={String(policy.outcome)} />}
+                {policy.satisfied != null && <Detail label={t('agreements.detail_labels.satisfied')} value={policy.satisfied ? t('common.yes') : t('common.no')} />}
+                {policy.reason != null && <Detail label={t('agreements.detail_labels.reason')} value={String(policy.reason)} />}
+                {policy.kind != null && <Detail label={t('agreements.detail_labels.kind')} value={String(policy.kind)} />}
               </div>
             )}
 
@@ -2834,7 +2838,7 @@ function AuditModal({ agreementId, onClose }: AuditModalProps) {
                 onClick={() => setShowRaw((v) => !v)}
                 className="text-xs text-irium-400 hover:text-irium-300"
               >
-                {showRaw ? 'Hide raw JSON' : 'Show raw JSON'}
+                {showRaw ? t('agreements.audit.hide_raw_json') : t('agreements.audit.show_raw_json')}
               </button>
               {showRaw && (
                 <div className="mt-2 glass rounded-lg p-3">
@@ -2842,7 +2846,7 @@ function AuditModal({ agreementId, onClose }: AuditModalProps) {
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(rawJson);
-                        toast.success('Copied');
+                        toast.success(t('agreements.toasts.copied'));
                       }}
                       className="text-xs text-irium-400 hover:text-irium-300 flex items-center gap-1"
                     >
@@ -2881,7 +2885,7 @@ function VerifySignaturesRow({ agreementId }: { agreementId: string }) {
   const handleVerify = async () => {
     const path = await openFilePicker({
       extensions: ['sig', 'json'],
-      title: 'Select Signature File',
+      title: t('agreements.dialog_titles.select_signature_file'),
     });
     if (!path) return;
     setVerifying(true);
@@ -2889,8 +2893,8 @@ function VerifySignaturesRow({ agreementId }: { agreementId: string }) {
       const r = await agreementStore.verifySignature(path, agreementId);
       const filename = path.split(/[\\/]/).pop() ?? path;
       setResults((prev) => [{ filename, valid: r.valid, signer: r.signer, message: r.message }, ...prev]);
-      if (r.valid) toast.success(t('agreements.toasts.signature_valid', { signer: r.signer ? r.signer.slice(0, 10) + '…' : 'unknown' }));
-      else toast.error(t('agreements.toasts.signature_invalid', { reason: r.message ?? 'rejected' }));
+      if (r.valid) toast.success(t('agreements.toasts.signature_valid', { signer: r.signer ? r.signer.slice(0, 10) + '…' : t('agreements.helpers.signer_unknown') }));
+      else toast.error(t('agreements.toasts.signature_invalid', { reason: r.message ?? t('agreements.helpers.rejected') }));
     } catch (e) {
       toast.error(String(e));
     } finally {
@@ -2911,7 +2915,7 @@ function VerifySignaturesRow({ agreementId }: { agreementId: string }) {
           title={t('agreements.tooltips.verify_signature_file')}
         >
           {verifying ? <RefreshCw size={11} className="animate-spin" /> : <PenLine size={11} />}
-          Verify a Signature File…
+          {t('agreements.actions.verify_signature_file')}
         </button>
       </div>
       {results.length === 0 ? (
@@ -2933,7 +2937,7 @@ function VerifySignaturesRow({ agreementId }: { agreementId: string }) {
               <div className="flex-1 min-w-0">
                 <div className="font-mono text-white/70 truncate">{r.filename}</div>
                 {r.signer && (
-                  <div className="font-mono text-[10px] text-white/40 truncate">signer {r.signer}</div>
+                  <div className="font-mono text-[10px] text-white/40 truncate">{t('agreements.labels.signer_prefix')} {r.signer}</div>
                 )}
                 {!r.valid && r.message && (
                   <div className="text-[10px] text-red-300/80 truncate">{r.message}</div>
@@ -2988,7 +2992,7 @@ function SignAgreementModal({ agreement, walletAddresses, preferredAddress, onCl
       if (r.success) {
         toast.success(
           <div className="flex flex-col gap-1">
-            <span>Agreement signed.</span>
+            <span>{t('agreements.toasts.agreement_signed')}</span>
             {r.signature_path && (
               <span className="text-[10px] font-mono opacity-70 break-all">{r.signature_path}</span>
             )}
@@ -3032,8 +3036,7 @@ function SignAgreementModal({ agreement, walletAddresses, preferredAddress, onCl
         </div>
 
         <p className="text-xs text-white/55 mb-4 leading-relaxed">
-          Signing this agreement with your wallet key confirms your participation.
-          Both parties must sign before funding.
+          {t('agreements.helpers.sign_modal_body')}
         </p>
 
         <div className="glass rounded-lg p-3 mb-4 space-y-1.5 text-xs">
@@ -3050,7 +3053,7 @@ function SignAgreementModal({ agreement, walletAddresses, preferredAddress, onCl
             <span className="font-mono text-white/70 text-right break-all">{agreement.seller ?? '—'}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-white/40">Amount</span>
+            <span className="text-white/40">{t('agreements.labels.amount')}</span>
             <span className="font-mono text-white/70">{formatIRM(agreement.amount)} IRM</span>
           </div>
         </div>
@@ -3066,7 +3069,7 @@ function SignAgreementModal({ agreement, walletAddresses, preferredAddress, onCl
             {walletAddresses.length === 0 && <option value="">{t('agreements.empty.no_wallet_addresses')}</option>}
             {walletAddresses.map((a) => (
               <option key={a} value={a} style={{ background: '#0f0f23', color: '#eef0ff' }}>
-                {a} {a === agreement.buyer ? '(buyer)' : a === agreement.seller ? '(seller)' : ''}
+                {a} {a === agreement.buyer ? t('agreements.helpers.role_buyer_suffix') : a === agreement.seller ? t('agreements.helpers.role_seller_suffix') : ''}
               </option>
             ))}
           </select>
@@ -3074,7 +3077,7 @@ function SignAgreementModal({ agreement, walletAddresses, preferredAddress, onCl
             <p className="text-[11px] text-irium-300 mt-1.5">{t('agreements.labels.role')} <strong>{derivedRole}</strong></p>
           ) : (
             <p className="text-[11px] text-amber-400 mt-1.5">
-              This address is not the buyer or seller — signing will be recorded without a party role.
+              {t('agreements.helpers.signer_not_party')}
             </p>
           )}
         </div>
@@ -3160,8 +3163,8 @@ function DisputesView({ agreementsById, onOpenAgreement, isOnline }: DisputesVie
               {d.status}
             </span>
             <div className="ml-auto flex items-center gap-2 text-[11px] text-white/40">
-              {d.opened_at != null && <span>opened {timeAgo(d.opened_at)}</span>}
-              {d.resolved_at != null && <span>· resolved {timeAgo(d.resolved_at)}</span>}
+              {d.opened_at != null && <span>{t('agreements.disputes.opened_prefix')} {timeAgo(d.opened_at)}</span>}
+              {d.resolved_at != null && <span>{t('agreements.disputes.resolved_prefix')} {timeAgo(d.resolved_at)}</span>}
             </div>
           </div>
           <div className="mt-2 grid grid-cols-1 gap-1 text-xs">
@@ -3170,7 +3173,7 @@ function DisputesView({ agreementsById, onOpenAgreement, isOnline }: DisputesVie
               <button
                 onClick={() => onOpenAgreement(d.agreement_id)}
                 className="font-mono text-irium-400 hover:text-irium-300 underline underline-offset-2"
-                title={agreementsById[d.agreement_id] ? 'Open this agreement' : 'Agreement not in current list — try refreshing the Agreements view'}
+                title={agreementsById[d.agreement_id] ? t('agreements.disputes.open_this_agreement') : t('agreements.disputes.agreement_not_in_list')}
               >
                 {truncateHash(d.agreement_id, 10)}
               </button>

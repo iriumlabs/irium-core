@@ -346,11 +346,11 @@ export default function WalletPage() {
       // Refresh address list
       await loadData();
     } catch (e) {
-      toast.error(`Failed to add address: ${e}`);
+      toast.error(t('wallet.toasts.failed_add_address', { reason: String(e) }));
     } finally {
       setAddingAddress(false);
     }
-  }, [loadData]);
+  }, [loadData, t]);
 
   // Confirmation dialog before adding a new address. Both the main-page
   // "+ Add Address" button and the Manage panel's add row route through
@@ -394,7 +394,10 @@ export default function WalletPage() {
       // See the Send button render below for the rationale.
       if (!ns?.fully_synced) {
         toast.error(
-          `Node syncing — ${ns.persisted_height?.toLocaleString() ?? 0}/${ns.height?.toLocaleString() ?? 0} blocks. Please wait.`
+          t('wallet.toasts.node_syncing_wait', {
+            persisted: ns.persisted_height?.toLocaleString() ?? 0,
+            height: ns.height?.toLocaleString() ?? 0,
+          })
         );
         return;
       }
@@ -428,7 +431,7 @@ export default function WalletPage() {
         }
       } catch {}
       const seed = await wallet.exportSeed();
-      if (!seed) throw new Error('No recovery data found in wallet');
+      if (!seed) throw new Error(t('wallet.toasts.no_recovery_data'));
       setSeedValue(seed);
       setSeedIsMnemonic(false);
       setSeedBlurred(true);
@@ -455,9 +458,9 @@ export default function WalletPage() {
     setExportingSecurityWif(true);
     try {
       const outPath = await saveDialog({
-        title: 'Export WIF Key',
+        title: t('wallet.security.export_wif_dialog_title'),
         defaultPath: `${selectedAddr.slice(0, 8)}-wif.txt`,
-        filters: [{ name: 'Text', extensions: ['txt'] }],
+        filters: [{ name: t('wallet.security.text_file_filter'), extensions: ['txt'] }],
       });
       if (!outPath) return;
       await wallet.exportWif(selectedAddr, outPath as string);
@@ -473,9 +476,9 @@ export default function WalletPage() {
     setBackingUp(true);
     try {
       const outPath = await saveDialog({
-        title: 'Save Wallet Backup',
+        title: t('wallet.security.backup_dialog_title'),
         defaultPath: 'irium-wallet-backup.bak',
-        filters: [{ name: 'Wallet Backup', extensions: ['bak', 'dat', '*'] }],
+        filters: [{ name: t('wallet.security.backup_filter_name'), extensions: ['bak', 'dat', '*'] }],
       });
       if (!outPath) return;
       await wallet.backup(outPath as string);
@@ -497,8 +500,8 @@ export default function WalletPage() {
   const activeBalance = addresses[activeAddrIdx]?.balance ?? 0;
 
   const balanceLabel = activeAddrIdx === 0
-    ? 'Balance'
-    : `Balance · Address ${activeAddrIdx + 1}`;
+    ? t('wallet.balance_label')
+    : t('wallet.balance_label_for_address', { index: activeAddrIdx + 1 });
 
   return (
     <motion.div
@@ -677,7 +680,7 @@ export default function WalletPage() {
                 <button
                   onClick={() => { navigator.clipboard.writeText(activeAddress); toast.success(t('wallet.toasts.address_copied')); }}
                   className="text-white/45 hover:text-white transition-colors flex-shrink-0"
-                  title="Copy address"
+                  title={t('wallet.addresses.copy_address')}
                 >
                   <Copy size={12} />
                 </button>
@@ -685,7 +688,7 @@ export default function WalletPage() {
             ) : (
               <div className="flex items-center gap-2 mb-5">
                 <div className="w-2 h-2 rounded-full bg-amber-400/60" />
-                <span className="text-xs text-white/40">No wallet loaded — create or import one below</span>
+                <span className="text-xs text-white/40">{t('wallet.no_wallet_loaded')}</span>
               </div>
             )}
 
@@ -719,7 +722,7 @@ export default function WalletPage() {
                   {formatIRM(activeBalance)}
                 </div>
                 <div className="font-mono text-white/30 text-sm mb-1">
-                  {activeBalance.toLocaleString('en-US')} satoshis
+                  {t('wallet.satoshis_amount', { amount: activeBalance.toLocaleString('en-US') })}
                 </div>
                 {/* Unconfirmed pending — the RPC's /rpc/balance returns a
                     single wallet-wide `unconfirmed` field (no per-address
@@ -727,8 +730,8 @@ export default function WalletPage() {
                     an explicit "wallet-wide" disclaimer to set expectations. */}
                 {(balance?.unconfirmed ?? 0) > 0 && (
                   <div className="text-amber-400 text-sm">
-                    +{formatIRM(balance!.unconfirmed)} unconfirmed
-                    <span className="text-amber-400/55 text-xs ml-2 font-normal">(wallet-wide)</span>
+                    +{formatIRM(balance!.unconfirmed)} {t('wallet.unconfirmed')}
+                    <span className="text-amber-400/55 text-xs ml-2 font-normal">{t('wallet.wallet_wide')}</span>
                   </div>
                 )}
               </>
@@ -749,14 +752,14 @@ export default function WalletPage() {
                 disabled={!nodeStatus?.running || !nodeStatus?.fully_synced}
                 title={
                   !nodeStatus?.running
-                    ? 'Node must be online to send'
+                    ? t('wallet.send.node_offline_tooltip')
                     : !nodeStatus?.fully_synced
-                    ? 'Node is syncing — please wait before sending'
+                    ? t('wallet.send.node_syncing_tooltip')
                     : undefined
                 }
                 className="btn-primary gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <ArrowUpRight size={16} /> Send
+                <ArrowUpRight size={16} /> {t('wallet.send.button_label')}
               </button>
               {nodeStatus?.running && !nodeStatus?.fully_synced && (
                 <span
@@ -766,21 +769,21 @@ export default function WalletPage() {
                     border: '1px solid rgba(251,191,36,0.32)',
                     color: '#fbbf24',
                   }}
-                  title="Wait for the node to finish syncing before sending. Sending now can fail with a signature verification error because the UTXO set is still being rebuilt."
+                  title={t('wallet.syncing_tooltip')}
                 >
                   <Loader2 size={10} className="animate-spin" />
-                  Syncing… {nodeStatus.persisted_height?.toLocaleString() ?? 0}
+                  {t('wallet.syncing_progress')} {nodeStatus.persisted_height?.toLocaleString() ?? 0}
                   {' / '}
                   {nodeStatus.height?.toLocaleString() ?? 0}
                   {nodeStatus.gap_healer_pending_count > 0 && (
                     <span style={{ color: 'rgba(251,191,36,0.65)' }}>
-                      {' '}· {nodeStatus.gap_healer_pending_count} gaps
+                      {' '}· {t('wallet.gaps_count', { count: nodeStatus.gap_healer_pending_count })}
                     </span>
                   )}
                 </span>
               )}
               <button onClick={() => setShowReceive(true)} className="btn-secondary gap-2">
-                <ArrowDownLeft size={16} /> Receive
+                <ArrowDownLeft size={16} /> {t('wallet.receive.button_label')}
               </button>
               {/* Add Address — derives a fresh address from the existing
                   BIP32 seed (the mnemonic doesn't change). Replaces the old
@@ -811,7 +814,7 @@ export default function WalletPage() {
                 }}
               >
                 {addingAddress ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                {addingAddress ? 'Generating…' : 'Add Address'}
+                {addingAddress ? t('wallet.addresses.generating') : t('wallet.addresses.add_address_button')}
               </button>
               {/* Manage Wallets — opens the slide-out drawer for the file
                   picker, advanced create, import flows, and hidden-address
@@ -821,9 +824,9 @@ export default function WalletPage() {
               <button
                 onClick={() => { setShowManagePanel(true); loadWalletFiles(); }}
                 className="btn-secondary text-xs gap-1.5"
-                title="Wallet files, import, hidden addresses"
+                title={t('wallet.addresses.manage_description')}
               >
-                <Settings size={12} /> Manage
+                <Settings size={12} /> {t('wallet.addresses.manage_button')}
               </button>
             </div>
           </div>
@@ -836,7 +839,7 @@ export default function WalletPage() {
             in the Manage Wallets drawer to keep this list clean. */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-display font-semibold text-white/90">Addresses</h2>
+            <h2 className="font-display font-semibold text-white/90">{t('wallet.addresses.section_title')}</h2>
             <span className="badge badge-irium">{addresses.length}</span>
           </div>
           {loadingAddresses ? (
@@ -850,7 +853,7 @@ export default function WalletPage() {
             </div>
           ) : addresses.length === 0 ? (
             <div className="card p-8 text-center text-white/30 text-sm">
-              No addresses yet. Open Manage to add one.
+              {t('wallet.addresses.empty_state')}
             </div>
           ) : (
             <div className="space-y-2">
@@ -883,10 +886,10 @@ export default function WalletPage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="font-display font-semibold text-white/90">Transactions</h2>
+              <h2 className="font-display font-semibold text-white/90">{t('wallet.transactions.section_title')}</h2>
               {activeAddress && (
                 <p className="text-[10px] font-mono mt-0.5" style={{ color: 'rgba(238,240,255,0.35)' }}>
-                  for {activeAddress.slice(0, 12)}…{activeAddress.slice(-6)}
+                  {t('wallet.transactions.for_address', { address: `${activeAddress.slice(0, 12)}…${activeAddress.slice(-6)}` })}
                 </p>
               )}
             </div>
@@ -902,7 +905,7 @@ export default function WalletPage() {
               ))}
             </div>
           ) : txs.length === 0 ? (
-            <div className="card p-8 text-center text-white/30 text-sm">No transactions yet.</div>
+            <div className="card p-8 text-center text-white/30 text-sm">{t('wallet.transactions.no_transactions')}</div>
           ) : (
             <div className="card overflow-hidden">
               {/* Card-based layout — no grid column header. Each TxRow is
@@ -1010,7 +1013,7 @@ export default function WalletPage() {
                     <Plus size={18} style={{ color: '#6ec6ff' }} />
                   </div>
                   <h3 className="font-display font-bold text-lg" style={{ color: '#6ec6ff' }}>
-                    Add a new address?
+                    {t('wallet.addresses.add_address_confirm_title')}
                   </h3>
                 </div>
 
@@ -1018,9 +1021,7 @@ export default function WalletPage() {
                   className="flex items-start gap-2 p-3 rounded-lg text-xs leading-relaxed"
                   style={{ background: 'rgba(110,198,255,0.08)', border: '1px solid rgba(110,198,255,0.28)', color: 'rgba(238,240,255,0.75)' }}
                 >
-                  This will derive the next address from your wallet seed.
-                  Addresses cannot be removed from the wallet file once
-                  created — only hidden from the visible list.
+                  {t('wallet.addresses.add_address_confirm_body')}
                 </div>
 
                 <div className="flex items-center gap-3 pt-1">
@@ -1029,7 +1030,7 @@ export default function WalletPage() {
                     disabled={addingAddress}
                     className="btn-secondary flex-1 justify-center disabled:opacity-40"
                   >
-                    Cancel
+                    {t('wallet.common.cancel')}
                   </button>
                   <button
                     onClick={() => {
@@ -1046,7 +1047,7 @@ export default function WalletPage() {
                     }}
                   >
                     {addingAddress ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                    Add Address
+                    {t('wallet.addresses.add_address_button')}
                   </button>
                 </div>
               </motion.div>
@@ -1099,7 +1100,7 @@ export default function WalletPage() {
                 await loadWalletFiles();
                 toast.success(t('wallet.toasts.wallet_renamed'));
               } catch (e) {
-                toast.error(`Rename failed: ${e}`);
+                toast.error(t('wallet.toasts.rename_failed', { reason: String(e) }));
               }
             }}
             onClose={() => setShowManagePanel(false)}
@@ -1118,8 +1119,8 @@ export default function WalletPage() {
                 setActiveAddrIdx(0);
                 await loadData();
                 await loadWalletFiles();
-                toast.success(`Switched to ${path.split(/[\\/]/).pop()}`);
-              } catch (e) { toast.error(`Failed to switch: ${e}`); }
+                toast.success(t('wallet.toasts.switched_to', { name: path.split(/[\\/]/).pop() ?? '' }));
+              } catch (e) { toast.error(t('wallet.toasts.switch_failed', { reason: String(e) })); }
             }}
             onCreateNewWalletFile={() => {
               setCreateWalletDefaultTab('create');
@@ -1132,9 +1133,9 @@ export default function WalletPage() {
               try {
                 await wallet.deleteFile(path);
                 await loadWalletFiles();
-                toast.success(`Deleted ${path.split(/[\\/]/).pop()}`);
+                toast.success(t('wallet.toasts.wallet_deleted', { name: path.split(/[\\/]/).pop() ?? '' }));
               } catch (e) {
-                toast.error(`Delete failed: ${e}`);
+                toast.error(t('wallet.toasts.delete_failed', { reason: String(e) }));
               }
             }}
             onSetPrimary={(idx) => {
@@ -1184,11 +1185,11 @@ export default function WalletPage() {
                 // backup extensions AND can switch to "All Files" — CLI
                 // backups may carry .json, .tar.gz, or no extension at all.
                 const selected = await openDialog({
-                  title: 'Select Wallet Backup File',
+                  title: t('wallet.security.select_backup_dialog_title'),
                   multiple: false,
                   filters: [
-                    { name: 'Wallet Backup', extensions: ['bak', 'dat', 'json', 'tar', 'gz'] },
-                    { name: 'All Files',     extensions: ['*'] },
+                    { name: t('wallet.security.backup_filter_name'), extensions: ['bak', 'dat', 'json', 'tar', 'gz'] },
+                    { name: t('wallet.security.all_files_filter'),     extensions: ['*'] },
                   ],
                 });
                 if (!selected) return;
@@ -1223,7 +1224,7 @@ export default function WalletPage() {
                 <div className="flex items-center justify-between">
                   <h2 className="font-display font-bold text-lg text-white flex items-center gap-2">
                     <Eye size={18} className="text-amber-400" />
-                    {seedIsMnemonic ? 'Recovery Phrase' : 'Wallet Seed'}
+                    {seedIsMnemonic ? t('wallet.seed.recovery_phrase_title') : t('wallet.seed.wallet_seed_title')}
                   </h2>
                   <button onClick={() => { setShowSeedModal(false); setSeedValue(''); setSeedBlurred(true); setSeedIsMnemonic(false); }} className="btn-ghost text-white/40 p-1">
                     <X size={16} />
@@ -1232,8 +1233,8 @@ export default function WalletPage() {
                 <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
                   <span className="text-amber-400 text-xs leading-relaxed">
                     {seedIsMnemonic
-                      ? 'Never share your recovery phrase. Anyone with these 24 words can access all your funds. Store it offline securely.'
-                      : 'Never share your wallet seed. This hex value gives full access to all funds. Store it offline securely.'}
+                      ? t('wallet.seed.recovery_phrase_warning')
+                      : t('wallet.seed.wallet_seed_warning')}
                   </span>
                 </div>
                 {seedIsMnemonic ? (
@@ -1251,7 +1252,7 @@ export default function WalletPage() {
                     {seedBlurred && (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <button onClick={() => setSeedBlurred(false)} className="btn-secondary flex items-center gap-2 text-sm">
-                          <Eye size={14} /> Reveal
+                          <Eye size={14} /> {t('wallet.common.reveal')}
                         </button>
                       </div>
                     )}
@@ -1265,29 +1266,29 @@ export default function WalletPage() {
                       {seedBlurred && (
                         <div className="absolute inset-0 flex items-center justify-center">
                           <button onClick={() => setSeedBlurred(false)} className="btn-secondary flex items-center gap-2 text-sm">
-                            <Eye size={14} /> Reveal
+                            <Eye size={14} /> {t('wallet.common.reveal')}
                           </button>
                         </div>
                       )}
                     </div>
                     <div className="text-xs text-white/30 leading-relaxed">
-                      This wallet uses a custom seed. Back up this hex seed to restore.
+                      {t('wallet.seed.custom_seed_hint')}
                     </div>
                   </>
                 )}
                 {!seedBlurred && (
                   <button
-                    onClick={() => { navigator.clipboard.writeText(seedValue); toast.success(seedIsMnemonic ? 'Recovery phrase copied' : 'Seed copied'); }}
+                    onClick={() => { navigator.clipboard.writeText(seedValue); toast.success(seedIsMnemonic ? t('wallet.toasts.recovery_copied') : t('wallet.toasts.seed_copied')); }}
                     className="btn-ghost flex items-center gap-2 text-white/50 hover:text-white"
                   >
-                    <Copy size={13} /> {seedIsMnemonic ? 'Copy Phrase' : 'Copy Seed'}
+                    <Copy size={13} /> {seedIsMnemonic ? t('wallet.seed.copy_phrase') : t('wallet.seed.copy_seed')}
                   </button>
                 )}
                 <button
                   onClick={() => { setShowSeedModal(false); setSeedValue(''); setSeedBlurred(true); setSeedIsMnemonic(false); }}
                   className="btn-primary w-full"
                 >
-                  Done
+                  {t('wallet.common.done')}
                 </button>
               </motion.div>
             </div>
@@ -1314,18 +1315,18 @@ export default function WalletPage() {
               >
                 <div className="flex items-center justify-between">
                   <h2 className="font-display font-bold text-lg text-white flex items-center gap-2">
-                    <Upload size={18} className="text-amber-400" /> Restore from Backup
+                    <Upload size={18} className="text-amber-400" /> {t('wallet.restore.title')}
                   </h2>
                   <button onClick={() => setShowRestoreBackupConfirm(false)} className="btn-ghost text-white/40 p-1">
                     <X size={16} />
                   </button>
                 </div>
                 <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-3 text-sm text-amber-300 leading-relaxed">
-                  This will overwrite your current wallet data. Make sure you have your WIF key or backup file before continuing. The node will restart automatically once the restore completes so the new wallet state is picked up cleanly.
+                  {t('wallet.restore.warning_body')}
                 </div>
                 <p className="text-xs text-white/40 font-mono truncate">{restoreBackupPath}</p>
                 <div className="flex gap-3">
-                  <button onClick={() => setShowRestoreBackupConfirm(false)} className="btn-secondary flex-1">Cancel</button>
+                  <button onClick={() => setShowRestoreBackupConfirm(false)} className="btn-secondary flex-1">{t('wallet.common.cancel')}</button>
                   <button
                     disabled={restoringBackup}
                     onClick={async () => {
@@ -1372,7 +1373,7 @@ export default function WalletPage() {
                     className="btn-primary flex-1 flex items-center justify-center gap-2"
                   >
                     {restoringBackup ? <Loader2 size={14} className="animate-spin" /> : null}
-                    Restore Wallet
+                    {t('wallet.restore.restore_button')}
                   </button>
                 </div>
               </motion.div>
@@ -1421,9 +1422,9 @@ function AddressCard({
     setExportingWif(true);
     try {
       const outPath = await saveDialog({
-        title: 'Export WIF Private Key',
+        title: t('wallet.security.export_wif_private_key_dialog_title'),
         defaultPath: `${addr.address.slice(0, 8)}-wif.txt`,
-        filters: [{ name: 'Text', extensions: ['txt'] }],
+        filters: [{ name: t('wallet.security.text_file_filter'), extensions: ['txt'] }],
       });
       if (!outPath) return;
       await wallet.exportWif(addr.address, outPath as string);
@@ -1499,9 +1500,9 @@ function AddressCard({
                 e.currentTarget.style.borderColor  = 'rgba(255,255,255,0.10)';
                 e.currentTarget.style.color        = 'rgba(238,240,255,0.55)';
               }}
-              title="Set as primary"
+              title={t('wallet.addresses.set_as_primary')}
             >
-              <Star size={9} /> Set Primary
+              <Star size={9} /> {t('wallet.addresses.set_primary_button')}
             </button>
           ) : (
             /* View-only — uses the same shared formatter so a custom
@@ -1550,7 +1551,7 @@ function AddressCard({
           <button
             onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(addr.address); toast.success(t('wallet.toasts.address_copied')); }}
             className="btn-ghost p-1.5 text-white/40 hover:text-white"
-            title="Copy address"
+            title={t('wallet.addresses.copy_address')}
           >
             <Copy size={13} />
           </button>
@@ -1563,7 +1564,7 @@ function AddressCard({
               onClick={handleExportWif}
               disabled={exportingWif}
               className="btn-ghost p-1.5 text-white/40 hover:text-amber-400"
-              title="Export WIF key"
+              title={t('wallet.security.export_wif')}
             >
               {exportingWif ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
             </button>
@@ -1572,7 +1573,7 @@ function AddressCard({
             <button
               onClick={(e) => { e.stopPropagation(); onRemove(); }}
               className="btn-ghost p-1.5 text-white/40 hover:text-amber-400"
-              title="Hide address (stays in wallet file, removable from view)"
+              title={t('wallet.addresses.hide_address')}
             >
               <Trash2 size={13} />
             </button>
@@ -1625,17 +1626,17 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
   // address and full TXID stay accessible — full TXID is shown on Row 2
   // below, and the detail modal exposes the full miner address.
   const detailTail = (() => {
-    if (!tx.height) return "Mempool · awaiting confirmation";
+    if (!tx.height) return t('wallet.transactions.mempool_awaiting');
     const parts: string[] = [];
     if (isCoinbase) {
-      if (tx.address) parts.push(`Miner: ${shortMid(tx.address, 6, 4)}`);
+      if (tx.address) parts.push(t('wallet.transactions.miner_label', { address: shortMid(tx.address, 6, 4) }));
     } else if (isSend) {
-      if (tx.fee != null && tx.fee > 0) parts.push(`Fee: ${tx.fee.toLocaleString('en-US')} sats`);
-      parts.push(`TXID: ${shortMid(tx.txid, 8, 5)}`);
+      if (tx.fee != null && tx.fee > 0) parts.push(t('wallet.transactions.fee_label', { amount: tx.fee.toLocaleString('en-US') }));
+      parts.push(t('wallet.transactions.txid_label', { txid: shortMid(tx.txid, 8, 5) }));
     } else {
-      parts.push(`TXID: ${shortMid(tx.txid, 8, 5)}`);
+      parts.push(t('wallet.transactions.txid_label', { txid: shortMid(tx.txid, 8, 5) }));
     }
-    parts.push(`${confirmations} conf`);
+    parts.push(t('wallet.transactions.conf_short', { count: confirmations }));
     return parts.join(" · ");
   })();
 
@@ -1666,9 +1667,9 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
                   onClick={goToBlock}
                   className="text-xs hover:underline flex-shrink-0"
                   style={{ color: '#6ec6ff' }}
-                  title="Open in Explorer"
+                  title={t('wallet.transactions.open_in_explorer')}
                 >
-                  Block #{tx.height.toLocaleString('en-US')}
+                  {t('wallet.transactions.block_number', { height: tx.height.toLocaleString('en-US') })}
                 </button>
               </>
             )}
@@ -1684,7 +1685,7 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
             {isSend ? "−" : "+"}{formatIRM(Math.abs(tx.amount))}
           </span>
           <span className={clsx("badge", isConfirmed ? "badge-success" : "badge-warning")}>
-            {isConfirmed ? "Confirmed" : "Pending"}
+            {isConfirmed ? t('wallet.transactions.confirmed') : t('wallet.transactions.pending')}
           </span>
           <span className="font-mono text-xs text-white/45 tabular-nums">
             {confirmations}
@@ -1703,7 +1704,7 @@ function TxRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
         <button
           onClick={copyTxid}
           className="text-white/30 hover:text-white/85 transition-colors flex-shrink-0 mt-0.5"
-          title="Copy TXID"
+          title={t('wallet.transactions.copy_txid')}
         >
           <Copy size={9} />
         </button>
@@ -1835,9 +1836,9 @@ function CreateWalletModal({
     setExportingWif(true);
     try {
       const outPath = await saveDialog({
-        title: 'Export WIF Key',
+        title: t('wallet.security.export_wif_dialog_title'),
         defaultPath: `${createResult.address.slice(0, 8)}-wif.txt`,
-        filters: [{ name: 'Text', extensions: ['txt'] }],
+        filters: [{ name: t('wallet.security.text_file_filter'), extensions: ['txt'] }],
       });
       if (!outPath) return;
       await wallet.exportWif(createResult.address, outPath as string);
@@ -1871,7 +1872,7 @@ function CreateWalletModal({
         // window so loadData always sees the freshly-imported wallet.
         await wallet.setPath(resolvedPath);
       } else if (resolvedPath) {
-        throw new Error(`Wallet binary returned invalid path: ${resolvedPath}`);
+        throw new Error(t('wallet.toasts.invalid_wallet_path', { path: resolvedPath }));
       }
       // Arm the Dashboard's one-shot post-import sync awareness banner so
       // the user gets an inline explanation of why their balance might
@@ -1924,7 +1925,7 @@ function CreateWalletModal({
           <div className="flex items-center justify-between mb-5">
             <h2 className="font-display font-bold text-lg text-white flex items-center gap-2">
               <Wallet size={18} className="text-irium-400" />
-              {tab === 'create' ? 'Create Wallet' : 'Import Wallet'}
+              {tab === 'create' ? t('wallet.create_modal.create_title') : t('wallet.create_modal.import_title')}
             </h2>
             <button onClick={handleModalClose} className="btn-ghost text-white/40 p-1"><X size={16} /></button>
           </div>
@@ -1936,16 +1937,16 @@ function CreateWalletModal({
               in useState above). */}
           {!createResult && !restrictToImport && (
             <div className="flex gap-1 mb-5 p-1 bg-white/5 rounded-xl">
-              {(['create', 'import'] as const).map((t) => (
+              {(['create', 'import'] as const).map((tabKey) => (
                 <button
-                  key={t}
-                  onClick={() => setTab(t)}
+                  key={tabKey}
+                  onClick={() => setTab(tabKey)}
                   className={clsx(
                     "flex-1 py-2 px-3 rounded-lg text-sm font-display font-medium transition-all duration-150",
-                    tab === t ? "bg-irium-600/50 text-irium-200 shadow-sm" : "text-white/40 hover:text-white/60"
+                    tab === tabKey ? "bg-irium-600/50 text-irium-200 shadow-sm" : "text-white/40 hover:text-white/60"
                   )}
                 >
-                  {t === 'create' ? 'Create New' : 'Import'}
+                  {tabKey === 'create' ? t('wallet.create_modal.create_new_tab') : t('wallet.create_modal.import_tab')}
                 </button>
               ))}
             </div>
@@ -1957,7 +1958,7 @@ function CreateWalletModal({
                 {!createResult ? (
                   <div className="space-y-4 text-center py-4">
                     <p className="text-sm text-white/40 leading-relaxed">
-                      Generate a new BIP39 wallet with a 24-word recovery phrase.
+                      {t('wallet.create_modal.generate_description')}
                     </p>
                     <button
                       onClick={handleCreate}
@@ -1965,20 +1966,20 @@ function CreateWalletModal({
                       className="btn-primary gap-2 mx-auto"
                     >
                       {creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                      {creating ? 'Creating…' : 'Create New Wallet'}
+                      {creating ? t('wallet.create_modal.creating') : t('wallet.create_modal.create_new_wallet_button')}
                     </button>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
                       <span className="text-amber-400 text-xs leading-relaxed">
-                        Save your 24-word recovery phrase offline — it can restore your full wallet. Your WIF key backs up a single address. Neither can be recovered if lost.
+                        {t('wallet.create_modal.save_warning')}
                       </span>
                     </div>
 
                     {/* Address */}
                     <div>
-                      <div style={labelStyle}>Address</div>
+                      <div style={labelStyle}>{t('wallet.create_modal.address_label')}</div>
                       <div className="flex items-center justify-center mb-2 p-3 bg-white rounded-xl w-fit mx-auto">
                         <QRCodeSVG value={createResult.address} size={120} />
                       </div>
@@ -1997,8 +1998,8 @@ function CreateWalletModal({
                     {mnemonicWords.length > 0 && (
                       <div>
                         <div style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span>Recovery Phrase (24 words)</span>
-                          <span style={{ color: 'rgba(255,255,255,0.22)', textTransform: 'none', letterSpacing: 'normal', fontSize: 10 }}>(any one phrase restores your wallet)</span>
+                          <span>{t('wallet.create_modal.recovery_phrase_label')}</span>
+                          <span style={{ color: 'rgba(255,255,255,0.22)', textTransform: 'none', letterSpacing: 'normal', fontSize: 10 }}>{t('wallet.create_modal.recovery_phrase_hint')}</span>
                         </div>
                         <div className="relative">
                           <div className={`transition-all duration-300 ${mnemonicBlurred ? 'blur-sm select-none pointer-events-none' : ''}`}>
@@ -2014,7 +2015,7 @@ function CreateWalletModal({
                           {mnemonicBlurred && (
                             <div className="absolute inset-0 flex items-center justify-center">
                               <button onClick={() => setMnemonicBlurred(false)} className="btn-secondary flex items-center gap-2 text-sm">
-                                <Eye size={13} /> Reveal
+                                <Eye size={13} /> {t('wallet.common.reveal')}
                               </button>
                             </div>
                           )}
@@ -2024,7 +2025,7 @@ function CreateWalletModal({
                             onClick={() => { navigator.clipboard.writeText(mnemonicWords.join(' ')); toast.success(t('wallet.toasts.recovery_copied')); }}
                             className="btn-ghost flex items-center gap-2 text-white/40 hover:text-white mt-1"
                           >
-                            <Copy size={11} /> Copy Phrase
+                            <Copy size={11} /> {t('wallet.seed.copy_phrase')}
                           </button>
                         )}
                       </div>
@@ -2033,8 +2034,8 @@ function CreateWalletModal({
                     {/* WIF key — inline display */}
                     <div>
                       <div style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span>WIF Key</span>
-                        <span style={{ color: 'rgba(255,255,255,0.22)', textTransform: 'none', letterSpacing: 'normal', fontSize: 10 }}>(your private key in portable format)</span>
+                        <span>{t('wallet.create_modal.wif_label')}</span>
+                        <span style={{ color: 'rgba(255,255,255,0.22)', textTransform: 'none', letterSpacing: 'normal', fontSize: 10 }}>{t('wallet.create_modal.wif_hint')}</span>
                       </div>
                       {wifValue ? (
                         <div className="relative">
@@ -2050,7 +2051,7 @@ function CreateWalletModal({
                           {wifBlurred && (
                             <div className="absolute inset-0 flex items-center justify-center">
                               <button onClick={() => setWifBlurred(false)} className="btn-secondary flex items-center gap-2 text-sm">
-                                <Eye size={13} /> Reveal
+                                <Eye size={13} /> {t('wallet.common.reveal')}
                               </button>
                             </div>
                           )}
@@ -2058,7 +2059,7 @@ function CreateWalletModal({
                       ) : (
                         <div className="flex items-center gap-2 p-3 rounded-lg bg-white/5 border border-white/5">
                           <Loader2 size={12} className="animate-spin text-white/30" />
-                          <span className="text-xs text-white/30">Loading WIF…</span>
+                          <span className="text-xs text-white/30">{t('wallet.create_modal.loading_wif')}</span>
                         </div>
                       )}
                       <button
@@ -2067,7 +2068,7 @@ function CreateWalletModal({
                         className="w-full btn-ghost flex items-center gap-2 justify-start text-white/40 hover:text-white mt-1"
                       >
                         {exportingWif ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                        Export WIF to File
+                        {t('wallet.create_modal.export_wif_to_file')}
                       </button>
                     </div>
 
@@ -2081,7 +2082,7 @@ function CreateWalletModal({
                         style={{ accentColor: '#6ec6ff' }}
                       />
                       <span className="text-sm text-white/50 group-hover:text-white/70 transition-colors leading-snug">
-                        I have saved my recovery phrase and WIF key securely.
+                        {t('wallet.create_modal.saved_confirmation')}
                       </span>
                     </label>
 
@@ -2090,7 +2091,7 @@ function CreateWalletModal({
                       disabled={!confirmed}
                       className="btn-primary w-full disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      Done
+                      {t('wallet.common.done')}
                     </button>
                   </div>
                 )}
@@ -2107,7 +2108,7 @@ function CreateWalletModal({
                 <div className="flex items-start gap-2 p-3 rounded-lg" style={{ background: 'rgba(110,198,255,0.06)', border: '1px solid rgba(110,198,255,0.18)' }}>
                   <Shield size={13} className="mt-0.5 flex-shrink-0" style={{ color: '#6ec6ff' }} />
                   <p className="text-xs leading-relaxed" style={{ color: 'rgba(238,240,255,0.65)' }}>
-                    This will import a new wallet. Your current wallet remains untouched and can be switched back from <span className="font-semibold">Manage Wallets</span>.
+                    {t('wallet.create_modal.import_notice_lead')} <span className="font-semibold">{t('wallet.addresses.manage_wallets')}</span>.
                   </p>
                 </div>
 
@@ -2129,7 +2130,7 @@ function CreateWalletModal({
                             : "border-white/10 text-white/40 hover:text-white/60 hover:border-white/20"
                         )}
                       >
-                        {m === 'mnemonic' ? <><FileText size={11} /> Seed Phrase</> : <><KeyRound size={11} /> WIF Key</>}
+                        {m === 'mnemonic' ? <><FileText size={11} /> {t('wallet.create_modal.seed_phrase_method')}</> : <><KeyRound size={11} /> {t('wallet.create_modal.wif_key_method')}</>}
                       </button>
                     ))}
                   </div>
@@ -2137,40 +2138,40 @@ function CreateWalletModal({
 
                 {importMethod === 'mnemonic' ? (
                   <div className="space-y-2">
-                    <label className="label">Seed Phrase (12 or 24 words)</label>
+                    <label className="label">{t('wallet.create_modal.seed_phrase_input_label')}</label>
                     <textarea
                       autoFocus
                       rows={4}
                       className="input resize-none font-mono text-sm"
-                      placeholder="word1 word2 word3 …"
+                      placeholder={t('wallet.create_modal.seed_phrase_placeholder')}
                       value={mnemonic}
                       onChange={(e) => setMnemonic(e.target.value)}
                     />
-                    <p className="text-white/30 text-xs">BIP39 recovery phrase separated by spaces.</p>
+                    <p className="text-white/30 text-xs">{t('wallet.create_modal.bip39_hint')}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <label className="label">WIF Key <span className="text-white/30 font-normal normal-case" style={{ letterSpacing: 'normal' }}>(your private key in portable format)</span></label>
+                    <label className="label">{t('wallet.create_modal.wif_label')} <span className="text-white/30 font-normal normal-case" style={{ letterSpacing: 'normal' }}>{t('wallet.create_modal.wif_hint')}</span></label>
                     <input
                       autoFocus
                       className="input font-mono text-sm"
-                      placeholder="5J… or K… or L…"
+                      placeholder={t('wallet.create_modal.wif_placeholder')}
                       value={wif}
                       onChange={(e) => setWif(e.target.value)}
                     />
-                    <p className="text-white/30 text-xs">Wallet Import Format — starts with 5, K, or L.</p>
+                    <p className="text-white/30 text-xs">{t('wallet.create_modal.wif_format_hint')}</p>
                   </div>
                 )}
 
                 <div className="flex gap-3">
-                  <button onClick={onClose} className="btn-secondary flex-1 justify-center">Cancel</button>
+                  <button onClick={onClose} className="btn-secondary flex-1 justify-center">{t('wallet.common.cancel')}</button>
                   <button
                     onClick={handleImport}
                     disabled={importing}
                     className="btn-primary flex-1 justify-center gap-2"
                   >
                     {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-                    Import
+                    {t('wallet.create_modal.import_button')}
                   </button>
                 </div>
               </motion.div>
@@ -2229,11 +2230,11 @@ function SendModal({
 
   const validateAddress = (addr: string): boolean => {
     if (!addr) return false;
-    if (!/^[QP]/.test(addr)) { setAddrError("Address must start with Q or P"); return false; }
-    if (addr.length < 30 || addr.length > 40) { setAddrError("Invalid address length"); return false; }
+    if (!/^[QP]/.test(addr)) { setAddrError(t('wallet.send.addr_invalid_prefix')); return false; }
+    if (addr.length < 30 || addr.length > 40) { setAddrError(t('wallet.send.addr_invalid_length')); return false; }
     // Base58 alphabet: digits 1-9 and letters A-Z, a-z excluding 0, O, I, l.
     // Catches typos before the node bounces the broadcast.
-    if (!/^[QP][1-9A-HJ-NP-Za-km-z]+$/.test(addr)) { setAddrError("Invalid character in address"); return false; }
+    if (!/^[QP][1-9A-HJ-NP-Za-km-z]+$/.test(addr)) { setAddrError(t('wallet.send.addr_invalid_chars')); return false; }
     setAddrError(null);
     return true;
   };
@@ -2267,7 +2268,10 @@ function SendModal({
       const finalFee = Math.max(rawFee, 10_000);
       if (balance <= finalFee) {
         setSendError(
-          `Insufficient funds for the network fee. Address balance ${balance.toLocaleString('en-US')} sats; minimum fee ${finalFee.toLocaleString('en-US')} sats.`
+          t('wallet.send.errors.insufficient_for_fee', {
+            balance: balance.toLocaleString('en-US'),
+            fee: finalFee.toLocaleString('en-US'),
+          })
         );
         return;
       }
@@ -2276,7 +2280,7 @@ function SendModal({
       setSendAmountIrm(maxIrm.toFixed(8));
       setUseSendMax(true);
     } catch (e) {
-      setSendError(`Could not compute max — ${e instanceof Error ? e.message : String(e)}`);
+      setSendError(t('wallet.send.errors.cannot_compute_max', { reason: e instanceof Error ? e.message : String(e) }));
     } finally {
       setMaxLoading(false);
     }
@@ -2292,7 +2296,10 @@ function SendModal({
     const liveStatus = useStore.getState().nodeStatus;
     if (!liveStatus?.fully_synced) {
       setSendError(
-        `Node is still syncing (${liveStatus?.persisted_height?.toLocaleString() ?? 0}/${liveStatus?.height?.toLocaleString() ?? 0} blocks). Please close this dialog, wait until syncing completes, and try again.`
+        t('wallet.send.errors.node_still_syncing', {
+          persisted: liveStatus?.persisted_height?.toLocaleString() ?? 0,
+          height: liveStatus?.height?.toLocaleString() ?? 0,
+        })
       );
       return;
     }
@@ -2314,7 +2321,7 @@ function SendModal({
         if (largestFirst) body.coin_select = 'largest';
         const resp = (await rpcCall.walletSendHttp(body)) as { txid?: string; accepted?: boolean };
         if (resp.accepted === false) {
-          throw new Error('Transaction was not accepted by the node mempool');
+          throw new Error(t('wallet.send.errors.not_accepted_mempool'));
         }
         rawTxid = resp.txid ?? '';
       } else {
@@ -2329,17 +2336,17 @@ function SendModal({
       const raw = String(e).toLowerCase();
       let msg: string;
       if (raw.includes('insufficient funds') || raw.includes('insufficient balance') || raw.includes('not enough')) {
-        msg = 'You do not have enough IRM to complete this transaction. Check your balance and try a smaller amount.';
+        msg = t('wallet.send.errors.insufficient');
       } else if (raw.includes('no spendable') || raw.includes('no utxo') || raw.includes('no outputs') || raw.includes('unspent')) {
-        msg = 'Your funds are not yet confirmed. Wait for at least 1 confirmation before sending.';
+        msg = t('wallet.send.errors.unconfirmed');
       } else if (raw.includes('double spend') || raw.includes('already spent') || raw.includes('txn-mempool-conflict')) {
-        msg = 'This transaction conflicts with another pending transaction. Please wait and try again.';
+        msg = t('wallet.send.errors.double_spend');
       } else {
         // Strip raw hex blobs and reject any messages containing mining vocabulary
         const stripped = String(e).replace(/\b[0-9a-fA-F]{16,}\b/g, '').trim();
         msg = /\b(share|nonce|difficulty|hashrate|proof.of.work|submitted)\b/i.test(String(e)) || stripped.length > 200
-          ? 'Transaction could not be broadcast. Please check that the node is online and try again.'
-          : stripped || 'Transaction failed. Please try again.';
+          ? t('wallet.send.errors.generic')
+          : stripped || t('wallet.send.errors.fallback');
       }
       setSendError(msg);
       setSendLoading(false);
@@ -2358,24 +2365,24 @@ function SendModal({
           className="glass-heavy rounded-2xl p-6 w-full max-w-lg pointer-events-auto"
         >
           <div className="flex items-center justify-between mb-1">
-            <h2 className="font-display font-bold text-lg text-white">Send IRM</h2>
+            <h2 className="font-display font-bold text-lg text-white">{t('wallet.send.title')}</h2>
             <button onClick={sendStep === "success" ? onSuccess : onClose} className="btn-ghost text-white/40 p-1"><X size={16} /></button>
           </div>
 
           {/* Available balance */}
           <div className={`font-mono text-xs mb-5 ${noFunds ? 'text-amber-400' : 'text-white/35'}`}>
-            Available: {formatIRM(availableBalance)}{noFunds ? ' — No spendable funds' : ''}
+            {t('wallet.send.available_balance', { amount: formatIRM(availableBalance) })}{noFunds ? t('wallet.send.no_spendable_funds_suffix') : ''}
           </div>
 
           <AnimatePresence mode="wait">
             {sendStep === "form" ? (
               <motion.div key="form" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-4">
                 <div>
-                  <label htmlFor="send-to" className="label">To Address <span className="text-red-400">*</span></label>
+                  <label htmlFor="send-to" className="label">{t('wallet.send.to_address_label')} <span className="text-red-400">*</span></label>
                   <input
                     id="send-to" autoFocus
                     className={`input ${addrError ? 'border-red-500/60' : ''}`}
-                    placeholder="Q… or P… address"
+                    placeholder={t('wallet.send.to_address_placeholder')}
                     value={sendTo}
                     onChange={(e) => { setSendTo(e.target.value); if (addrError) validateAddress(e.target.value); }}
                     onBlur={(e) => { if (e.target.value) validateAddress(e.target.value); }}
@@ -2383,12 +2390,12 @@ function SendModal({
                   {addrError && <p className="text-red-400 text-xs mt-1">{addrError}</p>}
                 </div>
                 <div>
-                  <label htmlFor="send-amount" className="label">Amount (IRM) <span className="text-red-400">*</span></label>
+                  <label htmlFor="send-amount" className="label">{t('wallet.send.amount_label')} <span className="text-red-400">*</span></label>
                   <div className="flex items-center gap-2">
                     <input
                       id="send-amount"
                       className={`input flex-1 ${insufficientFunds ? 'border-red-500/60' : ''}`}
-                      type="number" min="0" step="0.0001" placeholder="0.0000"
+                      type="number" min="0" step="0.0001" placeholder={t('wallet.send.amount_placeholder')}
                       value={sendAmountIrm}
                       onChange={(e) => { setSendAmountIrm(e.target.value); setUseSendMax(false); }}
                     />
@@ -2398,24 +2405,24 @@ function SendModal({
                       disabled={maxLoading || noFunds}
                       className="px-3 h-10 rounded text-xs font-semibold text-white/70 hover:text-white bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      {maxLoading ? '...' : 'MAX'}
+                      {maxLoading ? '...' : t('wallet.send.max_button')}
                     </button>
                   </div>
                   {sendAmountIrm && !insufficientFunds && (
                     <div className="text-white/30 font-mono text-xs mt-1">
-                      = {amountSats.toLocaleString('en-US')} sats
+                      {t('wallet.send.amount_in_sats', { sats: amountSats.toLocaleString('en-US') })}
                     </div>
                   )}
                   {insufficientFunds && (
                     <p className="text-red-400 text-xs mt-1">
-                      Insufficient funds. You have {formatIRM(availableBalance)} available.
+                      {t('wallet.send.insufficient_funds', { available: formatIRM(availableBalance) })}
                     </p>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 mt-2">
                   <Shield size={11} className="flex-shrink-0" style={{ color: '#6ec6ff' }} />
                   <p className="text-[11px] leading-snug" style={{ color: 'rgba(238,240,255,0.35)' }}>
-                    Transactions are secured by your private key signature, not mining. No PoW required to send.
+                    {t('wallet.send.security_note')}
                   </p>
                 </div>
 
@@ -2454,9 +2461,9 @@ function SendModal({
                   )}
                 </div>
 
-                <div className="text-white/30 text-xs font-mono">Estimated fee: ~25,000 sats</div>
+                <div className="text-white/30 text-xs font-mono">{t('wallet.send.estimated_fee_25k')}</div>
                 <div className="flex gap-3 pt-1">
-                  <button onClick={onClose} className="btn-secondary flex-1 justify-center">Cancel</button>
+                  <button onClick={onClose} className="btn-secondary flex-1 justify-center">{t('wallet.common.cancel')}</button>
                   <button
                     onClick={() => {
                       const amt = parseFloat(sendAmountIrm);
@@ -2466,7 +2473,7 @@ function SendModal({
                     disabled={!sendTo || !sendAmountIrm || insufficientFunds}
                     className="btn-primary flex-1 justify-center"
                   >
-                    Review →
+                    {t('wallet.send.review_button')}
                   </button>
                 </div>
               </motion.div>
@@ -2474,17 +2481,17 @@ function SendModal({
               <motion.div key="confirm" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="space-y-4">
                 <div className="card p-4 space-y-3">
                   <div className="text-white/50 text-sm font-display">
-                    Send <span className="gradient-text font-bold">{sendAmountIrm} IRM</span> to
+                    {t('wallet.send.confirm_send_prefix')} <span className="gradient-text font-bold">{sendAmountIrm} IRM</span> {t('wallet.send.confirm_send_to_suffix')}
                   </div>
                   <div className="font-mono text-sm text-white/80 break-all">{sendTo}</div>
                   <div className="border-t border-white/5 pt-3 space-y-1.5">
                     <div className="flex justify-between text-xs text-white/40">
-                      <span>Amount (sats)</span>
+                      <span>{t('wallet.send.amount_sats_label')}</span>
                       <span className="font-mono">{amountSats.toLocaleString('en-US')}</span>
                     </div>
                     <div className="flex justify-between text-xs text-white/40">
-                      <span>Estimated fee</span>
-                      <span className="font-mono">~25,000 sats</span>
+                      <span>{t('wallet.send.estimated_fee_label')}</span>
+                      <span className="font-mono">{t('wallet.send.estimated_fee_value_25k')}</span>
                     </div>
                   </div>
                 </div>
@@ -2499,7 +2506,7 @@ function SendModal({
                 {/* No funds warning */}
                 {noFunds && (
                   <div className="text-xs text-amber-400/80 text-center">
-                    This wallet has no spendable funds.
+                    {t('wallet.send.no_spendable_in_wallet')}
                   </div>
                 )}
 
@@ -2509,7 +2516,7 @@ function SendModal({
                     className="btn-secondary flex-1 justify-center"
                     disabled={sendLoading}
                   >
-                    ← Back
+                    {t('wallet.send.back_button')}
                   </button>
                   <button
                     onClick={handleConfirmSend}
@@ -2517,7 +2524,7 @@ function SendModal({
                     className="btn-primary flex-1 justify-center"
                   >
                     {sendLoading ? <Loader2 size={14} className="animate-spin" /> : null}
-                    Confirm Send
+                    {t('wallet.send.confirm_send')}
                   </button>
                 </div>
               </motion.div>
@@ -2529,15 +2536,15 @@ function SendModal({
                     <Check size={26} className="text-emerald-400" />
                   </div>
                   <div className="text-center space-y-1">
-                    <div className="font-display font-bold text-white text-lg">Transaction Sent</div>
-                    <div className="text-white/40 text-xs">Your transaction will appear in the next block</div>
+                    <div className="font-display font-bold text-white text-lg">{t('wallet.send.transaction_sent_title')}</div>
+                    <div className="text-white/40 text-xs">{t('wallet.send.transaction_sent_subtitle')}</div>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-2">
                   <Shield size={12} className="flex-shrink-0 mt-0.5" style={{ color: '#6ec6ff' }} />
                   <p className="text-xs leading-relaxed" style={{ color: 'rgba(238,240,255,0.45)' }}>
-                    Your transaction is cryptographically signed with your private key and broadcast to the network. It will be permanently secured when included in the next mined block.
+                    {t('wallet.send.transaction_sent_explanation')}
                   </p>
                 </div>
 
@@ -2547,8 +2554,8 @@ function SendModal({
                       <Check size={11} className="text-emerald-400" />
                     </div>
                     <div>
-                      <div className="text-[10px] font-display font-bold text-emerald-400" style={{ letterSpacing: '0.08em' }}>SIGNED</div>
-                      <div className="text-[9px] text-white/35 leading-tight">Private key verified</div>
+                      <div className="text-[10px] font-display font-bold text-emerald-400" style={{ letterSpacing: '0.08em' }}>{t('wallet.send.status_signed')}</div>
+                      <div className="text-[9px] text-white/35 leading-tight">{t('wallet.send.private_key_verified')}</div>
                     </div>
                   </div>
                   <div className="flex-1 flex items-center gap-2 px-3 py-2.5">
@@ -2556,20 +2563,20 @@ function SendModal({
                       <div className="w-2 h-2 rounded-full bg-white/20" />
                     </div>
                     <div>
-                      <div className="text-[10px] font-display font-bold" style={{ color: 'rgba(238,240,255,0.30)', letterSpacing: '0.08em' }}>CONFIRMING</div>
-                      <div className="text-[9px] leading-tight" style={{ color: 'rgba(238,240,255,0.25)' }}>Next mined block</div>
+                      <div className="text-[10px] font-display font-bold" style={{ color: 'rgba(238,240,255,0.30)', letterSpacing: '0.08em' }}>{t('wallet.send.status_confirming')}</div>
+                      <div className="text-[9px] leading-tight" style={{ color: 'rgba(238,240,255,0.25)' }}>{t('wallet.send.next_mined_block')}</div>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <div className="label mb-1.5">Transaction ID</div>
+                  <div className="label mb-1.5">{t('wallet.send.transaction_id_label')}</div>
                   <div className="card p-3 flex items-start gap-2.5">
                     <span className="font-mono text-xs text-white/70 break-all flex-1 select-all leading-relaxed">{sentTxid}</span>
                     <button
                       onClick={() => { navigator.clipboard.writeText(sentTxid ?? ''); toast.success(t('wallet.toasts.txid_copied')); }}
                       className="shrink-0 p-1 text-white/35 hover:text-white/70 transition-colors"
-                      title="Copy transaction ID"
+                      title={t('wallet.send.copy_transaction_id')}
                     >
                       <Copy size={13} />
                     </button>
@@ -2582,10 +2589,10 @@ function SendModal({
                     className="btn-secondary flex-1 justify-center gap-1.5"
                   >
                     <ArrowUpRight size={14} />
-                    View in Explorer
+                    {t('wallet.send.view_in_explorer')}
                   </button>
                   <button onClick={onSuccess} className="btn-primary flex-1 justify-center">
-                    Done
+                    {t('wallet.common.done')}
                   </button>
                 </div>
               </motion.div>
@@ -2618,29 +2625,29 @@ function ReceiveModal({ address, onClose }: { address: string; onClose: () => vo
           className="glass-heavy rounded-2xl p-6 w-full max-w-lg pointer-events-auto"
         >
           <div className="flex items-center justify-between mb-5">
-            <h2 className="font-display font-bold text-lg text-white">Receive IRM</h2>
+            <h2 className="font-display font-bold text-lg text-white">{t('wallet.receive.title')}</h2>
             <button onClick={onClose} className="btn-ghost text-white/40 p-1"><X size={16} /></button>
           </div>
           <div className="text-center space-y-4">
-            <div className="text-white/40 text-sm">Send IRM to this address:</div>
+            <div className="text-white/40 text-sm">{t('wallet.receive.send_to_this_address')}</div>
             {address ? (
               <div className="flex items-center justify-center p-3 bg-white rounded-xl mx-auto w-fit">
                 <QRCodeSVG value={address} size={180} />
               </div>
             ) : (
               <div className="w-48 h-48 border-2 border-irium-500/30 rounded-xl flex items-center justify-center mx-auto glass">
-                <span className="text-white/30 text-xs">No address</span>
+                <span className="text-white/30 text-xs">{t('wallet.receive.no_address_short')}</span>
               </div>
             )}
             <div className="font-mono text-sm text-white/80 bg-surface-700 rounded-lg p-3 break-all">
-              {address || "No address available"}
+              {address || t('wallet.receive.no_address_available')}
             </div>
             <button
               onClick={() => { if (address) { navigator.clipboard.writeText(address); toast.success(t('wallet.toasts.address_copied')); } }}
               className="btn-primary mx-auto gap-2"
               disabled={!address}
             >
-              <Copy size={14} /> Copy Address
+              <Copy size={14} /> {t('wallet.receive.copy_address_button')}
             </button>
           </div>
         </motion.div>
@@ -2692,15 +2699,13 @@ function NewAddressModal({
               >
                 <Plus size={18} color="#fff" />
               </div>
-              <h2 className="font-display font-bold text-lg gradient-text">New Address</h2>
+              <h2 className="font-display font-bold text-lg gradient-text">{t('wallet.new_address.title')}</h2>
             </div>
             <button onClick={onClose} className="btn-ghost text-white/40 p-1"><X size={16} /></button>
           </div>
 
           <p className="text-xs leading-relaxed" style={{ color: 'rgba(238,240,255,0.55)' }}>
-            A fresh address has been derived from your wallet's BIP32 seed.
-            Your <strong className="text-white">recovery phrase has not changed</strong> — this address
-            shares the same wallet file as your existing addresses.
+            {t('wallet.new_address.derived_lead')} <strong className="text-white">{t('wallet.new_address.derived_emphasis')}</strong> {t('wallet.new_address.derived_trail')}
           </p>
 
           {/* QR */}
@@ -2713,7 +2718,7 @@ function NewAddressModal({
               onClick={() => { navigator.clipboard.writeText(info.address); toast.success(t('wallet.toasts.address_copied')); }}
               className="btn-ghost text-xs gap-1.5"
             >
-              <Copy size={12} /> Copy address
+              <Copy size={12} /> {t('wallet.new_address.copy_address')}
             </button>
           </div>
 
@@ -2722,14 +2727,14 @@ function NewAddressModal({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-display font-bold uppercase" style={{ color: 'rgba(110,198,255,0.55)', letterSpacing: '0.14em' }}>
-                  WIF Private Key
+                  {t('wallet.new_address.wif_private_key_label')}
                 </span>
                 <button
                   onClick={() => setRevealWif(v => !v)}
                   className="btn-ghost text-[10px] gap-1.5"
                   style={{ color: revealWif ? 'rgba(238,240,255,0.50)' : '#fbbf24' }}
                 >
-                  {revealWif ? <><EyeOff size={11} /> Hide</> : <><Eye size={11} /> Reveal</>}
+                  {revealWif ? <><EyeOff size={11} /> {t('wallet.common.hide')}</> : <><Eye size={11} /> {t('wallet.common.reveal')}</>}
                 </button>
               </div>
               <div
@@ -2741,7 +2746,7 @@ function NewAddressModal({
               {revealWif && (
                 <div className="flex items-start gap-2 p-2.5 rounded-lg" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.22)' }}>
                   <span className="text-[11px] leading-relaxed" style={{ color: '#fbbf24' }}>
-                    Anyone with this WIF can spend funds at this address. Store it offline.
+                    {t('wallet.new_address.wif_warning')}
                   </span>
                 </div>
               )}
@@ -2750,7 +2755,7 @@ function NewAddressModal({
                   onClick={() => { navigator.clipboard.writeText(info.wif!); toast.success(t('wallet.toasts.wif_copied')); }}
                   className="btn-ghost text-xs gap-1.5"
                 >
-                  <Copy size={12} /> Copy WIF
+                  <Copy size={12} /> {t('wallet.new_address.copy_wif')}
                 </button>
               )}
             </div>
@@ -2767,8 +2772,8 @@ function NewAddressModal({
             >
               <Shield size={14} className="flex-shrink-0 mt-0.5" style={{ color: '#6ec6ff' }} />
               <div className="flex-1 text-xs leading-relaxed" style={{ color: 'rgba(238,240,255,0.65)' }}>
-                This address shares your wallet recovery phrase. To view it, go to{' '}
-                <span className="text-white/85">Security → Show Recovery Phrase</span>.
+                {t('wallet.new_address.recovery_reminder_lead')}{' '}
+                <span className="text-white/85">{t('wallet.new_address.recovery_reminder_path')}</span>.
                 <button
                   onClick={() => { onClose(); onShowRecoveryPhrase(); }}
                   className="ml-1 underline underline-offset-2 transition-colors"
@@ -2776,13 +2781,13 @@ function NewAddressModal({
                   onMouseEnter={(e) => (e.currentTarget.style.color = '#a78bfa')}
                   onMouseLeave={(e) => (e.currentTarget.style.color = '#6ec6ff')}
                 >
-                  Show Recovery Phrase
+                  {t('wallet.security.show_recovery_phrase')}
                 </button>
               </div>
             </div>
           )}
 
-          <button onClick={onClose} className="btn-primary w-full">Done</button>
+          <button onClick={onClose} className="btn-primary w-full">{t('wallet.common.done')}</button>
         </motion.div>
       </div>
     </>
@@ -2824,7 +2829,7 @@ function AddressQrModal({ address, onClose }: { address: string; onClose: () => 
           }}
         >
           <div className="flex items-center justify-between gap-4">
-            <span className="text-[10px] font-display font-bold uppercase" style={{ color: 'rgba(110,198,255,0.55)', letterSpacing: '0.14em' }}>Address QR</span>
+            <span className="text-[10px] font-display font-bold uppercase" style={{ color: 'rgba(110,198,255,0.55)', letterSpacing: '0.14em' }}>{t('wallet.addresses.address_qr_label')}</span>
             <button onClick={onClose} className="btn-ghost text-white/40 p-1"><X size={14} /></button>
           </div>
           <div className="bg-white p-3 rounded-lg">
@@ -2835,7 +2840,7 @@ function AddressQrModal({ address, onClose }: { address: string; onClose: () => 
             onClick={() => { navigator.clipboard.writeText(address); toast.success(t('wallet.toasts.address_copied')); }}
             className="btn-ghost text-xs gap-1.5 w-full justify-center"
           >
-            <Copy size={12} /> Copy
+            <Copy size={12} /> {t('wallet.common.copy')}
           </button>
         </motion.div>
       </div>
@@ -2983,9 +2988,9 @@ function ManageWalletsPanel({
     setExportingWifAddr(addr);
     try {
       const outPath = await saveDialog({
-        title: 'Export WIF Private Key',
+        title: t('wallet.security.export_wif_private_key_dialog_title'),
         defaultPath: `${addr.slice(0, 8)}-wif.txt`,
-        filters: [{ name: 'Text', extensions: ['txt'] }],
+        filters: [{ name: t('wallet.security.text_file_filter'), extensions: ['txt'] }],
       });
       if (!outPath) return;
       await wallet.exportWif(addr, outPath as string);
@@ -3022,7 +3027,7 @@ function ManageWalletsPanel({
             >
               <Settings size={16} color="#fff" />
             </div>
-            <h2 className="font-display font-bold text-lg gradient-text">Manage Wallets</h2>
+            <h2 className="font-display font-bold text-lg gradient-text">{t('wallet.addresses.manage_wallets')}</h2>
           </div>
           <button onClick={onClose} className="btn-ghost text-white/45 p-1.5">
             <X size={16} />
@@ -3043,12 +3048,12 @@ function ManageWalletsPanel({
             <div className="flex items-center gap-2 mb-3">
               <Shield size={14} style={{ color: '#6ec6ff' }} />
               <h3 className="text-[10px] font-display font-bold uppercase" style={{ color: 'rgba(110,198,255,0.65)', letterSpacing: '0.14em' }}>
-                Security
+                {t('wallet.security.section_title')}
               </h3>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="card p-5 space-y-3">
-                <div className="text-sm font-semibold text-white/80">Backup</div>
+                <div className="text-sm font-semibold text-white/80">{t('wallet.security.backup_subsection')}</div>
                 <div className="space-y-2">
                   <button
                     onClick={onShowSeed}
@@ -3056,7 +3061,7 @@ function ManageWalletsPanel({
                     className="w-full btn-ghost flex items-center gap-2 text-white/60 hover:text-white justify-start"
                   >
                     {loadingSeed ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />}
-                    Show Recovery Phrase
+                    {t('wallet.security.show_recovery_phrase')}
                   </button>
                   <button
                     onClick={onExportSecurityWif}
@@ -3064,7 +3069,7 @@ function ManageWalletsPanel({
                     className="w-full btn-ghost flex items-center gap-2 text-white/60 hover:text-white justify-start disabled:opacity-40"
                   >
                     {exportingSecurityWif ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-                    Export WIF Key
+                    {t('wallet.security.export_wif')}
                   </button>
                   <button
                     onClick={onBackupFile}
@@ -3072,30 +3077,30 @@ function ManageWalletsPanel({
                     className="w-full btn-ghost flex items-center gap-2 text-white/70 hover:text-white justify-start"
                   >
                     {backingUp ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-                    Export Backup File
+                    {t('wallet.security.export_backup')}
                   </button>
                 </div>
               </div>
               <div className="card p-5 space-y-3">
-                <div className="text-sm font-semibold text-white/80">Restore</div>
+                <div className="text-sm font-semibold text-white/80">{t('wallet.security.restore_subsection')}</div>
                 <div className="space-y-2">
                   <button
                     onClick={onImportSeed}
                     className="w-full btn-ghost flex items-center gap-2 text-white/60 hover:text-white justify-start"
                   >
-                    <FileText size={14} /> Seed Phrase
+                    <FileText size={14} /> {t('wallet.create_modal.seed_phrase_method')}
                   </button>
                   <button
                     onClick={onImportWif}
                     className="w-full btn-ghost flex items-center gap-2 text-white/60 hover:text-white justify-start"
                   >
-                    <KeyRound size={14} /> WIF Key
+                    <KeyRound size={14} /> {t('wallet.create_modal.wif_key_method')}
                   </button>
                   <button
                     onClick={onImportBackupFile}
                     className="w-full btn-ghost flex items-center gap-2 text-white/70 hover:text-white justify-start"
                   >
-                    <Download size={14} /> Import Backup File
+                    <Download size={14} /> {t('wallet.security.import_backup')}
                   </button>
                 </div>
               </div>
@@ -3107,10 +3112,10 @@ function ManageWalletsPanel({
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="text-[10px] font-display font-bold uppercase" style={{ color: 'rgba(110,198,255,0.65)', letterSpacing: '0.14em' }}>
-                  Wallet Files
+                  {t('wallet.files.section_title')}
                 </h3>
                 <p className="text-[10px] mt-0.5" style={{ color: 'rgba(238,240,255,0.40)' }}>
-                  Each file has its own seed. Switch to load a different wallet.
+                  {t('wallet.files.section_description')}
                 </p>
               </div>
               <span className="badge badge-irium">{walletFiles.length}</span>
@@ -3118,7 +3123,7 @@ function ManageWalletsPanel({
             <div className="space-y-2">
               {walletFiles.length === 0 && (
                 <div className="panel p-4 text-center text-xs" style={{ color: 'rgba(238,240,255,0.40)' }}>
-                  No wallet files found in ~/.irium/
+                  {t('wallet.files.no_files_found')}
                 </div>
               )}
               {walletFiles.map((f) => {
@@ -3163,7 +3168,7 @@ function ManageWalletsPanel({
                               }
                               commitRename(f.path, renameDraft);
                             }}
-                            placeholder="wallet-name"
+                            placeholder={t('wallet.files.rename_placeholder')}
                             className="font-mono text-xs px-2 py-0.5 rounded outline-none flex-1 min-w-0"
                             style={{
                               background: 'rgba(0,0,0,0.50)',
@@ -3183,13 +3188,13 @@ function ManageWalletsPanel({
                               }}
                               className="opacity-60 hover:opacity-100 transition-opacity"
                               style={{ color: '#6ec6ff' }}
-                              title="Rename wallet file"
+                              title={t('wallet.addresses.rename_wallet_file')}
                             >
                               <Pencil size={10} />
                             </button>
                             {isActive && (
                               <span className="text-[8px] font-display font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ color: '#34d399', background: 'rgba(52,211,153,0.10)', border: '1px solid rgba(52,211,153,0.30)', letterSpacing: '0.10em' }}>
-                                Active
+                                {t('wallet.files.active_badge')}
                               </span>
                             )}
                           </>
@@ -3205,7 +3210,7 @@ function ManageWalletsPanel({
                         className="btn-ghost text-[10px] py-1 px-2 gap-1"
                         style={{ color: '#6ec6ff' }}
                       >
-                        Switch
+                        {t('wallet.files.switch_button')}
                       </button>
                     )}
                     {/* Delete button — rendered for any non-active wallet
@@ -3222,9 +3227,9 @@ function ManageWalletsPanel({
                         onClick={() => { setDeleteTarget(f); setDeleteConfirmText(''); }}
                         className="btn-ghost text-[10px] py-1 px-2 gap-1"
                         style={{ color: '#f87171' }}
-                        title="Permanently delete this wallet file"
+                        title={t('wallet.addresses.delete_wallet_file')}
                       >
-                        <Trash2 size={11} /> Delete
+                        <Trash2 size={11} /> {t('wallet.common.delete')}
                       </button>
                     )}
                   </div>
@@ -3240,10 +3245,10 @@ function ManageWalletsPanel({
                   color: 'rgba(110,198,255,0.85)',
                 }}
               >
-                <Plus size={12} /> Create New Wallet File <span style={{ color: 'rgba(238,240,255,0.40)', fontWeight: 400, marginLeft: 4 }}>(advanced — separate seed)</span>
+                <Plus size={12} /> {t('wallet.files.create_new_wallet_file')} <span style={{ color: 'rgba(238,240,255,0.40)', fontWeight: 400, marginLeft: 4 }}>{t('wallet.files.create_new_advanced_hint')}</span>
               </button>
               <p className="text-[10px] leading-relaxed" style={{ color: 'rgba(238,240,255,0.35)' }}>
-                Creates a separate wallet file with its own seed. Your current wallet remains on disk and can be switched back to from this list.
+                {t('wallet.files.create_new_description')}
               </p>
             </div>
           </section>
@@ -3253,10 +3258,10 @@ function ManageWalletsPanel({
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h3 className="text-[10px] font-display font-bold uppercase" style={{ color: 'rgba(110,198,255,0.65)', letterSpacing: '0.14em' }}>
-                  Addresses
+                  {t('wallet.addresses.section_title')}
                 </h3>
                 <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: 'rgba(238,240,255,0.40)' }}>
-                  Addresses are derived from your wallet seed and cannot be permanently deleted. Use Hide to remove them from view.
+                  {t('wallet.addresses.panel_description')}
                 </p>
               </div>
               <span className="badge badge-irium">{addresses.length}</span>
@@ -3295,7 +3300,7 @@ function ManageWalletsPanel({
                             }
                           }}
                           onBlur={() => commitLabel(addr.address, labelDraft)}
-                          placeholder={isPrimary ? 'e.g. Primary · Mining' : 'e.g. Mining'}
+                          placeholder={isPrimary ? t('wallet.addresses.label_placeholder_primary') : t('wallet.addresses.label_placeholder_other')}
                           maxLength={32}
                           className="text-[10px] px-2 py-0.5 rounded-full outline-none flex-1 min-w-0"
                           style={{
@@ -3322,7 +3327,7 @@ function ManageWalletsPanel({
                           }}
                           className="opacity-60 hover:opacity-100 transition-opacity"
                           style={{ color: '#6ec6ff' }}
-                          title={addressLabels[addr.address] ? 'Edit label' : 'Add a custom label'}
+                          title={addressLabels[addr.address] ? t('wallet.addresses.edit_label') : t('wallet.addresses.add_custom_label')}
                         >
                           <Pencil size={10} />
                         </button>
@@ -3341,9 +3346,9 @@ function ManageWalletsPanel({
                           onClick={() => onSetPrimary(idx)}
                           className="btn-ghost text-[10px] py-1 px-2 gap-1"
                           style={{ color: '#6ec6ff' }}
-                          title="Set as primary"
+                          title={t('wallet.addresses.set_as_primary')}
                         >
-                          <Star size={11} /> Primary
+                          <Star size={11} /> {t('wallet.addresses.primary_button_short')}
                         </button>
                       )}
                       <button
@@ -3351,36 +3356,36 @@ function ManageWalletsPanel({
                         disabled={exportingWifAddr === addr.address}
                         className="btn-ghost text-[10px] py-1 px-2 gap-1"
                         style={{ color: '#fbbf24' }}
-                        title="Export WIF"
+                        title={t('wallet.addresses.export_wif_short_tooltip')}
                       >
                         {exportingWifAddr === addr.address
                           ? <Loader2 size={11} className="animate-spin" />
-                          : <Download size={11} />} WIF
+                          : <Download size={11} />} {t('wallet.addresses.wif_short')}
                       </button>
                       <button
                         onClick={() => onShowQr(addr.address)}
                         className="btn-ghost text-[10px] py-1 px-2 gap-1"
                         style={{ color: 'rgba(238,240,255,0.65)' }}
-                        title="Show QR code"
+                        title={t('wallet.addresses.show_qr')}
                       >
-                        <Hash size={11} /> QR
+                        <Hash size={11} /> {t('wallet.addresses.qr_short')}
                       </button>
                       <button
                         onClick={() => { navigator.clipboard.writeText(addr.address); toast.success(t('wallet.toasts.address_copied')); }}
                         className="btn-ghost text-[10px] py-1 px-2 gap-1"
                         style={{ color: 'rgba(238,240,255,0.65)' }}
-                        title="Copy"
+                        title={t('wallet.common.copy')}
                       >
-                        <Copy size={11} /> Copy
+                        <Copy size={11} /> {t('wallet.common.copy')}
                       </button>
                       {!isPrimary && (
                         <button
                           onClick={() => setHideTarget({ idx, address: addr.address })}
                           className="btn-ghost text-[10px] py-1 px-2 gap-1 ml-auto"
                           style={{ color: '#fbbf24' }}
-                          title="Hide address (stays in wallet file, can be unhidden later)"
+                          title={t('wallet.addresses.hide_address')}
                         >
-                          <Trash2 size={11} /> Hide
+                          <Trash2 size={11} /> {t('wallet.addresses.hide_button_short')}
                         </button>
                       )}
                     </div>
@@ -3390,7 +3395,7 @@ function ManageWalletsPanel({
 
               {addresses.length === 0 && (
                 <div className="panel p-4 text-center text-xs" style={{ color: 'rgba(238,240,255,0.40)' }}>
-                  No addresses yet.
+                  {t('wallet.addresses.no_addresses_panel')}
                 </div>
               )}
 
@@ -3404,7 +3409,7 @@ function ManageWalletsPanel({
                   color: '#fff',
                 }}
               >
-                <Plus size={14} /> Add Address
+                <Plus size={14} /> {t('wallet.addresses.add_address_button')}
               </button>
             </div>
           </section>
@@ -3417,12 +3422,12 @@ function ManageWalletsPanel({
             <section>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-[10px] font-display font-bold uppercase" style={{ color: 'rgba(110,198,255,0.65)', letterSpacing: '0.14em' }}>
-                  Hidden Addresses <span style={{ color: 'rgba(238,240,255,0.40)', letterSpacing: '0.12em' }}>(still in wallet file)</span>
+                  {t('wallet.hidden.section_title')} <span style={{ color: 'rgba(238,240,255,0.40)', letterSpacing: '0.12em' }}>{t('wallet.hidden.still_in_file')}</span>
                 </h3>
                 <span className="badge badge-irium">{hiddenAddresses.size}</span>
               </div>
               <p className="text-[10px] mb-3" style={{ color: 'rgba(238,240,255,0.40)' }}>
-                Addresses cannot be permanently deleted from the wallet file. Hidden addresses are removed from view but remain recoverable — click Unhide to bring them back.
+                {t('wallet.hidden.description')}
               </p>
               <div className="space-y-2">
                 {[...hiddenAddresses].map((addr) => (
@@ -3438,9 +3443,9 @@ function ManageWalletsPanel({
                       onClick={() => { onUnhide(addr); toast.success(t('wallet.toasts.address_unhidden')); }}
                       className="btn-ghost text-[10px] py-1 px-2 gap-1 flex-shrink-0"
                       style={{ color: '#6ec6ff' }}
-                      title="Unhide this address"
+                      title={t('wallet.addresses.unhide_address')}
                     >
-                      Unhide
+                      {t('wallet.hidden.unhide_button')}
                     </button>
                   </div>
                 ))}
@@ -3486,7 +3491,7 @@ function ManageWalletsPanel({
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-display font-bold text-lg" style={{ color: '#f87171' }}>
-                      Permanently delete this wallet file?
+                      {t('wallet.delete_file.confirm_title')}
                     </h3>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="font-mono text-[11px]" style={{ color: 'rgba(238,240,255,0.55)' }}>
@@ -3496,12 +3501,12 @@ function ManageWalletsPanel({
                       {deleteTargetInfoLoading ? (
                         <span className="text-[9px] font-display font-bold uppercase px-1.5 py-0.5 rounded-full"
                           style={{ color: 'rgba(238,240,255,0.40)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', letterSpacing: '0.10em' }}>
-                          Loading…
+                          {t('wallet.common.loading')}
                         </span>
                       ) : deleteTargetInfo ? (
                         <span className="text-[9px] font-display font-bold uppercase px-1.5 py-0.5 rounded-full"
                           style={{ color: 'rgba(238,240,255,0.55)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', letterSpacing: '0.10em' }}>
-                          {deleteTargetInfo.address_count} {deleteTargetInfo.address_count === 1 ? 'address' : 'addresses'}
+                          {t('wallet.delete_file.address_count', { count: deleteTargetInfo.address_count })}
                         </span>
                       ) : null}
                     </div>
@@ -3548,7 +3553,7 @@ function ManageWalletsPanel({
                     style={{ background: 'rgba(239,68,68,0.14)', border: '1px solid rgba(239,68,68,0.55)', color: '#fecaca', boxShadow: '0 0 18px rgba(239,68,68,0.18) inset' }}
                   >
                     <span>
-                      <strong className="text-white">WARNING:</strong> This wallet contains funds. Deleting it without a backup means permanent loss of <strong className="text-white">{formatIRM(deleteTargetInfo.total_balance!)}</strong>. Make sure you have exported your WIF keys or seed phrase before proceeding.
+                      <strong className="text-white">{t('wallet.delete_file.warning_label')}</strong> {t('wallet.delete_file.warning_funds_lead')} <strong className="text-white">{formatIRM(deleteTargetInfo.total_balance!)}</strong>{t('wallet.delete_file.warning_funds_trail')}
                     </span>
                   </div>
                 ) : deleteTargetInfo && deleteTargetInfo.total_balance === null ? (
@@ -3556,27 +3561,27 @@ function ManageWalletsPanel({
                     className="flex items-start gap-2 p-3 rounded-lg text-xs leading-relaxed"
                     style={{ background: 'rgba(251,191,36,0.10)', border: '1px solid rgba(251,191,36,0.35)', color: '#fde68a' }}
                   >
-                    Balance could not be confirmed — the node may be offline. If this wallet held funds and you have not backed up the seed phrase or WIF keys, deletion will <strong className="text-white">permanently lose</strong> them.
+                    {t('wallet.delete_file.warning_unknown_lead')} <strong className="text-white">{t('wallet.delete_file.warning_unknown_emphasis')}</strong> {t('wallet.delete_file.warning_unknown_trail')}
                   </div>
                 ) : (
                   <div
                     className="flex items-start gap-2 p-3 rounded-lg text-xs leading-relaxed"
                     style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.28)', color: '#fca5a5' }}
                   >
-                    This will delete the file from disk. If you have not backed up the seed phrase or WIF keys for this wallet, all funds in it will be <strong className="text-white">permanently lost</strong>. This cannot be undone.
+                    {t('wallet.delete_file.warning_zero_lead')} <strong className="text-white">{t('wallet.delete_file.warning_zero_emphasis')}</strong>{t('wallet.delete_file.warning_zero_trail')}
                   </div>
                 )}
 
                 <div>
                   <label className="block text-[10px] font-display font-bold uppercase mb-1.5" style={{ color: 'rgba(238,240,255,0.55)', letterSpacing: '0.12em' }}>
-                    Type <span style={{ color: '#f87171' }}>DELETE</span> to confirm
+                    {t('wallet.delete_file.type_prompt_prefix')} <span style={{ color: '#f87171' }}>{t('wallet.delete_file.type_prompt_word')}</span> {t('wallet.delete_file.type_prompt_suffix')}
                   </label>
                   <input
                     type="text"
                     autoFocus
                     value={deleteConfirmText}
                     onChange={(e) => setDeleteConfirmText(e.target.value)}
-                    placeholder="DELETE"
+                    placeholder={t('wallet.delete_file.type_prompt_word')}
                     className="input"
                     disabled={deleting}
                   />
@@ -3588,7 +3593,7 @@ function ManageWalletsPanel({
                     disabled={deleting}
                     className="btn-secondary flex-1 justify-center"
                   >
-                    Cancel
+                    {t('wallet.common.cancel')}
                   </button>
                   <button
                     onClick={async () => {
@@ -3611,8 +3616,8 @@ function ManageWalletsPanel({
                     }}
                   >
                     {deleting
-                      ? <><Loader2 size={14} className="animate-spin" /> Deleting…</>
-                      : <><Trash2 size={14} /> Delete forever</>}
+                      ? <><Loader2 size={14} className="animate-spin" /> {t('wallet.delete_file.deleting')}</>
+                      : <><Trash2 size={14} /> {t('wallet.delete_file.delete_forever')}</>}
                   </button>
                 </div>
               </motion.div>
@@ -3656,7 +3661,7 @@ function ManageWalletsPanel({
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-display font-bold text-lg" style={{ color: '#fbbf24' }}>
-                      Hide this address?
+                      {t('wallet.hide_address.confirm_title')}
                     </h3>
                     <p className="font-mono text-[11px] mt-1 truncate" style={{ color: 'rgba(238,240,255,0.55)' }} title={hideTarget.address}>
                       {hideTarget.address}
@@ -3668,9 +3673,7 @@ function ManageWalletsPanel({
                   className="flex items-start gap-2 p-3 rounded-lg text-xs leading-relaxed"
                   style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.28)', color: 'rgba(251,191,36,0.85)' }}
                 >
-                  The address stays in the wallet file — only the visible
-                  list is updated. You can <strong className="text-white">unhide</strong> it
-                  later from the Hidden Addresses section.
+                  {t('wallet.hide_address.body_lead')} <strong className="text-white">{t('wallet.hide_address.body_emphasis')}</strong> {t('wallet.hide_address.body_trail')}
                 </div>
 
                 <div className="flex items-center gap-3 pt-1">
@@ -3678,7 +3681,7 @@ function ManageWalletsPanel({
                     onClick={() => setHideTarget(null)}
                     className="btn-secondary flex-1 justify-center"
                   >
-                    Cancel
+                    {t('wallet.common.cancel')}
                   </button>
                   <button
                     onClick={() => {
@@ -3693,7 +3696,7 @@ function ManageWalletsPanel({
                       boxShadow: '0 0 16px rgba(251,191,36,0.18)',
                     }}
                   >
-                    <Trash2 size={14} /> Hide address
+                    <Trash2 size={14} /> {t('wallet.hide_address.confirm_button')}
                   </button>
                 </div>
               </motion.div>

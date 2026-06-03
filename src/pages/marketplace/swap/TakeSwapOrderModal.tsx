@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowRight, AlertTriangle, Check, Loader2, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import type { SwapOrderRow, SwapPairConfig, SwapTxResult } from './pairs/types';
 import { TradingModal } from '../../../components/ui';
 
@@ -33,6 +34,7 @@ export default function TakeSwapOrderModal({
   onClose,
   onFilled,
 }: TakeSwapOrderModalProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<Step>(1);
   const [busy, setBusy] = useState(false);
   const [filled, setFilled] = useState<SwapTxResult | null>(null);
@@ -41,7 +43,9 @@ export default function TakeSwapOrderModal({
 
   const isSellSide = order.direction === 'sell_irm';
   const takerReceivesIrm = isSellSide;
-  const takerLabel = takerReceivesIrm ? 'Buy IRM' : 'Sell IRM';
+  const takerLabel = takerReceivesIrm
+    ? t('marketplace.take_swap.buy_irm')
+    : t('marketplace.take_swap.sell_irm');
 
   const truncatedMaker = useMemo(() => {
     const a = order.maker_iriumd_address;
@@ -52,11 +56,11 @@ export default function TakeSwapOrderModal({
 
   const handleConfirm = async () => {
     if (!takerIriumdAddress) {
-      toast.error('No active Irium wallet address. Open a wallet first.');
+      toast.error(t('marketplace.take_swap.toast_no_wallet'));
       return;
     }
     if (timeoutBlocks < 10) {
-      toast.error('Refund deadline must be at least 10 blocks');
+      toast.error(t('marketplace.take_swap.toast_min_blocks'));
       return;
     }
     setBusy(true);
@@ -73,8 +77,8 @@ export default function TakeSwapOrderModal({
       setStep(2);
       toast.success(
         takerReceivesIrm
-          ? `Order locked. Send the ${pair.quote.code} payment and report it.`
-          : `Order locked. The seller's IRM is in escrow.`,
+          ? t('marketplace.take_swap.toast_locked_buyer', { code: pair.quote.code })
+          : t('marketplace.take_swap.toast_locked_seller'),
       );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
@@ -87,11 +91,11 @@ export default function TakeSwapOrderModal({
     if (!filled) return;
     if (takerReceivesIrm && !paymentRef.trim()) {
       toast.error(
-        `Enter a transaction id or note so the seller can verify your ${pair.quote.code} payment`,
+        t('marketplace.take_swap.toast_need_ref', { code: pair.quote.code }),
       );
       return;
     }
-    toast.success('Payment reported. The seller has been notified.');
+    toast.success(t('marketplace.take_swap.toast_payment_reported'));
     onFilled(filled);
     onClose();
   };
@@ -99,7 +103,7 @@ export default function TakeSwapOrderModal({
   const handleDispute = () => {
     if (!filled) return;
     toast(
-      'A dispute can be opened from the Agreements page. Cancel here for now and revisit it there.',
+      t('marketplace.take_swap.toast_dispute_info'),
       { icon: 'i' },
     );
     onFilled(filled);
@@ -110,8 +114,8 @@ export default function TakeSwapOrderModal({
     <TradingModal
       open={true}
       onClose={() => { if (!busy) onClose(); }}
-      title={`${takerLabel} on ${pair.label}`}
-      subtitle={`Step ${step} of 2`}
+      title={t('marketplace.take_swap.modal_title', { label: takerLabel, pair: pair.label })}
+      subtitle={t('marketplace.take_swap.step_of_2', { step })}
       size="md"
     >
       <div className="space-y-4">
@@ -120,8 +124,8 @@ export default function TakeSwapOrderModal({
           <>
             <div className="text-xs" style={{ color: 'rgba(238,240,255,0.65)' }}>
               {takerReceivesIrm
-                ? `Confirming will lock the seller's IRM in escrow. You will then send ${pair.quote.code} to the address shown next.`
-                : `Confirming will create a matching escrow with your IRM. The buyer will send ${pair.quote.code} to your address.`}
+                ? t('marketplace.take_swap.intro_buyer', { code: pair.quote.code })
+                : t('marketplace.take_swap.intro_seller', { code: pair.quote.code })}
             </div>
 
             <div
@@ -133,25 +137,33 @@ export default function TakeSwapOrderModal({
               }}
             >
               <div className="flex items-center justify-between">
-                <span style={{ color: 'rgba(238,240,255,0.55)' }}>You {takerReceivesIrm ? 'receive' : 'pay'}</span>
+                <span style={{ color: 'rgba(238,240,255,0.55)' }}>
+                  {takerReceivesIrm
+                    ? t('marketplace.take_swap.you_receive')
+                    : t('marketplace.take_swap.you_pay')}
+                </span>
                 <span style={{ color: '#34d399' }}>{order.irm_amount_human} IRM</span>
               </div>
               <div className="flex items-center justify-between">
                 <span style={{ color: 'rgba(238,240,255,0.55)' }}>
-                  You {takerReceivesIrm ? 'send' : 'receive'}
+                  {takerReceivesIrm
+                    ? t('marketplace.take_swap.you_send')
+                    : t('marketplace.take_swap.you_receive')}
                 </span>
                 <span style={{ color: pair.accent.text }}>{order.quote_amount_human}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span style={{ color: 'rgba(238,240,255,0.55)' }}>Price</span>
+                <span style={{ color: 'rgba(238,240,255,0.55)' }}>{t('marketplace.take_swap.price')}</span>
                 <span>{order.implied_quote_per_irm_human}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span style={{ color: 'rgba(238,240,255,0.55)' }}>Maker</span>
+                <span style={{ color: 'rgba(238,240,255,0.55)' }}>{t('marketplace.take_swap.maker')}</span>
                 <span title={order.maker_iriumd_address}>{truncatedMaker}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span style={{ color: 'rgba(238,240,255,0.55)' }}>Maker {pair.quote.code} address</span>
+                <span style={{ color: 'rgba(238,240,255,0.55)' }}>
+                  {t('marketplace.take_swap.maker_foreign_address', { code: pair.quote.code })}
+                </span>
                 <span title={order.maker_foreign_address}>
                   {order.maker_foreign_address
                     ? `${order.maker_foreign_address.slice(0, 10)}…${order.maker_foreign_address.slice(-6)}`
@@ -159,17 +171,24 @@ export default function TakeSwapOrderModal({
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span style={{ color: 'rgba(238,240,255,0.55)' }}>Needs</span>
+                <span style={{ color: 'rgba(238,240,255,0.55)' }}>{t('marketplace.take_swap.needs')}</span>
                 <span>
-                  {order.confirmations_required} {pair.quote.code} confirmation
-                  {order.confirmations_required === 1 ? '' : 's'}
+                  {order.confirmations_required === 1
+                    ? t('marketplace.take_swap.confirmation_one', {
+                        count: order.confirmations_required,
+                        code: pair.quote.code,
+                      })
+                    : t('marketplace.take_swap.confirmation_other', {
+                        count: order.confirmations_required,
+                        code: pair.quote.code,
+                      })}
                 </span>
               </div>
             </div>
 
             <div className="space-y-1">
               <label className="label" style={{ color: 'rgba(238,240,255,0.55)' }}>
-                Refund deadline (Irium blocks)
+                {t('marketplace.take_swap.refund_deadline_label')}
               </label>
               <input
                 className="input w-full"
@@ -180,13 +199,13 @@ export default function TakeSwapOrderModal({
                 disabled={busy}
               />
               <p className="text-[10px]" style={{ color: 'rgba(238,240,255,0.45)' }}>
-                If payment is not confirmed by this deadline, your funds can be refunded.
+                {t('marketplace.take_swap.refund_deadline_hint')}
               </p>
             </div>
 
             <div className="flex items-center gap-2">
               <button onClick={onClose} disabled={busy} className="btn-secondary flex-1">
-                Cancel
+                {t('marketplace.take_swap.cancel')}
               </button>
               <button
                 onClick={handleConfirm}
@@ -194,7 +213,7 @@ export default function TakeSwapOrderModal({
                 className="btn-primary flex-1 inline-flex items-center justify-center gap-2"
               >
                 {busy ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                Confirm {takerLabel}
+                {t('marketplace.take_swap.confirm_action', { label: takerLabel })}
                 {!busy && <ArrowRight size={13} />}
               </button>
             </div>
@@ -215,12 +234,12 @@ export default function TakeSwapOrderModal({
                 className="inline-flex items-center gap-2 font-display font-semibold"
                 style={{ color: '#22c55e' }}
               >
-                <Check size={13} /> Escrow locked
+                <Check size={13} /> {t('marketplace.take_swap.escrow_locked')}
               </div>
               <p style={{ color: 'rgba(238,240,255,0.78)', lineHeight: 1.5 }}>
                 {takerReceivesIrm
-                  ? `Send the ${pair.quote.code} payment to the address below. Once your payment confirms, the IRM is released to your wallet automatically.`
-                  : `Your IRM is in escrow. The buyer will send ${pair.quote.code} to your address. When their payment confirms, the IRM is released to them and the buyer flow finishes on its own.`}
+                  ? t('marketplace.take_swap.escrow_locked_buyer', { code: pair.quote.code })
+                  : t('marketplace.take_swap.escrow_locked_seller', { code: pair.quote.code })}
               </p>
             </div>
 
@@ -228,7 +247,7 @@ export default function TakeSwapOrderModal({
               <>
                 <div className="space-y-1">
                   <label className="label" style={{ color: 'rgba(238,240,255,0.55)' }}>
-                    Send {pair.quote.code} to
+                    {t('marketplace.take_swap.send_to_label', { code: pair.quote.code })}
                   </label>
                   <pre
                     className="p-2 rounded text-xs whitespace-pre-wrap"
@@ -245,7 +264,7 @@ export default function TakeSwapOrderModal({
 
                 <div className="space-y-1">
                   <label className="label" style={{ color: 'rgba(238,240,255,0.55)' }}>
-                    Exact {pair.quote.code} amount
+                    {t('marketplace.take_swap.exact_amount_label', { code: pair.quote.code })}
                   </label>
                   <pre
                     className="p-2 rounded text-xs"
@@ -265,7 +284,7 @@ export default function TakeSwapOrderModal({
                 {filled.expected_foreign_op_return_payload_hex && (
                   <div className="space-y-1">
                     <label className="label" style={{ color: 'rgba(238,240,255,0.55)' }}>
-                      Required payment memo
+                      {t('marketplace.take_swap.required_memo_label')}
                     </label>
                     <pre
                       className="p-2 rounded text-xs whitespace-pre-wrap break-all"
@@ -279,26 +298,24 @@ export default function TakeSwapOrderModal({
                       {filled.expected_foreign_op_return_payload_hex}
                     </pre>
                     <p className="text-[10px]" style={{ color: 'rgba(238,240,255,0.45)' }}>
-                      Most {pair.quote.name} wallets include this as an extra data field on the
-                      payment. It links your payment to this trade so the IRM can release
-                      automatically.
+                      {t('marketplace.take_swap.memo_hint', { name: pair.quote.name })}
                     </p>
                   </div>
                 )}
 
                 <div className="space-y-1">
                   <label className="label" style={{ color: 'rgba(238,240,255,0.55)' }}>
-                    Your transaction reference
+                    {t('marketplace.take_swap.tx_reference_label')}
                   </label>
                   <input
                     className="input w-full"
                     value={paymentRef}
                     onChange={(e) => setPaymentRef(e.target.value)}
-                    placeholder={`${pair.quote.code} transaction id or note`}
+                    placeholder={t('marketplace.take_swap.tx_reference_placeholder', { code: pair.quote.code })}
                     disabled={busy}
                   />
                   <p className="text-[10px]" style={{ color: 'rgba(238,240,255,0.45)' }}>
-                    The seller sees this exactly. Anything they can use to confirm your payment works.
+                    {t('marketplace.take_swap.tx_reference_hint')}
                   </p>
                 </div>
               </>
@@ -313,7 +330,7 @@ export default function TakeSwapOrderModal({
               }}
             >
               <AlertTriangle size={12} />
-              If you cancel now, your funds stay locked until the refund deadline above.
+              {t('marketplace.take_swap.cancel_warning')}
             </div>
 
             <div className="flex items-center gap-2">
@@ -322,7 +339,7 @@ export default function TakeSwapOrderModal({
                 disabled={busy}
                 className="btn-secondary flex-1"
               >
-                Cancel and dispute
+                {t('marketplace.take_swap.cancel_and_dispute')}
               </button>
               <button
                 onClick={handlePaymentReported}
@@ -330,7 +347,9 @@ export default function TakeSwapOrderModal({
                 className="btn-primary flex-1 inline-flex items-center justify-center gap-2"
               >
                 {busy ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                {takerReceivesIrm ? `I have sent ${pair.quote.code}` : 'Watching escrow'}
+                {takerReceivesIrm
+                  ? t('marketplace.take_swap.i_have_sent', { code: pair.quote.code })
+                  : t('marketplace.take_swap.watching_escrow')}
               </button>
             </div>
           </>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle2, AlertTriangle, Loader2, Inbox } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { agreements, proofs, disputes } from '../../lib/tauri';
@@ -57,18 +58,22 @@ function shortAddr(addr: string | undefined): string {
   return `${addr.slice(0, 8)}...${addr.slice(-4)}`;
 }
 
-function timeAgoFromUnix(unix: number | undefined): string {
+function timeAgoFromUnix(
+  unix: number | undefined,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string {
   if (!unix) return '';
   const secs = Math.max(0, Math.floor(Date.now() / 1000) - unix);
-  if (secs < 60) return `${secs}s ago`;
+  if (secs < 60) return t('marketplace.seller_review.time_ago_seconds', { count: secs });
   const mins = Math.floor(secs / 60);
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60) return t('marketplace.seller_review.time_ago_minutes', { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 48) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  if (hours < 48) return t('marketplace.seller_review.time_ago_hours', { count: hours });
+  return t('marketplace.seller_review.time_ago_days', { count: Math.floor(hours / 24) });
 }
 
 export default function SellerTradeReview({ sellingTrades, onDisputeOpened }: SellerTradeReviewProps) {
+  const { t } = useTranslation();
   const [rows, setRows] = useState<TradeRow[]>([]);
   const [busy, setBusy] = useState<Record<string, 'releasing' | 'disputing' | null>>({});
 
@@ -137,7 +142,7 @@ export default function SellerTradeReview({ sellingTrades, onDisputeOpened }: Se
         secret = null;
       }
       await agreements.release(agreementId, secret ?? undefined, true);
-      toast.success('IRM released. The buyer now has the funds.');
+      toast.success(t('marketplace.seller_review.toast_released'));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
@@ -148,8 +153,8 @@ export default function SellerTradeReview({ sellingTrades, onDisputeOpened }: Se
   const handleOpenDispute = async (agreementId: string) => {
     setBusy((p) => ({ ...p, [agreementId]: 'disputing' }));
     try {
-      await disputes.open(agreementId, 'seller did not receive off-chain payment');
-      toast.success('Dispute opened. A resolver will review the evidence.');
+      await disputes.open(agreementId, t('marketplace.seller_review.dispute_reason'));
+      toast.success(t('marketplace.seller_review.toast_dispute_opened'));
       onDisputeOpened(agreementId);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
@@ -165,8 +170,7 @@ export default function SellerTradeReview({ sellingTrades, onDisputeOpened }: Se
         style={{ border: '1px solid rgba(167,139,250,0.18)', color: 'rgba(238,240,255,0.45)' }}
       >
         <Inbox size={18} className="mx-auto mb-2" style={{ color: 'rgba(167,139,250,0.55)' }} />
-        No incoming trades waiting on you. When a buyer takes one of your offers and reports
-        payment, it shows up here.
+        {t('marketplace.seller_review.empty_state')}
       </div>
     );
   }
@@ -175,10 +179,10 @@ export default function SellerTradeReview({ sellingTrades, onDisputeOpened }: Se
     <div className="card p-4 space-y-3" style={{ border: '1px solid rgba(167,139,250,0.18)' }}>
       <div className="flex items-center justify-between">
         <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>
-          Incoming trades to verify
+          {t('marketplace.seller_review.section_title')}
         </h3>
         <span className="text-[11px]" style={{ color: 'rgba(238,240,255,0.55)' }}>
-          {pending.length} waiting
+          {t('marketplace.seller_review.waiting_count', { count: pending.length })}
         </span>
       </div>
 
@@ -219,12 +223,14 @@ export default function SellerTradeReview({ sellingTrades, onDisputeOpened }: Se
                     border: '1px solid rgba(167,139,250,0.25)',
                   }}
                 >
-                  {row.lifecycle === 'partially_released' ? 'Releasing' : 'Funded'}
+                  {row.lifecycle === 'partially_released'
+                    ? t('marketplace.seller_review.status_releasing')
+                    : t('marketplace.seller_review.status_funded')}
                 </span>
               </div>
 
               <div className="text-[11px]" style={{ color: 'rgba(238,240,255,0.55)' }}>
-                <span style={{ color: 'rgba(238,240,255,0.40)' }}>Buyer: </span>
+                <span style={{ color: 'rgba(238,240,255,0.40)' }}>{t('marketplace.seller_review.buyer_label')} </span>
                 <span style={{ fontFamily: '"JetBrains Mono", monospace' }} title={buyer}>
                   {shortAddr(buyer)}
                 </span>
@@ -244,10 +250,10 @@ export default function SellerTradeReview({ sellingTrades, onDisputeOpened }: Se
                   }}
                 >
                   <div className="text-[10px] uppercase tracking-wide" style={{ color: '#22c55e' }}>
-                    Buyer claims payment sent {timeAgoFromUnix(proof.created_at)}
+                    {t('marketplace.seller_review.buyer_claims_paid', { time: timeAgoFromUnix(proof.created_at, t) })}
                   </div>
                   <div style={{ fontFamily: '"JetBrains Mono", monospace', wordBreak: 'break-word' }}>
-                    {proof.evidence_summary ?? '(no transaction reference provided)'}
+                    {proof.evidence_summary ?? t('marketplace.seller_review.no_reference')}
                   </div>
                 </div>
               ) : (
@@ -259,8 +265,7 @@ export default function SellerTradeReview({ sellingTrades, onDisputeOpened }: Se
                     color: 'rgba(238,240,255,0.55)',
                   }}
                 >
-                  Buyer has not yet reported sending payment. Wait, or open a dispute if the
-                  deadline has passed.
+                  {t('marketplace.seller_review.no_payment_yet')}
                 </div>
               )}
 
@@ -278,7 +283,7 @@ export default function SellerTradeReview({ sellingTrades, onDisputeOpened }: Se
                   }}
                 >
                   {busyState === 'disputing' ? <Loader2 size={11} className="animate-spin" /> : <AlertTriangle size={11} />}
-                  No payment - open dispute
+                  {t('marketplace.seller_review.open_dispute_button')}
                 </button>
                 <button
                   type="button"
@@ -293,7 +298,7 @@ export default function SellerTradeReview({ sellingTrades, onDisputeOpened }: Se
                   }}
                 >
                   {busyState === 'releasing' ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
-                  Confirm received and release
+                  {t('marketplace.seller_review.confirm_release_button')}
                 </button>
               </div>
             </div>
@@ -307,7 +312,7 @@ export default function SellerTradeReview({ sellingTrades, onDisputeOpened }: Se
         {rows.length === 0 && pending.length > 0 && (
           <div className="text-xs text-center py-4" style={{ color: 'rgba(238,240,255,0.45)' }}>
             <Loader2 size={14} className="animate-spin inline-block mr-1" />
-            Loading trades...
+            {t('marketplace.seller_review.loading_trades')}
           </div>
         )}
       </div>

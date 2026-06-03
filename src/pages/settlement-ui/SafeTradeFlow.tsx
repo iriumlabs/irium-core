@@ -155,12 +155,12 @@ export default function SafeTradeFlow() {
 
   const validateSellingForm = (): boolean => {
     const errs: Record<string, string> = {};
-    if (!sBuyerAddr.trim()) errs.buyer = 'Buyer address is required';
+    if (!sBuyerAddr.trim()) errs.buyer = t('settlement_ui.safe_trade.errors.buyer_required');
     const parsed = parseFloat(sAmountIrm);
     if (!sAmountIrm.trim() || !Number.isFinite(parsed) || parsed <= 0) {
-      errs.amount = 'Enter the amount of IRM you want to sell';
+      errs.amount = t('settlement_ui.safe_trade.errors.amount_required');
     }
-    if (!sReceiving.trim()) errs.receiving = 'Tell the buyer what you want in return (e.g. 50 USDT)';
+    if (!sReceiving.trim()) errs.receiving = t('settlement_ui.safe_trade.errors.receiving_required');
     setSErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -181,7 +181,7 @@ export default function SafeTradeFlow() {
         payment_method: sReceiving.trim(),
       });
       agreementId = res?.agreement_id ?? null;
-      if (!agreementId) throw new Error('Agreement creation returned no id');
+      if (!agreementId) throw new Error(t('settlement_ui.safe_trade.errors.no_agreement_id'));
     } catch (e) {
       console.error('[safe-trade] create failed:', e);
       toast.error(e instanceof Error ? e.message : String(e));
@@ -196,7 +196,7 @@ export default function SafeTradeFlow() {
       await agreementSpend.fund(agreementId, true);
     } catch (fundErr) {
       console.error('[safe-trade] fund failed (agreement orphaned):', fundErr);
-      toast.error('Agreement created but funding failed. Open the Agreements page to retry.');
+      toast.error(t('settlement_ui.safe_trade.errors.fund_after_create_failed'));
       setTimeout(() => navigate('/agreements'), 3000);
       setSCreating(false);
       return;
@@ -220,7 +220,7 @@ export default function SafeTradeFlow() {
     setBFunding(true);
     try {
       await agreementSpend.fund(bAgreementId, true);
-      toast.success('Your side is now linked to the trade. Send the off-chain payment to the seller.');
+      toast.success(t('settlement_ui.safe_trade.toast_buyer_linked'));
       setStep(3);
     } catch (e) {
       console.error('[safe-trade] buyer fund failed:', e);
@@ -233,7 +233,7 @@ export default function SafeTradeFlow() {
   const handleBuyerSendPayment = async () => {
     if (!bAgreementId) return;
     if (!bPaymentRef.trim()) {
-      toast.error('Enter a transaction reference so the seller can verify your payment.');
+      toast.error(t('settlement_ui.safe_trade.errors.payment_ref_required'));
       return;
     }
     setBSubmittingProof(true);
@@ -257,7 +257,7 @@ export default function SafeTradeFlow() {
         }
       }
       setBPaymentSent(true);
-      toast.success('Payment reported. Waiting for the seller to confirm.');
+      toast.success(t('settlement_ui.safe_trade.toast_payment_reported'));
     } finally {
       setBSubmittingProof(false);
     }
@@ -267,8 +267,8 @@ export default function SafeTradeFlow() {
     if (!bAgreementId) return;
     setBDisputing(true);
     try {
-      await disputes.open(bAgreementId, 'buyer cannot complete the trade');
-      toast.success('Dispute opened. A resolver will review the evidence.');
+      await disputes.open(bAgreementId, t('settlement_ui.safe_trade.dispute_reason_buyer'));
+      toast.success(t('settlement_ui.safe_trade.toast_dispute_opened'));
       // Pop the resolver picker immediately so the buyer can see the
       // nominated resolvers and the public registry.
       if (bAgreement) setResolverPickerAgreement(bAgreement);
@@ -295,9 +295,9 @@ export default function SafeTradeFlow() {
           <TrendingUp size={22} className="text-emerald-400" />
         </div>
         <div>
-          <div className="font-display font-bold text-lg text-white">I am selling IRM</div>
+          <div className="font-display font-bold text-lg text-white">{t('settlement_ui.safe_trade.choose_selling_title')}</div>
           <div className="text-white/45 text-sm mt-2 leading-relaxed">
-            Lock your IRM in escrow. The buyer pays you off-chain, then you release.
+            {t('settlement_ui.safe_trade.choose_selling_body')}
           </div>
         </div>
       </motion.button>
@@ -311,9 +311,9 @@ export default function SafeTradeFlow() {
           <TrendingDown size={22} className="text-irium-400" />
         </div>
         <div>
-          <div className="font-display font-bold text-lg text-white">I am buying IRM</div>
+          <div className="font-display font-bold text-lg text-white">{t('settlement_ui.safe_trade.choose_buying_title')}</div>
           <div className="text-white/45 text-sm mt-2 leading-relaxed">
-            Paste the seller's deal code. Send them payment, then confirm to receive IRM.
+            {t('settlement_ui.safe_trade.choose_buying_body')}
           </div>
         </div>
       </motion.button>
@@ -348,27 +348,27 @@ export default function SafeTradeFlow() {
         <AddressInput
           value={sBuyerAddr}
           onChange={(v) => { setSBuyerAddr(v); if (sErrors.buyer) setSErrors((p) => { const n = { ...p }; delete n.buyer; return n; }); }}
-          label="Buyer's address"
+          label={t('settlement_ui.safe_trade.selling.buyer_address_short_label')}
           error={sErrors.buyer}
         />
         <p className="text-xs text-white/35">
-          The address that receives the IRM when you confirm the buyer paid.
+          {t('settlement_ui.safe_trade.selling.buyer_address_helper')}
         </p>
       </div>
       <AmountInput
         value={sAmountIrm}
         onChange={(v) => { setSAmountIrm(v); if (sErrors.amount) setSErrors((p) => { const n = { ...p }; delete n.amount; return n; }); }}
-        label="Amount of IRM to sell"
-        helper="Held in escrow until you confirm the buyer's payment."
+        label={t('settlement_ui.safe_trade.selling.amount_label_short')}
+        helper={t('settlement_ui.safe_trade.selling.amount_helper_short')}
         error={sErrors.amount}
       />
       <div className="space-y-1">
-        <label className="label">What you receive in return</label>
+        <label className="label">{t('settlement_ui.safe_trade.selling.receiving_label_short')}</label>
         <input
           type="text"
           value={sReceiving}
           onChange={(e) => { setSReceiving(e.target.value); if (sErrors.receiving) setSErrors((p) => { const n = { ...p }; delete n.receiving; return n; }); }}
-          placeholder="e.g. 50 USDT via SEPA bank transfer"
+          placeholder={t('settlement_ui.safe_trade.selling.receiving_placeholder_detailed')}
           className={`input ${sErrors.receiving ? 'border-red-500/50' : ''}`}
         />
         {sErrors.receiving && (
@@ -380,14 +380,14 @@ export default function SafeTradeFlow() {
       <DurationPicker
         value={sDeadlineHours}
         onChange={setSDeadlineHours}
-        label="Deadline for the buyer to pay"
-        helper="If no payment arrives by the deadline you can claim a refund."
+        label={t('settlement_ui.safe_trade.selling.deadline_label_short')}
+        helper={t('settlement_ui.safe_trade.selling.deadline_helper_refund')}
       />
       <button
         onClick={() => { if (validateSellingForm()) setStep(2); }}
         className="btn-primary w-full cursor-pointer"
       >
-        Continue
+        {t('common.continue')}
       </button>
     </div>
   );
@@ -399,19 +399,19 @@ export default function SafeTradeFlow() {
       <div className="card p-6 space-y-5">
         <div className="space-y-3">
           <div className="rounded-lg bg-white/[0.03] border border-white/8 p-4">
-            <div className="text-xs text-white/40 mb-1">You lock</div>
+            <div className="text-xs text-white/40 mb-1">{t('settlement_ui.safe_trade.review.you_lock_short')}</div>
             <div className="font-display font-bold text-2xl gradient-text">{formatIRM(sats)}</div>
           </div>
           <div className="rounded-lg bg-white/[0.03] border border-white/8 p-4">
-            <div className="text-xs text-white/40 mb-1">Buyer pays you</div>
+            <div className="text-xs text-white/40 mb-1">{t('settlement_ui.safe_trade.review.buyer_pays_you')}</div>
             <div className="text-sm text-white">{sReceiving}</div>
           </div>
           <div className="rounded-lg bg-white/[0.03] border border-white/8 p-4">
-            <div className="text-xs text-white/40 mb-1">Payment deadline</div>
-            <div className="text-sm text-white">{sDeadlineHours} hours from now</div>
+            <div className="text-xs text-white/40 mb-1">{t('settlement_ui.safe_trade.review.payment_deadline')}</div>
+            <div className="text-sm text-white">{t('settlement_ui.safe_trade.review.hours_from_now', { hours: sDeadlineHours })}</div>
           </div>
           <div className="rounded-lg bg-white/[0.03] border border-white/8 p-4">
-            <div className="text-xs text-white/40 mb-1">Buyer's address</div>
+            <div className="text-xs text-white/40 mb-1">{t('settlement_ui.safe_trade.review.buyer_address')}</div>
             <div
               className="text-sm text-white"
               title={sBuyerAddr}
@@ -427,10 +427,10 @@ export default function SafeTradeFlow() {
           className="btn-primary w-full flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
         >
           {sCreating ? <Loader2 size={15} className="animate-spin" /> : <Lock size={15} />}
-          Lock my IRM
+          {t('settlement_ui.safe_trade.review.lock_my_irm')}
         </button>
         <p className="text-xs text-white/35 text-center">
-          A blockchain transaction will be broadcast. This may take a moment to confirm.
+          {t('settlement_ui.safe_trade.review.tx_broadcast_note')}
         </p>
       </div>
     );
@@ -453,11 +453,10 @@ export default function SafeTradeFlow() {
           <Lock size={18} style={{ color: '#22c55e', flexShrink: 0, marginTop: 2 }} />
           <div>
             <div className="font-display font-bold text-white text-sm">
-              Your IRM is now locked and protected
+              {t('settlement_ui.safe_trade.selling.locked_hero_title')}
             </div>
             <div className="text-xs text-white/65 mt-1 leading-relaxed">
-              The buyer cannot take it without your confirmation. Share the deal code below
-              so they can join, then wait for their payment.
+              {t('settlement_ui.safe_trade.selling.locked_hero_body')}
             </div>
           </div>
         </div>
@@ -476,9 +475,9 @@ export default function SafeTradeFlow() {
             style={{ border: '1px solid rgba(110,198,255,0.18)' }}
           >
             <div>
-              <h3 className="font-display font-semibold text-sm text-white">Share this deal code</h3>
+              <h3 className="font-display font-semibold text-sm text-white">{t('settlement_ui.safe_trade.selling.share_code_title')}</h3>
               <p className="text-xs text-white/55 mt-1">
-                The buyer pastes this code in their wallet to join the trade.
+                {t('settlement_ui.safe_trade.selling.share_code_body')}
               </p>
             </div>
             <DealCode mode="display" agreementId={sAgreementId} />
@@ -506,7 +505,7 @@ export default function SafeTradeFlow() {
               className="inline-flex items-center gap-1.5 text-xs"
               style={{ color: 'rgba(252,211,77,0.85)' }}
             >
-              <Scale size={11} /> View available resolvers
+              <Scale size={11} /> {t('settlement_ui.safe_trade.view_resolvers')}
             </button>
           </div>
         )}
@@ -539,22 +538,21 @@ export default function SafeTradeFlow() {
     <div className="card p-6 space-y-5">
       <div className="rounded-lg bg-white/[0.03] border border-white/8 p-4">
         <p className="text-sm text-white/65 leading-relaxed">
-          Confirm the trade details below. By continuing, you commit to this trade. After this
-          step, send the off-chain payment to the seller and report it from the next screen.
+          {t('settlement_ui.safe_trade.buying.review_commit_intro')}
         </p>
       </div>
 
       {bAgreement ? (
         <div className="space-y-3">
           <div className="rounded-lg bg-white/[0.03] border border-white/8 p-4">
-            <div className="text-xs text-white/40 mb-1">Seller is locking</div>
+            <div className="text-xs text-white/40 mb-1">{t('settlement_ui.safe_trade.buying.seller_is_locking')}</div>
             <div className="font-display font-bold text-2xl gradient-text">
               {formatIRM(bAgreement.amount)}
             </div>
           </div>
           {bAgreement.seller && (
             <div className="rounded-lg bg-white/[0.03] border border-white/8 p-4">
-              <div className="text-xs text-white/40 mb-1">Seller</div>
+              <div className="text-xs text-white/40 mb-1">{t('settlement_ui.safe_trade.buying.seller_short_label')}</div>
               <div
                 className="text-sm text-white"
                 title={bAgreement.seller}
@@ -568,8 +566,7 @@ export default function SafeTradeFlow() {
       ) : bAgreementId ? (
         <div className="rounded-lg bg-amber-500/8 border border-amber-500/25 p-4 space-y-2">
           <p className="text-xs text-amber-200 leading-relaxed">
-            Trade details did not load. You can still continue, but verify the IRM amount
-            with the seller before paying.
+            {t('settlement_ui.safe_trade.buying.details_did_not_load')}
           </p>
         </div>
       ) : null}
@@ -579,7 +576,7 @@ export default function SafeTradeFlow() {
           onClick={() => { setBAgreementId(null); setBAgreement(null); setStep(1); }}
           className="btn-secondary w-full cursor-pointer"
         >
-          Cancel
+          {t('common.cancel')}
         </button>
         <button
           onClick={handleFundAsBuyer}
@@ -587,7 +584,7 @@ export default function SafeTradeFlow() {
           className="btn-primary w-full flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
         >
           {bFunding ? <Loader2 size={15} className="animate-spin" /> : null}
-          Continue and link
+          {t('settlement_ui.safe_trade.buying.continue_and_link')}
         </button>
       </div>
     </div>
@@ -611,13 +608,13 @@ export default function SafeTradeFlow() {
           <div>
             <div className="font-display font-bold text-white text-sm">
               {isComplete
-                ? 'Trade complete'
-                : 'The seller\'s IRM is locked for you'}
+                ? t('settlement_ui.safe_trade.buying.trade_complete_title')
+                : t('settlement_ui.safe_trade.buying.seller_locked_for_you_title')}
             </div>
             <div className="text-xs text-white/65 mt-1 leading-relaxed">
               {isComplete
-                ? 'The IRM has arrived in your wallet.'
-                : 'Send the off-chain payment to the seller, then report your transaction reference below.'}
+                ? t('settlement_ui.safe_trade.buying.trade_complete_body')
+                : t('settlement_ui.safe_trade.buying.seller_locked_for_you_body')}
             </div>
           </div>
         </div>
@@ -636,18 +633,17 @@ export default function SafeTradeFlow() {
           >
             <div>
               <h3 className="font-display font-semibold text-sm text-white">
-                Report your payment
+                {t('settlement_ui.safe_trade.buying.report_payment_title')}
               </h3>
               <p className="text-xs text-white/55 mt-1 leading-relaxed">
-                After you send the off-chain payment, paste any reference the seller can use
-                to confirm it arrived - bank wire reference, PayPal transaction id, etc.
+                {t('settlement_ui.safe_trade.buying.report_payment_body')}
               </p>
             </div>
             <input
               className="input w-full"
               value={bPaymentRef}
               onChange={(e) => setBPaymentRef(e.target.value)}
-              placeholder="Bank wire reference, PayPal txid, blockchain txid, etc."
+              placeholder={t('settlement_ui.safe_trade.buying.report_payment_placeholder')}
               disabled={bPaymentSent || bSubmittingProof}
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -663,7 +659,7 @@ export default function SafeTradeFlow() {
                 }}
               >
                 {bDisputing ? <Loader2 size={13} className="animate-spin" /> : <AlertTriangle size={13} />}
-                Cancel and open dispute
+                {t('settlement_ui.safe_trade.buying.cancel_open_dispute')}
               </button>
               <button
                 onClick={handleBuyerSendPayment}
@@ -671,7 +667,7 @@ export default function SafeTradeFlow() {
                 className="btn-primary inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {bSubmittingProof ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                {bPaymentSent ? 'Payment reported' : 'I have sent payment'}
+                {bPaymentSent ? t('settlement_ui.safe_trade.buying.payment_reported') : t('settlement_ui.safe_trade.buying.i_have_sent_payment')}
               </button>
             </div>
           </div>
@@ -682,7 +678,7 @@ export default function SafeTradeFlow() {
             onClick={() => navigate('/agreements')}
             className="btn-primary w-full cursor-pointer"
           >
-            View in Agreements
+            {t('settlement_ui.safe_trade.buying.view_agreements')}
           </button>
         )}
 
@@ -694,7 +690,7 @@ export default function SafeTradeFlow() {
               className="inline-flex items-center gap-1.5 text-xs"
               style={{ color: 'rgba(252,211,77,0.85)' }}
             >
-              <Scale size={11} /> View available resolvers
+              <Scale size={11} /> {t('settlement_ui.safe_trade.view_resolvers')}
             </button>
           </div>
         )}
@@ -711,14 +707,14 @@ export default function SafeTradeFlow() {
       };
     }
     if (side === 'selling') {
-      if (step === 1) return { title: 'Set up your sell trade', subtitle: 'Tell us who the buyer is and how much IRM you want to sell.' };
-      if (step === 2) return { title: 'Review and lock', subtitle: 'Confirm the details. Locking sends the IRM to escrow.' };
-      if (step === 3) return { title: 'Your trade is live', subtitle: 'Share the deal code with the buyer and wait for their payment.' };
+      if (step === 1) return { title: t('settlement_ui.safe_trade.selling.header1_title'), subtitle: t('settlement_ui.safe_trade.selling.header1_subtitle') };
+      if (step === 2) return { title: t('settlement_ui.safe_trade.selling.header2_title'), subtitle: t('settlement_ui.safe_trade.selling.header2_subtitle') };
+      if (step === 3) return { title: t('settlement_ui.safe_trade.selling.header3_title'), subtitle: t('settlement_ui.safe_trade.selling.header3_subtitle') };
     }
     if (side === 'buying') {
-      if (step === 1) return { title: 'Paste the seller\'s deal code', subtitle: 'The seller will have sent you a code after they locked their IRM.' };
-      if (step === 2) return { title: 'Review the trade', subtitle: 'Make sure the amount and seller match what you expect.' };
-      if (step === 3) return { title: 'Your trade is live', subtitle: 'Send the off-chain payment, then report it so the seller can release the IRM.' };
+      if (step === 1) return { title: t('settlement_ui.safe_trade.buying.header1_title'), subtitle: t('settlement_ui.safe_trade.buying.header1_subtitle') };
+      if (step === 2) return { title: t('settlement_ui.safe_trade.buying.header2_title'), subtitle: t('settlement_ui.safe_trade.buying.header2_subtitle') };
+      if (step === 3) return { title: t('settlement_ui.safe_trade.buying.header3_title'), subtitle: t('settlement_ui.safe_trade.buying.header3_subtitle') };
     }
     return { title: '' };
   };

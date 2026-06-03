@@ -152,7 +152,9 @@
       "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
       "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
       "rpc_token_test_remote": "Test remote",
-      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated",
+      "hide_token": "Скрыть токен",
+      "show_token": "Показать токен"
     },
     "buttons": {
       "test_connection": "Тестовое соединение",
@@ -195,7 +197,9 @@
       "onboarding_reset": "Сброс регистрации — перезапустите приложение, чтобы увидеть мастер.",
       "update_check_internet": "Не удалось проверить наличие обновлений. Проверьте подключение к Интернету.",
       "connection_failed": "Соединение не удалось",
-      "update_failed": "Обновление не удалось"
+      "update_failed": "Обновление не удалось",
+      "metrics_http_error": "Статус ОК, но /metrics вернул HTTP {{status}}",
+      "metrics_unreachable": "Статус ОК, но /metrics недоступен: {{error}}"
     },
     "page_subtitle": "Настройте подключение к узлу, пути к кошельку и настройки отображения.",
     "update_banner": {
@@ -261,7 +265,14 @@
       "retry": "Повторить попытку",
       "external_ip_label": "Внешний IP",
       "detecting_paragraph": "Ожидание до 60 секунд, пока входящий узел подтвердит доступность. PEX требуется некоторое время, чтобы распространить ваш адрес на другие узлы после запуска.",
-      "inactive_paragraph": "Ошибка UPnP, и входящие узлы не поступили. Настройте вручную переадресацию портов на маршрутизаторе (TCP 38291) или включите UPnP, затем нажмите «Повторить». В этом состоянии исходящие соединения по-прежнему работают."
+      "inactive_paragraph": "Ошибка UPnP, и входящие узлы не поступили. Настройте вручную переадресацию портов на маршрутизаторе (TCP 38291) или включите UPnP, затем нажмите «Повторить». В этом состоянии исходящие соединения по-прежнему работают.",
+      "diag_chosen_lan_ip": "Выбранный LAN-IP",
+      "diag_router_ip": "IP маршрутизатора",
+      "diag_control_url": "URL управления",
+      "diag_external_ip": "Внешний IP",
+      "diag_private_double_nat": "(приватный — двойной NAT)",
+      "diag_add_port_mapping_tries": "Попытки AddPortMapping",
+      "diag_last_fault": "Последняя ошибка"
     },
     "security_info": {
       "wallet_local": "Irium Core хранит файл вашего кошелька локально. Ваши личные ключи никогда не покидают вашу машину. Файл кошелька зашифрован. Всегда создавайте резервную копию исходной фразы и храните ее в автономном режиме.",
@@ -325,11 +336,14 @@
       "reset_state_success": "Состояние сброшено — резервная копия в {{path}}",
       "reset_state_no_backup": "Нет существующего состояния для резервной копии — создано новое",
       "reset_state_rebuilding": "node перезапускается — пересобирает набор UTXO из локальных block (5–15 мин)",
-      "reset_state_failed": "Сброс не удался: {{reason}}"
+      "reset_state_failed": "Сброс не удался: {{reason}}",
+      "external_ip_placeholder": "напр. 203.0.113.42"
     },
     "developer_info": {
       "reset_onboarding": "Сбросить регистрацию",
-      "reset_onboarding_description": "Показать мастер первоначальной настройки еще раз при следующем запуске."
+      "reset_onboarding_description": "Показать мастер первоначальной настройки еще раз при следующем запуске.",
+      "show_legacy_settlement": "Показать устаревший UI расчётов",
+      "show_legacy_settlement_description": "Использовать старую страницу Settlement с сеткой шаблонов вместо новых SafeTrade / PayForWork / Deposit. Применится при следующем переходе на /settlement."
     },
     "action_bar": {
       "are_you_sure": "Вы уверены?",
@@ -469,7 +483,27 @@
       "rename_wallet_file": "Переименовать файл кошелька",
       "delete_wallet_file": "Удалить этот файл кошелька навсегда",
       "manage_wallets": "Управление кошельками",
-      "manage_description": "Файлы кошелька, импорт, скрытые адреса"
+      "manage_description": "Файлы кошелька, импорт, скрытые адреса",
+      "manage_button": "Управление",
+      "copy_address": "Копировать адрес",
+      "add_address_button": "Добавить адрес",
+      "generating": "Генерация…",
+      "empty_state": "Адресов пока нет. Откройте «Управление», чтобы добавить.",
+      "add_address_confirm_title": "Добавить новый адрес?",
+      "add_address_confirm_body": "Это выведет следующий адрес из сида Вашего кошелька. Адреса нельзя удалить из файла кошелька после создания — только скрыть из видимого списка.",
+      "set_primary_button": "Сделать основным",
+      "primary_button_short": "Основной",
+      "export_wif_short_tooltip": "Экспортировать WIF",
+      "wif_short": "WIF",
+      "qr_short": "QR",
+      "hide_button_short": "Скрыть",
+      "no_addresses_panel": "Адресов пока нет.",
+      "panel_description": "Адреса выводятся из сида Вашего кошелька и не могут быть полностью удалены. Используйте «Скрыть», чтобы убрать их из вида.",
+      "label_placeholder_primary": "напр. Основной · Майнинг",
+      "label_placeholder_other": "напр. Майнинг",
+      "edit_label": "Изменить метку",
+      "add_custom_label": "Добавить свою метку",
+      "address_qr_label": "QR адреса"
     },
     "send": {
       "title": "Отправить IRMTIKER",
@@ -499,12 +533,44 @@
         "unconfirmed": "Ваши средства еще не подтверждены. Перед отправкой дождитесь хотя бы 1 подтверждения.",
         "double_spend": "Эта транзакция конфликтует с другой ожидающей транзакцией. Пожалуйста, подождите и повторите попытку.",
         "generic": "Транзакция не может быть транслирована. Пожалуйста, убедитесь, что узел находится в сети, и повторите попытку.",
-        "fallback": "Транзакция не удалась. Пожалуйста, попробуйте еще раз."
-      }
+        "fallback": "Транзакция не удалась. Пожалуйста, попробуйте еще раз.",
+        "insufficient_for_fee": "Недостаточно средств для сетевой комиссии. Баланс адреса {{balance}} сатоши; минимальная комиссия {{fee}} сатоши.",
+        "cannot_compute_max": "Не удалось вычислить максимум — {{reason}}",
+        "node_still_syncing": "Узел ещё синхронизируется ({{persisted}}/{{height}} блоков). Закройте это окно, дождитесь завершения синхронизации и попробуйте снова.",
+        "not_accepted_mempool": "Транзакция не принята мемпулом узла"
+      },
+      "button_label": "Отправить",
+      "node_offline_tooltip": "Узел должен быть в сети для отправки",
+      "node_syncing_tooltip": "Узел синхронизируется — дождитесь завершения перед отправкой",
+      "max_button": "МАКС",
+      "no_spendable_funds_suffix": " — нет доступных средств",
+      "no_spendable_in_wallet": "В этом кошельке нет доступных средств.",
+      "estimated_fee_25k": "Расчётная комиссия: ~25 000 сатоши",
+      "estimated_fee_label": "Расчётная комиссия",
+      "estimated_fee_value_25k": "~25 000 сатоши",
+      "amount_sats_label": "Сумма (сатоши)",
+      "confirm_send_prefix": "Отправить",
+      "confirm_send_to_suffix": "на",
+      "back_button": "← Назад",
+      "transaction_sent_title": "Транзакция отправлена",
+      "transaction_sent_subtitle": "Ваша транзакция появится в следующем блоке",
+      "transaction_sent_explanation": "Ваша транзакция криптографически подписана Вашим приватным ключом и передана в сеть. Она будет окончательно защищена при включении в следующий добытый блок.",
+      "status_signed": "ПОДПИСАНА",
+      "private_key_verified": "Приватный ключ проверен",
+      "status_confirming": "ПОДТВЕРЖДЕНИЕ",
+      "next_mined_block": "Следующий добытый блок",
+      "transaction_id_label": "ID транзакции",
+      "copy_transaction_id": "Копировать ID транзакции",
+      "view_in_explorer": "Открыть в обозревателе"
     },
     "receive": {
       "title": "Получить IRMTIKER",
-      "scan_qr_hint": "Отсканируйте этот QR-код или скопируйте адрес ниже."
+      "scan_qr_hint": "Отсканируйте этот QR-код или скопируйте адрес ниже.",
+      "button_label": "Получить",
+      "send_to_this_address": "Отправляйте IRM на этот адрес:",
+      "no_address_short": "Нет адреса",
+      "no_address_available": "Адрес недоступен",
+      "copy_address_button": "Копировать адрес"
     },
     "security": {
       "section_title": "Безопасность",
@@ -519,7 +585,16 @@
       "seed_modal_title": "Ваша фраза восстановления",
       "seed_modal_warning": "Запишите это на бумаге. Любой, кто знает эти 24 слова, может потратить ваши средства.",
       "wif_label": "Закрытый ключ WIF",
-      "backup_warning": "Этот файл содержит все ваши личные ключи. Храните его надежно."
+      "backup_warning": "Этот файл содержит все ваши личные ключи. Храните его надежно.",
+      "backup_subsection": "Резервная копия",
+      "restore_subsection": "Восстановление",
+      "export_wif_dialog_title": "Экспорт WIF-ключа",
+      "export_wif_private_key_dialog_title": "Экспорт WIF приватного ключа",
+      "text_file_filter": "Текст",
+      "backup_dialog_title": "Сохранить резервную копию кошелька",
+      "select_backup_dialog_title": "Выберите файл резервной копии кошелька",
+      "backup_filter_name": "Резервная копия кошелька",
+      "all_files_filter": "Все файлы"
     },
     "transactions": {
       "section_title": "Транзакции",
@@ -529,7 +604,17 @@
       "confirmations": "{{count}} подтверждений",
       "pending": "В ожидании",
       "received": "Полученный",
-      "sent": "Отправил"
+      "sent": "Отправил",
+      "confirmed": "Подтверждено",
+      "for_address": "для {{address}}",
+      "mempool_awaiting": "Мемпул · ожидает подтверждения",
+      "miner_label": "Майнер: {{address}}",
+      "fee_label": "Комиссия: {{amount}} сатоши",
+      "txid_label": "TXID: {{txid}}",
+      "conf_short": "{{count}} подтв.",
+      "block_number": "Блок #{{height}}",
+      "open_in_explorer": "Открыть в обозревателе",
+      "copy_txid": "Копировать TXID"
     },
     "toasts": {
       "send_success": "Отправлено — txid {{txid}}",
@@ -565,7 +650,13 @@
       "wif_copied": "WIF скопирован",
       "name_invalid_chars": "Имя кошелька не может содержать: / \\ : * ? \" < > |",
       "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
-      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up.",
+      "node_syncing_wait": "Узел синхронизируется — {{persisted}}/{{height}} блоков. Пожалуйста, подождите.",
+      "failed_add_address": "Не удалось добавить адрес: {{reason}}",
+      "no_recovery_data": "В кошельке не найдены данные для восстановления",
+      "wallet_deleted": "Удалено {{name}}",
+      "seed_copied": "Сид скопирован",
+      "invalid_wallet_path": "Бинарник кошелька вернул некорректный путь: {{path}}"
     },
     "encryption": {
       "migration_title": "Encrypt your wallet",
@@ -588,6 +679,120 @@
       "needs_migration_status": "Wallet on disk uses the legacy unencrypted format and must be encrypted before use.",
       "plaintext_backup_warning": "Plaintext backup file(s) detected at {{paths}}. Delete after verifying the migration succeeded.",
       "recover_link": "Forgot your password? Recover with seed phrase"
+    },
+    "no_wallet_loaded": "Кошелёк не загружен — создайте или импортируйте его ниже",
+    "balance_label": "Баланс",
+    "balance_label_for_address": "Баланс · Адрес {{index}}",
+    "satoshis_amount": "{{amount}} сатоши",
+    "unconfirmed": "не подтверждено",
+    "wallet_wide": "(по всему кошельку)",
+    "syncing_tooltip": "Дождитесь завершения синхронизации узла перед отправкой. Отправка сейчас может завершиться ошибкой проверки подписи, потому что набор UTXO ещё пересобирается.",
+    "syncing_progress": "Синхронизация…",
+    "gaps_count": "{{count}} пропусков",
+    "common": {
+      "cancel": "Отмена",
+      "done": "Готово",
+      "reveal": "Показать",
+      "hide": "Скрыть",
+      "copy": "Копировать",
+      "delete": "Удалить",
+      "loading": "Загрузка…"
+    },
+    "seed": {
+      "recovery_phrase_title": "Сид-фраза для восстановления",
+      "wallet_seed_title": "Сид кошелька",
+      "recovery_phrase_warning": "Никогда не передавайте сид-фразу. Любой, у кого есть эти 24 слова, может получить доступ ко всем Вашим средствам. Храните её офлайн в надёжном месте.",
+      "wallet_seed_warning": "Никогда не передавайте сид кошелька. Это hex-значение даёт полный доступ ко всем средствам. Храните его офлайн в надёжном месте.",
+      "custom_seed_hint": "Этот кошелёк использует пользовательский сид. Сохраните этот hex-сид для восстановления.",
+      "copy_phrase": "Копировать фразу",
+      "copy_seed": "Копировать сид"
+    },
+    "restore": {
+      "title": "Восстановить из резервной копии",
+      "warning_body": "Это перезапишет текущие данные кошелька. Убедитесь, что у Вас есть WIF-ключ или файл резервной копии перед продолжением. Узел автоматически перезапустится после завершения восстановления, чтобы корректно подхватить новое состояние кошелька.",
+      "restore_button": "Восстановить кошелёк"
+    },
+    "create_modal": {
+      "create_title": "Создать кошелёк",
+      "import_title": "Импортировать кошелёк",
+      "create_new_tab": "Создать новый",
+      "import_tab": "Импорт",
+      "generate_description": "Сгенерировать новый BIP39-кошелёк с сид-фразой из 24 слов.",
+      "creating": "Создание…",
+      "create_new_wallet_button": "Создать новый кошелёк",
+      "save_warning": "Сохраните Вашу сид-фразу из 24 слов офлайн — она может восстановить весь кошелёк. WIF-ключ резервирует только один адрес. Ни то, ни другое нельзя восстановить в случае утери.",
+      "address_label": "Адрес",
+      "recovery_phrase_label": "Сид-фраза для восстановления (24 слова)",
+      "recovery_phrase_hint": "(любая из фраз восстанавливает Ваш кошелёк)",
+      "wif_label": "WIF-ключ",
+      "wif_hint": "(Ваш приватный ключ в переносимом формате)",
+      "loading_wif": "Загрузка WIF…",
+      "export_wif_to_file": "Экспортировать WIF в файл",
+      "saved_confirmation": "Я надёжно сохранил сид-фразу и WIF-ключ.",
+      "import_notice_lead": "Это импортирует новый кошелёк. Ваш текущий кошелёк останется нетронутым, и к нему можно будет вернуться из",
+      "seed_phrase_method": "Сид-фраза",
+      "wif_key_method": "WIF-ключ",
+      "seed_phrase_input_label": "Сид-фраза (12 или 24 слова)",
+      "seed_phrase_placeholder": "слово1 слово2 слово3 …",
+      "bip39_hint": "BIP39 сид-фраза, разделённая пробелами.",
+      "wif_placeholder": "5J… или K… или L…",
+      "wif_format_hint": "Wallet Import Format — начинается с 5, K или L.",
+      "import_button": "Импорт"
+    },
+    "new_address": {
+      "title": "Новый адрес",
+      "derived_lead": "Новый адрес выведен из BIP32-сида Вашего кошелька. Ваша",
+      "derived_emphasis": "сид-фраза не изменилась",
+      "derived_trail": "— этот адрес использует тот же файл кошелька, что и существующие адреса.",
+      "copy_address": "Копировать адрес",
+      "wif_private_key_label": "WIF приватный ключ",
+      "wif_warning": "Любой, у кого есть этот WIF, может тратить средства по этому адресу. Храните его офлайн.",
+      "copy_wif": "Копировать WIF",
+      "recovery_reminder_lead": "Этот адрес использует Вашу общую сид-фразу. Чтобы увидеть её, перейдите в",
+      "recovery_reminder_path": "Безопасность → Показать сид-фразу"
+    },
+    "files": {
+      "section_title": "Файлы кошельков",
+      "section_description": "У каждого файла свой сид. Переключайтесь, чтобы загрузить другой кошелёк.",
+      "no_files_found": "Файлы кошельков не найдены в ~/.irium/",
+      "rename_placeholder": "имя-кошелька",
+      "active_badge": "Активный",
+      "switch_button": "Переключить",
+      "create_new_wallet_file": "Создать новый файл кошелька",
+      "create_new_advanced_hint": "(продвинутый — отдельный сид)",
+      "create_new_description": "Создаёт отдельный файл кошелька со своим сидом. Ваш текущий кошелёк остаётся на диске, и к нему можно вернуться из этого списка."
+    },
+    "hidden": {
+      "section_title": "Скрытые адреса",
+      "still_in_file": "(остаются в файле кошелька)",
+      "description": "Адреса нельзя полностью удалить из файла кошелька. Скрытые адреса убраны из вида, но остаются восстанавливаемыми — нажмите «Показать», чтобы вернуть их.",
+      "unhide_button": "Показать"
+    },
+    "delete_file": {
+      "confirm_title": "Удалить этот файл кошелька навсегда?",
+      "address_count": "{{count}} адресов",
+      "address_count_one": "{{count}} адрес",
+      "warning_label": "ВНИМАНИЕ:",
+      "warning_funds_lead": "Этот кошелёк содержит средства. Удаление без резервной копии означает безвозвратную потерю",
+      "warning_funds_trail": ". Убедитесь, что Вы экспортировали WIF-ключи или сид-фразу перед продолжением.",
+      "warning_unknown_lead": "Баланс не удалось подтвердить — узел может быть офлайн. Если в этом кошельке были средства и Вы не сохранили сид-фразу или WIF-ключи, удаление",
+      "warning_unknown_emphasis": "безвозвратно потеряет",
+      "warning_unknown_trail": "их.",
+      "warning_zero_lead": "Это удалит файл с диска. Если Вы не сохранили сид-фразу или WIF-ключи для этого кошелька, все средства в нём будут",
+      "warning_zero_emphasis": "безвозвратно потеряны",
+      "warning_zero_trail": ". Это нельзя отменить.",
+      "type_prompt_prefix": "Введите",
+      "type_prompt_word": "DELETE",
+      "type_prompt_suffix": "для подтверждения",
+      "deleting": "Удаление…",
+      "delete_forever": "Удалить навсегда"
+    },
+    "hide_address": {
+      "confirm_title": "Скрыть этот адрес?",
+      "body_lead": "Адрес останется в файле кошелька — обновится только видимый список. Вы можете",
+      "body_emphasis": "показать",
+      "body_trail": "его позже из раздела «Скрытые адреса».",
+      "confirm_button": "Скрыть адрес"
     }
   },
   "agreements": {
@@ -621,7 +826,18 @@
       "share_text": "Поделиться текстом",
       "delete": "Удалить",
       "submitting": "Отправка…",
-      "sign": "Знак"
+      "sign": "Знак",
+      "fund_escrow": "Профинансировать эскроу",
+      "release_to_counterparty": "Освободить контрагенту",
+      "submit_proof": "Отправить доказательство",
+      "refund": "Возврат",
+      "agreement_expired": "Срок соглашения истёк",
+      "create_and_submit_proof": "Создать и отправить доказательство",
+      "confirm_release": "Подтвердить освобождение",
+      "confirm_fund": "Подтвердить финансирование",
+      "confirm_open_dispute": "Подтвердить открытие спора",
+      "use_this_invoice": "Использовать этот инвойс →",
+      "verify_signature_file": "Проверить файл подписи…"
     },
     "proof_modal": {
       "title": "Отправить доказательство",
@@ -634,7 +850,15 @@
       "evidence_summary": "Краткое изложение доказательств",
       "evidence_placeholder": "например Оплата в размере 50 долларов США получена банковским переводом, номер № 12345.",
       "submit_button": "Отправить доказательство",
-      "submitting": "Отправка…"
+      "submitting": "Отправка…",
+      "intro": "Создайте подписанное доказательство в приложении или загрузите готовое.",
+      "mode_create": "Создать из доказательств",
+      "mode_upload": "Загрузить файл",
+      "mode_create_sub": "Создать в приложении",
+      "mode_upload_sub": "Использовать существующий файл",
+      "upload_note_prefix": "Используйте эту вкладку, только если у Вас уже есть файл доказательства — например, подписанный для Вас контрагентом или аттестующим, либо созданный через",
+      "upload_note_middle": "Если Вы отправляете собственное доказательство, используйте вкладку",
+      "upload_note_suffix": "выше — она создаёт и отправляет доказательство без выхода из приложения."
     },
     "toasts": {
       "agreement_signed": "Соглашение подписано.",
@@ -663,7 +887,9 @@
       "signature_valid": "Подпись действительна (подписавший {{signer}})",
       "signature_invalid": "Недействительная подпись: {{reason}}",
       "agreement_signed_short": "Соглашение подписано.",
-      "sign_failed": "Подписать не удалось"
+      "sign_failed": "Подписать не удалось",
+      "cleanup_removed": "Удалено {{count}} соглашений",
+      "cleanup_removed_with_failures": "Удалено {{count}} соглашений ({{failed}} не удалось)"
     },
     "refund": {
       "blocked_default": "Право на возврат средств неизвестно.",
@@ -685,13 +911,26 @@
       "share_text": "Скопируйте краткое изложение настоящего соглашения в виде обычного текста в буфер обмена.",
       "delete_local": "Удалите это соглашение из вашего местного магазина. Копия контрагента не затрагивается.",
       "save_friendly_name": "Сохраните понятное имя для этого соглашения (хранится локально).",
-      "verify_signature_file": "Проверьте файл подписи (.sig или .json) на соответствие этому соглашению."
+      "verify_signature_file": "Проверьте файл подписи (.sig или .json) на соответствие этому соглашению.",
+      "cleanup_old_test_data": "Удалить из локального хранилища соглашения с ID, содержащими test / gossip / demo / pr",
+      "node_offline_sign": "Узел должен быть в сети для подписания",
+      "sign_to_confirm": "Подпишите это соглашение, чтобы подтвердить Ваше участие",
+      "node_offline_fund": "Узел должен быть в сети для финансирования эскроу",
+      "fund_escrow_action": "Заблокировать сумму соглашения в HTLC-эскроу",
+      "node_offline_release": "Узел должен быть в сети для освобождения средств",
+      "release_to_counterparty": "Освободить средства контрагенту",
+      "node_offline_dispute": "Узел должен быть в сети для открытия спора",
+      "mark_disputed": "Пометить это соглашение как спорное — требуется аттестация арбитра для разрешения",
+      "node_offline_refund": "Узел должен быть в сети для возврата средств",
+      "view_audit": "Посмотреть полный ончейн-аудит"
     },
     "buttons": {
       "import_invoice": "Импортировать счет",
       "import_pack": "Импортный пакет",
       "browse": "Просматривать",
-      "delete_agreement": "Удалить соглашение"
+      "delete_agreement": "Удалить соглашение",
+      "cleanup_old_test_data": "Очистить старые тестовые данные ({{count}})",
+      "export_pack": "Экспортировать пакет"
     },
     "page_views": {
       "agreements": "Соглашения",
@@ -744,12 +983,19 @@
       "seller": "Продавец",
       "signer_wallet": "Адрес кошелька подписанта",
       "role": "Роль:",
-      "reason": "Причина:"
+      "reason": "Причина:",
+      "agreement_short": "Соглашение",
+      "signer_prefix": "подписант"
     },
     "placeholders": {
       "your_wallet_address": "Адрес вашего кошелька",
       "secret_preimage": "Необязательно · Шестнадцатеричный код из 64 символов",
-      "dispute_reason": "Опишите, что пошло не так — эта информация передается распознавателю."
+      "dispute_reason": "Опишите, что пошло не так — эта информация передается распознавателю.",
+      "output_pack_path": "/path/to/output.pack.json",
+      "proof_json_path": "/path/to/proof.json",
+      "pack_json_path": "/path/to/agreement.pack.json",
+      "invoice_json_path": "/path/to/invoice.json",
+      "hash_64_hex": "64 hex-символа"
     },
     "modals": {
       "submit_proof_title": "Отправить доказательство",
@@ -757,16 +1003,117 @@
       "import_invoice_title": "Импортировать счет",
       "open_dispute_title": "Открыть спор?",
       "audit_title": "Аудит договора",
-      "sign_title": "Подписать соглашение"
+      "sign_title": "Подписать соглашение",
+      "delete_confirm_prefix": "Удалить соглашение",
+      "delete_confirm_body": "Это удалит соглашение только из вашего локального хранилища. Копия контрагента не затрагивается. Удалить можно только нефинансированные (открытые/ожидающие) соглашения.",
+      "cleanup_title": "Очистить старые тестовые данные",
+      "cleanup_found": "Найдено {{count}} соглашений с ID, содержащим test, gossip, demo или pr.",
+      "cleanup_disclaimer": "Это удалит их только из вашего локального хранилища. Копия контрагента не затрагивается. Активные ончейн-HTLC не затрагиваются — средства всё равно нужно освободить или вернуть отдельно.",
+      "cleanup_remove_count": "Удалить {{count}}",
+      "release_funds_title": "Освободить средства?",
+      "release_funds_body_prefix": "Это освободит",
+      "release_funds_body_suffix": "продавцу.",
+      "fund_escrow_title": "Профинансировать эскроу?",
+      "fund_escrow_body_prefix": "Это заблокирует",
+      "fund_escrow_body_suffix": "в HTLC-эскроу. Средства освободятся контрагенту по принятии доказательства или вернутся после истечения таймаута.",
+      "import_pack_format_prefix": "Принимаемый формат:",
+      "import_pack_format_suffix": "— экспортированный стороной А",
+      "import_invoice_subtitle": "Выберите JSON-инвойс, чтобы предзаполнить новое соглашение на странице Settlement."
     },
     "audit": {
-      "fetching": "Получение записи аудита…"
+      "fetching": "Получение записи аудита…",
+      "no_data": "Аудит RPC не вернул данные",
+      "show_raw_json": "Показать исходный JSON",
+      "hide_raw_json": "Скрыть исходный JSON"
     },
     "empty": {
       "no_signatures": "Ни одна подпись еще не проверена. Используйте кнопку выше, чтобы подтвердить его.",
       "no_wallet_addresses": "Нет адресов кошельков",
       "no_disputes": "Никаких споров.",
-      "disputes_offline": "(Узел не в сети — список споров может быть недоступен.)"
+      "disputes_offline": "(Узел не в сети — список споров может быть недоступен.)",
+      "no_agreements_found": "Соглашения не найдены",
+      "with_status": "со статусом",
+      "matching": "соответствующие",
+      "go_to_settlement_cta": "Перейдите в раздел Settlement, чтобы создать первое соглашение →"
+    },
+    "scope": {
+      "my": "Мои соглашения",
+      "all": "Все"
+    },
+    "dialog_titles": {
+      "save_agreement_pack": "Сохранить пакет соглашения",
+      "select_proof_file": "Выберите файл доказательства (.json)",
+      "select_pack_file": "Выберите пакет соглашения (.pack.json)",
+      "select_invoice_file": "Выберите JSON-файл инвойса",
+      "select_signature_file": "Выберите файл подписи"
+    },
+    "timeline": {
+      "created": "Создано",
+      "funded": "Профинансировано",
+      "proof_submitted": "Доказательство отправлено",
+      "released": "Освобождено",
+      "refunded": "Возвращено"
+    },
+    "detail_labels": {
+      "template": "Шаблон",
+      "created": "Создано",
+      "deadline": "Срок",
+      "proof_status": "Статус доказательства",
+      "release_eligible": "Готово к освобождению",
+      "kind": "Тип",
+      "threshold": "Порог",
+      "attestors": "Аттестующие",
+      "parties": "Стороны",
+      "amount": "Сумма",
+      "payer": "Плательщик",
+      "payee": "Получатель",
+      "outcome": "Результат",
+      "satisfied": "Выполнено",
+      "reason": "Причина"
+    },
+    "detail_values": {
+      "none": "нет",
+      "party": "сторона",
+      "parties": "стороны"
+    },
+    "sections": {
+      "policy": "Политика",
+      "proofs": "Доказательства",
+      "timeline": "Хронология ({{count}} событий)",
+      "proofs_count": "Доказательства ({{count}})",
+      "funding_legs": "Финансирование ({{count}} операций)",
+      "linked_transactions": "Связанные транзакции ({{count}})"
+    },
+    "warnings": {
+      "proof_finality_body": "Дождитесь большего числа подтверждений блоков перед освобождением — реорганизация цепи может откатить доказательство.",
+      "open_dispute_body": "Открытие спора означает, что соглашение должно быть рассмотрено арбитром, который изучит доказательства обеих сторон. Убедитесь, что у Вас есть веская причина и подтверждающие доказательства. Это действие нельзя отменить."
+    },
+    "helpers": {
+      "sign_confirms_participation": "Подпись подтверждает Ваше участие. Обе стороны должны подписать до финансирования.",
+      "sign_modal_body": "Подписание этого соглашения ключом Вашего кошелька подтверждает Ваше участие. Обе стороны должны подписать до финансирования.",
+      "no_hash_on_file": "Для этого соглашения нет сохранённого хеша — вставьте хеш, переданный контрагентом.",
+      "no_file_selected": "Файл не выбран",
+      "secret_auto_loaded": "Автоматически загружено из локального хранилища секретов соглашений",
+      "secret_required_hint": "Требуется, если Вы не создавали это соглашение самостоятельно. Оставьте пустым, если Ваш кошелёк выводит его автоматически.",
+      "use_invoice_hint": "Нажатие «Использовать этот инвойс» переносит Вас в раздел Settlement с предзаполненным шаблоном OTC. Вы можете изменить шаблон, отредактировать поля и подтвердить перед созданием соглашения.",
+      "signer_unknown": "неизвестно",
+      "rejected": "отклонено",
+      "role_buyer_suffix": "(покупатель)",
+      "role_seller_suffix": "(продавец)",
+      "signer_not_party": "Этот адрес не является покупателем или продавцом — подпись будет записана без роли стороны."
+    },
+    "form_errors": {
+      "hash_required": "Требуется хеш соглашения",
+      "proof_type_required": "Выберите тип доказательства",
+      "attested_by_required": "Требуется адрес аттестующего",
+      "evidence_required": "Опишите произошедшее в разделе «Сводка доказательств»",
+      "secret_must_be_64_hex": "Должно быть ровно 64 hex-символа (0-9, a-f)."
+    },
+    "disputes": {
+      "opened_prefix": "открыто",
+      "resolved_prefix": "· разрешено",
+      "open_this_agreement": "Открыть это соглашение",
+      "agreement_not_in_list": "Соглашение отсутствует в текущем списке — попробуйте обновить страницу «Соглашения»"
     }
   },
   "settlement": {
@@ -971,14 +1318,72 @@
       "confirm_large_amount": "Вы собираетесь заблокировать {{amount}} IRMTIKER на условном депонировании.\n\nЭто большая сумма. Убедитесь, что вы правильно ввели десятичную дробь.",
       "remote_label": "удаленный",
       "remote_tooltip": "Это предложение от другого продавца, и его нельзя удалить из вашего местного магазина.",
-      "delete_tooltip": "Удалите это предложение из местного магазина."
+      "delete_tooltip": "Удалите это предложение из местного магазина.",
+      "modal_title": "Создать заявку на продажу",
+      "modal_subtitle": "Разместите предложение в стакане — IRM блокируется в момент, когда покупатель его принимает.",
+      "post_offer_button": "Разместить предложение",
+      "lock_info_prefix": "Ваши IRM блокируются в момент, когда покупатель принимает заявку. Затем Вы получаете офчейн-платёж от покупателя и нажимаете",
+      "confirm_received_label": "Подтвердить получение",
+      "lock_info_suffix": "для освобождения. Или откройте спор, если они не платят.",
+      "amount_to_sell_label": "Количество IRM для продажи",
+      "price_per_irm_label": "Цена за 1 IRM в USDT",
+      "buyer_pays_total_prefix": "Покупатель платит всего",
+      "buyer_pays_total_amount": "{{amount}} USDT",
+      "payment_method_label": "Способ оплаты",
+      "your_payment_details_label": "Ваши платёжные реквизиты",
+      "payment_details_placeholder": "напр. IBAN DE89 3704 0044 0532 0130 00 или PayPal: seller@example.com",
+      "payment_details_helper": "Покупатель увидит эти реквизиты после принятия предложения.",
+      "payment_options": {
+        "bank_transfer": "Банковский перевод",
+        "paypal": "PayPal",
+        "usdt_trc20": "USDT (TRC-20)",
+        "usdt_erc20": "USDT (ERC-20)",
+        "sepa": "SEPA",
+        "cash": "Наличные",
+        "other": "Другое"
+      },
+      "errors": {
+        "positive_irm_amount": "Введите положительную сумму IRM",
+        "positive_usdt_price": "Введите положительную цену в USDT за 1 IRM",
+        "select_payment_method": "Выберите способ оплаты",
+        "payment_details_required": "Укажите Ваши платёжные реквизиты, чтобы покупатель знал, как платить"
+      },
+      "toasts": {
+        "offer_posted": "Предложение размещено. IRM заблокируются в момент, когда покупатель его примет."
+      }
     },
     "take_offer": {
       "title": "Принять предложение",
       "completed_trades": "Завершенные сделки",
       "take_button": "Принять предложение",
       "taking": "Принимая…",
-      "title_modal": "Примите это предложение"
+      "title_modal": "Примите это предложение",
+      "set_buyer_address_first": "Сначала укажите Ваш адрес покупателя",
+      "error_agreement_id_missing": "Предложение принято, но в ответе отсутствует id соглашения",
+      "irm_locked_send_payment": "IRM теперь заблокированы в эскроу. Отправьте офчейн-платёж.",
+      "dispute_reason_buyer_cancelled": "покупатель отменил до оплаты",
+      "dispute_opened_refund_hint": "Спор открыт. Вы сможете запросить возврат со страницы «Соглашения» после истечения таймаута.",
+      "enter_payment_reference": "Введите id или примечание транзакции, чтобы продавец мог проверить Вашу оплату",
+      "payment_reported_seller_notified": "Платёж заявлен. Продавец уведомлён.",
+      "step_of_two": "Шаг {{step}} из 2",
+      "step1_intro": "Подтверждение блокирует IRM продавца в эскроу. У Вас будет срок, чтобы отправить офчейн-платёж и сообщить о транзакции.",
+      "you_receive": "Вы получаете:",
+      "payment_method": "Способ оплаты:",
+      "seller": "Продавец:",
+      "buyer_you": "Покупатель (Вы):",
+      "not_set": "- не задано -",
+      "cancel": "Отмена",
+      "confirm_take": "Подтвердить принятие",
+      "irm_locked_in_escrow": "IRM заблокированы в эскроу",
+      "step2_intro": "IRM продавца заблокированы. Отправьте офчейн-платёж, затем введите ссылку на Вашу транзакцию ниже и нажмите «Я отправил оплату».",
+      "sellers_payment_details": "Платёжные реквизиты продавца",
+      "no_payment_details": "В предложении нет реквизитов. Свяжитесь с продавцом напрямую для инструкций по оплате.",
+      "your_transaction_reference": "Ссылка на Вашу транзакцию",
+      "payment_reference_placeholder": "Номер банковского перевода, txid PayPal, txid блокчейна и т. д.",
+      "payment_reference_hint": "Продавец видит это в точности. Подойдёт всё, что позволит подтвердить получение Вашего платежа — номер ссылки, id транзакции, имя отправителя и т. д.",
+      "cancel_opens_dispute_warning": "Если Вы отмените здесь, откроется спор. Возврат можно будет запросить после истечения таймаута со страницы «Соглашения».",
+      "cancel_and_dispute": "Отменить и открыть спор",
+      "i_have_sent_payment": "Я отправил оплату"
     },
     "feeds": {
       "discover_button": "Откройте для себя каналы",
@@ -1026,7 +1431,189 @@
     },
     "swap": {
       "fuel_banner_title": "IRM обеспечивает работу слоя Settlement.",
-      "fuel_banner_body": "Обменяйте BTC, LTC или DOGE на IRM, чтобы начать торговать без посредников."
+      "fuel_banner_body": "Обменяйте BTC, LTC или DOGE на IRM, чтобы начать торговать без посредников.",
+      "pair_not_available": "Эта пара пока недоступна",
+      "own_order_hint": "Это Ваша собственная заявка. Используйте панель «Мои свапы» справа, чтобы отменить её.",
+      "not_available_yet": "Пока недоступно",
+      "how_it_works_title": "Как работают свапы {{pair}}",
+      "how_it_works_step1": "Выберите заявку из стакана слева или разместите свою.",
+      "how_it_works_step2": "IRM продавца блокируются в эскроу в момент принятия заявки.",
+      "how_it_works_step3": "Покупатель отправляет {{quote}} на адрес продавца.",
+      "how_it_works_step4": "Как только платёж подтверждается, IRM автоматически освобождаются покупателю."
+    },
+    "header": {
+      "subtitle_otc": "Одноранговый OTC. Заблокируйте IRM в эскроу, обменяйте на что угодно.",
+      "subtitle_swap": "Атомарные свапы между IRM и другими блокчейнами. Без доверия. Без моста.",
+      "advanced_flows": "Расширенные сценарии",
+      "advanced_flows_tooltip": "Открыть низкоуровневые сценарии расчётов."
+    },
+    "mode_tabs": {
+      "otc": "OTC P2P",
+      "swap": "Спот-свап"
+    },
+    "my_trades": {
+      "title": "Мои сделки",
+      "tab_active": "Активные",
+      "tab_completed": "Завершённые",
+      "tab_all": "Все",
+      "empty_active": "Нет активных сделок. Примите предложение из стакана, чтобы начать.",
+      "empty_completed": "Завершённых сделок пока нет.",
+      "empty_all": "Сделок пока нет. Примите предложение из стакана, чтобы начать.",
+      "side_buy": "ПОКУПКА",
+      "side_sell": "ПРОДАЖА"
+    },
+    "trade_status": {
+      "released": "Освобождено",
+      "refunded": "возвращено",
+      "expired": "истекло",
+      "cancelled": "отменено",
+      "disputed": "Спор",
+      "confirming": "Подтверждение",
+      "locked": "Заблокировано",
+      "proposed": "Предложено",
+      "drafting": "Черновик"
+    },
+    "order_book": {
+      "title": "Стакан заявок",
+      "create_order": "Создать заявку",
+      "offers_count_one": "предложение",
+      "offers_count_other": "предложений",
+      "offers_count": "предложений",
+      "hidden_tooltip_one": "{{count}} предложение скрыто из-за отсутствия цены",
+      "hidden_tooltip_other": "{{count}} предложений скрыто из-за отсутствия цены",
+      "hidden_tooltip": "{{count}} предложений скрыто из-за отсутствия цены",
+      "hidden_suffix": "{{count}} скрыто",
+      "show_taken": "Показать принятые",
+      "sort": {
+        "price_asc": "Цена ↑",
+        "price_desc": "Цена ↓",
+        "newest": "Новые",
+        "best_rep": "Лучшая репутация"
+      },
+      "updated_ago": "Обновлено {{time}}",
+      "refreshing": "Обновление…",
+      "refreshing_lower": "обновление…",
+      "empty_prefix": "В стакане пока нет предложений. Нажмите",
+      "empty_suffix": "чтобы разместить первое.",
+      "col_amount_irm": "Количество IRM",
+      "col_price_per_irm": "Цена / IRM",
+      "col_total": "Итого",
+      "col_payment": "Оплата",
+      "col_seller": "Продавец",
+      "col_rep": "Репутация",
+      "col_age": "Возраст",
+      "rep_tooltip": "{{stars}} из 5, {{completed}} завершено",
+      "no_reputation": "Нет репутации",
+      "taken": "Принято",
+      "take": "Принять"
+    },
+    "pair_order_book": {
+      "header_title": "Стакан {{pair}}",
+      "open_shown_summary": "{{open}} открытых · {{shown}} показано",
+      "updated_label": "обновлено",
+      "new_swap": "Новый свап",
+      "direction_both": "Оба",
+      "direction_sell_irm": "Продажа IRM",
+      "direction_buy_irm": "Покупка IRM",
+      "sort_price_asc": "Лучшая цена первой",
+      "sort_price_desc": "Высокая цена первой",
+      "sort_recent": "Новые первыми",
+      "hide_my_orders": "Скрыть мои заявки",
+      "loading_orders": "Загрузка заявок {{pair}}…",
+      "empty_state": "Нет открытых заявок {{pair}}. Будьте первым — разместите её кнопкой «Новый свап» выше.",
+      "side_sells_irm": "Продаёт IRM",
+      "side_buys_irm": "Покупает IRM",
+      "badge_yours": "Ваша",
+      "escrow_protected": "Защищено эскроу",
+      "maker_line": "Мейкер {{address}} · {{ago}}",
+      "needs_confirmations": "Требуется {{count}} подтверждение на стороне {{network}}",
+      "needs_confirmations_plural": "Требуется {{count}} подтверждений на стороне {{network}}",
+      "relative_recent": "недавно",
+      "relative_just_now": "только что",
+      "relative_blocks_ago": "{{count}} блоков назад",
+      "relative_blocks_ago_one": "{{count}} блок назад",
+      "relative_hours_ago": "{{count}} ч назад",
+      "relative_days_ago": "{{count}} д назад"
+    },
+    "resolver_picker": {
+      "title": "Выбор арбитра",
+      "intro": "Арбитр — это проверенная третья сторона, которая решает, кто получит IRM, если покупатель и продавец не могут договориться. Арбитр получает небольшую комиссию, удерживаемую из спорной суммы при расчёте сделки.",
+      "nominated_section_title": "Арбитры, назначенные для этой сделки",
+      "primary_label": "Основной",
+      "fallback_label": "Резервный",
+      "fee_with_value": "Комиссия: {{value}}",
+      "no_nominated_notice": "Эта сделка создана без назначенных арбитров. Обе стороны могут совместно подписать новое назначение из процесса повторного назначения арбитра в кошельке, прежде чем кто-либо из арбитров ниже сможет действовать.",
+      "available_section_title": "Доступные арбитры",
+      "registry_unreachable": "Эндпоинт реестра арбитров недоступен на этом узле ({{error}}). Используйте процесс повторного назначения арбитра из Вашего кошелька, чтобы найти кандидатов напрямую через CLI resolver-list.",
+      "empty_registry_before": "На этом узле ещё не зарегистрированы арбитры. Арбитры регистрируются, вызывая",
+      "empty_registry_after": "после появления их адреса в недавнем coinbase-выходе.",
+      "unnamed_resolver": "Безымянный арбитр",
+      "no_reputation_yet": "репутации пока нет",
+      "agreements_hint": "Используйте страницу «Соглашения», чтобы отправить дополнительные доказательства арбитру и наблюдать за ходом разрешения спора. Обе стороны могут отправлять доказательства в любое время до решения арбитра.",
+      "close": "Закрыть"
+    },
+    "seller_review": {
+      "toast_released": "IRM освобождены. Покупатель получил средства.",
+      "dispute_reason": "продавец не получил офчейн-платёж",
+      "toast_dispute_opened": "Спор открыт. Арбитр рассмотрит доказательства.",
+      "empty_state": "Нет входящих сделок, ожидающих Вашего решения. Когда покупатель примет одно из Ваших предложений и сообщит об оплате, оно появится здесь.",
+      "section_title": "Входящие сделки для проверки",
+      "waiting_count": "{{count}} ожидает",
+      "status_releasing": "Освобождение",
+      "status_funded": "Профинансировано",
+      "buyer_label": "Покупатель:",
+      "buyer_claims_paid": "Покупатель заявил об оплате {{time}}",
+      "no_reference": "(ссылка на транзакцию не указана)",
+      "no_payment_yet": "Покупатель пока не сообщил об отправке оплаты. Подождите или откройте спор, если срок прошёл.",
+      "open_dispute_button": "Нет оплаты — открыть спор",
+      "confirm_release_button": "Подтвердить получение и освободить",
+      "loading_trades": "Загрузка сделок...",
+      "time_ago_seconds": "{{count}} с назад",
+      "time_ago_minutes": "{{count}} м назад",
+      "time_ago_hours": "{{count}} ч назад",
+      "time_ago_days": "{{count}} д назад"
+    },
+    "take_swap": {
+      "buy_irm": "Купить IRM",
+      "sell_irm": "Продать IRM",
+      "toast_no_wallet": "Нет активного адреса кошелька Irium. Сначала откройте кошелёк.",
+      "toast_min_blocks": "Срок возврата должен быть не менее 10 блоков",
+      "toast_locked_buyer": "Заявка заблокирована. Отправьте оплату в {{code}} и сообщите об этом.",
+      "toast_locked_seller": "Заявка заблокирована. IRM продавца находятся в эскроу.",
+      "toast_need_ref": "Введите id или примечание транзакции, чтобы продавец мог проверить Ваш платёж в {{code}}",
+      "toast_payment_reported": "Платёж заявлен. Продавец уведомлён.",
+      "toast_dispute_info": "Спор можно открыть со страницы «Соглашения». Отмените здесь и вернитесь к этому там.",
+      "modal_title": "{{label}} на {{pair}}",
+      "step_of_2": "Шаг {{step}} из 2",
+      "intro_buyer": "Подтверждение заблокирует IRM продавца в эскроу. Затем Вы отправите {{code}} на адрес, показанный далее.",
+      "intro_seller": "Подтверждение создаст соответствующее эскроу с Вашими IRM. Покупатель отправит {{code}} на Ваш адрес.",
+      "you_receive": "Вы получаете",
+      "you_pay": "Вы платите",
+      "you_send": "Вы отправляете",
+      "price": "Цена",
+      "maker": "Мейкер",
+      "maker_foreign_address": "Адрес мейкера в {{code}}",
+      "needs": "Требуется",
+      "confirmation_one": "{{count}} подтверждение {{code}}",
+      "confirmation_other": "{{count}} подтверждений {{code}}",
+      "refund_deadline_label": "Срок возврата (блоки Irium)",
+      "refund_deadline_hint": "Если платёж не подтвердится к этому сроку, Вы сможете вернуть свои средства.",
+      "cancel": "Отмена",
+      "confirm_action": "Подтвердить {{label}}",
+      "escrow_locked": "Эскроу заблокировано",
+      "escrow_locked_buyer": "Отправьте платёж в {{code}} на адрес ниже. Как только Ваш платёж подтвердится, IRM автоматически освободятся в Ваш кошелёк.",
+      "escrow_locked_seller": "Ваши IRM в эскроу. Покупатель отправит {{code}} на Ваш адрес. Когда его платёж подтвердится, IRM освободятся ему, а сценарий покупателя завершится автоматически.",
+      "send_to_label": "Отправить {{code}} на",
+      "exact_amount_label": "Точная сумма {{code}}",
+      "required_memo_label": "Обязательное memo платежа",
+      "memo_hint": "Большинство кошельков {{name}} включают это как дополнительное поле данных в платеже. Это связывает Ваш платёж с этой сделкой, чтобы IRM могли освободиться автоматически.",
+      "tx_reference_label": "Ссылка на Вашу транзакцию",
+      "tx_reference_placeholder": "id или примечание транзакции {{code}}",
+      "tx_reference_hint": "Продавец видит это в точности. Подойдёт всё, что позволит подтвердить Ваш платёж.",
+      "cancel_warning": "Если Вы отмените сейчас, Ваши средства останутся заблокированы до срока возврата выше.",
+      "cancel_and_dispute": "Отменить и открыть спор",
+      "i_have_sent": "Я отправил {{code}}",
+      "watching_escrow": "Отслеживание эскроу"
     }
   },
   "miner": {
@@ -1047,7 +1634,11 @@
       "uptime": "Время работы",
       "difficulty": "Сложность",
       "temperature": "Температура",
-      "power": "Власть"
+      "power": "Власть",
+      "est_daily_irm": "IRM в сутки (оценка)",
+      "na_linux_only": "Н/Д (только Linux)",
+      "pool_difficulty": "Сложность пула",
+      "pool_hashrate": "Хешрейт пула"
     },
     "buttons": {
       "start_mining": "Начать майнинг",
@@ -1056,7 +1647,23 @@
       "connect_pool": "Подключиться к пулу",
       "disconnect": "Отключить",
       "confirm_disconnect": "Подтвердить отключение?",
-      "detect_gpus": "Обнаружение графических процессоров"
+      "detect_gpus": "Обнаружение графических процессоров",
+      "view_wallet": "Открыть кошелёк",
+      "starting": "Запуск…",
+      "connecting": "Подключение…",
+      "start_gpu_mining": "Запустить GPU-майнинг",
+      "stop_gpu": "Остановить GPU",
+      "scanning": "Сканирование…",
+      "yes": "Да",
+      "no": "Нет",
+      "close": "Закрыть",
+      "done": "Готово",
+      "ok": "ОК",
+      "start": "Запустить",
+      "stop": "Остановить",
+      "refresh": "Обновить",
+      "view_pool_stats": "Посмотреть статистику пула",
+      "view_pool_stats_tooltip": "Открыть статистику майнеров публичного пула в обозревателе блоков"
     },
     "fields": {
       "mining_address_label": "Адрес майнинга",
@@ -1080,21 +1687,49 @@
       "intensity_label": "Интенсивность — {{value}}%",
       "intensity_mac_note": "Интенсивность ограничена на уровне 50 % в macOS, чтобы сторожевой таймер графического процессора не убивал ядра в середине пакета. Майнер на графическом процессоре автоматически обнаруживает зависания сторожевого таймера и останавливается, если все равно их видит.",
       "pool_preset": "Предустановка бассейна",
-      "stratum_worker_use_wallet": "Use my wallet"
+      "stratum_worker_use_wallet": "Use my wallet",
+      "intensity_hint": "Выше интенсивность = больше хешрейт, больше энергопотребление",
+      "core_active_tooltip": "Ядро {{n}} (активно)",
+      "core_idle_tooltip": "Ядро {{n}} (простаивает)",
+      "stratum_worker_placeholder": "walletAddress.workerName",
+      "stratum_worker_autofill_tooltip": "Автозаполнение: {{address}}.rig1",
+      "stratum_password_hint": "Оставьте пустым, чтобы использовать «x» (по умолчанию для большинства пулов)"
     },
     "found_blocks": {
       "section_title": "Найденные блоки",
       "empty": "В этом сеансе пока не найдено ни одного блока.",
-      "open_in_explorer_tooltip": "Откройте этот блок в Проводнике"
+      "open_in_explorer_tooltip": "Откройте этот блок в Проводнике",
+      "hide_orphans_tooltip": "Скрыть блоки, выигранные другим майнером",
+      "reveal_orphans_tooltip_one": "Показать {{count}} осиротевший кандидат",
+      "reveal_orphans_tooltip_other": "Показать {{count}} осиротевших кандидатов",
+      "hide_orphans_button": "Скрыть осиротевшие ({{count}})",
+      "show_orphans_button": "Показать осиротевшие ({{count}})",
+      "all_orphaned": "Подтверждённых блоков пока нет — все кандидаты были осиротевшими.",
+      "orphaned_tooltip": "Осиротевший — выигран другим майнером",
+      "orphaned_long_tooltip": "Канонический блок на этой высоте был добыт другим адресом — мы записали нашего кандидата, но проиграли гонку.",
+      "orphaned_badge": "осиротевший",
+      "block_height_tooltip": "Высота блока {{height}}",
+      "won_by_another": "Выигран другим майнером",
+      "hash_unavailable": "хеш недоступен в этой сборке майнера",
+      "reward_not_indexed_tooltip": "Награда ещё не проиндексирована узлом — значение появится после созревания",
+      "reward_unknown_tooltip": "Награда неизвестна — майнер не сообщает её в stdout",
+      "estimate_marker": "~ оценка"
     },
     "shares": {
       "accepted": "Принял",
       "rejected": "Отклоненный",
-      "ratio": "Соотношение"
+      "ratio": "Соотношение",
+      "last_share": "Последняя шара"
     },
     "asic_info": {
       "headline": "Подключите свой ASIC или графический процессор к пулу для майнинга через Stratum.",
-      "after_install": "После установки перезапустите Irium Core."
+      "after_install": "После установки перезапустите Irium Core.",
+      "external_title": "Майнинг в пуле внешним ASIC или GPU",
+      "external_body_before_url": "Направьте Ваше ASIC- или GPU-программное обеспечение прямо на URL пула выше (напр. ",
+      "external_body_after_url": "). Irium Core отслеживает статистику шар со стороны пула; локальный хешрейт оборудования сообщает сам майнер.",
+      "connect_button_intro_before": "Кнопка ",
+      "connect_button_intro_middle": " ниже запускает пул-майнинг через CPU с помощью встроенного ",
+      "connect_button_intro_after": " сайдкара — полезно, только если Вы хотите, чтобы эта машина также вносила CPU-хешрейт в пул. Внешним ASIC эта кнопка не нужна."
     },
     "toasts": {
       "miner_started": "Процессор-майнер запущен",
@@ -1114,17 +1749,42 @@
       "connecting_to_pool": "Подключение к бассейну…",
       "pool_disconnected_reconnecting": "Пул отключен — повторное подключение…",
       "pool_connection_lost": "Соединение с бассейном потеряно. Пожалуйста, переподключитесь.",
-      "pool_error": "Ошибка пула: {{message}}"
+      "pool_error": "Ошибка пула: {{message}}",
+      "no_device_selected": "Устройство не выбрано — используется устройство по умолчанию 0",
+      "solo_listening_on": "Соло-Stratum слушает на {{addr}}",
+      "solo_failed_start": "Не удалось запустить соло-Stratum",
+      "solo_stopped": "Соло-Stratum остановлен",
+      "solo_failed_stop": "Не удалось остановить соло-Stratum",
+      "copied": "Скопировано"
     },
     "page_subtitle": "SHA-256d · ЦП · ГП · Поддержка пула ASIC",
     "tooltips": {
       "copy_address": "Копировать адрес",
-      "copy_full_hash": "Скопировать полный хэш"
+      "copy_full_hash": "Скопировать полный хэш",
+      "copy": "Копировать"
     },
     "pool_configuration": "Конфигурация пула",
     "opencl": {
       "detected_title": "Обнаружено оборудование OpenCL",
-      "none_detected": "Графический процессор с поддержкой OpenCL не обнаружен"
+      "none_detected": "Графический процессор с поддержкой OpenCL не обнаружен",
+      "no_gpu_idle_message": "Совместимый GPU не обнаружен — см. раздел «Конфигурация» ниже",
+      "select_platform": "Выберите платформу и запустите майнинг",
+      "no_compatible_gpu": "Совместимый GPU не обнаружен",
+      "install_drivers_before": "GPU-майнинг требует среду выполнения OpenCL. Установите драйверы Вашего GPU-производителя (NVIDIA, AMD или Intel OpenCL SDK) и нажмите ",
+      "install_drivers_after": ".",
+      "supports_pool_and_solo": "После включения GPU-майнер поддерживает и пул (Stratum), и соло-майнинг (прямой RPC к узлу).",
+      "read_docs": "Прочитать документацию GPU-майнера",
+      "no_platforms_found": "Платформы OpenCL не найдены.",
+      "install_icd_before": "Установите драйвер Вашего GPU и ICD-загрузчик, затем нажмите ",
+      "install_icd_after": " снова.",
+      "platform_n": "Платформа {{n}}",
+      "discrete_gpu": "дискретный GPU",
+      "device_n": "Устройство {{n}}",
+      "fix_intro": "Чтобы исправить, установите драйвер OpenCL для Вашего GPU:",
+      "fix_nvidia": "Переустановите драйвер GPU с nvidia.com",
+      "fix_amd": "Установите AMD Software Adrenalin с amd.com",
+      "fix_intel": "Установите Intel Graphics Driver с intel.com",
+      "scanning": "Сканирование OpenCL-устройств…"
     },
     "unexpected_exit": {
       "title": "Miner stopped unexpectedly",
@@ -1133,6 +1793,75 @@
       "restart_cpu": "Restart CPU Miner",
       "restart_gpu": "Restart GPU Miner",
       "dismiss": "Dismiss"
+    },
+    "activity": {
+      "share_accepted": "Шара принята",
+      "share_rejected": "Шара отклонена",
+      "share_rejected_with_detail": "Шара отклонена — {{detail}}",
+      "pool_error": "Ошибка пула",
+      "pool_error_with_detail": "Ошибка пула — {{detail}}",
+      "mining_active": "Майнинг активен",
+      "block_hash_marker": "· блок #{{height}}",
+      "section_title": "Недавняя активность",
+      "last_count": "последние {{count}}",
+      "waiting_for_first_share": "Ожидание первой шары…"
+    },
+    "status": {
+      "loading": "Загрузка…",
+      "mining_active": "Майнинг активен",
+      "mining_active_syncing": "Майнинг активен — синхронизация блоков…",
+      "cpu_idle": "CPU простаивает",
+      "gpu_active": "GPU активен",
+      "gpu_idle": "GPU простаивает",
+      "pool_connected": "Пул подключён",
+      "pool_disconnected": "Пул отключён",
+      "live_badge": "В сети",
+      "syncing_badge": "Синхронизация"
+    },
+    "sync": {
+      "node_syncing_height": "Узел синхронизируется — высота {{localHeight}} / сеть {{networkTip}}",
+      "warming_up_header": "Разогрев майнера — ожидание первого замера хешрейта…",
+      "node_syncing_body": "Узел всё ещё догоняет верхушку сети. Майнинг включён, но шары не будут приниматься, пока локальная цепь не совпадёт. Обычно завершается за несколько минут.",
+      "warming_up_body": "Сайдкар майнера запущен. Первый замер хешрейта появится через 1-3 секунды — действий не требуется."
+    },
+    "block_info": {
+      "mining_block_n": "Майнинг блока #{{height}}",
+      "previous_block": "Предыдущий блок",
+      "last_confirmed_block": "последний подтверждённый блок",
+      "network_difficulty": "Сложность сети"
+    },
+    "solo": {
+      "title": "Соло-Stratum-мост",
+      "subtitle": "Запустите ASIC против собственного iriumd. Без комиссии пула, без зависимости от пула.",
+      "listening": "Слушает",
+      "stopped": "Остановлено",
+      "listen_address_label": "Адрес прослушивания",
+      "listen_default_before": "По умолчанию ",
+      "listen_default_after": " привязывает все интерфейсы, чтобы ASIC в Вашей локальной сети мог достучаться.",
+      "asic_connection_string": "Строка подключения ASIC",
+      "bullet_replace_host_before": "• Замените ",
+      "bullet_replace_host_after": " на LAN-IP Вашей машины (или IP VPS).",
+      "bullet_worker_username_before": "• Имя воркера: Ваш Q-адрес, затем ",
+      "bullet_worker_username_after": ". Пароль: любая строка.",
+      "bullet_bridge_serves_before": "• Мост обслуживает ",
+      "bullet_bridge_serves_middle": " и ",
+      "bullet_bridge_serves_after": " на Вашем локальном iriumd."
+    },
+    "found_block_banner": {
+      "title": "Блок #{{height}} добыт!",
+      "body": "Ваш {{kind}}-майнер только что выиграл сетевую гонку — 50 IRM в пути (созревают через 100 блоков).",
+      "dismiss_aria": "Закрыть"
+    },
+    "tabs_v2": {
+      "cpu": "CPU-майнер",
+      "gpu": "GPU-майнер",
+      "stratum": "Пул / Stratum",
+      "solo": "Соло-Stratum"
+    },
+    "pool_presets": {
+      "irium_official_cpu_gpu": "Официальный пул Irium (CPU/GPU)",
+      "irium_official_asic": "Официальный пул Irium (ASIC)",
+      "custom": "Свой"
     }
   },
   "onboarding": {
@@ -1162,7 +1891,8 @@
       "generating": "Создание кошелька…",
       "show_recovery": "Показать фразу восстановления",
       "i_wrote_it_down": "я записал это",
-      "continue_to_wallet": "Перейти к кошельку"
+      "continue_to_wallet": "Перейти к кошельку",
+      "generating_sub": "Создание BIP32 HD-кошелька с сид-фразой из 24 слов…"
     },
     "import": {
       "tab_mnemonic": "Восстановительная фраза",
@@ -1199,6 +1929,153 @@
       "too_short": "Password must be at least 4 characters",
       "required": "Password is required",
       "continue": "Continue"
+    },
+    "splash": {
+      "subtitle_full_node": "ДЕСКТОПНЫЙ КОШЕЛЁК ПОЛНОГО УЗЛА",
+      "status_initializing": "Инициализация среды выполнения…",
+      "status_loading_crypto": "Загрузка криптографических модулей…",
+      "status_verifying_binary": "Проверка целостности бинарника…",
+      "status_establishing_context": "Установка защищённого контекста…",
+      "status_ready": "Готово"
+    },
+    "rail": {
+      "system_check": "Проверка системы",
+      "bootstrap": "Загрузка",
+      "network_sync": "Синхронизация сети",
+      "wallet_setup": "Настройка кошелька",
+      "backup_secure": "Резервная копия и защита"
+    },
+    "binary_check": {
+      "subtitle": "Проверка наличия необходимых бинарников узла на этой машине.",
+      "iriumd_desc": "Демон полного узла",
+      "irium_wallet_desc": "CLI кошелька и маркетплейса",
+      "irium_miner_desc": "CPU-майнер",
+      "all_verified": "Все бинарники проверены. Продолжаем…",
+      "missing_binaries": "Отсутствуют бинарники. Поместите исполняемые файлы в src-tauri/binaries/",
+      "retry": "Повторить",
+      "skip_advanced": "Пропустить (продвинутый режим)"
+    },
+    "bootstrap": {
+      "subtitle": "Настройка сидов, якорей доверия и генезис-блока.",
+      "creating_data_dir": "Создание директории данных…",
+      "writing_seedlist": "Запись bootstrap seedlist.txt…",
+      "writing_static_peers": "Запись static_peers.txt…",
+      "installing_anchors": "Установка genesis anchors.json…",
+      "installing_trust_signatures": "Установка подписей доверия…",
+      "complete": "Загрузочная настройка завершена.",
+      "error_prefix": "Ошибка",
+      "skip_continue": "Пропустить (продолжить)"
+    },
+    "network_sync": {
+      "subtitle": "Загрузка локальных данных блокчейна и подключение к P2P-сети Irium.",
+      "port_in_use_message": "Порт 38291 уже используется. Возможно, в фоне работает другой узел Irium. Проверьте системный трей на наличие запущенного Irium Core или откройте диспетчер задач и завершите процессы iriumd.exe, затем перезапустите приложение.",
+      "add_peer_format_error": "Используйте формат IP:PORT (напр. 1.2.3.4:38291)",
+      "add_peer_rejected": "Узел отклонил адрес",
+      "add_peer_unreachable": "Не удалось связаться с узлом",
+      "starting_iriumd": "Запуск iriumd…",
+      "loading_blockchain_data": "Загрузка данных блокчейна…",
+      "starting_node": "Запуск узла…",
+      "discovering": "поиск…",
+      "searching_for_peers": "Поиск пиров в сети Irium",
+      "checking_connectivity": "Проверка сетевого подключения…",
+      "network_reachable": "Сеть доступна — запуск узла…",
+      "port_blocked_title": "Похоже, порт 38291 заблокирован на исходящие соединения",
+      "port_blocked_body_before": "Сеть Irium недоступна. Проверьте маршрутизатор или брандмауэр — порт",
+      "port_blocked_body_after": "должен быть открыт для исходящих TCP-соединений.",
+      "restarting_node": "Перезапуск узла…",
+      "retry_connection": "Повторить подключение",
+      "still_connecting_title": "Подключение к пирам продолжается…",
+      "still_connecting_body": "Узел обращается к сети Irium. Обычно это занимает до 30 секунд — подождите.",
+      "connecting_for": "Подключение в течение {{seconds}} с…",
+      "add_peer_manually": "Добавить пира вручную",
+      "add_peer_button": "Добавить пира",
+      "added_peer": "добавлен {{addr}}",
+      "continuing_in": "Продолжение через {{seconds}} с…",
+      "syncing_background": "Синхронизация в фоне…",
+      "continue_anyway": "Продолжить всё равно →"
+    },
+    "wallet_setup_subtitle": "Создайте новый HD-кошелёк или восстановите существующий.",
+    "wallet_setup_errors": {
+      "failed_create": "Не удалось создать кошелёк",
+      "no_wallet_pending": "Нет кошелька, ожидающего шифрования",
+      "failed_set_password": "Не удалось установить пароль кошелька",
+      "import_failed": "Импорт не удался"
+    },
+    "wallet_password": {
+      "title": "Установите пароль кошелька",
+      "subtitle": "Шифрует файл кошелька. Требуется перед продолжением.",
+      "placeholder": "Выберите надёжный пароль (от 8 символов)",
+      "confirm_placeholder": "Подтвердите пароль",
+      "warning": "Этот пароль невозможно восстановить, если Вы его забудете. Запишите его и храните в безопасном месте. Сид-фраза — единственный способ восстановить кошелёк без этого пароля.",
+      "continue": "Зашифровать и продолжить",
+      "too_short": "Пароль должен содержать не менее 8 символов",
+      "mismatch": "Пароли не совпадают",
+      "encrypting": "Шифрование кошелька…",
+      "encrypting_sub": "Применение ключа, полученного через PBKDF2, к файлу кошелька.",
+      "hide": "скрыть",
+      "show": "показать"
+    },
+    "wallet_restored_sub": "Ваш кошелёк успешно импортирован.",
+    "restored": {
+      "primary_address": "Основной адрес",
+      "address_pending": "Адрес появится на панели управления, когда узел завершит синхронизацию.",
+      "additional_addresses": "Найдено ещё {{count}} адресов",
+      "balance_will_load": "Ваш баланс и история транзакций загрузятся автоматически на панели управления по мере синхронизации узла.",
+      "continue_to_dashboard": "Перейти к панели управления"
+    },
+    "import_form": {
+      "subtitle": "Выберите способ восстановления ниже.",
+      "tab_mnemonic_label": "Сид-фраза",
+      "tab_wif_label": "WIF-ключ",
+      "tab_privkey_label": "Приватный ключ",
+      "mnemonic_placeholder": "слово1 слово2 слово3 … слово24",
+      "mnemonic_hint": "BIP32-мнемоника — 12 или 24 слова через пробел",
+      "wif_placeholder": "5Jxx… или Kxx… или Lxx…",
+      "wif_hint": "Wallet Import Format (приватный ключ в кодировке Base58Check)",
+      "privkey_placeholder": "0x1a2b3c4d… (64 hex-символа)",
+      "privkey_hint": "Сырой 256-битный приватный ключ в шестнадцатеричном формате",
+      "back": "Назад",
+      "importing": "Импорт…"
+    },
+    "choose": {
+      "create_description": "Сгенерировать новый BIP32 HD-кошелёк с сид-фразой из 24 слов.",
+      "import_description": "Восстановить через сид-фразу, WIF-ключ или сырой приватный ключ."
+    },
+    "backup": {
+      "field_address_label": "Адрес кошелька",
+      "field_wif_label": "WIF-ключ",
+      "field_mnemonic_label": "Сид-фраза для восстановления (24 слова)",
+      "field_wif_warning": "WIF — Ваш приватный ключ в переносимом формате. Любой, у кого он есть, контролирует средства по этому адресу.",
+      "field_mnemonic_warning": "Запишите эти 24 слова по порядку. Восстановление невозможно в случае утери.",
+      "copy": "Копировать",
+      "copied": "Скопировано!",
+      "hide": "Скрыть",
+      "reveal": "Показать",
+      "click_to_reveal": "Нажмите, чтобы показать",
+      "confirm_address": "Я сохранил адрес кошелька",
+      "confirm_wif": "Я надёжно сохранил WIF-ключ",
+      "confirm_mnemonic": "Я записал сид-фразу офлайн",
+      "loading": "Загрузка…",
+      "wif_read_failed": "(не удалось прочитать WIF — используйте панель «Безопасность» после запуска",
+      "shown_once_before": "Эта информация показывается",
+      "shown_once_emphasis": "только один раз",
+      "shown_once_after": ". Сохраните каждый пункт офлайн перед продолжением.",
+      "critical_warning_strong": "Вы не сможете восстановить кошелёк",
+      "critical_warning_body": "если потеряете сид-фразу или WIF-ключ. У Irium Core нет облачного резервного копирования. Запишите всё прямо сейчас.",
+      "items_confirmed": "{{count}} из {{total}} пунктов подтверждено",
+      "launch_dashboard": "Открыть панель управления",
+      "confirm_all_to_continue": "Подтвердите все 4 пункта, чтобы продолжить"
+    },
+    "welcome_screen": {
+      "welcome_to": "Добро пожаловать в",
+      "tagline": "Ваш десктопный кошелёк полного узла для блокчейна Irium. Отправляйте, получайте, торгуйте и проводите расчёты — всё одноранговое, всё ончейн.",
+      "wizard_intro": "Этот мастер настройки сконфигурирует узел, синхронизирует цепь и создаст или восстановит кошелёк.",
+      "chip_full_node": "Полный узел",
+      "chip_hd_wallet": "HD-кошелёк",
+      "chip_p2p_trade": "P2P-торговля",
+      "chip_on_chain_settlement": "Ончейн-расчёты",
+      "chip_privacy_first": "Приватность прежде всего",
+      "get_started": "Начать"
     }
   },
   "reputation": {
@@ -1426,7 +2303,26 @@
       "hashrate_avg_window": "{{minutes}}мин в среднем",
       "confidence_low": "Низкая уверенность",
       "confidence_medium": "Средняя достоверность",
-      "confidence_high": "Высокая уверенность"
+      "confidence_high": "Высокая уверенность",
+      "asic_port_with_443": "порты {{port}} + 443",
+      "active_miners": "Активные майнеры",
+      "worker_count_one": "{{count}} воркер",
+      "worker_count_other": "{{count}} воркеров",
+      "your_miners_pinned": "Ваши майнеры закреплены сверху",
+      "hide_offline": "Скрыть офлайн ({{count}})",
+      "show_offline": "Показать офлайн-майнеров ({{count}})",
+      "no_miners_reporting": "Активные майнеры не отчитываются.",
+      "col_worker": "Воркер",
+      "col_accepted": "Принято",
+      "col_rejected_15m": "Отклонено (15м)",
+      "col_rejected_15m_tooltip": "Отклонённые шары только за последние 15 минут. Кумулятивный счётчик (с момента перезапуска stratum) показывал устаревший всплеск прогрева воркера даже после его восстановления.",
+      "col_reject_pct_15m": "% отклонений (15м)",
+      "col_reject_pct_15m_tooltip": "Скользящая доля отклонений за последние 15 минут. Кумулятивная ставка с момента перезапуска оставляла воркера на всплеске прогрева даже после восстановления.",
+      "col_hashrate_15m": "Хешрейт (15м)",
+      "col_blocks": "Блоки",
+      "col_blocks_tooltip": "Блоки, найденные этим воркером в пуле. Заполняется stats-proxy; показывает «—», пока прокси не восстановит блочный кредит для каждого воркера.",
+      "col_last_share": "Последняя шара",
+      "yours_badge": "Ваш"
     },
     "richlist": {
       "title": "Топ держателей IRMTIKER",
@@ -1464,7 +2360,8 @@
       "load_more_loading": "Загрузка топ-500…",
       "load_error": "Не удалось загрузить расширенный список: {{reason}}.",
       "empty": "Балансов P2PKH в цепочке пока нет.",
-      "node_offline_hint": "Запустите узел на информационной панели, чтобы загрузить расширенный список."
+      "node_offline_hint": "Запустите узел на информационной панели, чтобы загрузить расширенный список.",
+      "sr_total_supply": "Общая эмиссия {{total}} IRM — контекст для программ чтения с экрана"
     },
     "solo_pool": {
       "title": "Solo Pool",
@@ -1503,6 +2400,63 @@
       "blocks_per_day_suffix": "block/день",
       "irm_per_day_suffix": "IRM/день",
       "disclaimer": "Только оценка — реальный доход зависит от удачи, комиссий пула и изменения сложности. Калькулятор использует актуальный хешрейт сети, обновляется каждые 60 с."
+    },
+    "mining_overview": {
+      "title": "Обзор сетевого майнинга",
+      "subtitle": "Сводный экран сети, пула и Вашего майнинга. Обновляется каждые 30 секунд.",
+      "network_summary": "Сводка по сети",
+      "pool_mining": "Майнинг в пуле",
+      "your_mining": "Ваш майнинг",
+      "network_hashrate": "Хешрейт сети",
+      "difficulty": "Сложность",
+      "avg_block_time": "Среднее время блока",
+      "est_active_miners": "Активных майнеров (оценка)",
+      "network_wide_estimate": "оценка по всей сети",
+      "pool_hashrate": "Хешрейт пула",
+      "estimate_sub": "оценка",
+      "active_pool_miners": "Активные майнеры пула",
+      "pool_blocks_found": "Блоки, найденные пулом",
+      "all_time": "за всё время",
+      "pool_share": "Пул / Сеть",
+      "share_of_network_hashrate": "доля от хешрейта сети",
+      "your_hashrate": "Ваш хешрейт",
+      "collecting": "сбор данных…",
+      "pool_workers_one": "{{count}} воркер в пуле",
+      "pool_workers_other": "{{count}} воркеров в пуле",
+      "mode": "Режим",
+      "mode_pool": "Пул",
+      "mode_solo": "Соло",
+      "not_mining": "не майнит",
+      "connected_via_stratum": "подключено через Stratum",
+      "direct_to_local_node": "напрямую к локальному узлу",
+      "on_pool": "на pool.iriumlabs.org",
+      "on_solo_bridge": "на соло-Stratum-мосту",
+      "accepted_shares": "Принятые шары",
+      "none": "нет",
+      "pool_lifetime": "пул, за всё время",
+      "last_share": "Последняя шара",
+      "blocks_you_found": "Блоки, найденные Вами",
+      "from_pool_worker": "от воркера пула",
+      "this_session": "в этой сессии",
+      "pool_blocks_today": "Блоки пула сегодня",
+      "today": "сегодня"
+    },
+    "relative_time": {
+      "just_now": "только что",
+      "seconds_ago_one": "{{count}} секунду назад",
+      "seconds_ago_other": "{{count}} секунд назад",
+      "minutes_ago_one": "{{count}} минуту назад",
+      "minutes_ago_other": "{{count}} минут назад",
+      "hours_ago_one": "{{count}} час назад",
+      "hours_ago_other": "{{count}} часов назад",
+      "days_ago_one": "{{count}} день назад",
+      "days_ago_other": "{{count}} дней назад"
+    },
+    "founder_card": {
+      "title": "Адрес вестинга основателя",
+      "description": "На этом адресе хранится 3 500 000 IRM, заблокированных через CLTV-таймлок в генезисе. Баланс показан как 0, потому что заблокированные средства используют специальный скрипт и не учитываются как доступный баланс.",
+      "unlocks_at": "Разблокируется в блоке #{{height}}",
+      "blocks_remaining": "(осталось ~{{count}} блоков)"
     }
   },
   "help": {
@@ -2146,7 +3100,10 @@
       "errors": {
         "buyer_required": "Введите адрес Irium покупателя.",
         "amount_required": "Введите сумму IRM, которую хотите заблокировать.",
-        "receiving_required": "Скажите покупателю, что вы ожидаете в обмен."
+        "receiving_required": "Скажите покупателю, что вы ожидаете в обмен.",
+        "no_agreement_id": "Создание соглашения не вернуло id",
+        "fund_after_create_failed": "Соглашение создано, но финансирование не удалось. Откройте страницу «Соглашения», чтобы повторить.",
+        "payment_ref_required": "Укажите ссылку на транзакцию, чтобы продавец мог проверить Ваш платёж."
       },
       "review": {
         "you_lock": "Вы блокируете",
@@ -2154,7 +3111,14 @@
         "deadline": "Срок",
         "deadline_value": "Если не оплачено за {{hours}} ч., IRM вернутся автоматически.",
         "lock_funds": "Заблокировать средства",
-        "tx_note": "Это создаст транзакцию в блокчейне Irium."
+        "tx_note": "Это создаст транзакцию в блокчейне Irium.",
+        "you_lock_short": "Вы блокируете",
+        "buyer_pays_you": "Покупатель платит Вам",
+        "payment_deadline": "Срок оплаты",
+        "hours_from_now": "{{hours}} часов от текущего момента",
+        "buyer_address": "Адрес покупателя",
+        "lock_my_irm": "Заблокировать мои IRM",
+        "tx_broadcast_note": "Будет передана транзакция в блокчейн. Подтверждение может занять некоторое время."
       },
       "share": {
         "title": "Поделитесь с покупателем",
@@ -2174,7 +3138,25 @@
         "receiving_placeholder": "напр. 200 USDT, банковский перевод, наличные",
         "deadline_label": "На какое время оставить сделку открытой?",
         "deadline_helper": "Если оплата не поступит за это время, ваши IRM вернутся автоматически.",
-        "release_button": "Оплата получена — освободить средства покупателю"
+        "release_button": "Оплата получена — освободить средства покупателю",
+        "buyer_address_short_label": "Адрес покупателя",
+        "buyer_address_helper": "Адрес, который получит IRM, когда Вы подтвердите оплату покупателя.",
+        "amount_label_short": "Количество IRM для продажи",
+        "amount_helper_short": "Хранится в эскроу, пока Вы не подтвердите платёж покупателя.",
+        "receiving_label_short": "Что Вы получите взамен",
+        "receiving_placeholder_detailed": "напр. 50 USDT банковским переводом SEPA",
+        "deadline_label_short": "Срок оплаты покупателем",
+        "deadline_helper_refund": "Если оплата не поступит к сроку, Вы сможете запросить возврат.",
+        "locked_hero_title": "Ваши IRM теперь заблокированы и защищены",
+        "locked_hero_body": "Покупатель не сможет их забрать без Вашего подтверждения. Поделитесь кодом сделки ниже, чтобы он мог присоединиться, и ждите оплаты.",
+        "share_code_title": "Поделитесь этим кодом сделки",
+        "share_code_body": "Покупатель вставит этот код в свой кошелёк, чтобы присоединиться к сделке.",
+        "header1_title": "Настройте продажу",
+        "header1_subtitle": "Укажите, кто покупатель и сколько IRM Вы хотите продать.",
+        "header2_title": "Проверьте и заблокируйте",
+        "header2_subtitle": "Подтвердите детали. Блокировка отправляет IRM в эскроу.",
+        "header3_title": "Ваша сделка активна",
+        "header3_subtitle": "Поделитесь кодом сделки с покупателем и ждите его оплаты."
       },
       "buying": {
         "step2_title": "Вставьте код сделки от продавца",
@@ -2193,12 +3175,42 @@
         "status_waiting": "Ждём подтверждения оплаты продавцом.",
         "status_releasing": "Оплата подтверждена — IRM в пути.",
         "status_complete": "Готово — IRM в вашем wallet.",
-        "view_agreements": "Открыть в agreement"
+        "view_agreements": "Открыть в agreement",
+        "review_commit_intro": "Подтвердите детали сделки ниже. Продолжая, Вы принимаете на себя обязательства по этой сделке. После этого шага отправьте офчейн-платёж продавцу и сообщите о нём на следующем экране.",
+        "seller_is_locking": "Продавец блокирует",
+        "seller_short_label": "Продавец",
+        "details_did_not_load": "Детали сделки не загрузились. Вы можете продолжить, но сверьте сумму IRM с продавцом перед оплатой.",
+        "continue_and_link": "Продолжить и привязать",
+        "trade_complete_title": "Сделка завершена",
+        "trade_complete_body": "IRM поступили в Ваш кошелёк.",
+        "seller_locked_for_you_title": "IRM продавца заблокированы для Вас",
+        "seller_locked_for_you_body": "Отправьте офчейн-платёж продавцу, затем укажите ниже ссылку на Вашу транзакцию.",
+        "report_payment_title": "Сообщите о платеже",
+        "report_payment_body": "После того как Вы отправили офчейн-платёж, вставьте любую ссылку, которую продавец сможет использовать для подтверждения — номер банковского перевода, transaction id PayPal и т. д.",
+        "report_payment_placeholder": "Номер банковского перевода, txid PayPal, txid блокчейна и т. д.",
+        "cancel_open_dispute": "Отменить и открыть спор",
+        "payment_reported": "Платёж заявлен",
+        "i_have_sent_payment": "Я отправил оплату",
+        "header1_title": "Вставьте код сделки от продавца",
+        "header1_subtitle": "Продавец отправил Вам код после блокировки своих IRM.",
+        "header2_title": "Проверьте сделку",
+        "header2_subtitle": "Убедитесь, что сумма и продавец соответствуют ожиданиям.",
+        "header3_title": "Ваша сделка активна",
+        "header3_subtitle": "Отправьте офчейн-платёж, затем сообщите о нём, чтобы продавец освободил IRM."
       },
       "fuel_banner_title": "Вам нужен IRM, чтобы создать расчёт.",
       "fuel_banner_prefix": "Перейдите в",
       "fuel_banner_link": "Маркетплейс → Spot Swap",
-      "fuel_banner_suffix": "чтобы сначала получить IRM."
+      "fuel_banner_suffix": "чтобы сначала получить IRM.",
+      "toast_buyer_linked": "Ваша сторона теперь привязана к сделке. Отправьте офчейн-платёж продавцу.",
+      "toast_payment_reported": "Платёж заявлен. Ожидается подтверждение продавца.",
+      "toast_dispute_opened": "Спор открыт. Арбитр рассмотрит доказательства.",
+      "dispute_reason_buyer": "покупатель не может завершить сделку",
+      "choose_selling_title": "Я продаю IRM",
+      "choose_selling_body": "Заблокируйте Ваши IRM в эскроу. Покупатель платит Вам офчейн, затем Вы освобождаете средства.",
+      "choose_buying_title": "Я покупаю IRM",
+      "choose_buying_body": "Вставьте код сделки от продавца. Отправьте ему оплату, затем подтвердите получение IRM.",
+      "view_resolvers": "Посмотреть доступных арбитров"
     },
     "pay_for_work": {
       "step1_title": "Одним платежом или по вехам?",
@@ -2250,7 +3262,12 @@
       "claim_refund": "Запросить возврат",
       "toast_released": "Оплата отправлена исполнителю.",
       "toast_release_pending": "Выполнение записано. Средства будут освобождены после нескольких block подтверждений.",
-      "toast_refunded": "Возврат запрошен — средства идут в ваш wallet."
+      "toast_refunded": "Возврат запрошен — средства идут в ваш wallet.",
+      "toast_fund_failed": "Соглашение создано, но финансирование не удалось. Найдите его на странице «Соглашения», чтобы повторить.",
+      "which_milestone": "Какой этап?",
+      "milestone_option": "Этап {{index}} из {{total}}",
+      "milestone_helper": "«Пометить выполненным» освобождает долю заблокированных IRM, приходящуюся на этот этап. Подрядчик получает 1/{{count}} от общей суммы за этап.",
+      "mark_complete_milestone": "Пометить выполненным — освободить оплату (этап {{index}})"
     },
     "deposit": {
       "step1_title": "Настройте залог",

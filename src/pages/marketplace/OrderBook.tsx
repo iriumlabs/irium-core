@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Loader2, ShieldCheck, ArrowRight, Activity, Star } from 'lucide-react';
 import { offers, reputation } from '../../lib/tauri';
 import type { Offer } from '../../lib/types';
@@ -64,12 +65,7 @@ function parsePrice(raw: string | undefined | null): { total: number; unit: stri
 
 type SortKey = 'price_asc' | 'price_desc' | 'newest' | 'best_rep';
 
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'price_asc',  label: 'Price ↑' },
-  { key: 'price_desc', label: 'Price ↓' },
-  { key: 'newest',     label: 'Newest' },
-  { key: 'best_rep',   label: 'Best Rep' },
-];
+const SORT_KEYS: SortKey[] = ['price_asc', 'price_desc', 'newest', 'best_rep'];
 
 export interface OrderBookProps {
   onTakeOffer: (offer: Offer) => void;
@@ -84,6 +80,13 @@ function shortAddr(addr: string): string {
 }
 
 export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId }: OrderBookProps) {
+  const { t } = useTranslation();
+  const sortLabels: Record<SortKey, string> = {
+    price_asc: t('marketplace.order_book.sort.price_asc'),
+    price_desc: t('marketplace.order_book.sort.price_desc'),
+    newest: t('marketplace.order_book.sort.newest'),
+    best_rep: t('marketplace.order_book.sort.best_rep'),
+  };
   const [allOffers, setAllOffers] = useState<Offer[]>([]);
   const [reps, setReps] = useState<Record<string, ReputationSummary | null>>({});
   const [showTaken, setShowTaken] = useState(false);
@@ -178,12 +181,12 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
     <div className="bg-[#181a20] border border-[#2b3139] rounded-lg flex flex-col min-h-0">
       {/* Header */}
       <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-[#2b3139]">
-        <h3 className="text-[13px] font-semibold text-[#eaecef]">Order Book</h3>
+        <h3 className="text-[13px] font-semibold text-[#eaecef]">{t('marketplace.order_book.title')}</h3>
         <button
           onClick={onCreateOrder}
           className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded text-[12px] font-semibold bg-[#fcd535] text-[#0b0e11] hover:bg-[#f0c020] transition-colors"
         >
-          <Plus size={12} /> Create Order
+          <Plus size={12} /> {t('marketplace.order_book.create_order')}
         </button>
       </div>
 
@@ -191,10 +194,10 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
       <div className="px-4 py-2 flex items-center justify-between gap-3 text-[11px] text-[#5e6673] border-b border-[#2b3139] font-mono">
         <span className="inline-flex items-center gap-1.5">
           <Activity size={11} className="text-[#0ecb81]" />
-          <span className="text-[#b7bdc6]">{rows.length}</span> offer{rows.length === 1 ? '' : 's'}
+          <span className="text-[#b7bdc6]">{rows.length}</span> {t('marketplace.order_book.offers_count', { count: rows.length })}
           {filteredCount > 0 && (
-            <span title={`${filteredCount} offer${filteredCount === 1 ? '' : 's'} hidden because they had no quoted price`}>
-              · {filteredCount} hidden
+            <span title={t('marketplace.order_book.hidden_tooltip', { count: filteredCount })}>
+              · {t('marketplace.order_book.hidden_suffix', { count: filteredCount })}
             </span>
           )}
         </span>
@@ -206,20 +209,20 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
               onChange={(e) => setShowTaken(e.target.checked)}
               className="accent-[#fcd535]"
             />
-            Show taken
+            {t('marketplace.order_book.show_taken')}
           </label>
           <select
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value as SortKey)}
             className="h-6 px-2 rounded bg-[#0b0e11] border border-[#2b3139] text-[#eaecef] font-sans text-[11px]"
           >
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.key} value={opt.key} className="bg-[#181a20]">
-                {opt.label}
+            {SORT_KEYS.map((key) => (
+              <option key={key} value={key} className="bg-[#181a20]">
+                {sortLabels[key]}
               </option>
             ))}
           </select>
-          <span>{lastUpdated ? `Updated ${timeAgo(lastUpdated)}` : 'Refreshing…'}</span>
+          <span>{lastUpdated ? t('marketplace.order_book.updated_ago', { time: timeAgo(lastUpdated) }) : t('marketplace.order_book.refreshing')}</span>
         </span>
       </div>
 
@@ -233,20 +236,20 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
       <div className="overflow-y-auto flex-1" style={{ maxHeight: 620 }}>
         {rows.length === 0 && !loading ? (
           <div className="text-[12px] py-10 text-center text-[#5e6673] px-4">
-            No offers in the book yet. Click <span className="text-[#eaecef] font-medium">Create Order</span> to post the first one.
+            {t('marketplace.order_book.empty_prefix')} <span className="text-[#eaecef] font-medium">{t('marketplace.order_book.create_order')}</span> {t('marketplace.order_book.empty_suffix')}
           </div>
         ) : (
           <Table>
             <THead>
               <TR>
                 <TH align="left"  className="w-[44px]">#</TH>
-                <TH align="right">Amount IRM</TH>
-                <TH align="right">Price / IRM</TH>
-                <TH align="right">Total</TH>
-                <TH align="left">Payment</TH>
-                <TH align="left">Seller</TH>
-                <TH align="right">Rep</TH>
-                <TH align="right">Age</TH>
+                <TH align="right">{t('marketplace.order_book.col_amount_irm')}</TH>
+                <TH align="right">{t('marketplace.order_book.col_price_per_irm')}</TH>
+                <TH align="right">{t('marketplace.order_book.col_total')}</TH>
+                <TH align="left">{t('marketplace.order_book.col_payment')}</TH>
+                <TH align="left">{t('marketplace.order_book.col_seller')}</TH>
+                <TH align="right">{t('marketplace.order_book.col_rep')}</TH>
+                <TH align="right">{t('marketplace.order_book.col_age')}</TH>
                 <TH align="right" className="pr-3">{/* action */}</TH>
               </TR>
             </THead>
@@ -287,7 +290,7 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
                       {shortAddr(o.seller ?? '')}
                     </TD>
                     <TD align="right">
-                      <span className="inline-flex items-center gap-1 text-[#f0b90b] font-mono tabular-nums" title={rep ? `${rep.stars} of 5, ${rep.completed} completed` : 'No reputation'}>
+                      <span className="inline-flex items-center gap-1 text-[#f0b90b] font-mono tabular-nums" title={rep ? t('marketplace.order_book.rep_tooltip', { stars: rep.stars, completed: rep.completed }) : t('marketplace.order_book.no_reputation')}>
                         {rep ? (
                           <>
                             <Star size={10} fill="currentColor" />
@@ -318,7 +321,7 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
                             : 'bg-[rgba(14,203,129,0.15)] text-[#0ecb81] border border-[rgba(14,203,129,0.30)] hover:bg-[rgba(14,203,129,0.25)]'
                         }`}
                       >
-                        {taken ? 'Taken' : <>Take <ArrowRight size={10} /></>}
+                        {taken ? t('marketplace.order_book.taken') : <>{t('marketplace.order_book.take')} <ArrowRight size={10} /></>}
                       </button>
                     </TD>
                   </TR>
@@ -331,7 +334,7 @@ export default function OrderBook({ onTakeOffer, onCreateOrder, selectedOfferId 
 
       {loading && (
         <div className="px-4 py-1.5 text-[11px] flex items-center gap-2 text-[#5e6673] border-t border-[#2b3139]">
-          <Loader2 size={11} className="animate-spin" /> refreshing…
+          <Loader2 size={11} className="animate-spin" /> {t('marketplace.order_book.refreshing_lower')}
         </div>
       )}
     </div>

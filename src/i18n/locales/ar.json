@@ -152,7 +152,9 @@
       "rpc_token_description_remote": "Required. Bearer token configured on the remote iriumd (its IRIUM_RPC_TOKEN environment variable).",
       "rpc_token_placeholder": "Paste IRIUM_RPC_TOKEN here",
       "rpc_token_test_remote": "Test remote",
-      "rpc_token_test_remote_ok": "Remote node reachable and authenticated"
+      "rpc_token_test_remote_ok": "Remote node reachable and authenticated",
+      "hide_token": "إخفاء الرمز",
+      "show_token": "إظهار الرمز"
     },
     "buttons": {
       "test_connection": "اتصال الاختبار",
@@ -195,7 +197,9 @@
       "onboarding_reset": "إعادة ضبط الإعداد - أعد تشغيل التطبيق لرؤية المعالج",
       "update_check_internet": "لا يمكن التحقق من وجود تحديثات. تحقق من اتصالك بالإنترنت.",
       "connection_failed": "فشل الاتصال",
-      "update_failed": "فشل التحديث"
+      "update_failed": "فشل التحديث",
+      "metrics_http_error": "الحالة سليمة، لكن /metrics أرجع HTTP {{status}}",
+      "metrics_unreachable": "الحالة سليمة، لكن /metrics غير قابل للوصول: {{error}}"
     },
     "page_subtitle": "قم بتكوين اتصال العقدة ومسارات المحفظة وتفضيلات العرض.",
     "update_banner": {
@@ -261,7 +265,14 @@
       "retry": "أعد المحاولة",
       "external_ip_label": "الملكية الفكرية الخارجية",
       "detecting_paragraph": "الانتظار لمدة تصل إلى 60 ثانية حتى يتمكن النظير الوارد من تأكيد إمكانية الوصول. تحتاج PEX إلى لحظة لنشر عنوانك إلى العقد الأخرى بعد البدء.",
-      "inactive_paragraph": "فشل UPnP ولم يصل أي أقران واردين. قم بتكوين إعادة توجيه المنفذ يدويًا على جهاز التوجيه الخاص بك (TCP 38291) أو قم بتمكين UPnP، ثم انقر فوق \"إعادة المحاولة\". لا تزال الاتصالات الصادرة تعمل في هذه الحالة."
+      "inactive_paragraph": "فشل UPnP ولم يصل أي أقران واردين. قم بتكوين إعادة توجيه المنفذ يدويًا على جهاز التوجيه الخاص بك (TCP 38291) أو قم بتمكين UPnP، ثم انقر فوق \"إعادة المحاولة\". لا تزال الاتصالات الصادرة تعمل في هذه الحالة.",
+      "diag_chosen_lan_ip": "عنوان IP المختار للشبكة المحلية",
+      "diag_router_ip": "IP جهاز التوجيه",
+      "diag_control_url": "رابط التحكم",
+      "diag_external_ip": "IP الخارجي",
+      "diag_private_double_nat": "(خاص — NAT مزدوج)",
+      "diag_add_port_mapping_tries": "محاولات AddPortMapping",
+      "diag_last_fault": "آخر خطأ"
     },
     "security_info": {
       "wallet_local": "يقوم Irium Core بتخزين ملف محفظتك محليًا. مفاتيحك الخاصة لا تترك جهازك أبدًا. ملف المحفظة مشفر. قم دائمًا بعمل نسخة احتياطية من العبارة الأولية الخاصة بك واحتفظ بها في وضع عدم الاتصال.",
@@ -325,11 +336,14 @@
       "reset_state_success": "تم إعادة تعيين الحالة — النسخة الاحتياطية في {{path}}",
       "reset_state_no_backup": "لا توجد حالة لإجراء نسخ احتياطي — تم إنشاء حالة جديدة",
       "reset_state_rebuilding": "node قيد إعادة التشغيل — يعيد بناء مجموعة UTXO من block المحلية (5-15 دقيقة)",
-      "reset_state_failed": "فشلت إعادة التعيين: {{reason}}"
+      "reset_state_failed": "فشلت إعادة التعيين: {{reason}}",
+      "external_ip_placeholder": "مثال: 203.0.113.42"
     },
     "developer_info": {
       "reset_onboarding": "إعادة ضبط الإعداد",
-      "reset_onboarding_description": "قم بعرض معالج الإعداد الذي تم تشغيله لأول مرة مرة أخرى عند التشغيل التالي"
+      "reset_onboarding_description": "قم بعرض معالج الإعداد الذي تم تشغيله لأول مرة مرة أخرى عند التشغيل التالي",
+      "show_legacy_settlement": "إظهار واجهة التسوية القديمة",
+      "show_legacy_settlement_description": "استخدم صفحة التسوية الأصلية بنمط شبكة القوالب بدلًا من التدفقات الجديدة SafeTrade / PayForWork / Deposit. يسري المفعول عند التنقل التالي إلى /settlement."
     },
     "action_bar": {
       "are_you_sure": "هل أنت متأكد؟",
@@ -469,7 +483,27 @@
       "rename_wallet_file": "إعادة تسمية ملف المحفظة",
       "delete_wallet_file": "قم بحذف ملف المحفظة هذا نهائيًا",
       "manage_wallets": "إدارة المحافظ",
-      "manage_description": "ملفات المحفظة، الاستيراد، العناوين المخفية"
+      "manage_description": "ملفات المحفظة، الاستيراد، العناوين المخفية",
+      "manage_button": "إدارة",
+      "copy_address": "نسخ العنوان",
+      "add_address_button": "إضافة عنوان",
+      "generating": "جاري التوليد…",
+      "empty_state": "لا توجد عناوين بعد. افتح الإدارة لإضافة واحد.",
+      "add_address_confirm_title": "إضافة عنوان جديد؟",
+      "add_address_confirm_body": "سيؤدي هذا إلى اشتقاق العنوان التالي من بذرة محفظتك. لا يمكن إزالة العناوين من ملف المحفظة بعد إنشائها — يمكن إخفاؤها فقط من القائمة المرئية.",
+      "set_primary_button": "تعيين كأساسي",
+      "primary_button_short": "أساسي",
+      "export_wif_short_tooltip": "تصدير WIF",
+      "wif_short": "WIF",
+      "qr_short": "QR",
+      "hide_button_short": "إخفاء",
+      "no_addresses_panel": "لا توجد عناوين بعد.",
+      "panel_description": "العناوين مشتقة من بذرة محفظتك ولا يمكن حذفها نهائيًا. استخدم إخفاء لإزالتها من العرض.",
+      "label_placeholder_primary": "مثال: أساسي · تعدين",
+      "label_placeholder_other": "مثال: تعدين",
+      "edit_label": "تحرير التسمية",
+      "add_custom_label": "إضافة تسمية مخصصة",
+      "address_qr_label": "QR العنوان"
     },
     "send": {
       "title": "إرسال IRM",
@@ -499,12 +533,44 @@
         "unconfirmed": "لم يتم تأكيد أموالك بعد. انتظر تأكيدًا واحدًا على الأقل قبل الإرسال.",
         "double_spend": "تتعارض هذه المعاملة مع معاملة معلقة أخرى. يرجى الانتظار والمحاولة مرة أخرى.",
         "generic": "لا يمكن بث المعاملة. يرجى التحقق من أن العقدة متصلة بالإنترنت ثم حاول مرة أخرى.",
-        "fallback": "فشلت المعاملة. يرجى المحاولة مرة أخرى."
-      }
+        "fallback": "فشلت المعاملة. يرجى المحاولة مرة أخرى.",
+        "insufficient_for_fee": "أموال غير كافية لرسوم الشبكة. رصيد العنوان {{balance}} ساتوشي؛ الحد الأدنى للرسوم {{fee}} ساتوشي.",
+        "cannot_compute_max": "تعذّر حساب الحد الأقصى — {{reason}}",
+        "node_still_syncing": "العقدة لا تزال قيد المزامنة ({{persisted}}/{{height}} كتلة). يرجى إغلاق هذا الحوار والانتظار حتى تكتمل المزامنة والمحاولة مرة أخرى.",
+        "not_accepted_mempool": "لم يتم قبول المعاملة من قِبل mempool العقدة"
+      },
+      "button_label": "إرسال",
+      "node_offline_tooltip": "يجب أن تكون العقدة متصلة بالإنترنت للإرسال",
+      "node_syncing_tooltip": "العقدة قيد المزامنة — يرجى الانتظار قبل الإرسال",
+      "max_button": "الحد الأقصى",
+      "no_spendable_funds_suffix": " — لا توجد أموال قابلة للإنفاق",
+      "no_spendable_in_wallet": "هذه المحفظة لا تحتوي على أموال قابلة للإنفاق.",
+      "estimated_fee_25k": "الرسوم المقدَّرة: ~25,000 ساتوشي",
+      "estimated_fee_label": "الرسوم المقدَّرة",
+      "estimated_fee_value_25k": "~25,000 ساتوشي",
+      "amount_sats_label": "المبلغ (ساتوشي)",
+      "confirm_send_prefix": "إرسال",
+      "confirm_send_to_suffix": "إلى",
+      "back_button": "← رجوع",
+      "transaction_sent_title": "تم إرسال المعاملة",
+      "transaction_sent_subtitle": "ستظهر معاملتك في الكتلة التالية",
+      "transaction_sent_explanation": "تم توقيع معاملتك تشفيريًا بمفتاحك الخاص وبثّها إلى الشبكة. ستكون مؤمنة بشكل دائم عند تضمينها في الكتلة التالية المعدَّنة.",
+      "status_signed": "موقَّعة",
+      "private_key_verified": "تم التحقق من المفتاح الخاص",
+      "status_confirming": "جاري التأكيد",
+      "next_mined_block": "الكتلة التالية المعدَّنة",
+      "transaction_id_label": "معرف المعاملة",
+      "copy_transaction_id": "نسخ معرف المعاملة",
+      "view_in_explorer": "عرض في المستكشف"
     },
     "receive": {
       "title": "احصل على IRM",
-      "scan_qr_hint": "امسح رمز الاستجابة السريعة ضوئيًا أو انسخ العنوان أدناه"
+      "scan_qr_hint": "امسح رمز الاستجابة السريعة ضوئيًا أو انسخ العنوان أدناه",
+      "button_label": "استلام",
+      "send_to_this_address": "أرسل IRM إلى هذا العنوان:",
+      "no_address_short": "لا يوجد عنوان",
+      "no_address_available": "لا يوجد عنوان متاح",
+      "copy_address_button": "نسخ العنوان"
     },
     "security": {
       "section_title": "حماية",
@@ -519,7 +585,16 @@
       "seed_modal_title": "عبارة الاسترداد الخاصة بك",
       "seed_modal_warning": "اكتب هذا على الورق. يمكن لأي شخص لديه هذه الكلمات الـ 24 أن ينفق أموالك.",
       "wif_label": "مفتاح WIF الخاص",
-      "backup_warning": "يحتوي هذا الملف على جميع مفاتيحك الخاصة. قم بتخزينه بشكل آمن."
+      "backup_warning": "يحتوي هذا الملف على جميع مفاتيحك الخاصة. قم بتخزينه بشكل آمن.",
+      "backup_subsection": "النسخ الاحتياطي",
+      "restore_subsection": "الاستعادة",
+      "export_wif_dialog_title": "تصدير مفتاح WIF",
+      "export_wif_private_key_dialog_title": "تصدير مفتاح WIF الخاص",
+      "text_file_filter": "نص",
+      "backup_dialog_title": "حفظ النسخة الاحتياطية للمحفظة",
+      "select_backup_dialog_title": "اختر ملف النسخة الاحتياطية للمحفظة",
+      "backup_filter_name": "النسخة الاحتياطية للمحفظة",
+      "all_files_filter": "كل الملفات"
     },
     "transactions": {
       "section_title": "المعاملات",
@@ -529,7 +604,17 @@
       "confirmations": "{{count}} التأكيدات",
       "pending": "قيد الانتظار",
       "received": "تلقى",
-      "sent": "مرسل"
+      "sent": "مرسل",
+      "confirmed": "مؤكدة",
+      "for_address": "للعنوان {{address}}",
+      "mempool_awaiting": "Mempool · في انتظار التأكيد",
+      "miner_label": "المعدِّن: {{address}}",
+      "fee_label": "الرسوم: {{amount}} ساتوشي",
+      "txid_label": "TXID: {{txid}}",
+      "conf_short": "{{count}} تأكيد",
+      "block_number": "الكتلة رقم {{height}}",
+      "open_in_explorer": "فتح في المستكشف",
+      "copy_txid": "نسخ TXID"
     },
     "toasts": {
       "send_success": "تم الإرسال — txid {{txid}}",
@@ -565,7 +650,13 @@
       "wif_copied": "تم نسخ WIF",
       "name_invalid_chars": "لا يمكن أن يحتوي اسم المحفظة على: / \\ : * ? \" < > |",
       "restored_backup_with_restart": "Wallet restored. Node restarted to pick up the new wallet state.",
-      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up."
+      "restored_backup_manual_restart": "Wallet restored, but the node could not be restarted automatically. Restart it from the Dashboard so the new wallet is picked up.",
+      "node_syncing_wait": "العقدة قيد المزامنة — {{persisted}}/{{height}} كتلة. يرجى الانتظار.",
+      "failed_add_address": "فشل إضافة العنوان: {{reason}}",
+      "no_recovery_data": "لم يتم العثور على بيانات استرداد في المحفظة",
+      "wallet_deleted": "تم حذف {{name}}",
+      "seed_copied": "تم نسخ البذرة",
+      "invalid_wallet_path": "أرجع الملف التنفيذي للمحفظة مسارًا غير صالح: {{path}}"
     },
     "encryption": {
       "migration_title": "Encrypt your wallet",
@@ -588,6 +679,120 @@
       "needs_migration_status": "Wallet on disk uses the legacy unencrypted format and must be encrypted before use.",
       "plaintext_backup_warning": "Plaintext backup file(s) detected at {{paths}}. Delete after verifying the migration succeeded.",
       "recover_link": "Forgot your password? Recover with seed phrase"
+    },
+    "no_wallet_loaded": "لم يتم تحميل أي محفظة — أنشئ أو استورد واحدة أدناه",
+    "balance_label": "الرصيد",
+    "balance_label_for_address": "الرصيد · العنوان {{index}}",
+    "satoshis_amount": "{{amount}} ساتوشي",
+    "unconfirmed": "غير مؤكد",
+    "wallet_wide": "(على مستوى المحفظة)",
+    "syncing_tooltip": "انتظر حتى تنتهي العقدة من المزامنة قبل الإرسال. الإرسال الآن قد يفشل بخطأ في التحقق من التوقيع لأن مجموعة UTXO لا تزال قيد إعادة البناء.",
+    "syncing_progress": "جاري المزامنة…",
+    "gaps_count": "{{count}} فجوة",
+    "common": {
+      "cancel": "إلغاء",
+      "done": "تم",
+      "reveal": "إظهار",
+      "hide": "إخفاء",
+      "copy": "نسخ",
+      "delete": "حذف",
+      "loading": "جاري التحميل…"
+    },
+    "seed": {
+      "recovery_phrase_title": "عبارة الاسترداد",
+      "wallet_seed_title": "بذرة المحفظة",
+      "recovery_phrase_warning": "لا تشارك عبارة الاسترداد الخاصة بك أبدًا. أي شخص يمتلك هذه الكلمات الـ 24 يمكنه الوصول إلى جميع أموالك. خزّنها دون اتصال بأمان.",
+      "wallet_seed_warning": "لا تشارك بذرة محفظتك أبدًا. هذه القيمة الست عشرية تمنح وصولًا كاملًا إلى جميع الأموال. خزّنها دون اتصال بأمان.",
+      "custom_seed_hint": "تستخدم هذه المحفظة بذرة مخصصة. خذ نسخة احتياطية من هذه البذرة الست عشرية للاستعادة.",
+      "copy_phrase": "نسخ العبارة",
+      "copy_seed": "نسخ البذرة"
+    },
+    "restore": {
+      "title": "الاستعادة من نسخة احتياطية",
+      "warning_body": "سيؤدي هذا إلى الكتابة فوق بيانات محفظتك الحالية. تأكد من امتلاك مفتاح WIF أو ملف النسخة الاحتياطية قبل المتابعة. ستتم إعادة تشغيل العقدة تلقائيًا بمجرد اكتمال الاستعادة حتى يتم استقبال حالة المحفظة الجديدة بشكل نظيف.",
+      "restore_button": "استعادة المحفظة"
+    },
+    "create_modal": {
+      "create_title": "إنشاء محفظة",
+      "import_title": "استيراد محفظة",
+      "create_new_tab": "إنشاء جديدة",
+      "import_tab": "استيراد",
+      "generate_description": "أنشئ محفظة BIP39 جديدة بعبارة استرداد من 24 كلمة.",
+      "creating": "جاري الإنشاء…",
+      "create_new_wallet_button": "إنشاء محفظة جديدة",
+      "save_warning": "احفظ عبارة الاسترداد المكوّنة من 24 كلمة دون اتصال — يمكنها استعادة محفظتك الكاملة. ينسخ مفتاح WIF احتياطيًا عنوانًا واحدًا. لا يمكن استرداد أي منهما إذا فُقد.",
+      "address_label": "العنوان",
+      "recovery_phrase_label": "عبارة الاسترداد (24 كلمة)",
+      "recovery_phrase_hint": "(أي عبارة واحدة تستعيد محفظتك)",
+      "wif_label": "مفتاح WIF",
+      "wif_hint": "(مفتاحك الخاص بصيغة قابلة للنقل)",
+      "loading_wif": "جاري تحميل WIF…",
+      "export_wif_to_file": "تصدير WIF إلى ملف",
+      "saved_confirmation": "لقد حفظت عبارة الاسترداد ومفتاح WIF الخاصين بي بأمان.",
+      "import_notice_lead": "سيؤدي هذا إلى استيراد محفظة جديدة. تبقى محفظتك الحالية دون مساس ويمكن التبديل إليها مرة أخرى من",
+      "seed_phrase_method": "عبارة البذرة",
+      "wif_key_method": "مفتاح WIF",
+      "seed_phrase_input_label": "عبارة البذرة (12 أو 24 كلمة)",
+      "seed_phrase_placeholder": "word1 word2 word3 …",
+      "bip39_hint": "عبارة استرداد BIP39 مفصولة بمسافات.",
+      "wif_placeholder": "5J… أو K… أو L…",
+      "wif_format_hint": "Wallet Import Format — تبدأ بـ 5 أو K أو L.",
+      "import_button": "استيراد"
+    },
+    "new_address": {
+      "title": "عنوان جديد",
+      "derived_lead": "تم اشتقاق عنوان جديد من بذرة BIP32 الخاصة بمحفظتك. عبارة",
+      "derived_emphasis": "الاسترداد لم تتغير",
+      "derived_trail": "— يشترك هذا العنوان في نفس ملف المحفظة مع عناوينك الموجودة.",
+      "copy_address": "نسخ العنوان",
+      "wif_private_key_label": "مفتاح WIF الخاص",
+      "wif_warning": "أي شخص يمتلك WIF هذا يمكنه إنفاق الأموال في هذا العنوان. خزّنه دون اتصال.",
+      "copy_wif": "نسخ WIF",
+      "recovery_reminder_lead": "يشترك هذا العنوان في عبارة استرداد محفظتك. لعرضها، انتقل إلى",
+      "recovery_reminder_path": "الأمان ← إظهار عبارة الاسترداد"
+    },
+    "files": {
+      "section_title": "ملفات المحفظة",
+      "section_description": "كل ملف لديه بذرته الخاصة. بدّل لتحميل محفظة مختلفة.",
+      "no_files_found": "لم يتم العثور على ملفات محفظة في ~/.irium/",
+      "rename_placeholder": "wallet-name",
+      "active_badge": "نشطة",
+      "switch_button": "تبديل",
+      "create_new_wallet_file": "إنشاء ملف محفظة جديد",
+      "create_new_advanced_hint": "(متقدم — بذرة منفصلة)",
+      "create_new_description": "ينشئ ملف محفظة منفصل ببذرته الخاصة. تبقى محفظتك الحالية على القرص ويمكن التبديل إليها مرة أخرى من هذه القائمة."
+    },
+    "hidden": {
+      "section_title": "العناوين المخفية",
+      "still_in_file": "(لا تزال في ملف المحفظة)",
+      "description": "لا يمكن حذف العناوين نهائيًا من ملف المحفظة. تُزال العناوين المخفية من العرض لكنها تبقى قابلة للاسترداد — انقر على إظهار لإعادتها.",
+      "unhide_button": "إظهار"
+    },
+    "delete_file": {
+      "confirm_title": "حذف ملف المحفظة هذا نهائيًا؟",
+      "address_count": "{{count}} عنوان",
+      "address_count_one": "{{count}} عنوان",
+      "warning_label": "تحذير:",
+      "warning_funds_lead": "تحتوي هذه المحفظة على أموال. حذفها دون نسخة احتياطية يعني خسارة دائمة لـ",
+      "warning_funds_trail": ". تأكد من تصدير مفاتيح WIF أو عبارة البذرة قبل المتابعة.",
+      "warning_unknown_lead": "تعذّر تأكيد الرصيد — قد تكون العقدة غير متصلة بالإنترنت. إذا كانت هذه المحفظة تحتوي على أموال ولم تأخذ نسخة احتياطية من عبارة البذرة أو مفاتيح WIF، فإن الحذف سيؤدي إلى",
+      "warning_unknown_emphasis": "خسارة دائمة",
+      "warning_unknown_trail": "لها.",
+      "warning_zero_lead": "سيؤدي هذا إلى حذف الملف من القرص. إذا لم تأخذ نسخة احتياطية من عبارة البذرة أو مفاتيح WIF لهذه المحفظة، فإن جميع الأموال فيها ستُفقد",
+      "warning_zero_emphasis": "بشكل دائم",
+      "warning_zero_trail": ". لا يمكن التراجع عن هذا.",
+      "type_prompt_prefix": "اكتب",
+      "type_prompt_word": "DELETE",
+      "type_prompt_suffix": "للتأكيد",
+      "deleting": "جاري الحذف…",
+      "delete_forever": "حذف نهائي"
+    },
+    "hide_address": {
+      "confirm_title": "إخفاء هذا العنوان؟",
+      "body_lead": "يبقى العنوان في ملف المحفظة — يتم تحديث القائمة المرئية فقط. يمكنك",
+      "body_emphasis": "إظهاره",
+      "body_trail": "لاحقًا من قسم العناوين المخفية.",
+      "confirm_button": "إخفاء العنوان"
     }
   },
   "agreements": {
@@ -621,7 +826,18 @@
       "share_text": "مشاركة النص",
       "delete": "يمسح",
       "submitting": "تقديم…",
-      "sign": "لافتة"
+      "sign": "لافتة",
+      "fund_escrow": "تمويل الضمان",
+      "release_to_counterparty": "التحرير للطرف المقابل",
+      "submit_proof": "تقديم الإثبات",
+      "refund": "استرداد",
+      "agreement_expired": "انتهت صلاحية الاتفاقية",
+      "create_and_submit_proof": "إنشاء وتقديم الإثبات",
+      "confirm_release": "تأكيد التحرير",
+      "confirm_fund": "تأكيد التمويل",
+      "confirm_open_dispute": "تأكيد فتح النزاع",
+      "use_this_invoice": "استخدم هذه الفاتورة ←",
+      "verify_signature_file": "تحقق من ملف توقيع…"
     },
     "proof_modal": {
       "title": "تقديم إثبات",
@@ -634,7 +850,15 @@
       "evidence_summary": "ملخص الأدلة",
       "evidence_placeholder": "على سبيل المثال دفع مبلغ 50 دولارًا يتم استلامه عن طريق التحويل البنكي، المرجع رقم 12345.",
       "submit_button": "تقديم إثبات",
-      "submitting": "تقديم…"
+      "submitting": "تقديم…",
+      "intro": "أنشئ إثباتًا موقّعًا داخل التطبيق، أو ارفع واحدًا لديك بالفعل.",
+      "mode_create": "إنشاء من الأدلة",
+      "mode_upload": "رفع ملف",
+      "mode_create_sub": "البناء داخل التطبيق",
+      "mode_upload_sub": "استخدام ملف موجود",
+      "upload_note_prefix": "استخدم هذه التبويبة فقط إذا كان لديك ملف إثبات بالفعل — على سبيل المثال، ملف وقّعه لك طرف مقابل أو مُصدِّق، أو ملف أنشأته عبر",
+      "upload_note_middle": "إذا كنت تقدم إثباتك الخاص، استخدم تبويبة",
+      "upload_note_suffix": "أعلاه — تنشئ الإثبات وتقدمه دون مغادرة التطبيق."
     },
     "toasts": {
       "agreement_signed": "تم توقيع الاتفاقية.",
@@ -663,7 +887,9 @@
       "signature_valid": "التوقيع صالح (الموقع {{signer}})",
       "signature_invalid": "التوقيع غير صالح: {{reason}}",
       "agreement_signed_short": "تم توقيع الاتفاقية.",
-      "sign_failed": "فشل التوقيع"
+      "sign_failed": "فشل التوقيع",
+      "cleanup_removed": "تمت إزالة {{count}} اتفاقية",
+      "cleanup_removed_with_failures": "تمت إزالة {{count}} اتفاقية ({{failed}} فشلت)"
     },
     "refund": {
       "blocked_default": "أهلية استرداد الأموال غير معروفة",
@@ -685,13 +911,26 @@
       "share_text": "انسخ ملخص النص العادي لهذه الاتفاقية إلى الحافظة",
       "delete_local": "احذف هذه الاتفاقية من متجرك المحلي. ولا تتأثر نسخة الطرف المقابل.",
       "save_friendly_name": "احفظ اسمًا مألوفًا لهذه الاتفاقية (مخزنًا محليًا)",
-      "verify_signature_file": "تحقق من ملف التوقيع (.sig أو .json) مقابل هذه الاتفاقية"
+      "verify_signature_file": "تحقق من ملف التوقيع (.sig أو .json) مقابل هذه الاتفاقية",
+      "cleanup_old_test_data": "إزالة الاتفاقيات التي تحتوي معرّفاتها على test / gossip / demo / pr من مخزنك المحلي",
+      "node_offline_sign": "يجب أن تكون العقدة متصلة بالإنترنت للتوقيع",
+      "sign_to_confirm": "وقّع هذه الاتفاقية لتأكيد مشاركتك",
+      "node_offline_fund": "يجب أن تكون العقدة متصلة بالإنترنت لتمويل الضمان",
+      "fund_escrow_action": "اقفل مبلغ الاتفاقية في ضمان HTLC",
+      "node_offline_release": "يجب أن تكون العقدة متصلة بالإنترنت لتحرير الأموال",
+      "release_to_counterparty": "تحرير الأموال إلى الطرف المقابل",
+      "node_offline_dispute": "يجب أن تكون العقدة متصلة بالإنترنت لفتح نزاع",
+      "mark_disputed": "ضع علامة على هذه الاتفاقية كمتنازع عليها — تتطلب شهادة من محكّم لتسويتها",
+      "node_offline_refund": "يجب أن تكون العقدة متصلة بالإنترنت للاسترداد",
+      "view_audit": "عرض سجل التدقيق الكامل على السلسلة"
     },
     "buttons": {
       "import_invoice": "فاتورة الاستيراد",
       "import_pack": "حزمة الاستيراد",
       "browse": "تصفح",
-      "delete_agreement": "حذف الاتفاقية"
+      "delete_agreement": "حذف الاتفاقية",
+      "cleanup_old_test_data": "تنظيف بيانات الاختبار القديمة ({{count}})",
+      "export_pack": "تصدير الحزمة"
     },
     "page_views": {
       "agreements": "الاتفاقيات",
@@ -744,12 +983,19 @@
       "seller": "بائع",
       "signer_wallet": "عنوان محفظة التوقيع",
       "role": "دور:",
-      "reason": "سبب:"
+      "reason": "سبب:",
+      "agreement_short": "اتفاقية",
+      "signer_prefix": "موقِّع"
     },
     "placeholders": {
       "your_wallet_address": "عنوان محفظتك",
       "secret_preimage": "اختياري · سداسي عشري مكون من 64 حرفًا",
-      "dispute_reason": "قم بوصف الخطأ الذي حدث - تتم مشاركة ذلك مع محلل المشكلة."
+      "dispute_reason": "قم بوصف الخطأ الذي حدث - تتم مشاركة ذلك مع محلل المشكلة.",
+      "output_pack_path": "/path/to/output.pack.json",
+      "proof_json_path": "/path/to/proof.json",
+      "pack_json_path": "/path/to/agreement.pack.json",
+      "invoice_json_path": "/path/to/invoice.json",
+      "hash_64_hex": "64 حرفًا بالنظام الست عشري"
     },
     "modals": {
       "submit_proof_title": "تقديم إثبات",
@@ -757,16 +1003,117 @@
       "import_invoice_title": "فاتورة الاستيراد",
       "open_dispute_title": "نزاع مفتوح؟",
       "audit_title": "تدقيق الاتفاقية",
-      "sign_title": "توقيع الاتفاقية"
+      "sign_title": "توقيع الاتفاقية",
+      "delete_confirm_prefix": "حذف الاتفاقية",
+      "delete_confirm_body": "يؤدي هذا إلى إزالة الاتفاقية من مخزنك المحلي فقط. لن تتأثر نسخة الطرف المقابل. يمكن حذف الاتفاقيات غير المموَّلة (المفتوحة/المعلّقة) فقط.",
+      "cleanup_title": "تنظيف بيانات الاختبار القديمة",
+      "cleanup_found": "تم العثور على {{count}} اتفاقية تحتوي معرّفاتها على test أو gossip أو demo أو pr.",
+      "cleanup_disclaimer": "يؤدي هذا إلى إزالتها من مخزنك المحلي فقط. لن تتأثر نسخة الطرف المقابل. لن يتم المساس بعقود HTLC النشطة على السلسلة — لا تزال الأموال بحاجة إلى تحرير أو استرداد بشكل منفصل.",
+      "cleanup_remove_count": "إزالة {{count}}",
+      "release_funds_title": "تحرير الأموال؟",
+      "release_funds_body_prefix": "سيؤدي هذا إلى تحرير",
+      "release_funds_body_suffix": "إلى البائع.",
+      "fund_escrow_title": "تمويل الضمان؟",
+      "fund_escrow_body_prefix": "سيؤدي هذا إلى قفل",
+      "fund_escrow_body_suffix": "في ضمان HTLC. تُحرَّر الأموال إلى الطرف المقابل عند قبول الإثبات، أو تُسترد بعد ارتفاع المهلة.",
+      "import_pack_format_prefix": "الصيغة المقبولة:",
+      "import_pack_format_suffix": "— تم تصديرها من قِبل الطرف أ",
+      "import_invoice_subtitle": "اختر ملف فاتورة JSON لتعبئة اتفاقية جديدة مسبقًا في صفحة التسوية."
     },
     "audit": {
-      "fetching": "جارٍ جلب سجل التدقيق…"
+      "fetching": "جارٍ جلب سجل التدقيق…",
+      "no_data": "لم تُرجع RPC الخاصة بالتدقيق أي بيانات",
+      "show_raw_json": "عرض JSON الخام",
+      "hide_raw_json": "إخفاء JSON الخام"
     },
     "empty": {
       "no_signatures": "لم يتم التحقق من التوقيعات حتى الآن. استخدم الزر أعلاه للتحقق من واحد.",
       "no_wallet_addresses": "لا توجد عناوين المحفظة",
       "no_disputes": "لا خلافات.",
-      "disputes_offline": "(العقدة غير متصلة بالإنترنت — قد لا تكون قائمة النزاعات متاحة.)"
+      "disputes_offline": "(العقدة غير متصلة بالإنترنت — قد لا تكون قائمة النزاعات متاحة.)",
+      "no_agreements_found": "لم يتم العثور على أي اتفاقيات",
+      "with_status": "بالحالة",
+      "matching": "المطابقة لـ",
+      "go_to_settlement_cta": "انتقل إلى التسوية لإنشاء أول اتفاقية لك ←"
+    },
+    "scope": {
+      "my": "اتفاقياتي",
+      "all": "الكل"
+    },
+    "dialog_titles": {
+      "save_agreement_pack": "حفظ حزمة الاتفاقية",
+      "select_proof_file": "اختر ملف الإثبات (.json)",
+      "select_pack_file": "اختر حزمة الاتفاقية (.pack.json)",
+      "select_invoice_file": "اختر ملف الفاتورة JSON",
+      "select_signature_file": "اختر ملف التوقيع"
+    },
+    "timeline": {
+      "created": "تم الإنشاء",
+      "funded": "تم التمويل",
+      "proof_submitted": "تم تقديم الإثبات",
+      "released": "تم التحرير",
+      "refunded": "تم الاسترداد"
+    },
+    "detail_labels": {
+      "template": "القالب",
+      "created": "تاريخ الإنشاء",
+      "deadline": "الموعد النهائي",
+      "proof_status": "حالة الإثبات",
+      "release_eligible": "مؤهل للتحرير",
+      "kind": "النوع",
+      "threshold": "العتبة",
+      "attestors": "المُصدِّقون",
+      "parties": "الأطراف",
+      "amount": "المبلغ",
+      "payer": "الدافع",
+      "payee": "المستفيد",
+      "outcome": "النتيجة",
+      "satisfied": "تم استيفاؤه",
+      "reason": "السبب"
+    },
+    "detail_values": {
+      "none": "لا يوجد",
+      "party": "طرف",
+      "parties": "أطراف"
+    },
+    "sections": {
+      "policy": "السياسة",
+      "proofs": "الإثباتات",
+      "timeline": "الجدول الزمني ({{count}} حدث)",
+      "proofs_count": "الإثباتات ({{count}})",
+      "funding_legs": "التمويل ({{count}} مرحلة)",
+      "linked_transactions": "المعاملات المرتبطة ({{count}})"
+    },
+    "warnings": {
+      "proof_finality_body": "انتظر المزيد من تأكيدات الكتل قبل التحرير — قد يؤدي إعادة تنظيم السلسلة إلى التراجع عن الإثبات.",
+      "open_dispute_body": "فتح نزاع يعني أن الاتفاقية بحاجة إلى محكّم لمراجعة الأدلة من كلا الجانبين. تأكد من وجود سبب وجيه وإثبات داعم قبل المتابعة. لا يمكن التراجع عن هذا الإجراء."
+    },
+    "helpers": {
+      "sign_confirms_participation": "التوقيع يؤكد مشاركتك. يجب على كلا الطرفين التوقيع قبل التمويل.",
+      "sign_modal_body": "توقيع هذه الاتفاقية بمفتاح محفظتك يؤكد مشاركتك. يجب على كلا الطرفين التوقيع قبل التمويل.",
+      "no_hash_on_file": "لا يوجد تجزئة محفوظة لهذه الاتفاقية — الصق التجزئة التي شاركها الطرف المقابل.",
+      "no_file_selected": "لم يتم اختيار أي ملف",
+      "secret_auto_loaded": "تم التحميل تلقائيًا من مخزن أسرار الاتفاقيات المحلي",
+      "secret_required_hint": "مطلوب إذا لم تكن قد أنشأت هذه الاتفاقية بنفسك. اتركه فارغًا إذا كانت محفظتك تستنتجه تلقائيًا.",
+      "use_invoice_hint": "النقر على استخدام هذه الفاتورة ينقلك إلى التسوية مع قالب OTC مُعبَّأ مسبقًا. يمكنك تغيير القالب وتحرير الحقول والتأكيد قبل إنشاء الاتفاقية.",
+      "signer_unknown": "غير معروف",
+      "rejected": "مرفوض",
+      "role_buyer_suffix": "(مشتري)",
+      "role_seller_suffix": "(بائع)",
+      "signer_not_party": "هذا العنوان ليس المشتري أو البائع — سيتم تسجيل التوقيع دون دور طرف."
+    },
+    "form_errors": {
+      "hash_required": "تجزئة الاتفاقية مطلوبة",
+      "proof_type_required": "اختر نوع الإثبات",
+      "attested_by_required": "عنوان المُصدِّق مطلوب",
+      "evidence_required": "صِف ما حدث في ملخص الأدلة",
+      "secret_must_be_64_hex": "يجب أن يكون 64 حرفًا بالنظام الست عشري بالضبط (0-9، a-f)."
+    },
+    "disputes": {
+      "opened_prefix": "تم الفتح",
+      "resolved_prefix": "· تم الحل",
+      "open_this_agreement": "افتح هذه الاتفاقية",
+      "agreement_not_in_list": "الاتفاقية ليست في القائمة الحالية — جرّب تحديث عرض الاتفاقيات"
     }
   },
   "settlement": {
@@ -971,14 +1318,72 @@
       "confirm_large_amount": "أنت على وشك قفل {{amount}} IRM في الضمان.\n\nهذه كمية كبيرة تأكد من كتابة العلامة العشرية بشكل صحيح.",
       "remote_label": "بعيد",
       "remote_tooltip": "هذا العرض من بائع آخر ولا يمكن حذفه من متجرك المحلي.",
-      "delete_tooltip": "احذف هذا العرض من متجرك المحلي"
+      "delete_tooltip": "احذف هذا العرض من متجرك المحلي",
+      "modal_title": "إنشاء أمر بيع",
+      "modal_subtitle": "انشر عرضًا في دفتر الطلبات — يتم قفل IRM في اللحظة التي يأخذه فيها المشتري.",
+      "post_offer_button": "نشر العرض",
+      "lock_info_prefix": "يتم قفل IRM الخاص بك في اللحظة التي يلتزم فيها المشتري. ثم تتلقى دفعة المشتري خارج السلسلة وتنقر على",
+      "confirm_received_label": "تأكيد الاستلام",
+      "lock_info_suffix": "للتحرير. أو افتح نزاعًا إذا لم يدفعوا.",
+      "amount_to_sell_label": "كمية IRM للبيع",
+      "price_per_irm_label": "السعر لكل IRM بـ USDT",
+      "buyer_pays_total_prefix": "يدفع المشتري إجماليًا قدره",
+      "buyer_pays_total_amount": "{{amount}} USDT",
+      "payment_method_label": "طريقة الدفع",
+      "your_payment_details_label": "تفاصيل الدفع الخاصة بك",
+      "payment_details_placeholder": "مثال: IBAN DE89 3704 0044 0532 0130 00 أو PayPal: seller@example.com",
+      "payment_details_helper": "يرى المشتري هذه التفاصيل بعد أن يأخذ العرض.",
+      "payment_options": {
+        "bank_transfer": "تحويل بنكي",
+        "paypal": "PayPal",
+        "usdt_trc20": "USDT (TRC-20)",
+        "usdt_erc20": "USDT (ERC-20)",
+        "sepa": "SEPA",
+        "cash": "نقدًا",
+        "other": "أخرى"
+      },
+      "errors": {
+        "positive_irm_amount": "أدخل كمية IRM موجبة",
+        "positive_usdt_price": "أدخل سعر USDT موجبًا لكل IRM",
+        "select_payment_method": "اختر طريقة دفع",
+        "payment_details_required": "أدخل تفاصيل الدفع الخاصة بك حتى يعرف المشتري كيفية الدفع"
+      },
+      "toasts": {
+        "offer_posted": "تم نشر العرض. سيتم قفل IRM في اللحظة التي يلتزم فيها المشتري."
+      }
     },
     "take_offer": {
       "title": "خذ العرض",
       "completed_trades": "الصفقات المكتملة",
       "take_button": "خذ العرض",
       "taking": "أخذ…",
-      "title_modal": "خذ هذا العرض"
+      "title_modal": "خذ هذا العرض",
+      "set_buyer_address_first": "حدّد عنوان المشتري أولًا",
+      "error_agreement_id_missing": "تم أخذ العرض ولكن معرف الاتفاقية مفقود في الاستجابة",
+      "irm_locked_send_payment": "IRM مقفل الآن في الضمان. أرسل الدفعة خارج السلسلة.",
+      "dispute_reason_buyer_cancelled": "ألغى المشتري قبل الدفع",
+      "dispute_opened_refund_hint": "تم فتح النزاع. يمكنك المطالبة باستردادك من صفحة الاتفاقيات بعد المهلة.",
+      "enter_payment_reference": "أدخل معرف معاملة أو ملاحظة حتى يتمكن البائع من التحقق من دفعتك",
+      "payment_reported_seller_notified": "تم الإبلاغ عن الدفعة. تم إخطار البائع.",
+      "step_of_two": "الخطوة {{step}} من 2",
+      "step1_intro": "التأكيد يقفل IRM الخاص بالبائع في الضمان. ثم يكون لديك موعد نهائي لإرسال الدفعة خارج السلسلة والإبلاغ عن المعاملة.",
+      "you_receive": "تستلم:",
+      "payment_method": "طريقة الدفع:",
+      "seller": "البائع:",
+      "buyer_you": "المشتري (أنت):",
+      "not_set": "- غير محدد -",
+      "cancel": "إلغاء",
+      "confirm_take": "تأكيد الأخذ",
+      "irm_locked_in_escrow": "IRM مقفل في الضمان",
+      "step2_intro": "تم قفل IRM الخاص بالبائع. أرسل الدفعة خارج السلسلة، ثم أدخل مرجع معاملتك أدناه وانقر على \"لقد أرسلت الدفعة\".",
+      "sellers_payment_details": "تفاصيل دفع البائع",
+      "no_payment_details": "لا توجد تفاصيل في العرض. تواصل مع البائع مباشرة للحصول على تعليمات الدفع.",
+      "your_transaction_reference": "مرجع معاملتك",
+      "payment_reference_placeholder": "مرجع التحويل البنكي، معرف معاملة PayPal، معرف معاملة سلسلة الكتل، إلخ.",
+      "payment_reference_hint": "يرى البائع هذا بالضبط. أي شيء يمكنه استخدامه لتأكيد وصول دفعتك يصلح - رقم مرجعي، معرف معاملة، اسم المرسل، إلخ.",
+      "cancel_opens_dispute_warning": "إذا ألغيت هنا، يُفتح نزاع. يمكنك المطالبة باسترداد بعد المهلة من صفحة الاتفاقيات.",
+      "cancel_and_dispute": "إلغاء وفتح نزاع",
+      "i_have_sent_payment": "لقد أرسلت الدفعة"
     },
     "feeds": {
       "discover_button": "اكتشف الخلاصات",
@@ -1026,7 +1431,189 @@
     },
     "swap": {
       "fuel_banner_title": "يدعم IRM طبقة التسوية.",
-      "fuel_banner_body": "بدّل BTC أو LTC أو DOGE مقابل IRM لبدء التداول بدون وسيط."
+      "fuel_banner_body": "بدّل BTC أو LTC أو DOGE مقابل IRM لبدء التداول بدون وسيط.",
+      "pair_not_available": "هذا الزوج غير متاح بعد",
+      "own_order_hint": "هذا أمرك الخاص. استخدم لوحة مبادلاتي على اليمين لإلغائه.",
+      "not_available_yet": "غير متاح بعد",
+      "how_it_works_title": "كيف تعمل مبادلات {{pair}}",
+      "how_it_works_step1": "اختر أمرًا من الدفتر على اليسار، أو انشر أمرك الخاص.",
+      "how_it_works_step2": "يتم قفل IRM الخاص بالبائع في الضمان في اللحظة التي يُؤخذ فيها الأمر.",
+      "how_it_works_step3": "يرسل المشتري {{quote}} إلى عنوان البائع.",
+      "how_it_works_step4": "بمجرد تأكيد الدفعة، يتم تحرير IRM إلى المشتري تلقائيًا."
+    },
+    "header": {
+      "subtitle_otc": "OTC من نظير إلى نظير. اقفل IRM في الضمان، وبادل بأي شيء.",
+      "subtitle_swap": "مبادلات ذرية بين IRM والسلاسل الأخرى. دون ثقة. بدون جسر.",
+      "advanced_flows": "تدفقات متقدمة",
+      "advanced_flows_tooltip": "افتح تدفقات التسوية ذات المستوى الأدنى."
+    },
+    "mode_tabs": {
+      "otc": "OTC P2P",
+      "swap": "مبادلة فورية"
+    },
+    "my_trades": {
+      "title": "صفقاتي",
+      "tab_active": "النشطة",
+      "tab_completed": "المكتملة",
+      "tab_all": "الكل",
+      "empty_active": "لا توجد صفقات نشطة. خذ عرضًا من دفتر الطلبات للبدء.",
+      "empty_completed": "لا توجد صفقات مكتملة بعد.",
+      "empty_all": "لا توجد صفقات بعد. خذ عرضًا من دفتر الطلبات للبدء.",
+      "side_buy": "شراء",
+      "side_sell": "بيع"
+    },
+    "trade_status": {
+      "released": "تم التحرير",
+      "refunded": "تم الاسترداد",
+      "expired": "منتهية الصلاحية",
+      "cancelled": "ملغاة",
+      "disputed": "متنازع عليها",
+      "confirming": "جاري التأكيد",
+      "locked": "مقفلة",
+      "proposed": "مقترحة",
+      "drafting": "في المسودة"
+    },
+    "order_book": {
+      "title": "دفتر الطلبات",
+      "create_order": "إنشاء أمر",
+      "offers_count_one": "عرض",
+      "offers_count_other": "عروض",
+      "offers_count": "عروض",
+      "hidden_tooltip_one": "{{count}} عرض مخفي لعدم وجود سعر مذكور",
+      "hidden_tooltip_other": "{{count}} عرض مخفي لعدم وجود سعر مذكور",
+      "hidden_tooltip": "{{count}} عرض مخفي لعدم وجود سعر مذكور",
+      "hidden_suffix": "{{count}} مخفي",
+      "show_taken": "إظهار المأخوذة",
+      "sort": {
+        "price_asc": "السعر ↑",
+        "price_desc": "السعر ↓",
+        "newest": "الأحدث",
+        "best_rep": "أفضل سمعة"
+      },
+      "updated_ago": "تم التحديث {{time}}",
+      "refreshing": "جاري التحديث…",
+      "refreshing_lower": "جاري التحديث…",
+      "empty_prefix": "لا توجد عروض في الدفتر بعد. انقر على",
+      "empty_suffix": "لنشر أول عرض.",
+      "col_amount_irm": "كمية IRM",
+      "col_price_per_irm": "السعر / IRM",
+      "col_total": "الإجمالي",
+      "col_payment": "الدفع",
+      "col_seller": "البائع",
+      "col_rep": "السمعة",
+      "col_age": "العمر",
+      "rep_tooltip": "{{stars}} من 5، {{completed}} مكتملة",
+      "no_reputation": "لا توجد سمعة",
+      "taken": "مأخوذ",
+      "take": "أخذ"
+    },
+    "pair_order_book": {
+      "header_title": "دفتر طلبات {{pair}}",
+      "open_shown_summary": "{{open}} مفتوحة · {{shown}} معروضة",
+      "updated_label": "تم التحديث",
+      "new_swap": "مبادلة جديدة",
+      "direction_both": "كلاهما",
+      "direction_sell_irm": "بيع IRM",
+      "direction_buy_irm": "شراء IRM",
+      "sort_price_asc": "أفضل سعر أولًا",
+      "sort_price_desc": "أعلى سعر أولًا",
+      "sort_recent": "الأحدث أولًا",
+      "hide_my_orders": "إخفاء أوامري",
+      "loading_orders": "جاري تحميل أوامر {{pair}}…",
+      "empty_state": "لا توجد أوامر {{pair}} مفتوحة. كن الأول — انشر واحدة باستخدام زر مبادلة جديدة أعلاه.",
+      "side_sells_irm": "يبيع IRM",
+      "side_buys_irm": "يشتري IRM",
+      "badge_yours": "خاص بك",
+      "escrow_protected": "محمي بالضمان",
+      "maker_line": "صانع السوق {{address}} · {{ago}}",
+      "needs_confirmations": "يحتاج إلى {{count}} تأكيد على جانب {{network}}",
+      "needs_confirmations_plural": "يحتاج إلى {{count}} تأكيد على جانب {{network}}",
+      "relative_recent": "حديث",
+      "relative_just_now": "الآن",
+      "relative_blocks_ago": "منذ {{count}} كتلة",
+      "relative_blocks_ago_one": "منذ {{count}} كتلة",
+      "relative_hours_ago": "منذ {{count}} ساعة",
+      "relative_days_ago": "منذ {{count}} يوم"
+    },
+    "resolver_picker": {
+      "title": "اختيار المحكّم",
+      "intro": "المحكّم هو طرف ثالث موثَّق يقرر من يحصل على IRM عندما لا يتفق المشتري والبائع. يكسب المحكّم رسومًا صغيرة تُخصم من المبلغ المتنازع عليه عند تسوية الصفقة.",
+      "nominated_section_title": "المحكّمون المرشَّحون لهذه الصفقة",
+      "primary_label": "أساسي",
+      "fallback_label": "احتياطي",
+      "fee_with_value": "الرسوم: {{value}}",
+      "no_nominated_notice": "أُنشئت هذه الصفقة دون محكّمين مرشّحين. يمكن للطرفين التوقيع معًا على ترشيح جديد من تدفق إعادة ترشيح المحكّم في المحفظة قبل أن يتمكن أي محكّم أدناه من التصرف.",
+      "available_section_title": "المحكّمون المتاحون",
+      "registry_unreachable": "نقطة نهاية سجل المحكّمين غير قابلة للوصول على هذه العقدة ({{error}}). استخدم تدفق إعادة ترشيح المحكّم من محفظتك لاكتشاف المرشحين مباشرة عبر CLI الخاص بـ resolver-list.",
+      "empty_registry_before": "لم يسجّل أي محكّمين على هذه العقدة بعد. يسجّل المحكّمون من خلال استدعاء",
+      "empty_registry_after": "بعد أن يظهر عنوانهم في إخراج Coinbase حديث.",
+      "unnamed_resolver": "محكّم بدون اسم",
+      "no_reputation_yet": "لا توجد سمعة بعد",
+      "agreements_hint": "استخدم صفحة الاتفاقيات لتقديم أدلة إضافية للمحكّم ومتابعة كيفية حل النزاع. يمكن للطرفين تقديم أدلة في أي وقت قبل أن يقرر المحكّم.",
+      "close": "إغلاق"
+    },
+    "seller_review": {
+      "toast_released": "تم تحرير IRM. أصبحت الأموال الآن لدى المشتري.",
+      "dispute_reason": "لم يتلقَّ البائع الدفعة خارج السلسلة",
+      "toast_dispute_opened": "تم فتح النزاع. سيقوم محكّم بمراجعة الأدلة.",
+      "empty_state": "لا توجد صفقات واردة تنتظرك. عندما يأخذ مشترٍ أحد عروضك ويبلغ عن الدفع، ستظهر هنا.",
+      "section_title": "الصفقات الواردة للتحقق",
+      "waiting_count": "{{count}} في الانتظار",
+      "status_releasing": "جاري التحرير",
+      "status_funded": "تم التمويل",
+      "buyer_label": "المشتري:",
+      "buyer_claims_paid": "يدّعي المشتري أنه أرسل الدفعة {{time}}",
+      "no_reference": "(لم يتم تقديم مرجع معاملة)",
+      "no_payment_yet": "لم يبلغ المشتري بعد عن إرسال الدفعة. انتظر، أو افتح نزاعًا إذا انقضى الموعد النهائي.",
+      "open_dispute_button": "لا توجد دفعة - افتح نزاعًا",
+      "confirm_release_button": "تأكيد الاستلام والتحرير",
+      "loading_trades": "جاري تحميل الصفقات...",
+      "time_ago_seconds": "منذ {{count}} ثانية",
+      "time_ago_minutes": "منذ {{count}} دقيقة",
+      "time_ago_hours": "منذ {{count}} ساعة",
+      "time_ago_days": "منذ {{count}} يوم"
+    },
+    "take_swap": {
+      "buy_irm": "شراء IRM",
+      "sell_irm": "بيع IRM",
+      "toast_no_wallet": "لا يوجد عنوان محفظة Irium نشط. افتح محفظة أولًا.",
+      "toast_min_blocks": "يجب أن يكون موعد الاسترداد النهائي 10 كتل على الأقل",
+      "toast_locked_buyer": "تم قفل الأمر. أرسل دفعة {{code}} وأبلغ عنها.",
+      "toast_locked_seller": "تم قفل الأمر. IRM الخاص بالبائع في الضمان.",
+      "toast_need_ref": "أدخل معرف معاملة أو ملاحظة حتى يتمكن البائع من التحقق من دفعة {{code}}",
+      "toast_payment_reported": "تم الإبلاغ عن الدفعة. تم إخطار البائع.",
+      "toast_dispute_info": "يمكن فتح نزاع من صفحة الاتفاقيات. ألغِ هنا في الوقت الحالي وعد إليها هناك.",
+      "modal_title": "{{label}} على {{pair}}",
+      "step_of_2": "الخطوة {{step}} من 2",
+      "intro_buyer": "التأكيد سيقفل IRM الخاص بالبائع في الضمان. ثم سترسل {{code}} إلى العنوان المعروض بعد ذلك.",
+      "intro_seller": "التأكيد سيُنشئ ضمانًا مطابقًا بـ IRM الخاص بك. سيرسل المشتري {{code}} إلى عنوانك.",
+      "you_receive": "تستلم",
+      "you_pay": "تدفع",
+      "you_send": "ترسل",
+      "price": "السعر",
+      "maker": "صانع السوق",
+      "maker_foreign_address": "عنوان {{code}} لصانع السوق",
+      "needs": "يحتاج",
+      "confirmation_one": "{{count}} تأكيد {{code}}",
+      "confirmation_other": "{{count}} تأكيد {{code}}",
+      "refund_deadline_label": "موعد الاسترداد النهائي (كتل Irium)",
+      "refund_deadline_hint": "إذا لم يتم تأكيد الدفعة بحلول هذا الموعد النهائي، يمكن استرداد أموالك.",
+      "cancel": "إلغاء",
+      "confirm_action": "تأكيد {{label}}",
+      "escrow_locked": "الضمان مقفل",
+      "escrow_locked_buyer": "أرسل دفعة {{code}} إلى العنوان أدناه. بمجرد تأكيد دفعتك، يتم تحرير IRM إلى محفظتك تلقائيًا.",
+      "escrow_locked_seller": "IRM الخاص بك في الضمان. سيرسل المشتري {{code}} إلى عنوانك. عندما تتأكد دفعته، يتم تحرير IRM إليه ويكتمل تدفق المشتري من تلقاء نفسه.",
+      "send_to_label": "أرسل {{code}} إلى",
+      "exact_amount_label": "كمية {{code}} الدقيقة",
+      "required_memo_label": "ملاحظة الدفع المطلوبة",
+      "memo_hint": "تتضمن معظم محافظ {{name}} هذا كحقل بيانات إضافي في الدفعة. يربط دفعتك بهذه الصفقة حتى يتمكن IRM من التحرير تلقائيًا.",
+      "tx_reference_label": "مرجع معاملتك",
+      "tx_reference_placeholder": "معرف معاملة {{code}} أو ملاحظة",
+      "tx_reference_hint": "يرى البائع هذا بالضبط. أي شيء يمكنه استخدامه لتأكيد دفعتك يصلح.",
+      "cancel_warning": "إذا ألغيت الآن، تبقى أموالك مقفلة حتى موعد الاسترداد النهائي أعلاه.",
+      "cancel_and_dispute": "إلغاء وفتح نزاع",
+      "i_have_sent": "لقد أرسلت {{code}}",
+      "watching_escrow": "مراقبة الضمان"
     }
   },
   "miner": {
@@ -1047,7 +1634,11 @@
       "uptime": "الجهوزية",
       "difficulty": "صعوبة",
       "temperature": "درجة حرارة",
-      "power": "قوة"
+      "power": "قوة",
+      "est_daily_irm": "IRM اليومي المقدَّر",
+      "na_linux_only": "غير متاح (Linux فقط)",
+      "pool_difficulty": "صعوبة تجمع التعدين",
+      "pool_hashrate": "معدل تجزئة تجمع التعدين"
     },
     "buttons": {
       "start_mining": "ابدأ التعدين",
@@ -1056,7 +1647,23 @@
       "connect_pool": "الاتصال بالمسبح",
       "disconnect": "قطع الاتصال",
       "confirm_disconnect": "تأكيد قطع الاتصال؟",
-      "detect_gpus": "كشف وحدات معالجة الرسومات"
+      "detect_gpus": "كشف وحدات معالجة الرسومات",
+      "view_wallet": "عرض المحفظة",
+      "starting": "جاري البدء…",
+      "connecting": "جاري الاتصال…",
+      "start_gpu_mining": "بدء تعدين GPU",
+      "stop_gpu": "إيقاف GPU",
+      "scanning": "جاري المسح…",
+      "yes": "نعم",
+      "no": "لا",
+      "close": "إغلاق",
+      "done": "تم",
+      "ok": "موافق",
+      "start": "بدء",
+      "stop": "إيقاف",
+      "refresh": "تحديث",
+      "view_pool_stats": "عرض إحصائيات تجمع التعدين",
+      "view_pool_stats_tooltip": "افتح إحصائيات المعدِّنين المباشرة لتجمع التعدين العام في مستكشف الكتل"
     },
     "fields": {
       "mining_address_label": "عنوان التعدين",
@@ -1080,21 +1687,49 @@
       "intensity_label": "الشدة — {{value}}%",
       "intensity_mac_note": "الحد الأقصى للكثافة هو 50% على نظام التشغيل macOS لمنع مراقب GPU من قتل النواة في منتصف الدفعة. يكتشف عامل منجم GPU تلقائيًا أكشاك المراقبة ويتوقف بشكل نظيف إذا رآها على أي حال.",
       "pool_preset": "إعداد مسبق للمسبح",
-      "stratum_worker_use_wallet": "Use my wallet"
+      "stratum_worker_use_wallet": "Use my wallet",
+      "intensity_hint": "الكثافة الأعلى = معدل تجزئة أعلى، استهلاك طاقة أعلى",
+      "core_active_tooltip": "النواة {{n}} (نشطة)",
+      "core_idle_tooltip": "النواة {{n}} (خاملة)",
+      "stratum_worker_placeholder": "walletAddress.workerName",
+      "stratum_worker_autofill_tooltip": "تعبئة تلقائية: {{address}}.rig1",
+      "stratum_password_hint": "اتركها فارغة لاستخدام \"x\" (الافتراضي لمعظم تجمعات التعدين)"
     },
     "found_blocks": {
       "section_title": "تم العثور على كتل",
       "empty": "لم يتم العثور على كتل حتى الآن في هذه الجلسة.",
-      "open_in_explorer_tooltip": "افتح هذه الكتلة في Explorer"
+      "open_in_explorer_tooltip": "افتح هذه الكتلة في Explorer",
+      "hide_orphans_tooltip": "إخفاء الكتل التي فاز بها معدِّن آخر",
+      "reveal_orphans_tooltip_one": "كشف {{count}} كتلة يتيمة مرشحة",
+      "reveal_orphans_tooltip_other": "كشف {{count}} كتلة يتيمة مرشحة",
+      "hide_orphans_button": "إخفاء الكتل اليتيمة ({{count}})",
+      "show_orphans_button": "إظهار الكتل اليتيمة ({{count}})",
+      "all_orphaned": "لا توجد كتل مؤكدة بعد — جميع المرشحات حتى الآن كانت يتيمة.",
+      "orphaned_tooltip": "يتيمة — فاز بها معدِّن آخر",
+      "orphaned_long_tooltip": "تم تعدين الكتلة الأساسية على هذا الارتفاع من قِبل عنوان آخر — سجّلنا مرشحنا لكننا خسرنا السباق.",
+      "orphaned_badge": "يتيمة",
+      "block_height_tooltip": "ارتفاع الكتلة {{height}}",
+      "won_by_another": "فاز بها معدِّن آخر",
+      "hash_unavailable": "التجزئة غير متوفرة من بناء المعدِّن هذا",
+      "reward_not_indexed_tooltip": "لم يتم فهرسة المكافأة بعد بواسطة العقدة — ستُملأ القيمة بمجرد نضوجها",
+      "reward_unknown_tooltip": "المكافأة غير معروفة — لا يُبلّغ عنها stdout الخاص بالمعدِّن",
+      "estimate_marker": "~ تقدير"
     },
     "shares": {
       "accepted": "مقبول",
       "rejected": "مرفوض",
-      "ratio": "نسبة"
+      "ratio": "نسبة",
+      "last_share": "آخر حصة"
     },
     "asic_info": {
       "headline": "قم بتوصيل ASIC أو GPU الخاص بك بمجمع التعدين عبر Stratum",
-      "after_install": "بعد التثبيت، أعد تشغيل Irium Core."
+      "after_install": "بعد التثبيت، أعد تشغيل Irium Core.",
+      "external_title": "التعدين في تجمع التعدين باستخدام ASIC أو GPU خارجي",
+      "external_body_before_url": "وجّه برنامج تعدين ASIC أو GPU مباشرة إلى رابط تجمع التعدين أعلاه (مثال: ",
+      "external_body_after_url": "). يراقب Irium Core إحصائيات الحصص من جانب تجمع التعدين المعروضة هنا؛ يُبلَّغ معدل التجزئة المحلي لأجهزتك من قِبل المعدِّن نفسه.",
+      "connect_button_intro_before": "زر ",
+      "connect_button_intro_middle": " أدناه يبدأ التعدين في تجمع التعدين باستخدام CPU الخاص بك عبر الملحق الجانبي ",
+      "connect_button_intro_after": " المضمَّن — مفيد فقط إذا كنت ترغب أيضًا في أن يساهم هذا الجهاز بمعدل تجزئة CPU لتجمع التعدين. أجهزة ASIC الخارجية لا تحتاج إلى هذا الزر."
     },
     "toasts": {
       "miner_started": "بدأ عامل منجم وحدة المعالجة المركزية",
@@ -1114,17 +1749,42 @@
       "connecting_to_pool": "جارٍ الاتصال بالمسبح…",
       "pool_disconnected_reconnecting": "تم قطع اتصال التجمع — جارٍ إعادة الاتصال…",
       "pool_connection_lost": "تم فقدان اتصال المسبح. يرجى إعادة الاتصال.",
-      "pool_error": "خطأ في التجمع: {{message}}"
+      "pool_error": "خطأ في التجمع: {{message}}",
+      "no_device_selected": "لم يتم اختيار جهاز — يتم استخدام الجهاز الافتراضي 0",
+      "solo_listening_on": "Stratum الفردي يستمع على {{addr}}",
+      "solo_failed_start": "فشل بدء Stratum الفردي",
+      "solo_stopped": "تم إيقاف Stratum الفردي",
+      "solo_failed_stop": "فشل إيقاف Stratum الفردي",
+      "copied": "تم النسخ"
     },
     "page_subtitle": "SHA-256d · وحدة المعالجة المركزية · وحدة معالجة الرسومات · دعم تجمع ASIC",
     "tooltips": {
       "copy_address": "انسخ العنوان",
-      "copy_full_hash": "نسخ التجزئة الكاملة"
+      "copy_full_hash": "نسخ التجزئة الكاملة",
+      "copy": "نسخ"
     },
     "pool_configuration": "تكوين المجمع",
     "opencl": {
       "detected_title": "تم اكتشاف أجهزة OpenCL",
-      "none_detected": "لم يتم اكتشاف وحدة معالجة رسومات قادرة على استخدام OpenCL"
+      "none_detected": "لم يتم اكتشاف وحدة معالجة رسومات قادرة على استخدام OpenCL",
+      "no_gpu_idle_message": "لم يتم اكتشاف GPU متوافق — انظر التكوين أدناه",
+      "select_platform": "اختر منصة وابدأ التعدين",
+      "no_compatible_gpu": "لم يتم اكتشاف GPU متوافق",
+      "install_drivers_before": "يتطلب تعدين GPU بيئة تشغيل OpenCL. ثبّت برامج تشغيل بائع GPU الخاص بك (NVIDIA أو AMD أو Intel OpenCL SDK) وانقر ",
+      "install_drivers_after": ".",
+      "supports_pool_and_solo": "بمجرد التفعيل، يدعم معدِّن GPU كلًا من التعدين في تجمع التعدين (Stratum) والتعدين الفردي (RPC مباشر إلى العقدة).",
+      "read_docs": "اقرأ وثائق معدِّن GPU",
+      "no_platforms_found": "لم يتم العثور على منصات OpenCL.",
+      "install_icd_before": "ثبّت برنامج تشغيل GPU ومحمّل ICD، ثم انقر ",
+      "install_icd_after": " مرة أخرى.",
+      "platform_n": "المنصة {{n}}",
+      "discrete_gpu": "GPU منفصل",
+      "device_n": "الجهاز {{n}}",
+      "fix_intro": "لإصلاح هذا، ثبّت برنامج تشغيل OpenCL لـ GPU الخاص بك:",
+      "fix_nvidia": "أعد تثبيت برنامج تشغيل GPU من nvidia.com",
+      "fix_amd": "ثبّت AMD Software Adrenalin من amd.com",
+      "fix_intel": "ثبّت Intel Graphics Driver من intel.com",
+      "scanning": "جاري البحث عن أجهزة OpenCL…"
     },
     "unexpected_exit": {
       "title": "Miner stopped unexpectedly",
@@ -1133,6 +1793,75 @@
       "restart_cpu": "Restart CPU Miner",
       "restart_gpu": "Restart GPU Miner",
       "dismiss": "Dismiss"
+    },
+    "activity": {
+      "share_accepted": "تم قبول الحصة",
+      "share_rejected": "تم رفض الحصة",
+      "share_rejected_with_detail": "تم رفض الحصة — {{detail}}",
+      "pool_error": "خطأ في تجمع التعدين",
+      "pool_error_with_detail": "خطأ في تجمع التعدين — {{detail}}",
+      "mining_active": "التعدين نشط",
+      "block_hash_marker": "· الكتلة رقم {{height}}",
+      "section_title": "النشاط الأخير",
+      "last_count": "آخر {{count}}",
+      "waiting_for_first_share": "في انتظار الحصة الأولى…"
+    },
+    "status": {
+      "loading": "جاري التحميل…",
+      "mining_active": "التعدين نشط",
+      "mining_active_syncing": "التعدين نشط — جاري مزامنة الكتل…",
+      "cpu_idle": "CPU خامل",
+      "gpu_active": "GPU نشط",
+      "gpu_idle": "GPU خامل",
+      "pool_connected": "تم الاتصال بتجمع التعدين",
+      "pool_disconnected": "تم قطع الاتصال بتجمع التعدين",
+      "live_badge": "مباشر",
+      "syncing_badge": "جاري المزامنة"
+    },
+    "sync": {
+      "node_syncing_height": "العقدة قيد المزامنة — الارتفاع {{localHeight}} / الشبكة {{networkTip}}",
+      "warming_up_header": "إحماء المعدِّن — في انتظار أول قراءة لمعدل الحصص…",
+      "node_syncing_body": "لا تزال العقدة تلحق برأس الشبكة. التعدين مفعّل لكن لن تُقبل أي حصص حتى تتطابق السلسلة المحلية. عادةً ما ينتهي هذا في غضون دقائق قليلة.",
+      "warming_up_body": "بدأ الملحق الجانبي للمعدِّن. تأتي أول قراءة لمعدل التجزئة خلال 1-3 ثوانٍ — لا حاجة لأي إجراء."
+    },
+    "block_info": {
+      "mining_block_n": "تعدين الكتلة رقم {{height}}",
+      "previous_block": "الكتلة السابقة",
+      "last_confirmed_block": "آخر كتلة مؤكدة",
+      "network_difficulty": "صعوبة الشبكة"
+    },
+    "solo": {
+      "title": "جسر Stratum الفردي",
+      "subtitle": "شغّل ASIC ضد iriumd الخاص بك. لا رسوم تجمع التعدين، ولا اعتماد على تجمع.",
+      "listening": "يستمع",
+      "stopped": "متوقف",
+      "listen_address_label": "عنوان الاستماع",
+      "listen_default_before": "الافتراضي ",
+      "listen_default_after": " يربط كل واجهة حتى يتمكن ASIC على شبكتك المحلية من الوصول إليه.",
+      "asic_connection_string": "سلسلة اتصال ASIC",
+      "bullet_replace_host_before": "• استبدل ",
+      "bullet_replace_host_after": " بعنوان IP الخاص بشبكتك المحلية (أو IP الخاص بالخادم الافتراضي VPS).",
+      "bullet_worker_username_before": "• اسم مستخدم العامل: عنوان Q-address الخاص بك متبوعًا بـ ",
+      "bullet_worker_username_after": ". كلمة المرور: أي سلسلة نصية.",
+      "bullet_bridge_serves_before": "• يخدم الجسر ",
+      "bullet_bridge_serves_middle": " و ",
+      "bullet_bridge_serves_after": " على iriumd المحلي الخاص بك."
+    },
+    "found_block_banner": {
+      "title": "تم تعدين الكتلة رقم {{height}}!",
+      "body": "فاز معدِّن {{kind}} الخاص بك للتو بسباق الشبكة — 50 IRM في الطريق إليك (تنضج خلال 100 كتلة).",
+      "dismiss_aria": "إخفاء"
+    },
+    "tabs_v2": {
+      "cpu": "معدِّن CPU",
+      "gpu": "معدِّن GPU",
+      "stratum": "تجمع التعدين / Stratum",
+      "solo": "Stratum الفردي"
+    },
+    "pool_presets": {
+      "irium_official_cpu_gpu": "تجمع Irium الرسمي (CPU/GPU)",
+      "irium_official_asic": "تجمع Irium الرسمي (ASIC)",
+      "custom": "مخصص"
     }
   },
   "onboarding": {
@@ -1162,7 +1891,8 @@
       "generating": "جارٍ إنشاء المحفظة…",
       "show_recovery": "إظهار عبارة الاسترداد",
       "i_wrote_it_down": "لقد كتبت ذلك",
-      "continue_to_wallet": "المتابعة إلى المحفظة"
+      "continue_to_wallet": "المتابعة إلى المحفظة",
+      "generating_sub": "إنشاء محفظة BIP32 HD بعبارة بذرة من 24 كلمة…"
     },
     "import": {
       "tab_mnemonic": "عبارة الاسترداد",
@@ -1199,6 +1929,153 @@
       "too_short": "Password must be at least 4 characters",
       "required": "Password is required",
       "continue": "Continue"
+    },
+    "splash": {
+      "subtitle_full_node": "محفظة سطح المكتب للعقدة الكاملة",
+      "status_initializing": "تهيئة بيئة التشغيل…",
+      "status_loading_crypto": "تحميل وحدات التشفير…",
+      "status_verifying_binary": "التحقق من سلامة الملف التنفيذي…",
+      "status_establishing_context": "إنشاء سياق آمن…",
+      "status_ready": "جاهز"
+    },
+    "rail": {
+      "system_check": "فحص النظام",
+      "bootstrap": "التمهيد",
+      "network_sync": "مزامنة الشبكة",
+      "wallet_setup": "إعداد المحفظة",
+      "backup_secure": "النسخ الاحتياطي والتأمين"
+    },
+    "binary_check": {
+      "subtitle": "التحقق من وجود الملفات التنفيذية المطلوبة للعقدة على هذا الجهاز.",
+      "iriumd_desc": "خادم العقدة الكاملة",
+      "irium_wallet_desc": "محفظة و CLI السوق",
+      "irium_miner_desc": "معدِّن CPU",
+      "all_verified": "تم التحقق من جميع الملفات التنفيذية. جاري المتابعة…",
+      "missing_binaries": "ملفات تنفيذية مفقودة. ضع الملفات التنفيذية في src-tauri/binaries/",
+      "retry": "إعادة المحاولة",
+      "skip_advanced": "تخطي (متقدم)"
+    },
+    "bootstrap": {
+      "subtitle": "تكوين عقد البذر وروابط الثقة وكتلة النشأة.",
+      "creating_data_dir": "إنشاء مجلد البيانات…",
+      "writing_seedlist": "كتابة seedlist.txt للتمهيد…",
+      "writing_static_peers": "كتابة static_peers.txt…",
+      "installing_anchors": "تثبيت anchors.json للنشأة…",
+      "installing_trust_signatures": "تثبيت توقيعات الثقة…",
+      "complete": "اكتمل تكوين التمهيد.",
+      "error_prefix": "خطأ",
+      "skip_continue": "تخطي (المتابعة على أي حال)"
+    },
+    "network_sync": {
+      "subtitle": "تحميل بيانات سلسلة الكتل المحلية والاتصال بشبكة Irium P2P.",
+      "port_in_use_message": "المنفذ 38291 قيد الاستخدام بالفعل. قد تكون عقدة Irium أخرى تعمل في الخلفية. تحقق من علبة النظام لديك بحثًا عن نسخة موجودة من Irium Core، أو افتح مدير المهام وأنهِ أي عمليات iriumd.exe، ثم أعد تشغيل التطبيق.",
+      "add_peer_format_error": "استخدم تنسيق IP:PORT (مثال: 1.2.3.4:38291)",
+      "add_peer_rejected": "رفضت العقدة العنوان",
+      "add_peer_unreachable": "تعذّر الوصول إلى العقدة",
+      "starting_iriumd": "جاري بدء iriumd…",
+      "loading_blockchain_data": "جاري تحميل بيانات سلسلة الكتل…",
+      "starting_node": "جاري بدء العقدة…",
+      "discovering": "جاري الاكتشاف…",
+      "searching_for_peers": "البحث عن النظراء على شبكة Irium",
+      "checking_connectivity": "التحقق من اتصال الشبكة…",
+      "network_reachable": "الشبكة قابلة للوصول — جاري بدء العقدة…",
+      "port_blocked_title": "يبدو أن المنفذ 38291 محظور للاتصال الصادر",
+      "port_blocked_body_before": "تعذّر الوصول إلى شبكة Irium. تحقق من جهاز التوجيه أو جدار الحماية — يجب أن يكون المنفذ",
+      "port_blocked_body_after": "مفتوحًا لاتصالات TCP الصادرة.",
+      "restarting_node": "جاري إعادة تشغيل العقدة…",
+      "retry_connection": "إعادة محاولة الاتصال",
+      "still_connecting_title": "لا يزال الاتصال بالنظراء جاريًا…",
+      "still_connecting_body": "العقدة تتواصل مع شبكة Irium. يكتمل هذا عادةً خلال 30 ثانية — تحلَّ بالصبر.",
+      "connecting_for": "جاري الاتصال منذ {{seconds}} ثانية…",
+      "add_peer_manually": "أضف نظيرًا يدويًا",
+      "add_peer_button": "إضافة نظير",
+      "added_peer": "تمت إضافة {{addr}}",
+      "continuing_in": "المتابعة خلال {{seconds}} ثانية…",
+      "syncing_background": "جاري المزامنة في الخلفية…",
+      "continue_anyway": "المتابعة على أي حال ←"
+    },
+    "wallet_setup_subtitle": "أنشئ محفظة HD جديدة أو استعد من محفظة موجودة.",
+    "wallet_setup_errors": {
+      "failed_create": "فشل إنشاء المحفظة",
+      "no_wallet_pending": "لا توجد محفظة في انتظار التشفير",
+      "failed_set_password": "فشل تعيين كلمة مرور المحفظة",
+      "import_failed": "فشل الاستيراد"
+    },
+    "wallet_password": {
+      "title": "حدّد كلمة مرور للمحفظة",
+      "subtitle": "يشفّر ملف محفظتك. مطلوب قبل المتابعة.",
+      "placeholder": "اختر كلمة مرور قوية (8+ أحرف)",
+      "confirm_placeholder": "تأكيد كلمة المرور",
+      "warning": "لا يمكن استرداد كلمة المرور هذه إذا نسيتها. اكتبها واحفظها بأمان. عبارة البذرة الخاصة بك هي الطريقة الوحيدة لاستعادة المحفظة بدون كلمة المرور هذه.",
+      "continue": "تشفير ومتابعة",
+      "too_short": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل",
+      "mismatch": "كلمتا المرور غير متطابقتين",
+      "encrypting": "جاري تشفير المحفظة…",
+      "encrypting_sub": "تطبيق المفتاح المستخرَج من PBKDF2 على ملف محفظتك.",
+      "hide": "إخفاء",
+      "show": "إظهار"
+    },
+    "wallet_restored_sub": "تم استيراد محفظتك بنجاح.",
+    "restored": {
+      "primary_address": "العنوان الأساسي",
+      "address_pending": "سيظهر العنوان في لوحة التحكم بمجرد انتهاء العقدة من المزامنة.",
+      "additional_addresses": "تم العثور على {{count}} عنوان إضافي",
+      "balance_will_load": "سيتم تحميل رصيدك وسجل معاملاتك تلقائيًا في لوحة التحكم أثناء مزامنة العقدة.",
+      "continue_to_dashboard": "المتابعة إلى لوحة التحكم"
+    },
+    "import_form": {
+      "subtitle": "اختر طريقة الاستعادة أدناه.",
+      "tab_mnemonic_label": "عبارة البذرة",
+      "tab_wif_label": "مفتاح WIF",
+      "tab_privkey_label": "المفتاح الخاص",
+      "mnemonic_placeholder": "word1 word2 word3 … word24",
+      "mnemonic_hint": "BIP32 mnemonic — 12 أو 24 كلمة مفصولة بمسافات",
+      "wif_placeholder": "5Jxx… أو Kxx… أو Lxx…",
+      "wif_hint": "Wallet Import Format (مفتاح خاص مرمَّز بـ Base58Check)",
+      "privkey_placeholder": "0x1a2b3c4d… (64 حرفًا ست عشريًا)",
+      "privkey_hint": "مفتاح خاص خام بحجم 256 بت بالنظام الست عشري",
+      "back": "رجوع",
+      "importing": "جاري الاستيراد…"
+    },
+    "choose": {
+      "create_description": "أنشئ محفظة BIP32 HD جديدة بعبارة بذرة من 24 كلمة.",
+      "import_description": "استعادة عبر عبارة البذرة أو مفتاح WIF أو مفتاح خاص خام."
+    },
+    "backup": {
+      "field_address_label": "عنوان المحفظة",
+      "field_wif_label": "مفتاح WIF",
+      "field_mnemonic_label": "عبارة الاسترداد (24 كلمة)",
+      "field_wif_warning": "WIF هو مفتاحك الخاص بصيغة قابلة للنقل. أي شخص يمتلكه يتحكم بالأموال في هذا العنوان.",
+      "field_mnemonic_warning": "اكتب هذه الكلمات الـ 24 بالترتيب. لا يمكن استردادها إذا فُقدت.",
+      "copy": "نسخ",
+      "copied": "تم النسخ!",
+      "hide": "إخفاء",
+      "reveal": "إظهار",
+      "click_to_reveal": "انقر للإظهار",
+      "confirm_address": "لقد حفظت عنوان محفظتي",
+      "confirm_wif": "لقد خزّنت مفتاح WIF الخاص بي بأمان",
+      "confirm_mnemonic": "لقد دوّنت عبارة الاسترداد الخاصة بي دون اتصال",
+      "loading": "جاري التحميل…",
+      "wif_read_failed": "(فشل قراءة WIF — استخدم لوحة الأمان بعد التشغيل",
+      "shown_once_before": "تُعرض هذه المعلومات",
+      "shown_once_emphasis": "مرة واحدة فقط",
+      "shown_once_after": ". خزّن كل عنصر دون اتصال قبل المتابعة.",
+      "critical_warning_strong": "لن تتمكن من استعادة محفظتك",
+      "critical_warning_body": "إذا فقدت عبارة الاسترداد أو مفتاح WIF. لا يوجد لدى Irium Core نسخ احتياطي سحابي. اكتب كل شيء الآن.",
+      "items_confirmed": "تم تأكيد {{count}} من أصل {{total}} عنصر",
+      "launch_dashboard": "تشغيل لوحة التحكم",
+      "confirm_all_to_continue": "أكّد جميع العناصر الأربعة للمتابعة"
+    },
+    "welcome_screen": {
+      "welcome_to": "مرحبًا بك في",
+      "tagline": "محفظة سطح المكتب للعقدة الكاملة لسلسلة Irium. أرسل واستلم وتداول وسوّ — كل ذلك من نظير إلى نظير وعلى السلسلة.",
+      "wizard_intro": "سيقوم معالج الإعداد هذا بتكوين عقدتك ومزامنة السلسلة وإنشاء محفظتك أو استعادتها.",
+      "chip_full_node": "عقدة كاملة",
+      "chip_hd_wallet": "محفظة HD",
+      "chip_p2p_trade": "تداول P2P",
+      "chip_on_chain_settlement": "تسوية على السلسلة",
+      "chip_privacy_first": "الخصوصية أولًا",
+      "get_started": "ابدأ الآن"
     }
   },
   "reputation": {
@@ -1426,7 +2303,26 @@
       "hashrate_avg_window": "{{minutes}} دقيقة متوسط",
       "confidence_low": "ثقة منخفضة",
       "confidence_medium": "ثقة متوسطة",
-      "confidence_high": "ثقة عالية"
+      "confidence_high": "ثقة عالية",
+      "asic_port_with_443": "المنافذ {{port}} + 443",
+      "active_miners": "المعدِّنون النشطون",
+      "worker_count_one": "{{count}} عامل",
+      "worker_count_other": "{{count}} عمال",
+      "your_miners_pinned": "تم تثبيت معدِّنيك في الأعلى",
+      "hide_offline": "إخفاء غير المتصلين ({{count}})",
+      "show_offline": "إظهار المعدِّنين غير المتصلين ({{count}})",
+      "no_miners_reporting": "لا يوجد معدِّنون نشطون يرسلون التقارير.",
+      "col_worker": "العامل",
+      "col_accepted": "المقبولة",
+      "col_rejected_15m": "المرفوضة (15 دقيقة)",
+      "col_rejected_15m_tooltip": "الحصص المرفوضة في آخر 15 دقيقة فقط. كان العدّ التراكمي (منذ إعادة تشغيل Stratum) يُبقي العامل يعرض إجمالي اندفاع الإحماء القديم حتى بعد تعافيه.",
+      "col_reject_pct_15m": "نسبة الرفض % (15 دقيقة)",
+      "col_reject_pct_15m_tooltip": "معدل الرفض المتجدد على مدار آخر 15 دقيقة. كان المعدل التراكمي منذ إعادة التشغيل يُبقي العامل عالقًا على اندفاع إحماء ما بعد إعادة التشغيل حتى بعد تعافيه.",
+      "col_hashrate_15m": "معدل التجزئة (15 دقيقة)",
+      "col_blocks": "الكتل",
+      "col_blocks_tooltip": "الكتل التي عثر عليها هذا العامل في تجمع التعدين. يتم تعبئتها بواسطة stats-proxy؛ تعرض '—' حتى يقوم الوكيل بملء رصيد الكتل لكل عامل بأثر رجعي.",
+      "col_last_share": "آخر حصة",
+      "yours_badge": "خاص بك"
     },
     "richlist": {
       "title": "أعلى حاملي IRM",
@@ -1464,7 +2360,8 @@
       "load_more_loading": "جارٍ تحميل أعلى 500…",
       "load_error": "فشل تحميل القائمة الغنية: {{reason}}",
       "empty": "لا توجد أرصدة P2PKH على السلسلة حتى الآن.",
-      "node_offline_hint": "ابدأ العقدة على لوحة المعلومات لتحميل القائمة الغنية."
+      "node_offline_hint": "ابدأ العقدة على لوحة المعلومات لتحميل القائمة الغنية.",
+      "sr_total_supply": "{{total}} IRM سياق إجمالي العرض لقارئات الشاشة"
     },
     "solo_pool": {
       "title": "Solo Pool",
@@ -1503,6 +2400,63 @@
       "blocks_per_day_suffix": "block/يوم",
       "irm_per_day_suffix": "IRM/يوم",
       "disclaimer": "تقديرات فقط — الأرباح الفعلية تعتمد على الحظ ورسوم التجمع وتغيرات الصعوبة. تستخدم الحاسبة معدل التجزئة المباشر للشبكة، يُحدّث كل 60 ثانية."
+    },
+    "mining_overview": {
+      "title": "نظرة عامة على تعدين الشبكة",
+      "subtitle": "عرض شامل على شاشة واحدة للشبكة وتجمع التعدين والتعدين الخاص بك. يتم التحديث كل 30 ثانية.",
+      "network_summary": "ملخص الشبكة",
+      "pool_mining": "تعدين تجمع التعدين",
+      "your_mining": "التعدين الخاص بك",
+      "network_hashrate": "معدل تجزئة الشبكة",
+      "difficulty": "الصعوبة",
+      "avg_block_time": "متوسط زمن الكتلة",
+      "est_active_miners": "المعدِّنون النشطون المُقدَّرون",
+      "network_wide_estimate": "تقدير على مستوى الشبكة",
+      "pool_hashrate": "معدل تجزئة تجمع التعدين",
+      "estimate_sub": "تقدير",
+      "active_pool_miners": "معدِّنو تجمع التعدين النشطون",
+      "pool_blocks_found": "الكتل التي وجدها تجمع التعدين",
+      "all_time": "طوال الوقت",
+      "pool_share": "تجمع التعدين / الشبكة",
+      "share_of_network_hashrate": "حصة من معدل تجزئة الشبكة",
+      "your_hashrate": "معدل التجزئة الخاص بك",
+      "collecting": "يتم الجمع…",
+      "pool_workers_one": "{{count}} عامل في تجمع التعدين",
+      "pool_workers_other": "{{count}} عمال في تجمع التعدين",
+      "mode": "الوضع",
+      "mode_pool": "تجمع التعدين",
+      "mode_solo": "فردي",
+      "not_mining": "لا يتم التعدين",
+      "connected_via_stratum": "متصل عبر Stratum",
+      "direct_to_local_node": "مباشرة إلى العقدة المحلية",
+      "on_pool": "على pool.iriumlabs.org",
+      "on_solo_bridge": "على جسر Stratum الفردي",
+      "accepted_shares": "الحصص المقبولة",
+      "none": "لا يوجد",
+      "pool_lifetime": "تجمع التعدين، طوال العمر",
+      "last_share": "آخر حصة",
+      "blocks_you_found": "الكتل التي وجدتها",
+      "from_pool_worker": "من عامل تجمع التعدين",
+      "this_session": "هذه الجلسة",
+      "pool_blocks_today": "كتل التجمع اليوم",
+      "today": "اليوم"
+    },
+    "relative_time": {
+      "just_now": "الآن",
+      "seconds_ago_one": "منذ {{count}} ثانية",
+      "seconds_ago_other": "منذ {{count}} ثانية",
+      "minutes_ago_one": "منذ {{count}} دقيقة",
+      "minutes_ago_other": "منذ {{count}} دقيقة",
+      "hours_ago_one": "منذ {{count}} ساعة",
+      "hours_ago_other": "منذ {{count}} ساعة",
+      "days_ago_one": "منذ {{count}} يوم",
+      "days_ago_other": "منذ {{count}} يوم"
+    },
+    "founder_card": {
+      "title": "عنوان استحقاق المؤسس",
+      "description": "يحتفظ هذا العنوان بـ 3,500,000 IRM مقفلة عبر قفل زمني CLTV عند نشأة السلسلة. يظهر الرصيد كصفر لأن الأموال المقفلة تستخدم برنامجًا نصيًا خاصًا لا يُحتسب كرصيد قابل للإنفاق.",
+      "unlocks_at": "يُفتح عند الكتلة رقم {{height}}",
+      "blocks_remaining": "(~{{count}} كتلة متبقية)"
     }
   },
   "help": {
@@ -2146,7 +3100,10 @@
       "errors": {
         "buyer_required": "أدخل عنوان Irium للمشتري.",
         "amount_required": "أدخل كم IRM تريد قفله.",
-        "receiving_required": "أخبر مشتريك بما تتوقعه في المقابل."
+        "receiving_required": "أخبر مشتريك بما تتوقعه في المقابل.",
+        "no_agreement_id": "إنشاء الاتفاقية لم يُرجع أي معرف",
+        "fund_after_create_failed": "تم إنشاء الاتفاقية لكن التمويل فشل. افتح صفحة الاتفاقيات لإعادة المحاولة.",
+        "payment_ref_required": "أدخل مرجع المعاملة حتى يتمكن البائع من التحقق من دفعتك."
       },
       "review": {
         "you_lock": "أنت تقفل",
@@ -2154,7 +3111,14 @@
         "deadline": "الموعد النهائي",
         "deadline_value": "إذا لم يُدفع في غضون {{hours}} ساعة، يعود IRM تلقائياً.",
         "lock_funds": "اقفل الأموال",
-        "tx_note": "هذا سينشئ معاملة على بلوكشين Irium."
+        "tx_note": "هذا سينشئ معاملة على بلوكشين Irium.",
+        "you_lock_short": "أنت تقفل",
+        "buyer_pays_you": "يدفع لك المشتري",
+        "payment_deadline": "الموعد النهائي للدفع",
+        "hours_from_now": "{{hours}} ساعة من الآن",
+        "buyer_address": "عنوان المشتري",
+        "lock_my_irm": "اقفل IRM الخاص بي",
+        "tx_broadcast_note": "سيتم بث معاملة على سلسلة الكتل. قد يستغرق التأكيد بعض الوقت."
       },
       "share": {
         "title": "شارك هذا مع مشتريك",
@@ -2174,7 +3138,25 @@
         "receiving_placeholder": "مثل: 200 USDT، تحويل بنكي، نقداً",
         "deadline_label": "كم يجب أن تبقى هذه الصفقة مفتوحة؟",
         "deadline_helper": "إذا لم يدفعوا خلال هذا الوقت، يعود IRM تلقائياً.",
-        "release_button": "استلمت الدفعة — حرِّر الأموال للمشتري"
+        "release_button": "استلمت الدفعة — حرِّر الأموال للمشتري",
+        "buyer_address_short_label": "عنوان المشتري",
+        "buyer_address_helper": "العنوان الذي يستقبل IRM عندما تؤكد أن المشتري قد دفع.",
+        "amount_label_short": "كمية IRM للبيع",
+        "amount_helper_short": "يحتفظ بها في الضمان حتى تؤكد دفعة المشتري.",
+        "receiving_label_short": "ما تحصل عليه في المقابل",
+        "receiving_placeholder_detailed": "مثال: 50 USDT عبر تحويل بنكي SEPA",
+        "deadline_label_short": "الموعد النهائي لدفع المشتري",
+        "deadline_helper_refund": "إذا لم تصل أي دفعة بحلول الموعد النهائي، يمكنك المطالبة باسترداد.",
+        "locked_hero_title": "IRM الخاص بك مقفل ومحمي الآن",
+        "locked_hero_body": "لا يمكن للمشتري أخذه بدون تأكيدك. شارك كود الصفقة أدناه ليتمكن من الانضمام، ثم انتظر دفعته.",
+        "share_code_title": "شارك كود الصفقة هذا",
+        "share_code_body": "يلصق المشتري هذا الكود في محفظته للانضمام إلى الصفقة.",
+        "header1_title": "إعداد صفقة البيع الخاصة بك",
+        "header1_subtitle": "أخبرنا من هو المشتري ومقدار IRM الذي تريد بيعه.",
+        "header2_title": "المراجعة والقفل",
+        "header2_subtitle": "أكّد التفاصيل. يؤدي القفل إلى إرسال IRM إلى الضمان.",
+        "header3_title": "صفقتك مباشرة",
+        "header3_subtitle": "شارك كود الصفقة مع المشتري وانتظر دفعته."
       },
       "buying": {
         "step2_title": "الصق كود الصفقة من بائعك",
@@ -2193,12 +3175,42 @@
         "status_waiting": "في انتظار تأكيد البائع لاستلام الدفعة.",
         "status_releasing": "تم تأكيد الدفعة — IRM في الطريق.",
         "status_complete": "مكتمل — وصل IRM إلى wallet.",
-        "view_agreements": "عرض في agreement"
+        "view_agreements": "عرض في agreement",
+        "review_commit_intro": "أكّد تفاصيل الصفقة أدناه. بالمتابعة، تلتزم بهذه الصفقة. بعد هذه الخطوة، أرسل الدفعة خارج السلسلة إلى البائع وأبلغ عنها من الشاشة التالية.",
+        "seller_is_locking": "البائع يقفل",
+        "seller_short_label": "البائع",
+        "details_did_not_load": "لم يتم تحميل تفاصيل الصفقة. لا يزال بإمكانك المتابعة، لكن تحقق من كمية IRM مع البائع قبل الدفع.",
+        "continue_and_link": "تابع واربط",
+        "trade_complete_title": "اكتملت الصفقة",
+        "trade_complete_body": "وصل IRM إلى محفظتك.",
+        "seller_locked_for_you_title": "تم قفل IRM الخاص بالبائع لك",
+        "seller_locked_for_you_body": "أرسل الدفعة خارج السلسلة إلى البائع، ثم أبلغ عن مرجع معاملتك أدناه.",
+        "report_payment_title": "أبلغ عن دفعتك",
+        "report_payment_body": "بعد إرسال الدفعة خارج السلسلة، الصق أي مرجع يمكن للبائع استخدامه لتأكيد وصولها - مرجع التحويل البنكي، معرف معاملة PayPal، إلخ.",
+        "report_payment_placeholder": "مرجع التحويل البنكي، معرف معاملة PayPal، معرف معاملة سلسلة الكتل، إلخ.",
+        "cancel_open_dispute": "إلغاء وفتح نزاع",
+        "payment_reported": "تم الإبلاغ عن الدفعة",
+        "i_have_sent_payment": "لقد أرسلت الدفعة",
+        "header1_title": "الصق كود صفقة البائع",
+        "header1_subtitle": "سيكون البائع قد أرسل لك كودًا بعد قفل IRM الخاص به.",
+        "header2_title": "راجع الصفقة",
+        "header2_subtitle": "تأكد من أن المبلغ والبائع يتطابقان مع ما تتوقعه.",
+        "header3_title": "صفقتك مباشرة",
+        "header3_subtitle": "أرسل الدفعة خارج السلسلة، ثم أبلغ عنها حتى يتمكن البائع من تحرير IRM."
       },
       "fuel_banner_title": "تحتاج إلى IRM لإنشاء تسوية.",
       "fuel_banner_prefix": "اذهب إلى",
       "fuel_banner_link": "السوق ← المبادلة الفورية",
-      "fuel_banner_suffix": "للحصول على IRM أولًا."
+      "fuel_banner_suffix": "للحصول على IRM أولًا.",
+      "toast_buyer_linked": "تم ربط جانبك بالصفقة الآن. أرسل الدفعة خارج السلسلة إلى البائع.",
+      "toast_payment_reported": "تم الإبلاغ عن الدفعة. في انتظار تأكيد البائع.",
+      "toast_dispute_opened": "تم فتح النزاع. سيقوم محكّم بمراجعة الأدلة.",
+      "dispute_reason_buyer": "المشتري لا يستطيع إكمال الصفقة",
+      "choose_selling_title": "أنا أبيع IRM",
+      "choose_selling_body": "اقفل IRM الخاص بك في الضمان. يدفع لك المشتري خارج السلسلة، ثم تحرر.",
+      "choose_buying_title": "أنا أشتري IRM",
+      "choose_buying_body": "الصق كود صفقة البائع. أرسل له الدفعة، ثم أكّد لاستلام IRM.",
+      "view_resolvers": "عرض المحكّمين المتاحين"
     },
     "pay_for_work": {
       "step1_title": "دفعة واحدة أم بالمراحل؟",
@@ -2250,7 +3262,12 @@
       "claim_refund": "المطالبة بالاسترداد",
       "toast_released": "تم تحرير الدفعة للمتعاقد.",
       "toast_release_pending": "تم تسجيل الاكتمال. ستُحرَّر الأموال بعد تأكيد بضع block التالية.",
-      "toast_refunded": "تمت المطالبة بالاسترداد — الأموال تعود إلى wallet."
+      "toast_refunded": "تمت المطالبة بالاسترداد — الأموال تعود إلى wallet.",
+      "toast_fund_failed": "تم إنشاء الاتفاقية لكن التمويل فشل. ابحث عنها في صفحة الاتفاقيات لإعادة محاولة التمويل.",
+      "which_milestone": "أي معلم؟",
+      "milestone_option": "المعلم {{index}} من {{total}}",
+      "milestone_helper": "تحديد كمكتمل يحرر حصة هذا المعلم من IRM المقفل. يتلقى المقاول 1/{{count}} من الإجمالي لكل معلم.",
+      "mark_complete_milestone": "تحديد كمكتمل — تحرير الدفعة (المعلم {{index}})"
     },
     "deposit": {
       "step1_title": "أعدّ إيداعك",

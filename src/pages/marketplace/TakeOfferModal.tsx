@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowRight, AlertTriangle, Check, Loader2, Lock, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { offers, agreementSpend, disputes, proofs } from '../../lib/tauri';
@@ -42,6 +43,7 @@ export default function TakeOfferModal({
   onClose,
   onTaken,
 }: TakeOfferModalProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<Step>(1);
   const [busy, setBusy] = useState(false);
   const [taken, setTaken] = useState<TakenAgreement | null>(null);
@@ -53,7 +55,7 @@ export default function TakeOfferModal({
 
   const handleConfirmTake = async () => {
     if (!buyerAddress) {
-      toast.error('Set your buyer address first');
+      toast.error(t('marketplace.take_offer.set_buyer_address_first'));
       return;
     }
     setBusy(true);
@@ -61,7 +63,7 @@ export default function TakeOfferModal({
       const result = await offers.take(offer.id, buyerAddress);
       const agreementId = (result as unknown as Record<string, unknown>)?.agreement_id as string | undefined;
       if (!agreementId) {
-        throw new Error('Offer taken but agreement id missing in response');
+        throw new Error(t('marketplace.take_offer.error_agreement_id_missing'));
       }
       // Fund + broadcast in the same step so the user only sees one
       // "escrow locked" state. If funding fails the buyer is left on
@@ -87,7 +89,7 @@ export default function TakeOfferModal({
         paymentInstructions: paymentInstructions ?? null,
       });
       setStep(2);
-      toast.success('IRM is now locked in escrow. Send the off-chain payment.');
+      toast.success(t('marketplace.take_offer.irm_locked_send_payment'));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
@@ -99,9 +101,9 @@ export default function TakeOfferModal({
     if (!taken) return;
     setBusy(true);
     try {
-      await disputes.open(taken.agreementId, 'buyer cancelled before payment');
+      await disputes.open(taken.agreementId, t('marketplace.take_offer.dispute_reason_buyer_cancelled'));
       toast(
-        'Dispute opened. You can claim your refund from the Agreements page after the timeout.',
+        t('marketplace.take_offer.dispute_opened_refund_hint'),
         { icon: 'i' },
       );
       onTaken(taken.agreementId);
@@ -116,7 +118,7 @@ export default function TakeOfferModal({
   const handlePaymentSent = async () => {
     if (!taken) return;
     if (!paymentRef.trim()) {
-      toast.error('Enter a transaction id or note so the seller can verify your payment');
+      toast.error(t('marketplace.take_offer.enter_payment_reference'));
       return;
     }
     setBusy(true);
@@ -138,7 +140,7 @@ export default function TakeOfferModal({
           console.warn('[take-offer] payment-sent proof failed (continuing):', proofErr);
         }
       }
-      toast.success('Payment reported. The seller has been notified.');
+      toast.success(t('marketplace.take_offer.payment_reported_seller_notified'));
       onTaken(taken.agreementId);
       onClose();
     } finally {
@@ -150,16 +152,15 @@ export default function TakeOfferModal({
     <TradingModal
       open={true}
       onClose={() => { if (!busy) onClose(); }}
-      title="Take Offer"
-      subtitle={`Step ${step} of 2`}
+      title={t('marketplace.take_offer.title')}
+      subtitle={t('marketplace.take_offer.step_of_two', { step })}
       size="md"
     >
       <div className="space-y-4">
         {step === 1 && (
           <>
             <div className="text-xs" style={{ color: 'rgba(238,240,255,0.65)' }}>
-              Confirming locks the seller's IRM in escrow. You then have a deadline to send
-              the off-chain payment and report the transaction.
+              {t('marketplace.take_offer.step1_intro')}
             </div>
             <div
               className="p-3 rounded space-y-2 text-xs"
@@ -169,26 +170,26 @@ export default function TakeOfferModal({
                 color: 'var(--t1)',
               }}
             >
-              <div>You receive: <span style={{ color: '#34d399' }}>{formatIRM(offer.amount ?? 0)}</span></div>
-              <div>Payment method: {offer.payment_method ?? '-'}</div>
+              <div>{t('marketplace.take_offer.you_receive')} <span style={{ color: '#34d399' }}>{formatIRM(offer.amount ?? 0)}</span></div>
+              <div>{t('marketplace.take_offer.payment_method')} {offer.payment_method ?? '-'}</div>
               <div>
-                Seller:{' '}
+                {t('marketplace.take_offer.seller')}{' '}
                 <span title={offer.seller ?? ''}>
                   {(offer.seller ?? '').slice(0, 8)}...{(offer.seller ?? '').slice(-4)}
                 </span>
               </div>
               <div>
-                Buyer (you):{' '}
+                {t('marketplace.take_offer.buyer_you')}{' '}
                 <span title={buyerAddress}>
                   {buyerAddress
                     ? `${buyerAddress.slice(0, 8)}...${buyerAddress.slice(-4)}`
-                    : '- not set -'}
+                    : t('marketplace.take_offer.not_set')}
                 </span>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={onClose} disabled={busy} className="btn-secondary flex-1">
-                Cancel
+                {t('marketplace.take_offer.cancel')}
               </button>
               <button
                 onClick={handleConfirmTake}
@@ -196,7 +197,7 @@ export default function TakeOfferModal({
                 className="btn-primary flex-1 inline-flex items-center justify-center gap-2"
               >
                 {busy ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-                Confirm Take
+                {t('marketplace.take_offer.confirm_take')}
                 {!busy && <ArrowRight size={13} />}
               </button>
             </div>
@@ -213,17 +214,16 @@ export default function TakeOfferModal({
               }}
             >
               <div className="inline-flex items-center gap-2 text-xs font-display font-semibold" style={{ color: '#22c55e' }}>
-                <Lock size={13} /> IRM locked in escrow
+                <Lock size={13} /> {t('marketplace.take_offer.irm_locked_in_escrow')}
               </div>
               <div className="text-xs" style={{ color: 'rgba(238,240,255,0.65)' }}>
-                The seller's IRM is locked. Send the off-chain payment, then enter your
-                transaction reference below and click "I have sent payment".
+                {t('marketplace.take_offer.step2_intro')}
               </div>
             </div>
 
             <div className="space-y-1">
               <label className="label" style={{ color: 'rgba(238,240,255,0.55)' }}>
-                Seller's payment details
+                {t('marketplace.take_offer.sellers_payment_details')}
               </label>
               <pre
                 className="p-3 rounded text-xs whitespace-pre-wrap"
@@ -236,24 +236,23 @@ export default function TakeOfferModal({
                   overflowY: 'auto',
                 }}
               >
-                {taken.paymentInstructions ?? 'No details in the offer. Contact the seller directly for payment instructions.'}
+                {taken.paymentInstructions ?? t('marketplace.take_offer.no_payment_details')}
               </pre>
             </div>
 
             <div className="space-y-1">
               <label className="label" style={{ color: 'rgba(238,240,255,0.55)' }}>
-                Your transaction reference
+                {t('marketplace.take_offer.your_transaction_reference')}
               </label>
               <input
                 className="input w-full"
                 value={paymentRef}
                 onChange={(e) => setPaymentRef(e.target.value)}
-                placeholder="Bank wire reference, PayPal txid, blockchain txid, etc."
+                placeholder={t('marketplace.take_offer.payment_reference_placeholder')}
                 disabled={busy}
               />
               <p className="text-xs" style={{ color: 'rgba(238,240,255,0.45)' }}>
-                The seller sees this exactly. Anything they can use to confirm your payment
-                arrived works - reference number, transaction id, sender name, etc.
+                {t('marketplace.take_offer.payment_reference_hint')}
               </p>
             </div>
 
@@ -266,8 +265,7 @@ export default function TakeOfferModal({
               }}
             >
               <AlertTriangle size={12} />
-              If you cancel here, a dispute opens. You can claim a refund after the timeout
-              from the Agreements page.
+              {t('marketplace.take_offer.cancel_opens_dispute_warning')}
             </div>
 
             <div className="flex items-center gap-2">
@@ -276,7 +274,7 @@ export default function TakeOfferModal({
                 disabled={busy}
                 className="btn-secondary flex-1"
               >
-                Cancel and dispute
+                {t('marketplace.take_offer.cancel_and_dispute')}
               </button>
               <button
                 onClick={handlePaymentSent}
@@ -284,7 +282,7 @@ export default function TakeOfferModal({
                 className="btn-primary flex-1 inline-flex items-center justify-center gap-2"
               >
                 {busy ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                I have sent payment
+                {t('marketplace.take_offer.i_have_sent_payment')}
               </button>
             </div>
           </>
