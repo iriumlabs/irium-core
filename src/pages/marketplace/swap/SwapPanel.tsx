@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { wallet } from '../../../lib/tauri';
@@ -82,12 +82,22 @@ export default function SwapPanel({ requestedPairId }: SwapPanelProps = {}) {
     [activePairId],
   );
 
-  // External pair request (from the Marketplace OrderTypePickerModal). React
-  // setter no-ops when the value matches, so re-emitting the same id is safe.
+  // External pair request (from the Marketplace OrderTypePickerModal).
+  // Switch pairs AND auto-open the Create Swap Order modal so the user can
+  // start a swap in one click instead of two. Tracked via lastHandledRef so
+  // re-renders with the same id don't re-fire the modal after the user has
+  // closed it. The {showCreate && availability.available && ...} gate below
+  // means setShowCreate(true) is a no-op for chain-gated pairs (LTC pre-25k,
+  // DOGE pre-25.2k) — the user just sees the ComingSoonOverlay with the
+  // countdown, which is the intended fallback.
+  const lastHandledRequestedPairRef = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (requestedPairId && getPairById(requestedPairId)) {
-      setActivePairId(requestedPairId);
-    }
+    if (!requestedPairId) return;
+    if (lastHandledRequestedPairRef.current === requestedPairId) return;
+    if (!getPairById(requestedPairId)) return;
+    setActivePairId(requestedPairId);
+    setShowCreate(true);
+    lastHandledRequestedPairRef.current = requestedPairId;
   }, [requestedPairId]);
   const availability = usePairAvailability(activePair);
 
