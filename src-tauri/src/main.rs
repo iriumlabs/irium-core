@@ -3247,6 +3247,29 @@ async fn iriumd_rpc<T: serde::de::DeserializeOwned>(
     serde_json::from_value(v).map_err(|e| format!("rpc {} {} parse failed: {}", method, path, e))
 }
 
+/// Settlement-side shared wallet-unlock pre-check. Mirrors the inline check
+/// wallet_send already does inline (search "Pre-check the unlock state via
+/// /wallet/info" above), but extracted into a callable helper so every
+/// settlement handler can refuse early with a structured, user-actionable
+/// error instead of bubbling up a cryptic wallet-CLI stderr like
+/// "Wallet command failed: <encrypted file: missing password>".
+///
+/// The "WALLET_LOCKED:" prefix is a machine-readable tag the frontend can
+/// pattern-match to trigger an unlock-prompt UI without parsing English.
+async fn ensure_wallet_unlocked(state: State<'_, AppState>) -> Result<(), String> {
+    let info: WalletInfoRpcResponseLite =
+        iriumd_rpc(state, "GET", "/wallet/info", None, None)
+            .await
+            .map_err(|e| format!("Could not check wallet state: {}", e))?;
+    if !info.is_unlocked {
+        return Err(
+            "WALLET_LOCKED: Your wallet is locked. Please enter your password to unlock it."
+                .to_string(),
+        );
+    }
+    Ok(())
+}
+
 #[tauri::command]
 async fn wallet_send(
     state: State<'_, AppState>,
@@ -4827,6 +4850,7 @@ async fn agreement_create(
     state: State<'_, AppState>,
     params: CreateAgreementParams,
 ) -> Result<AgreementResult, String> {
+    ensure_wallet_unlocked(state.clone()).await?;
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
@@ -4932,6 +4956,7 @@ async fn agreement_release(
     secret: Option<String>,
     broadcast: Option<bool>,
 ) -> Result<ReleaseResult, String> {
+    ensure_wallet_unlocked(state.clone()).await?;
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
@@ -4967,6 +4992,7 @@ async fn agreement_refund(
     agreement_id: String,
     broadcast: Option<bool>,
 ) -> Result<ReleaseResult, String> {
+    ensure_wallet_unlocked(state.clone()).await?;
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
@@ -5040,6 +5066,7 @@ async fn proof_submit(
     agreement_id: String,
     proof_file: String,
 ) -> Result<ProofSubmitResult, String> {
+    ensure_wallet_unlocked(state.clone()).await?;
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
@@ -5101,6 +5128,7 @@ async fn proof_create_and_submit(
     evidence_summary: Option<String>,
     evidence_hash: Option<String>,
 ) -> Result<ProofSubmitResult, String> {
+    ensure_wallet_unlocked(state.clone()).await?;
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
@@ -5383,6 +5411,7 @@ async fn settlement_create_otc(
     state: State<'_, AppState>,
     params: OtcParams,
 ) -> Result<AgreementResult, String> {
+    ensure_wallet_unlocked(state.clone()).await?;
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
@@ -5442,6 +5471,7 @@ async fn settlement_create_freelance(
     state: State<'_, AppState>,
     params: FreelanceParams,
 ) -> Result<AgreementResult, String> {
+    ensure_wallet_unlocked(state.clone()).await?;
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
@@ -5512,6 +5542,7 @@ async fn settlement_create_milestone(
     state: State<'_, AppState>,
     params: MilestoneParams,
 ) -> Result<AgreementResult, String> {
+    ensure_wallet_unlocked(state.clone()).await?;
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
@@ -5598,6 +5629,7 @@ async fn settlement_create_deposit(
     state: State<'_, AppState>,
     params: DepositParams,
 ) -> Result<AgreementResult, String> {
+    ensure_wallet_unlocked(state.clone()).await?;
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
@@ -5651,6 +5683,7 @@ async fn settlement_create_merchant_delayed(
     state: State<'_, AppState>,
     params: MerchantDelayedParams,
 ) -> Result<AgreementResult, String> {
+    ensure_wallet_unlocked(state.clone()).await?;
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
@@ -5727,6 +5760,7 @@ async fn settlement_create_contractor(
     state: State<'_, AppState>,
     params: ContractorMilestoneParams,
 ) -> Result<AgreementResult, String> {
+    ensure_wallet_unlocked(state.clone()).await?;
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
@@ -8208,6 +8242,7 @@ async fn agreement_fund(
     agreement_id: String,
     broadcast: Option<bool>,
 ) -> Result<ReleaseResult, String> {
+    ensure_wallet_unlocked(state.clone()).await?;
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
@@ -8554,6 +8589,7 @@ async fn agreement_dispute(
     agreement_id: String,
     reason: Option<String>,
 ) -> Result<DisputeOpenResult, String> {
+    ensure_wallet_unlocked(state.clone()).await?;
     let wallet_path = state.wallet_path.lock().map_err(lock_err)?.clone();
     let data_dir = state.data_dir.lock().map_err(lock_err)?.clone();
     let mut args = vec!["agreement-dispute".to_string(), agreement_id, "--json".to_string()];
