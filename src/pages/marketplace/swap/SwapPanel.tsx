@@ -76,6 +76,12 @@ export default function SwapPanel({ requestedPairId }: SwapPanelProps = {}) {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [activeSwap, setActiveSwap] = useState<ActiveSwap | null>(readPersistedActiveSwap);
   const [refreshTick, setRefreshTick] = useState(0);
+  // FIX 2: tracks whether the freshly-broadcast order has been included in
+  // an Irium block yet. Flipped on by handleOrderCreated and flipped off
+  // by the post-create polling useEffect once the outpoint appears in
+  // listOrders. Drives SwapProgress's "Waiting for confirmation (~2 min)"
+  // copy.
+  const [pendingOrderConfirmation, setPendingOrderConfirmation] = useState(false);
 
   const activePair = useMemo(
     () => getPairById(activePairId) ?? defaultPair(),
@@ -134,6 +140,51 @@ export default function SwapPanel({ requestedPairId }: SwapPanelProps = {}) {
     }
   }, [activeSwap]);
 
+  // FIX 2: after postOrder broadcasts, the new outpoint takes about one
+  // Irium block (~2 min) to appear in listOrders. Poll listOrders every
+  // 15s while pendingOrderConfirmation is true; flip it off and bump
+  // refreshTick the moment we see our outpoint so MySwapsPanel and
+  // PairOrderBook re-render with the confirmed order instead of waiting
+  // for their own poll ticks. Polling is pinned to the pair the order
+  // was created on (activeSwap.pairId) rather than the currently
+  // displayed pair, so switching pairs while waiting does not break the
+  // detection. Errors are silent because the order book panels already
+  // surface their own listOrders failures and duplicating the toast
+  // here would be noisy.
+  useEffect(() => {
+    if (!pendingOrderConfirmation || !activeSwap) return;
+    const pairForSwap = getPairById(activeSwap.pairId);
+    if (!pairForSwap) return;
+    let cancelled = false;
+    const tick = async () => {
+      if (cancelled) return;
+      try {
+        const result = await pairForSwap.rpc.listOrders({
+          direction: 'both',
+          limit: 200,
+        });
+        if (cancelled) return;
+        const found = result.orders.some(
+          (o) =>
+            o.outpoint.txid === activeSwap.outpoint.txid &&
+            o.outpoint.vout === activeSwap.outpoint.vout,
+        );
+        if (found) {
+          setPendingOrderConfirmation(false);
+          setRefreshTick((n) => n + 1);
+        }
+      } catch {
+        // silent — the next tick retries
+      }
+    };
+    tick();
+    const id = setInterval(tick, 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [pendingOrderConfirmation, activeSwap]);
+
   const ctxValue: ActivePairContextValue = useMemo(
     () => ({
       pair: activePair,
@@ -151,6 +202,12 @@ export default function SwapPanel({ requestedPairId }: SwapPanelProps = {}) {
         outpoint: result.order_outpoint,
         paymentSent: false,
       });
+      // FIX 2: the order has been broadcast but is not yet in a block;
+      // surface "Waiting for confirmation (~2 min)" in SwapProgress until
+      // the post-create polling useEffect sees the outpoint land in
+      // listOrders. setActiveSwap above and this flag together cover the
+      // gap between modal close and order-book confirmation.
+      setPendingOrderConfirmation(true);
     }
   }, [activePairId]);
 
@@ -249,6 +306,7 @@ export default function SwapPanel({ requestedPairId }: SwapPanelProps = {}) {
                 onSelectOrder={handleSelectOrder}
                 onCreateOrder={() => setShowCreate(true)}
                 myAddresses={myAddrs}
+                refreshTick={refreshTick}
               />
 
               <div className="space-y-3">
@@ -257,6 +315,7 @@ export default function SwapPanel({ requestedPairId }: SwapPanelProps = {}) {
                     pair={activePair}
                     swapOutpoint={activeSwap.outpoint}
                     paymentSent={activeSwap.paymentSent}
+                    pendingConfirmation={pendingOrderConfirmation}
                     fetchStatus={fetchSwapStatus}
                   />
                 )}

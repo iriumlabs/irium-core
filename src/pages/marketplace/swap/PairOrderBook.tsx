@@ -20,6 +20,11 @@ export interface PairOrderBookProps {
   onSelectOrder: (row: SwapOrderRow) => void;
   onCreateOrder: () => void;
   myAddresses: Set<string>;
+  // FIX 2: parent bumps this counter when something happens that should
+  // force an immediate re-poll of listOrders (e.g. SwapPanel's post-create
+  // polling sees the new outpoint confirmed). Default 0 means existing
+  // callers without the prop keep the pre-FIX-2 10-second poll cadence.
+  refreshTick?: number;
 }
 
 function truncateAddr(addr: string): string {
@@ -48,6 +53,7 @@ export default function PairOrderBook({
   onSelectOrder,
   onCreateOrder,
   myAddresses,
+  refreshTick = 0,
 }: PairOrderBookProps) {
   const { t } = useTranslation();
   const [orders, setOrders] = useState<SwapOrderRow[]>([]);
@@ -93,7 +99,7 @@ export default function PairOrderBook({
       cancelled = true;
       clearInterval(id);
     };
-  }, [pair, direction, sort]);
+  }, [pair, direction, sort, refreshTick]);
 
   const filtered = useMemo(() => {
     if (!hideMine) return orders;

@@ -97,6 +97,14 @@ export default function WalletPage() {
   const [unlockError, setUnlockError] = useState("");
   const [unlockBusy, setUnlockBusy] = useState(false);
 
+  // FIX 1: no-wallet-loaded overlay (HTTP 404 from /wallet/info or empty
+  // wallet.listAddresses) password prompt state. Mirrors the existing
+  // unlock overlay state but lives independently because the overlay
+  // also has to refresh the address list after unlock succeeds.
+  const [noWalletUnlockPass, setNoWalletUnlockPass] = useState("");
+  const [noWalletUnlockError, setNoWalletUnlockError] = useState("");
+  const [noWalletUnlockBusy, setNoWalletUnlockBusy] = useState(false);
+
   const refreshNodeWalletInfo = useCallback(async () => {
     try {
       const info = (await rpcCall.walletInfo()) as NodeWalletInfo;
@@ -239,9 +247,19 @@ export default function WalletPage() {
       // eslint-disable-next-line no-console
       console.error('[Wallet] wallet.listAddresses failed:', e);
       // Only surface errors when the node is supposed to be running —
-      // offline wallets are a valid mode.
+      // offline wallets are a valid mode. The 404 / wallet-not-loaded
+      // class is suppressed here because the new no-wallet overlay
+      // (see render block below) already covers that scenario visually
+      // with actionable Unlock / Create-or-Recover buttons.
       if (nodeStatusRef.current?.running) {
-        toast.error(`${t('wallet.toasts.failed_load_addresses')}: ${String(e)}`);
+        const errMsg = String(e).toLowerCase();
+        const isNotLoaded =
+          errMsg.includes('404') ||
+          errMsg.includes('not loaded') ||
+          errMsg.includes('no wallet');
+        if (!isNotLoaded) {
+          toast.error(`${t('wallet.toasts.failed_load_addresses')}: ${String(e)}`);
+        }
       }
     } finally {
       hasLoadedOnceRef.current = true;
@@ -328,6 +346,38 @@ export default function WalletPage() {
   const loadData = useCallback(async () => {
     await Promise.all([refreshAddresses(), refreshTxs()]);
   }, [refreshAddresses, refreshTxs]);
+
+  // Companion to submitUnlock (line ~138) — used by the no-wallet overlay.
+  // Extra step over the original: after unlock succeeds it also calls
+  // loadData() so the address list populates and the overlay's gate
+  // condition (addresses.length === 0) flips false immediately, hiding
+  // the overlay without waiting for the 15s poller tick. Failure mode
+  // detection branches on the error string: 404 / not-loaded / no wallet
+  // means there is no wallet file to unlock and the user should be steered
+  // toward Create / Recover; anything else is treated as a wrong password.
+  const submitNoWalletUnlock = useCallback(async () => {
+    setNoWalletUnlockError("");
+    if (!noWalletUnlockPass) {
+      setNoWalletUnlockError(t("wallet.encryption.password_required"));
+      return;
+    }
+    setNoWalletUnlockBusy(true);
+    try {
+      await rpcCall.walletUnlock(noWalletUnlockPass);
+      setNoWalletUnlockPass("");
+      await refreshNodeWalletInfo();
+      await loadData();
+    } catch (e) {
+      const msg = String(e).toLowerCase();
+      if (msg.includes('404') || msg.includes('not loaded') || msg.includes('no wallet')) {
+        setNoWalletUnlockError(t("wallet.no_wallet_screen.unlock_error_no_wallet"));
+      } else {
+        setNoWalletUnlockError(t("wallet.encryption.wrong_password"));
+      }
+    } finally {
+      setNoWalletUnlockBusy(false);
+    }
+  }, [noWalletUnlockPass, t, refreshNodeWalletInfo, loadData]);
 
   // Add a fresh address derived from the active wallet's BIP32 seed.
   // Declared AFTER loadData so React's exhaustive-deps rule can include
@@ -628,6 +678,72 @@ export default function WalletPage() {
                   {unlockBusy
                     ? t("wallet.encryption.unlocking")
                     : t("wallet.encryption.unlock_submit")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── No-wallet-loaded overlay (FIX 1) ───────────────────
+            Forced fullscreen overlay shown when iriumd is running but
+            no wallet file is loaded (wallet.listAddresses returned
+            empty or /wallet/info returned 404). Deferred behind the
+            existing plaintext-migration and encrypted-unlock overlays
+            so it never double-stacks. Hidden when the user opens the
+            Create / Recover modal so the modal does not get covered.
+            Hidden while loadingAddresses is true so it never flashes
+            during the first-paint shimmer window. */}
+        {loadingAddresses === false &&
+         addresses.length === 0 &&
+         nodeStatus?.running === true &&
+         !showCreateWallet &&
+         !(nodeWalletInfo && nodeWalletInfo.mode === "plaintext") &&
+         !(nodeWalletInfo && nodeWalletInfo.mode === "encrypted" && !nodeWalletInfo.is_unlocked) && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="no-wallet-modal-title"
+          >
+            <div className="panel-hero p-8 max-w-md w-full mx-4">
+              <div
+                id="no-wallet-modal-title"
+                className="font-display font-semibold text-white text-xl mb-3"
+              >
+                {t("wallet.no_wallet_screen.title")}
+              </div>
+              <p className="text-white/70 text-sm mb-5">
+                {t("wallet.no_wallet_screen.body")}
+              </p>
+              <div className="space-y-3">
+                <input
+                  type="password"
+                  placeholder={t("wallet.encryption.password_placeholder")}
+                  value={noWalletUnlockPass}
+                  onChange={(e) => setNoWalletUnlockPass(e.target.value)}
+                  disabled={noWalletUnlockBusy}
+                  autoFocus
+                  onKeyDown={(e) => { if (e.key === "Enter") submitNoWalletUnlock(); }}
+                  className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white text-sm"
+                />
+                {noWalletUnlockError && <div className="text-red-400 text-xs">{noWalletUnlockError}</div>}
+                <button
+                  onClick={submitNoWalletUnlock}
+                  disabled={noWalletUnlockBusy}
+                  className="w-full px-4 py-2 rounded bg-blue-500 hover:bg-blue-400 text-white font-semibold text-sm disabled:opacity-50"
+                >
+                  {noWalletUnlockBusy
+                    ? t("wallet.encryption.unlocking")
+                    : t("wallet.no_wallet_screen.unlock_button")}
+                </button>
+                <button
+                  onClick={() => {
+                    setCreateWalletDefaultTab('create');
+                    setShowCreateWallet(true);
+                  }}
+                  className="w-full px-4 py-2 rounded bg-white/5 hover:bg-white/10 border border-white/15 text-white font-semibold text-sm"
+                >
+                  {t("wallet.no_wallet_screen.create_button")}
                 </button>
               </div>
             </div>

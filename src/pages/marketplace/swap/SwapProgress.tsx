@@ -36,6 +36,13 @@ export interface SwapProgressProps {
   pair: SwapPairConfig;
   swapOutpoint: { txid: string; vout: number };
   paymentSent: boolean;
+  // FIX 2: true between handleOrderCreated firing and the post-create
+  // polling useEffect seeing the new outpoint in listOrders. When true the
+  // status sentence overrides the "Escrow is locked..." copy with a
+  // user-facing "Waiting for confirmation (~2 min)" message. Defaults to
+  // false so existing callers that don't track post-create confirmation
+  // continue to render the pre-FIX-2 copy.
+  pendingConfirmation?: boolean;
   fetchStatus?: (outpoint: { txid: string; vout: number }) => Promise<{ lifecycle?: SwapLifecycle }>;
 }
 
@@ -65,7 +72,22 @@ function stepFor(life: SwapLifecycle, paymentSent: boolean):
   }
 }
 
-function statusSentence(life: SwapLifecycle, paymentSent: boolean, pair: SwapPairConfig): string {
+function statusSentence(
+  life: SwapLifecycle,
+  paymentSent: boolean,
+  pair: SwapPairConfig,
+  pendingConfirmation: boolean,
+): string {
+  // FIX 2: until the freshly-broadcast order is observed in listOrders,
+  // surface a clear "Waiting for confirmation (~2 min)" message instead of
+  // the post-confirmation "Escrow is locked..." copy. Only override for
+  // the pre-payment family of lifecycle states; once partially_released /
+  // released / refunded / expired / cancelled / disputed kick in, the
+  // lifecycle-specific copy below is correct and should win.
+  if (pendingConfirmation &&
+      (life === 'draft' || life === 'proposed' || life === 'funded' || life === 'unknown')) {
+    return `Waiting for confirmation (~2 min). Your order will appear in the order book once it is included in an Irium block.`;
+  }
   switch (life) {
     case 'draft':
     case 'proposed':
@@ -101,6 +123,7 @@ export default function SwapProgress({
   pair,
   swapOutpoint,
   paymentSent,
+  pendingConfirmation = false,
   fetchStatus,
 }: SwapProgressProps) {
   const [life, setLife] = useState<SwapLifecycle>('unknown');
@@ -200,7 +223,7 @@ export default function SwapProgress({
           lineHeight: 1.5,
         }}
       >
-        {statusSentence(life, paymentSent, pair)}
+        {statusSentence(life, paymentSent, pair, pendingConfirmation)}
       </div>
 
       {error && (

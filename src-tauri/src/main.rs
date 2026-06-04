@@ -1936,12 +1936,29 @@ async fn start_node(
     // automatically propagates here without a separate code change.
     // Community IPs are deliberately excluded — they go stale as participants
     // change nodes. The gossip system discovers new peers from these seeds.
-    let builtin_seeds: Vec<String> = BOOTSTRAP_SEEDLIST_TXT
+    // FIX 2: hardcoded iriumlabs-operated bootstrap nodes. These are
+    // pinned alongside whatever lives in the signed BOOTSTRAP_SEEDLIST_TXT
+    // so a fresh install reaches one of them on the first dial attempt
+    // and starts pulling headers within seconds instead of cycling
+    // through gossip-discovered (often stale) candidates. They flow
+    // through the same dedup + own-IP filter below, so a duplicate of
+    // either IP already in the signed list is silently dropped, and a
+    // user running irium-core on the VPS itself never tries to dial
+    // itself. No port suffix needed — iriumd's seed-dial loop defaults
+    // to TCP 38291 when only an IP is given.
+    const IRIUMLABS_BOOTSTRAP_NODES: &[&str] = &[
+        "207.244.247.86",   // irium-vps
+        "157.173.116.134",  // irium-eu
+    ];
+    let mut builtin_seeds: Vec<String> = BOOTSTRAP_SEEDLIST_TXT
         .lines()
         .map(|l| l.trim())
         .filter(|l| !l.is_empty() && !l.starts_with('#'))
         .map(|l| l.to_string())
         .collect();
+    for ip in IRIUMLABS_BOOTSTRAP_NODES {
+        builtin_seeds.push((*ip).to_string());
+    }
 
     // Peers organically discovered by iriumd in previous sessions via P2P gossip.
     // No external server dependency — purely local data iriumd wrote itself.

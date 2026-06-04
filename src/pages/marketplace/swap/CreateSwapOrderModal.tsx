@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Check, Lock, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { SwapDirection, SwapPairConfig, SwapTxResult } from './pairs/types';
@@ -27,10 +27,49 @@ export default function CreateSwapOrderModal({
   const [direction, setDirection] = useState<SwapDirection>('sell_irm');
   const [amountIrm, setAmountIrm] = useState('');
   const [quoteAmount, setQuoteAmount] = useState('');
-  const [makerForeignAddress, setMakerForeignAddress] = useState('');
+  // FIX 3: lazy-initialize from localStorage so the user does not have to
+  // re-type their BTC / LTC / DOGE address on every open. See the
+  // storageKey useMemo + mirror useEffect below for the write side.
+  const [makerForeignAddress, setMakerForeignAddress] = useState<string>(() => {
+    try {
+      return localStorage.getItem(`irium_swap_address_${pair.quote.code.toLowerCase()}`) ?? '';
+    } catch {
+      return '';
+    }
+  });
   const [confirmations, setConfirmations] = useState(DEFAULT_CONFIRMATIONS);
   const [expiryBlocks, setExpiryBlocks] = useState(DEFAULT_EXPIRY_BLOCKS);
   const [busy, setBusy] = useState(false);
+
+  // FIX 3: per-pair localStorage key so the maker foreign address (BTC /
+  // LTC / DOGE / etc) persists across modal opens and across app
+  // restarts. Pattern: irium_swap_address_<lowercase quote code>. BTC →
+  // irium_swap_address_btc, LTC → irium_swap_address_ltc, DOGE →
+  // irium_swap_address_doge. USDT and any future pair share the same
+  // pattern automatically — no per-pair branching required.
+  const storageKey = useMemo(
+    () => `irium_swap_address_${pair.quote.code.toLowerCase()}`,
+    [pair.quote.code],
+  );
+
+  // FIX 3: mirror the address back to localStorage as the user types.
+  // Only non-empty values are persisted: backspacing to empty does NOT
+  // wipe the saved address, so a user who clears the field by accident
+  // still gets pre-filled on the next open. Replacing with a different
+  // address overwrites cleanly. Storage failures (quota, privacy mode)
+  // are swallowed — persistence is a nice-to-have, not load-bearing.
+  // Recovery lever for a stuck-bad saved address: type any new
+  // non-empty value (which overwrites the stored entry) or clear the
+  // localStorage key manually via devtools.
+  useEffect(() => {
+    const v = makerForeignAddress.trim();
+    if (v.length === 0) return;
+    try {
+      localStorage.setItem(storageKey, v);
+    } catch {
+      // ignore
+    }
+  }, [makerForeignAddress, storageKey]);
 
   const numericIrm = useMemo(() => {
     const n = Number(amountIrm);
