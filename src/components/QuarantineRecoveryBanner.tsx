@@ -36,21 +36,24 @@ export default function QuarantineRecoveryBanner() {
   const nodeStatus = useStore((s) => s.nodeStatus);
   const nodeRunning = nodeStatus?.running ?? false;
   const [busy, setBusy] = useState<'stopping' | 'clearing' | null>(null);
-  // Persisted dismissal fingerprint. undefined = still reading the file,
-  // null = file absent / unparseable (never dismissed), number = orphan-dir
-  // count we dismissed against. Banner stays hidden while that number is
-  // >= the current scanned dir count.
-  const [persistedDismissedDirs, setPersistedDismissedDirs] = useState<number | null | undefined>(undefined);
+  // Persisted dismissal fingerprint in localStorage.
+  // null = never dismissed; number = orphan-dir count we dismissed at.
+  // Banner stays hidden while the stored number is >= the current scanned
+  // dir count, so a fresh quarantine batch (dir count climbs) re-surfaces
+  // the banner while the user's earlier dismissal still suppresses the
+  // already-known set.
+  const STORAGE_KEY = 'irium-quarantine-dismissed-dir-count';
+  const [persistedDismissedDirs, setPersistedDismissedDirs] = useState<number | null>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw === null) return null;
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : null;
+    } catch {
+      return null;
+    }
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-    node.getQuarantineDismissed()
-      .then((v) => { if (!cancelled) setPersistedDismissedDirs(v ?? null); })
-      .catch(() => { if (!cancelled) setPersistedDismissedDirs(null); });
-    return () => { cancelled = true; };
-  }, []);
-
-  if (persistedDismissedDirs === undefined) return null;
   if (count <= 0 || dismissed) return null;
   if (persistedDismissedDirs !== null && persistedDismissedDirs >= dirCount) return null;
 
@@ -96,9 +99,11 @@ export default function QuarantineRecoveryBanner() {
       // The next session-start scan in App.tsx will surface any new
       // quarantine that appears later.
       setQuarantinedBlockCount(0);
-      // Clean slate on disk: drop the dismissal fingerprint so the next
-      // launch starts from "never dismissed" instead of a stale count.
-      try { await node.setQuarantineDismissed(0); } catch { /* non-fatal */ }
+      // Clean slate: drop the dismissal fingerprint so the next launch
+      // starts from "never dismissed" instead of a stale count. Now in
+      // localStorage (FIX 1) — was a Tauri RPC against an app-data file.
+      try { localStorage.removeItem(STORAGE_KEY); } catch { /* non-fatal */ }
+      setPersistedDismissedDirs(null);
     } catch (e) {
       toast.error(t('quarantine_banner.toast_recover_failed', { reason: String(e) }));
     } finally {
@@ -196,20 +201,22 @@ export default function QuarantineRecoveryBanner() {
           </button>
         )}
         <button
-          onClick={async () => {
-            // Persist the orphan-dir fingerprint so this same quarantine
-            // state stays dismissed across launches. New orphan dirs raise
-            // the scanned count above this fingerprint and the banner
-            // re-surfaces — preserving the signal for new corruption.
-            try { await node.setQuarantineDismissed(dirCount); } catch { /* non-fatal */ }
+          onClick={() => {
+            // FIX 1: persist the orphan-dir fingerprint to localStorage so
+            // this same quarantine state stays dismissed across launches.
+            // A future quarantine batch raises dirCount above this number
+            // and the banner re-surfaces, preserving the signal for new
+            // corruption. Was a Tauri RPC; now pure browser storage.
+            try { localStorage.setItem(STORAGE_KEY, String(dirCount)); } catch { /* non-fatal */ }
+            setPersistedDismissedDirs(dirCount);
             dismiss();
           }}
           aria-label={t('quarantine_banner.dismiss')}
-          className="w-8 h-8 inline-flex items-center justify-center rounded-lg transition-all"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-display font-semibold transition-all active:scale-[0.97]"
           style={{
             background: 'transparent',
             border: '1px solid rgba(245,158,11,0.35)',
-            color: 'rgba(251,191,36,0.85)',
+            color: 'rgba(251,191,36,0.95)',
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'rgba(245,158,11,0.10)';
@@ -221,6 +228,7 @@ export default function QuarantineRecoveryBanner() {
           }}
         >
           <X size={14} />
+          {t('quarantine_banner.dismiss')}
         </button>
       </div>
     </div>
