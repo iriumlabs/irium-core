@@ -793,6 +793,13 @@
       "body_emphasis": "unhide",
       "body_trail": "it later from the Hidden Addresses section.",
       "confirm_button": "Hide address"
+    },
+    "no_wallet_screen": {
+      "title": "No wallet loaded",
+      "body": "Unlock an existing wallet with your password, or create a new one (or recover one from your seed phrase / WIF).",
+      "unlock_button": "Unlock Wallet",
+      "create_button": "Create / Recover Wallet",
+      "unlock_error_no_wallet": "No wallet file on disk. Choose Create / Recover instead."
     }
   },
   "agreements": {
