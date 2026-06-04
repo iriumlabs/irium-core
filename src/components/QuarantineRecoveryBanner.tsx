@@ -43,7 +43,12 @@ export default function QuarantineRecoveryBanner() {
   // the banner while the user's earlier dismissal still suppresses the
   // already-known set.
   const STORAGE_KEY = 'irium-quarantine-dismissed-dir-count';
-  const [persistedDismissedDirs, setPersistedDismissedDirs] = useState<number | null>(() => {
+  // Captured-at-mount: the dir count from a PREVIOUS launch. Compared
+  // against the current dirCount to decide whether to surface the banner.
+  // The actual write happens in the useEffect below — by the time that
+  // effect fires, persistedDismissedDirs already holds the OLD value, so
+  // the gate decision below is unaffected by the same-render write.
+  const [persistedDismissedDirs] = useState<number | null>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw === null) return null;
@@ -53,6 +58,24 @@ export default function QuarantineRecoveryBanner() {
       return null;
     }
   });
+
+  // FIX B: auto-persist the current dir count as the suppress-baseline
+  // whenever the scan reports a non-zero number. Combined with the gate
+  // below (`persistedDismissedDirs >= dirCount`), this means:
+  //   - first launch ever with N dirs: previousSeenDirs is null → banner
+  //     shows once. App writes N to localStorage.
+  //   - next launch with same N dirs (or fewer, after v1.9.72 7-day prune):
+  //     previousSeenDirs(N) >= dirCount → banner suppressed automatically,
+  //     no user dismiss click needed.
+  //   - next launch with N+M dirs (genuine new corruption): previousSeenDirs(N)
+  //     < dirCount(N+M) → banner shows again, with the new higher number.
+  // Existing user-dismiss + recover flows still write to the same key,
+  // so the explicit-dismiss path remains intact.
+  useEffect(() => {
+    if (dirCount > 0) {
+      try { localStorage.setItem(STORAGE_KEY, String(dirCount)); } catch { /* non-fatal */ }
+    }
+  }, [dirCount]);
 
   if (count <= 0 || dismissed) return null;
   if (persistedDismissedDirs !== null && persistedDismissedDirs >= dirCount) return null;
@@ -103,7 +126,6 @@ export default function QuarantineRecoveryBanner() {
       // starts from "never dismissed" instead of a stale count. Now in
       // localStorage (FIX 1) — was a Tauri RPC against an app-data file.
       try { localStorage.removeItem(STORAGE_KEY); } catch { /* non-fatal */ }
-      setPersistedDismissedDirs(null);
     } catch (e) {
       toast.error(t('quarantine_banner.toast_recover_failed', { reason: String(e) }));
     } finally {
@@ -208,7 +230,6 @@ export default function QuarantineRecoveryBanner() {
             // and the banner re-surfaces, preserving the signal for new
             // corruption. Was a Tauri RPC; now pure browser storage.
             try { localStorage.setItem(STORAGE_KEY, String(dirCount)); } catch { /* non-fatal */ }
-            setPersistedDismissedDirs(dirCount);
             dismiss();
           }}
           aria-label={t('quarantine_banner.dismiss')}
