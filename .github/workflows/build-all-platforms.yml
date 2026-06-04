@@ -207,7 +207,7 @@ jobs:
       # step can detect "cargo build --features gpu silently failed". If
       # the hash hasn't changed after the build, the installer would ship
       # the stale binary checked out from git HEAD.
-      - name: Capture pre-build GPU binary hash (Windows)
+      - name: Capture pre-build GPU binary hash and delete (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
@@ -215,6 +215,14 @@ jobs:
           $h = if (Test-Path $f) { (Get-FileHash $f -Algorithm SHA256).Hash.ToLower() } else { "__missing__" }
           "GPU_PREBUILD_SHA=$h" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           Write-Host "Pre-build GPU sha=$h"
+          # v1.0.93 CI fix: delete the file so build-irium-node.js MUST
+          # recreate it. The previous hash-equality check produced false
+          # positives for iriumd-only releases (gpu code unchanged →
+          # cargo cache hit → identical binary → check threw 'silent
+          # build failure'). File-presence post-build is the actual
+          # invariant we care about: if cargo silently failed, the
+          # file is missing; if cargo succeeded, it's there.
+          if (Test-Path $f) { Remove-Item $f -Force; Write-Host "Deleted stale gpu binary before build" }
 
       # Compile iriumd, irium-wallet, irium-miner from source.
       # First build: 30–90 min; subsequent runs use the Rust cache above.
@@ -230,11 +238,15 @@ jobs:
         shell: pwsh
         run: |
           $f = "src-tauri/binaries/irium-miner-gpu-x86_64-pc-windows-msvc.exe"
-          $now = (Get-FileHash $f -Algorithm SHA256).Hash.ToLower()
-          if ($now -eq $env:GPU_PREBUILD_SHA) {
-            throw "GPU binary unchanged during CI build (sha=$now). cargo build --features gpu silently failed - investigate before shipping."
+          if (-not (Test-Path $f)) {
+            throw "GPU binary missing after CI build ($f). cargo build --features gpu silently failed - investigate before shipping."
           }
-          Write-Host "GPU binary rebuilt OK (sha=$now)"
+          $size = (Get-Item $f).Length
+          if ($size -lt 1MB) {
+            throw "GPU binary suspiciously small ($size bytes). cargo build --features gpu probably produced a stub - investigate before shipping."
+          }
+          $now = (Get-FileHash $f -Algorithm SHA256).Hash.ToLower()
+          Write-Host "GPU binary rebuilt OK (sha=$now, size=$size, pre-build sha=$env:GPU_PREBUILD_SHA)"
 
       - name: Type-check frontend
         run: npx tsc --noEmit
