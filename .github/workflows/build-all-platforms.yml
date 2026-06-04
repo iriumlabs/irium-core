@@ -227,7 +227,7 @@ jobs:
       # Compile iriumd, irium-wallet, irium-miner from source.
       # First build: 30–90 min; subsequent runs use the Rust cache above.
       - name: Build irium node binaries
-        run: node scripts/build-irium-node.js
+        run: node scripts/build-irium-node.js --force
 
       # build-irium-node.js intentionally swallows GPU build failures with
       # only a warning so local devs without OpenCL can still build the

@@ -185,7 +185,7 @@ export const irmLtcPair: SwapPairConfig = {
   quote: ltc,
   available: true,
   // Chain-gated: consensus activates IRM/LTC swap orders at this height.
-  activationHeight: 25_000,
+  activationHeight: 24_800,
 
   accent: {
     primary: '#345D9D',
