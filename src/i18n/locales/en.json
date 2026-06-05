@@ -937,7 +937,8 @@
       "browse": "Browse",
       "delete_agreement": "Delete Agreement",
       "cleanup_old_test_data": "Clean up old test data ({{count}})",
-      "export_pack": "Export Pack"
+      "export_pack": "Export Pack",
+      "new_agreement": "New agreement"
     },
     "page_views": {
       "agreements": "Agreements",
@@ -945,17 +946,20 @@
     },
     "status_filters": {
       "all": "All",
-      "pending": "Pending",
-      "open": "Open",
-      "funded": "Funded",
+      "pending": "Awaiting signature",
+      "open": "Awaiting funding",
+      "funded": "Active (IRM locked)",
       "released": "Released",
-      "refunded": "Refunded"
+      "refunded": "Refunded",
+      "expired": "Expired"
     },
     "proof_types": {
       "delivery_confirmed": "Delivery Confirmed",
       "payment_received": "Payment Received",
       "otc_release": "OTC Release",
-      "milestone_complete": "Milestone Complete"
+      "milestone_complete": "Milestone Complete",
+      "payment_sent": "Payment sent (off-chain)",
+      "delivery_attempted": "Delivery attempted"
     },
     "search_placeholder": "Search by ID, buyer/seller address, or label…",
     "role_badges": {
@@ -1041,7 +1045,8 @@
       "no_agreements_found": "No agreements found",
       "with_status": "with status",
       "matching": "matching",
-      "go_to_settlement_cta": "Go to Settlement to create your first agreement →"
+      "go_to_settlement_cta": "Go to Settlement to create your first agreement →",
+      "reset_filters": "Reset filters"
     },
     "scope": {
       "my": "My Agreements",

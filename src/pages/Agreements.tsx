@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen, FileJson, AlertCircle, Copy, FileText, Receipt, PenLine, ShieldCheck, Gavel, CheckCircle2, XCircle, HelpCircle, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Upload, RefreshCw, X, Download, PackageOpen, FileJson, AlertCircle, Copy, FileText, Receipt, PenLine, ShieldCheck, Gavel, CheckCircle2, XCircle, HelpCircle, Trash2, Plus, ArrowLeftRight, Briefcase, Shield } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { fetch as tauriFetch, Body, ResponseType } from '@tauri-apps/api/http';
@@ -36,7 +36,7 @@ const itemVariants = {
 
 // StatusFilter uses real binary status values: open / funded / released / refunded
 // Pending = agreement created but funding tx not yet confirmed on-chain.
-type StatusFilter = 'all' | 'pending' | 'open' | 'funded' | 'released' | 'refunded';
+type StatusFilter = 'all' | 'pending' | 'open' | 'funded' | 'released' | 'refunded' | 'expired';
 
 const STATUS_FILTERS: { key: StatusFilter; labelKey: string }[] = [
   { key: 'all',      labelKey: 'agreements.status_filters.all'      },
@@ -45,11 +45,28 @@ const STATUS_FILTERS: { key: StatusFilter; labelKey: string }[] = [
   { key: 'funded',   labelKey: 'agreements.status_filters.funded'   },
   { key: 'released', labelKey: 'agreements.status_filters.released' },
   { key: 'refunded', labelKey: 'agreements.status_filters.refunded' },
+  { key: 'expired',  labelKey: 'agreements.status_filters.expired'  },
 ];
 
 // Proof types accepted by `agreement-proof-create` — limited to the common
 // settlement variants the wizard surfaces in its dropdown. Advanced users
 // fall through to the Upload File mode for niche proof_kinds.
+// P3 — new-agreement split-dropdown options. Mirrors SettlementHub's
+// FLOW_OPTIONS so users on the Agreements page can launch any flow
+// without first navigating to /settlement. Routes match the existing
+// Settlement wizard mounting points.
+const NEW_AGREEMENT_FLOWS: ReadonlyArray<{
+  id: string;
+  titleKey: string;
+  subtitleKey: string;
+  Icon: React.ElementType;
+  route: string;
+}> = [
+  { id: 'safe_trade',   titleKey: 'settlement_ui.hub.safe_trade_title',   subtitleKey: 'settlement_ui.hub.safe_trade_subtitle',   Icon: ArrowLeftRight, route: '/settlement/safe-trade'   },
+  { id: 'pay_for_work', titleKey: 'settlement_ui.hub.pay_for_work_title', subtitleKey: 'settlement_ui.hub.pay_for_work_subtitle', Icon: Briefcase,      route: '/settlement/pay-for-work' },
+  { id: 'deposit',      titleKey: 'settlement_ui.hub.deposit_title',      subtitleKey: 'settlement_ui.hub.deposit_subtitle',      Icon: Shield,         route: '/settlement/deposit'      },
+];
+
 const PROOF_TYPES: ReadonlyArray<{ value: string; labelKey: string }> = [
   { value: 'delivery_confirmed', labelKey: 'agreements.proof_types.delivery_confirmed' },
   { value: 'payment_received',   labelKey: 'agreements.proof_types.payment_received'   },
@@ -57,7 +74,71 @@ const PROOF_TYPES: ReadonlyArray<{ value: string; labelKey: string }> = [
   { value: 'milestone_complete', labelKey: 'agreements.proof_types.milestone_complete' },
 ];
 
+// P2 — role-aware proof type subsets. The funder (chain-payer / IRM-locker)
+// submits proofs that ACK the other side's off-chain action; the claimer
+// (chain-payee / IRM-receiver) submits proofs that ATTEST their own
+// off-chain action. Observers (neither party) shouldn't be submitting at
+// all but if a stale modal opens we fall back to the full PROOF_TYPES set
+// so nothing is silently hidden.
+const FUNDER_PROOF_TYPES: ReadonlyArray<{ value: string; labelKey: string }> = [
+  { value: 'payment_received',  labelKey: 'agreements.proof_types.payment_received'  },
+  { value: 'delivery_confirmed', labelKey: 'agreements.proof_types.delivery_confirmed' },
+  { value: 'otc_release',       labelKey: 'agreements.proof_types.otc_release'       },
+];
+const CLAIMER_PROOF_TYPES: ReadonlyArray<{ value: string; labelKey: string }> = [
+  { value: 'payment_sent',         labelKey: 'agreements.proof_types.payment_sent'        },
+  { value: 'milestone_complete',   labelKey: 'agreements.proof_types.milestone_complete'  },
+  { value: 'delivery_attempted',   labelKey: 'agreements.proof_types.delivery_attempted'  },
+];
+
+type UserRole = 'funder' | 'claimer' | 'observer';
+
+// In ALL settlement templates the on-disk AgreementObject's `payer` field
+// holds the chain-side IRM-locker, and `payee` holds the IRM-receiver.
+// agreement_list maps these to Agreement.buyer / Agreement.seller
+// respectively (main.rs:4737, despite the misleading struct field names).
+// Verified against wallet binary's build_otc_agreement: OTC seller is the
+// chain-payer; agreement-create-simple-settlement: party-a (freelance
+// client / deposit depositor) is the chain-payer.
+function isFunder(a: Agreement, selectedAddress: string): boolean {
+  return !!selectedAddress && a.buyer === selectedAddress;
+}
+function isClaimer(a: Agreement, selectedAddress: string): boolean {
+  return !!selectedAddress && a.seller === selectedAddress;
+}
+function getUserRole(a: Agreement, selectedAddress: string): UserRole {
+  if (isFunder(a, selectedAddress))  return 'funder';
+  if (isClaimer(a, selectedAddress)) return 'claimer';
+  return 'observer';
+}
+function getProofTypesForRole(role: UserRole): ReadonlyArray<{ value: string; labelKey: string }> {
+  if (role === 'funder')  return FUNDER_PROOF_TYPES;
+  if (role === 'claimer') return CLAIMER_PROOF_TYPES;
+  return PROOF_TYPES;
+}
+
 // ── Helper component ──────────────────────────────────────────
+
+// P1: deadline renderer that handles BOTH Unix timestamps (>=1e9) and
+// block heights (<1e9). On-disk AgreementObject stores refund_timeout as
+// block height; if/when agreement_list ever passes it through, naive
+// timeAgo(blockHeight) would render as ~55 years ago. This safety net
+// keeps the UI honest in both cases. currentHeight comes from
+// AgreementStatusResult fetched per-card on expand.
+function formatDeadline(deadline: number | undefined | null, currentHeight?: number): string {
+  if (deadline == null) return '—';
+  if (deadline >= 1e9) {
+    // Unix timestamp seconds (post-2001 sentinel)
+    return timeAgo(deadline);
+  }
+  // Block height. BLOCKS_PER_HOUR = 60 per memory `project_blocks_per_hour`.
+  if (typeof currentHeight === 'number' && deadline > currentHeight) {
+    const blocksRemaining = deadline - currentHeight;
+    const hoursApprox = Math.max(1, Math.round(blocksRemaining / 60));
+    return `~${blocksRemaining} blocks (~${hoursApprox}h) — refund at block ${deadline}`;
+  }
+  return `block ${deadline}`;
+}
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
@@ -166,6 +247,33 @@ export default function AgreementsPage() {
     return {};
   });
 
+  // P3 — split-button "+ New agreement" dropdown in the page header.
+  const [newAgreementMenuOpen, setNewAgreementMenuOpen] = useState(false);
+  const newAgreementMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // P6 — persisted set of "this user has signed this agreement" flags so the
+  // amber pulsing Sign CTA doesn't reappear after a successful sign + page
+  // refresh. Keyed by `${agreement_id}|${signer_address}`. localStorage-backed.
+  const [signedFlags, setSignedFlags] = useState<Record<string, boolean>>(() => {
+    try {
+      const raw = localStorage.getItem('irium_agreement_signed_v1');
+      if (raw) {
+        const obj = JSON.parse(raw);
+        if (obj && typeof obj === 'object' && !Array.isArray(obj)) return obj as Record<string, boolean>;
+      }
+    } catch {}
+    return {};
+  });
+
+  const markSigned = useCallback((agreementId: string, signerAddress: string) => {
+    if (!signerAddress) return;
+    setSignedFlags((prev) => {
+      const next = { ...prev, [`${agreementId}|${signerAddress}`]: true };
+      try { localStorage.setItem('irium_agreement_signed_v1', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
   const saveAgreementLabel = (id: string, label: string) => {
     setAgreementLabels((prev) => {
       const next = { ...prev };
@@ -180,6 +288,23 @@ export default function AgreementsPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // P3 — close split-button dropdown on outside click + Escape.
+  useEffect(() => {
+    if (!newAgreementMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!newAgreementMenuRef.current?.contains(e.target as Node)) setNewAgreementMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setNewAgreementMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [newAgreementMenuOpen]);
 
   // Fix 3: pull all wallet addresses so we can answer "is the user a
   // party to this agreement" for the My / All scope filter and the
@@ -426,6 +551,58 @@ export default function AgreementsPage() {
           <button onClick={loadData} className="btn-ghost" disabled={loading}>
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>
+          {/* P3 — split-button "+ New agreement". Primary action defaults to
+              OTC Trade (the renamed Safe Trade route). Chevron opens a
+              3-item dropdown matching SettlementHub's FLOW_OPTIONS so users
+              monitoring agreements can start a new one without leaving the
+              page. */}
+          <div className="relative" ref={newAgreementMenuRef}>
+            <div className="inline-flex rounded overflow-hidden">
+              <button
+                type="button"
+                onClick={() => navigate('/settlement/safe-trade')}
+                className="inline-flex items-center gap-1.5 h-9 px-3 text-[13px] font-semibold bg-[#fcd535] text-[#0b0e11] hover:bg-[#f0c020] transition-colors"
+              >
+                <Plus size={13} />
+                {t('agreements.buttons.new_agreement')}
+              </button>
+              <button
+                type="button"
+                aria-label={t('agreements.buttons.new_agreement')}
+                onClick={() => setNewAgreementMenuOpen((v) => !v)}
+                className="inline-flex items-center h-9 px-2 bg-[#fcd535] text-[#0b0e11] hover:bg-[#f0c020] transition-colors border-l border-[#0b0e11]/20"
+              >
+                <ChevronDown size={14} />
+              </button>
+            </div>
+            {newAgreementMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.12 }}
+                className="absolute right-0 mt-1.5 z-20 w-[260px] rounded-lg bg-[#181a20] border border-[#2b3139] shadow-2xl overflow-hidden"
+              >
+                {NEW_AGREEMENT_FLOWS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => { setNewAgreementMenuOpen(false); navigate(opt.route); }}
+                    className="w-full text-left flex items-start gap-3 px-3 py-2.5 hover:bg-[#2b3139] transition-colors"
+                  >
+                    <opt.Icon size={16} className="text-[#b7bdc6] mt-0.5 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-[13px] font-medium text-[#eaecef] leading-tight">
+                        {t(opt.titleKey)}
+                      </div>
+                      <div className="text-[11px] text-[#b7bdc6] mt-0.5 leading-snug">
+                        {t(opt.subtitleKey)}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -554,12 +731,22 @@ export default function AgreementsPage() {
             )}
             .
           </div>
-          {agreementList.length === 0 && (
+          {agreementList.length === 0 ? (
             <button
               onClick={() => navigate('/settlement')}
               className="btn-primary text-sm py-2 px-4 mt-1"
             >
               {t('agreements.empty.go_to_settlement_cta')}
+            </button>
+          ) : (
+            // P4 — user has agreements but the current filter / search / scope
+            // is hiding them all. Offer a one-click reset that restores the
+            // default "my + all + no search" view.
+            <button
+              onClick={() => { setFilter('all'); setSearchQuery(''); setScope('my'); }}
+              className="btn-secondary text-xs py-1.5 px-3 mt-1 inline-flex items-center gap-1.5"
+            >
+              <RefreshCw size={11} /> {t('agreements.empty.reset_filters')}
             </button>
           )}
         </div>
@@ -595,6 +782,7 @@ export default function AgreementsPage() {
                 refundElig={refundEligByAgreement[a.id]}
                 releaseElig={releaseEligByAgreement[a.id]}
                 statusInfo={statusByAgreement[a.id]}
+                signedFlags={signedFlags}
               />
             </motion.div>
           ))}
@@ -620,6 +808,10 @@ export default function AgreementsPage() {
           <ProofModal
             agreementId={showProofModal}
             agreementHashDefault={agreementList.find((a) => a.id === showProofModal)?.hash ?? ''}
+            userRole={(() => {
+              const a = agreementList.find((x) => x.id === showProofModal);
+              return a ? getUserRole(a, selectedAddress) : 'observer';
+            })()}
             proofFilePath={proofFilePath}
             onPathChange={setProofFilePath}
             onClose={() => {
@@ -708,6 +900,12 @@ export default function AgreementsPage() {
             preferredAddress={selectedAddress}
             onClose={() => setSigningId(null)}
             onSuccess={() => {
+              // P6: persist a "signed by current address" flag so the
+              // amber pulsing Sign CTA stops nagging on subsequent renders.
+              // We assume the user signed with selectedAddress — if they
+              // picked a different address inside SignAgreementModal the
+              // CTA will reappear, which is acceptable defensive behaviour.
+              markSigned(signingId, selectedAddress);
               setSigningId(null);
               loadData();
             }}
@@ -952,6 +1150,11 @@ interface AgreementCardProps {
   refundElig?: SpendEligibilityResult;
   releaseElig?: SpendEligibilityResult;
   statusInfo?: AgreementStatusResult;
+  // P6 — set of "this user has signed this agreement" flags. Keyed by
+  // `${agreement_id}|${signer_address}`. Persisted across reloads via
+  // localStorage in the parent. Suppresses the amber pulsing Sign CTA
+  // after a successful sign so the UI stops nagging.
+  signedFlags?: Record<string, boolean>;
 }
 
 function ExportPackRow({ agreementId }: { agreementId: string }) {
@@ -1055,6 +1258,7 @@ function AgreementCard({
   refundElig,
   releaseElig,
   statusInfo,
+  signedFlags,
 }: AgreementCardProps) {
   // Phase 7 — surface a prominent "Sign Agreement" CTA before funding when
   // the currently-selected wallet address matches one of the parties.
@@ -1065,7 +1269,11 @@ function AgreementCard({
   const isParty =
     !!selectedAddress &&
     (a.buyer === selectedAddress || a.seller === selectedAddress);
-  const signNeeded = isParty && (a.status === 'open' || a.status === 'pending');
+  // P6: suppress the amber pulsing CTA once this user has signed this
+  // agreement at least once with the currently-selected address. Backed
+  // by the parent's signedFlags / localStorage cache.
+  const alreadySigned = !!signedFlags?.[`${a.id}|${selectedAddress}`];
+  const signNeeded = isParty && (a.status === 'open' || a.status === 'pending') && !alreadySigned;
   // Local label-input state — synced with the prop so external updates
   // (e.g. saving from another card with the same agreement, hypothetical)
   // flow back in without losing the user's mid-edit text.
@@ -1108,9 +1316,12 @@ function AgreementCard({
   const isUnfunded = a.status === 'open' || a.status === 'pending';
   const borderColor = borderColorForStatus(a.status);
 
-  // Deadline progress
+  // Deadline progress. Only render for Unix-timestamp-shaped deadlines;
+  // for block-height-shaped values the arithmetic against created_at
+  // (which IS a timestamp) is meaningless and the bar would always sit
+  // at 0%. P1 safety net.
   let deadlinePct = 0;
-  if (a.deadline && a.status === 'funded') {
+  if (a.deadline && a.deadline >= 1e9 && a.status === 'funded') {
     const total = a.deadline - (a.created_at ?? a.deadline);
     const elapsed = Date.now() / 1000 - (a.created_at ?? a.deadline);
     deadlinePct = Math.min(100, Math.max(0, total > 0 ? (elapsed / total) * 100 : 0));
@@ -1252,7 +1463,7 @@ function AgreementCard({
                 />
                 <Detail
                   label={t('agreements.detail_labels.deadline')}
-                  value={a.deadline ? timeAgo(a.deadline) : '—'}
+                  value={formatDeadline(a.deadline, statusInfo?.current_height)}
                 />
                 <Detail label={t('agreements.detail_labels.proof_status')} value={a.proof_status ?? t('agreements.detail_values.none')} />
                 <Detail
@@ -1375,7 +1586,11 @@ function AgreementCard({
                     released/
                     refunded     → only Export Pack — terminal states. */}
               <div className="flex gap-2 pt-2 flex-wrap">
-                {isUnfunded && (
+                {/* P2: only the funder (chain-payer / IRM-locker) should
+                    see the Fund Escrow button. Backend rejects calls from
+                    other parties but the misleading UI used to let them
+                    click it. */}
+                {isUnfunded && isFunder(a, selectedAddress) && (
                   <button
                     onClick={onFund}
                     disabled={actionLoading || !isOnline}
@@ -1388,7 +1603,10 @@ function AgreementCard({
 
                 {a.status === 'funded' && (
                   <>
-                    {a.release_eligible && (
+                    {/* P2: Release confirms the off-chain delivery and
+                        unlocks IRM to the counterparty. Only the funder
+                        (who confirms what they received) should see it. */}
+                    {a.release_eligible && isFunder(a, selectedAddress) && (
                       <button
                         onClick={onRelease}
                         disabled={actionLoading || !isOnline}
@@ -1398,13 +1616,18 @@ function AgreementCard({
                         {t('agreements.actions.release_to_counterparty')}
                       </button>
                     )}
-                    <button
-                      onClick={onSubmitProof}
-                      className="btn-secondary text-xs py-1.5 px-3"
-                      title={t('agreements.tooltips.submit_proof_delivery')}
-                    >
-                      {t('agreements.actions.submit_proof')}
-                    </button>
+                    {/* P2: Only parties to the agreement should be able
+                        to submit proofs. The dropdown inside ProofModal is
+                        further filtered by funder/claimer role. */}
+                    {isParty && (
+                      <button
+                        onClick={onSubmitProof}
+                        className="btn-secondary text-xs py-1.5 px-3"
+                        title={t('agreements.tooltips.submit_proof_delivery')}
+                      >
+                        {t('agreements.actions.submit_proof')}
+                      </button>
+                    )}
                     <button
                       onClick={onDispute}
                       disabled={actionLoading || !isOnline}
@@ -1568,6 +1791,9 @@ interface ProofModalProps {
   onPathChange: (v: string) => void;
   onClose: () => void;
   onSuccess: () => void;
+  // P2: drives the proofType dropdown. funder → FUNDER_PROOF_TYPES;
+  // claimer → CLAIMER_PROOF_TYPES; observer / undefined → full PROOF_TYPES.
+  userRole?: UserRole;
 }
 
 const isTauri = typeof window !== 'undefined' && '__TAURI__' in window;
@@ -1620,6 +1846,7 @@ function ProofModal({
   onPathChange,
   onClose,
   onSuccess,
+  userRole,
 }: ProofModalProps) {
   const { t } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
@@ -1641,8 +1868,12 @@ function ProofModal({
   const activeAddrIdx = useStore((s) => s.activeAddrIdx);
   const selectedAddress = addresses[activeAddrIdx]?.address ?? '';
 
+  // P2: dropdown options vary by role. Default to the first option in the
+  // role-appropriate subset rather than a hardcoded value so a claimer
+  // doesn't see 'delivery_confirmed' (a funder-only proof type) preselected.
+  const proofTypeOptions = getProofTypesForRole(userRole ?? 'observer');
   const [proofMode, setProofMode] = useState<'create' | 'upload'>('create');
-  const [proofType, setProofType] = useState('delivery_confirmed');
+  const [proofType, setProofType] = useState<string>(proofTypeOptions[0]?.value ?? 'delivery_confirmed');
   const [agreementHash, setAgreementHash] = useState(agreementHashDefault);
   const [attestedBy, setAttestedBy] = useState('');
   const [evidenceSummary, setEvidenceSummary] = useState('');
@@ -1787,7 +2018,7 @@ function ProofModal({
                     value={proofType}
                     onChange={(e) => setProofType(e.target.value)}
                   >
-                    {PROOF_TYPES.map((pt) => (
+                    {proofTypeOptions.map((pt) => (
                       <option key={pt.value} value={pt.value} style={{ background: '#0f0f23', color: '#eef0ff' }}>
                         {t(pt.labelKey)}
                       </option>
