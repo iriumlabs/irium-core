@@ -1981,10 +1981,10 @@
       "btc_badge": "Live",
       "ltc_title": "Swap IRM ↔ LTC",
       "ltc_description": "Atomic swap via Litecoin SPV header relay. Same trust-minimised design as the BTC pair, settling on Litecoin's faster blocks.",
-      "ltc_badge": "Activates at block 25,000",
+      "ltc_badge": "Activates at block 24,800",
       "doge_title": "Swap IRM ↔ DOGE",
       "doge_description": "Atomic swap via Dogecoin SPV header relay. Pair will go live as the network reaches the activation height.",
-      "doge_badge": "Activates at block 25,200"
+      "doge_badge": "Activates at block 24,800"
     }
   },
   "miner": {
