@@ -4740,7 +4740,7 @@ async fn agreement_list(state: State<'_, AppState>) -> Result<Vec<Agreement>, St
     // call which is too expensive to fan out across the list (the
     // Agreements UI fetches per-entry status on card expand).
     for a in response.stored_raw_agreements.unwrap_or_default() {
-        let (buyer, seller, amount, template, created_at) = a.path.as_ref()
+        let (buyer, seller, amount, template, created_at, deadline) = a.path.as_ref()
             .and_then(|p| std::fs::read_to_string(p).ok())
             .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
             .map(|v| (
@@ -4749,8 +4749,13 @@ async fn agreement_list(state: State<'_, AppState>) -> Result<Vec<Agreement>, St
                 v["total_amount"].as_u64().unwrap_or(0),
                 v["template_type"].as_str().map(String::from),
                 v["creation_time"].as_i64(),
+                // refund_timeout is a block height on the on-disk
+                // AgreementObject. Frontend formatDeadline auto-detects
+                // block-height vs unix-timestamp shape and renders the
+                // right thing (Agreements.tsx P1 safety net from v1.0.100).
+                v["refund_timeout"].as_u64().map(|h| h as i64),
             ))
-            .unwrap_or((None, None, 0, None, None));
+            .unwrap_or((None, None, 0, None, None, None));
         agreements.push(Agreement {
             id: a.agreement_id,
             hash: Some(a.agreement_hash),
@@ -4762,7 +4767,11 @@ async fn agreement_list(state: State<'_, AppState>) -> Result<Vec<Agreement>, St
             proof_status: None,
             release_eligible: None,
             created_at,
-            deadline: None,
+            // P1: populated from the on-disk refund_timeout (block height)
+            // above. Status still hardcoded — per the existing comment, a
+            // per-row chain status fetch is too expensive here; frontend
+            // filter uses statusByAgreement live data instead.
+            deadline,
             policy: None,
         });
     }
