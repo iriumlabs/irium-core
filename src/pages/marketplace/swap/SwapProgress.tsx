@@ -50,6 +50,12 @@ export interface SwapProgressProps {
   // claim{Btc,Ltc,Doge}Swap. Optional — when missing, the inline panel
   // surfaces a "no wallet loaded yet" error instead of submitting.
   takerIriumdAddress?: string;
+  // Whether the current user is the maker (posted the sell/buy order)
+  // or the taker (filled someone else's order). Drives the status-sentence
+  // copy and whether the inline proof-submission panel renders. Default
+  // 'taker' preserves the pre-role-fix behaviour for any caller that
+  // hasn't been updated; SwapPanel always sets this explicitly post-fix.
+  role?: 'maker' | 'taker';
 }
 
 interface StepDef {
@@ -83,21 +89,31 @@ function statusSentence(
   paymentSent: boolean,
   pair: SwapPairConfig,
   pendingConfirmation: boolean,
+  role: 'maker' | 'taker',
 ): string {
   // FIX 2: until the freshly-broadcast order is observed in listOrders,
   // surface a clear "Waiting for confirmation (~2 min)" message instead of
   // the post-confirmation "Escrow is locked..." copy. Only override for
   // the pre-payment family of lifecycle states; once partially_released /
   // released / refunded / expired / cancelled / disputed kick in, the
-  // lifecycle-specific copy below is correct and should win.
+  // lifecycle-specific copy below is correct and should win. Role-aware
+  // so the maker doesn't see "Your fill transaction" copy and vice versa.
   if (pendingConfirmation &&
       (life === 'draft' || life === 'proposed' || life === 'funded' || life === 'unknown')) {
-    return `Waiting for confirmation (~2 min). Your order will appear in the order book once it is included in an Irium block.`;
+    return role === 'maker'
+      ? `Your sell order is broadcasting. Waiting for confirmation (~2 min) before it appears in the order book.`
+      : `Waiting for confirmation (~2 min). Your fill transaction will land in an Irium block shortly.`;
   }
   switch (life) {
     case 'draft':
     case 'proposed':
     case 'funded':
+      // Maker has no foreign payment to send — they posted the order
+      // and just wait. Taker is responsible for sending the foreign
+      // payment and submitting on-chain proof.
+      if (role === 'maker') {
+        return `Your sell order is live in the order book. Waiting for a buyer to fill it. When that happens, the buyer sends ${pair.quote.code} to your address and submits the on-chain proof — your IRM releases to them automatically and you receive ${pair.quote.code} at your address. You don't need to do anything else.`;
+      }
       return paymentSent
         ? `Waiting for the ${pair.quote.code} payment to confirm on the ${pair.quote.network ?? pair.quote.name} side.`
         // FIX BUG 3: previous copy referred to a non-existent "trade
@@ -105,13 +121,21 @@ function statusSentence(
         // rendered immediately below this status sentence.
         : `Escrow is locked. Send the ${pair.quote.code} payment to the seller, then submit the proof below.`;
     case 'partially_released':
-      return `${pair.quote.code} payment proof has been submitted. The IRM is on its way to the recipient.`;
+      return role === 'maker'
+        ? `Buyer submitted the ${pair.quote.code} payment proof. The IRM is being released to them — your ${pair.quote.code} payment is on its way to your address.`
+        : `${pair.quote.code} payment proof has been submitted. The IRM is on its way to the recipient.`;
     case 'released':
-      return `Swap complete. The IRM has been delivered.`;
+      return role === 'maker'
+        ? `Swap complete. The ${pair.quote.code} payment has been delivered to your address.`
+        : `Swap complete. The IRM has been delivered.`;
     case 'refunded':
-      return `The trade was refunded to the seller.`;
+      return role === 'maker'
+        ? `The trade timed out and the IRM has been refunded to you.`
+        : `The trade was refunded to the seller.`;
     case 'expired':
-      return `The trade expired without releasing. The IRM is returned to the seller.`;
+      return role === 'maker'
+        ? `The trade expired without releasing. Your IRM is being returned to you.`
+        : `The trade expired without releasing. The IRM has been returned to the seller.`;
     case 'cancelled':
       return `The trade was cancelled.`;
     case 'disputed_metadata_only':
@@ -135,6 +159,7 @@ export default function SwapProgress({
   pendingConfirmation = false,
   fetchStatus,
   takerIriumdAddress,
+  role = 'taker',
 }: SwapProgressProps) {
   const [life, setLife] = useState<SwapLifecycle>('unknown');
   const [error, setError] = useState<string | null>(null);
@@ -233,18 +258,19 @@ export default function SwapProgress({
           lineHeight: 1.5,
         }}
       >
-        {statusSentence(life, paymentSent, pair, pendingConfirmation)}
+        {statusSentence(life, paymentSent, pair, pendingConfirmation, role)}
       </div>
 
-      {/* FIX BUG 3: inline proof-submission panel for the taker. Renders
-          while the swap is funded (escrow locked) and not in a terminal
-          state. The status sentence above instructs the user to "submit
-          the proof below" — this is the "below". If the user is the
-          maker, iriumd will reject the claim and ProofSubmitInline will
-          surface the error. Hidden while the post-create confirmation
-          poll hasn't seen the order yet (pendingConfirmation) and after
-          the lifecycle transitions out of funded. */}
-      {!pendingConfirmation &&
+      {/* Inline proof-submission panel — ONLY for the taker. The
+          maker has nothing foreign to submit; they just wait for the
+          taker's claim to release their IRM. Rendering this for a
+          maker would falsely prompt them for a BTC tx they never sent
+          (iriumd would reject the claim anyway, but the prompt itself
+          is the bug). Hidden while the post-create confirmation poll
+          hasn't seen the order yet (pendingConfirmation) and after the
+          lifecycle transitions out of funded. */}
+      {role === 'taker' &&
+        !pendingConfirmation &&
         (life === 'funded' || life === 'draft' || life === 'proposed') &&
         !terminal && (
           <ProofSubmitInline

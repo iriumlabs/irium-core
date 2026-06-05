@@ -18,6 +18,10 @@ export interface ActiveSwapHint {
   pairId: string;
   outpoint: { txid: string; vout: number };
   paymentSent: boolean;
+  // See SwapPanel's ActiveSwap.role docstring. Drives the "Active trade"
+  // row's status text: maker sees "waiting for a buyer" copy, taker sees
+  // "send the payment + submit proof" copy.
+  role: 'maker' | 'taker';
 }
 
 export interface MySwapsPanelProps {
@@ -215,9 +219,11 @@ export default function MySwapsPanel({
             className="text-[11px]"
             style={{ color: 'rgba(238,240,255,0.72)', lineHeight: 1.4 }}
           >
-            {activeSwap.paymentSent
-              ? `${pair.label} swap — proof submitted, waiting for the IRM release to confirm.`
-              : `${pair.label} swap — escrow is locked. Send the ${pair.quote.code} payment, then submit the proof from the Swap Progress panel.`}
+            {activeSwap.role === 'maker'
+              ? `${pair.label} sell order is live. Waiting for a buyer to fill it — they will send ${pair.quote.code} to your address and submit the proof on-chain, at which point your IRM releases automatically. No action needed from you.`
+              : activeSwap.paymentSent
+                ? `${pair.label} swap — proof submitted, waiting for the IRM release to confirm.`
+                : `${pair.label} swap — escrow is locked. Send the ${pair.quote.code} payment, then submit the proof from the Swap Progress panel.`}
           </div>
           <button
             type="button"
