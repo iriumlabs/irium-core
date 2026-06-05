@@ -3163,15 +3163,15 @@
         "deadline_label_short": "Alıcının ödeme yapması için son tarih",
         "deadline_helper_refund": "Son tarihe kadar ödeme gelmezse iade talep edebilirsiniz.",
         "locked_hero_title": "IRM'iniz artık kilitli ve korumalı",
-        "locked_hero_body": "Alıcı onayınız olmadan alamaz. Aşağıdaki işlem kodunu paylaşın ki katılabilsinler, ardından ödemelerini bekleyin.",
+        "locked_hero_body": "The buyer cannot receive the IRM without your confirmation. Share the deal code below — when they paste it in their wallet, the trade goes live. Wait for them to send your off-chain payment, then confirm receipt to release the IRM.",
         "share_code_title": "Bu işlem kodunu paylaşın",
-        "share_code_body": "Alıcı işleme katılmak için bu kodu cüzdanına yapıştırır.",
+        "share_code_body": "The buyer pastes this code in their wallet to confirm the trade and start the payment step.",
         "header1_title": "Satış işleminizi ayarlayın",
         "header1_subtitle": "Bize alıcının kim olduğunu ve ne kadar IRM satmak istediğinizi söyleyin.",
         "header2_title": "İncele ve kilitle",
         "header2_subtitle": "Ayrıntıları onaylayın. Kilitlemek IRM'i emanete gönderir.",
         "header3_title": "İşleminiz canlı",
-        "header3_subtitle": "İşlem kodunu alıcıyla paylaşın ve ödemelerini bekleyin."
+        "header3_subtitle": "Share the deal code with the buyer. After they send payment, confirm receipt to release the IRM."
       },
       "buying": {
         "step2_title": "Satıcınızdan gelen ticaret kodunu yapıştırın",
@@ -3195,7 +3195,7 @@
         "seller_is_locking": "Satıcının kilitlediği",
         "seller_short_label": "Satıcı",
         "details_did_not_load": "İşlem ayrıntıları yüklenmedi. Devam edebilirsiniz, ancak ödeme yapmadan önce IRM miktarını satıcıyla doğrulayın.",
-        "continue_and_link": "Devam et ve bağla",
+        "continue_and_link": "Confirm trade and continue",
         "trade_complete_title": "İşlem tamamlandı",
         "trade_complete_body": "IRM cüzdanınıza ulaştı.",
         "seller_locked_for_you_title": "Satıcının IRM'i sizin için kilitlendi",
@@ -3211,13 +3211,13 @@
         "header2_title": "İşlemi inceleyin",
         "header2_subtitle": "Miktarın ve satıcının beklediğinizle eşleştiğinden emin olun.",
         "header3_title": "İşleminiz canlı",
-        "header3_subtitle": "Zincir dışı ödemeyi gönderin, ardından satıcının IRM'i serbest bırakabilmesi için bildirin."
+        "header3_subtitle": "Send the off-chain payment via the agreed method, then report it. IRM releases to you automatically after the seller confirms."
       },
       "fuel_banner_title": "Bir settlement oluşturmak için IRM'ye ihtiyacınız var.",
       "fuel_banner_prefix": "Şuraya gidin:",
       "fuel_banner_link": "Marketplace → Spot Swap",
       "fuel_banner_suffix": "önce IRM edinmek için.",
-      "toast_buyer_linked": "Tarafınız artık işleme bağlı. Zincir dışı ödemeyi satıcıya gönderin.",
+      "toast_buyer_linked": "Trade confirmed. Send the off-chain payment to the seller, then report it.",
       "toast_payment_reported": "Ödeme bildirildi. Satıcının onayı bekleniyor.",
       "toast_dispute_opened": "Uyuşmazlık açıldı. Bir hakem kanıtları inceleyecek.",
       "dispute_reason_buyer": "alıcı işlemi tamamlayamıyor",

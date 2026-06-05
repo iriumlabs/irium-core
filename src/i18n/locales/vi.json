@@ -3163,15 +3163,15 @@
         "deadline_label_short": "Hạn chót để người mua thanh toán",
         "deadline_helper_refund": "Nếu thanh toán không đến trước hạn chót, bạn có thể yêu cầu hoàn tiền.",
         "locked_hero_title": "IRM của bạn đã được khóa và bảo vệ",
-        "locked_hero_body": "Người mua không thể lấy nếu bạn không xác nhận. Chia sẻ mã giao dịch bên dưới để họ tham gia, rồi chờ thanh toán.",
+        "locked_hero_body": "The buyer cannot receive the IRM without your confirmation. Share the deal code below — when they paste it in their wallet, the trade goes live. Wait for them to send your off-chain payment, then confirm receipt to release the IRM.",
         "share_code_title": "Chia sẻ mã giao dịch này",
-        "share_code_body": "Người mua dán mã này vào ví của họ để tham gia giao dịch.",
+        "share_code_body": "The buyer pastes this code in their wallet to confirm the trade and start the payment step.",
         "header1_title": "Thiết lập giao dịch bán",
         "header1_subtitle": "Cho chúng tôi biết người mua là ai và bạn muốn bán bao nhiêu IRM.",
         "header2_title": "Xem lại và khóa",
         "header2_subtitle": "Xác nhận các chi tiết. Khóa sẽ gửi IRM vào ký quỹ.",
         "header3_title": "Giao dịch của bạn đang hoạt động",
-        "header3_subtitle": "Chia sẻ mã giao dịch với người mua và chờ thanh toán."
+        "header3_subtitle": "Share the deal code with the buyer. After they send payment, confirm receipt to release the IRM."
       },
       "buying": {
         "step2_title": "Dán mã giao dịch từ người bán",
@@ -3195,7 +3195,7 @@
         "seller_is_locking": "Người bán đang khóa",
         "seller_short_label": "Người bán",
         "details_did_not_load": "Chi tiết giao dịch không tải được. Bạn vẫn có thể tiếp tục, nhưng hãy xác minh số IRM với người bán trước khi trả tiền.",
-        "continue_and_link": "Tiếp tục và liên kết",
+        "continue_and_link": "Confirm trade and continue",
         "trade_complete_title": "Giao dịch hoàn tất",
         "trade_complete_body": "IRM đã đến ví của bạn.",
         "seller_locked_for_you_title": "IRM của người bán đã được khóa cho bạn",
@@ -3211,13 +3211,13 @@
         "header2_title": "Xem lại giao dịch",
         "header2_subtitle": "Đảm bảo số lượng và người bán khớp với những gì bạn mong đợi.",
         "header3_title": "Giao dịch của bạn đang hoạt động",
-        "header3_subtitle": "Gửi thanh toán off-chain, sau đó báo cáo để người bán có thể giải phóng IRM."
+        "header3_subtitle": "Send the off-chain payment via the agreed method, then report it. IRM releases to you automatically after the seller confirms."
       },
       "fuel_banner_title": "Bạn cần IRM để tạo thanh toán.",
       "fuel_banner_prefix": "Đi tới",
       "fuel_banner_link": "Thị trường → Hoán đổi Spot",
       "fuel_banner_suffix": "để có được IRM trước.",
-      "toast_buyer_linked": "Phía bạn đã được liên kết với giao dịch. Hãy gửi thanh toán off-chain cho người bán.",
+      "toast_buyer_linked": "Trade confirmed. Send the off-chain payment to the seller, then report it.",
       "toast_payment_reported": "Đã báo cáo thanh toán. Đang chờ người bán xác nhận.",
       "toast_dispute_opened": "Đã mở tranh chấp. Một trọng tài sẽ xem xét bằng chứng.",
       "dispute_reason_buyer": "người mua không thể hoàn thành giao dịch",

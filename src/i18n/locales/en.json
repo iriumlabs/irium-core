@@ -1444,15 +1444,15 @@
         "deadline_label_short": "Deadline for the buyer to pay",
         "deadline_helper_refund": "If no payment arrives by the deadline you can claim a refund.",
         "locked_hero_title": "Your IRM is now locked and protected",
-        "locked_hero_body": "The buyer cannot take it without your confirmation. Share the deal code below so they can join, then wait for their payment.",
+        "locked_hero_body": "The buyer cannot receive the IRM without your confirmation. Share the deal code below — when they paste it in their wallet, the trade goes live. Wait for them to send your off-chain payment, then confirm receipt to release the IRM.",
         "share_code_title": "Share this deal code",
-        "share_code_body": "The buyer pastes this code in their wallet to join the trade.",
+        "share_code_body": "The buyer pastes this code in their wallet to confirm the trade and start the payment step.",
         "header1_title": "Set up your sell trade",
         "header1_subtitle": "Tell us who the buyer is and how much IRM you want to sell.",
         "header2_title": "Review and lock",
         "header2_subtitle": "Confirm the details. Locking sends the IRM to escrow.",
         "header3_title": "Your trade is live",
-        "header3_subtitle": "Share the deal code with the buyer and wait for their payment."
+        "header3_subtitle": "Share the deal code with the buyer. After they send payment, confirm receipt to release the IRM."
       },
       "buying": {
         "step2_title": "Paste the trade code from your seller",
@@ -1476,7 +1476,7 @@
         "seller_is_locking": "Seller is locking",
         "seller_short_label": "Seller",
         "details_did_not_load": "Trade details did not load. You can still continue, but verify the IRM amount with the seller before paying.",
-        "continue_and_link": "Continue and link",
+        "continue_and_link": "Confirm trade and continue",
         "trade_complete_title": "Trade complete",
         "trade_complete_body": "The IRM has arrived in your wallet.",
         "seller_locked_for_you_title": "The seller's IRM is locked for you",
@@ -1492,13 +1492,13 @@
         "header2_title": "Review the trade",
         "header2_subtitle": "Make sure the amount and seller match what you expect.",
         "header3_title": "Your trade is live",
-        "header3_subtitle": "Send the off-chain payment, then report it so the seller can release the IRM."
+        "header3_subtitle": "Send the off-chain payment via the agreed method, then report it. IRM releases to you automatically after the seller confirms."
       },
       "fuel_banner_title": "You need IRM to create a settlement.",
       "fuel_banner_prefix": "Go to",
       "fuel_banner_link": "Marketplace → Spot Swap",
       "fuel_banner_suffix": "to acquire IRM first.",
-      "toast_buyer_linked": "Your side is now linked to the trade. Send the off-chain payment to the seller.",
+      "toast_buyer_linked": "Trade confirmed. Send the off-chain payment to the seller, then report it.",
       "toast_payment_reported": "Payment reported. Waiting for the seller to confirm.",
       "toast_dispute_opened": "Dispute opened. A resolver will review the evidence.",
       "dispute_reason_buyer": "buyer cannot complete the trade",

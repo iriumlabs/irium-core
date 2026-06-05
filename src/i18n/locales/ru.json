@@ -3163,15 +3163,15 @@
         "deadline_label_short": "Срок оплаты покупателем",
         "deadline_helper_refund": "Если оплата не поступит к сроку, Вы сможете запросить возврат.",
         "locked_hero_title": "Ваши IRM теперь заблокированы и защищены",
-        "locked_hero_body": "Покупатель не сможет их забрать без Вашего подтверждения. Поделитесь кодом сделки ниже, чтобы он мог присоединиться, и ждите оплаты.",
+        "locked_hero_body": "The buyer cannot receive the IRM without your confirmation. Share the deal code below — when they paste it in their wallet, the trade goes live. Wait for them to send your off-chain payment, then confirm receipt to release the IRM.",
         "share_code_title": "Поделитесь этим кодом сделки",
-        "share_code_body": "Покупатель вставит этот код в свой кошелёк, чтобы присоединиться к сделке.",
+        "share_code_body": "The buyer pastes this code in their wallet to confirm the trade and start the payment step.",
         "header1_title": "Настройте продажу",
         "header1_subtitle": "Укажите, кто покупатель и сколько IRM Вы хотите продать.",
         "header2_title": "Проверьте и заблокируйте",
         "header2_subtitle": "Подтвердите детали. Блокировка отправляет IRM в эскроу.",
         "header3_title": "Ваша сделка активна",
-        "header3_subtitle": "Поделитесь кодом сделки с покупателем и ждите его оплаты."
+        "header3_subtitle": "Share the deal code with the buyer. After they send payment, confirm receipt to release the IRM."
       },
       "buying": {
         "step2_title": "Вставьте код сделки от продавца",
@@ -3195,7 +3195,7 @@
         "seller_is_locking": "Продавец блокирует",
         "seller_short_label": "Продавец",
         "details_did_not_load": "Детали сделки не загрузились. Вы можете продолжить, но сверьте сумму IRM с продавцом перед оплатой.",
-        "continue_and_link": "Продолжить и привязать",
+        "continue_and_link": "Confirm trade and continue",
         "trade_complete_title": "Сделка завершена",
         "trade_complete_body": "IRM поступили в Ваш кошелёк.",
         "seller_locked_for_you_title": "IRM продавца заблокированы для Вас",
@@ -3211,13 +3211,13 @@
         "header2_title": "Проверьте сделку",
         "header2_subtitle": "Убедитесь, что сумма и продавец соответствуют ожиданиям.",
         "header3_title": "Ваша сделка активна",
-        "header3_subtitle": "Отправьте офчейн-платёж, затем сообщите о нём, чтобы продавец освободил IRM."
+        "header3_subtitle": "Send the off-chain payment via the agreed method, then report it. IRM releases to you automatically after the seller confirms."
       },
       "fuel_banner_title": "Вам нужен IRM, чтобы создать расчёт.",
       "fuel_banner_prefix": "Перейдите в",
       "fuel_banner_link": "Маркетплейс → Spot Swap",
       "fuel_banner_suffix": "чтобы сначала получить IRM.",
-      "toast_buyer_linked": "Ваша сторона теперь привязана к сделке. Отправьте офчейн-платёж продавцу.",
+      "toast_buyer_linked": "Trade confirmed. Send the off-chain payment to the seller, then report it.",
       "toast_payment_reported": "Платёж заявлен. Ожидается подтверждение продавца.",
       "toast_dispute_opened": "Спор открыт. Арбитр рассмотрит доказательства.",
       "dispute_reason_buyer": "покупатель не может завершить сделку",

@@ -3163,15 +3163,15 @@
         "deadline_label_short": "الموعد النهائي لدفع المشتري",
         "deadline_helper_refund": "إذا لم تصل أي دفعة بحلول الموعد النهائي، يمكنك المطالبة باسترداد.",
         "locked_hero_title": "IRM الخاص بك مقفل ومحمي الآن",
-        "locked_hero_body": "لا يمكن للمشتري أخذه بدون تأكيدك. شارك كود الصفقة أدناه ليتمكن من الانضمام، ثم انتظر دفعته.",
+        "locked_hero_body": "The buyer cannot receive the IRM without your confirmation. Share the deal code below — when they paste it in their wallet, the trade goes live. Wait for them to send your off-chain payment, then confirm receipt to release the IRM.",
         "share_code_title": "شارك كود الصفقة هذا",
-        "share_code_body": "يلصق المشتري هذا الكود في محفظته للانضمام إلى الصفقة.",
+        "share_code_body": "The buyer pastes this code in their wallet to confirm the trade and start the payment step.",
         "header1_title": "إعداد صفقة البيع الخاصة بك",
         "header1_subtitle": "أخبرنا من هو المشتري ومقدار IRM الذي تريد بيعه.",
         "header2_title": "المراجعة والقفل",
         "header2_subtitle": "أكّد التفاصيل. يؤدي القفل إلى إرسال IRM إلى الضمان.",
         "header3_title": "صفقتك مباشرة",
-        "header3_subtitle": "شارك كود الصفقة مع المشتري وانتظر دفعته."
+        "header3_subtitle": "Share the deal code with the buyer. After they send payment, confirm receipt to release the IRM."
       },
       "buying": {
         "step2_title": "الصق كود الصفقة من بائعك",
@@ -3195,7 +3195,7 @@
         "seller_is_locking": "البائع يقفل",
         "seller_short_label": "البائع",
         "details_did_not_load": "لم يتم تحميل تفاصيل الصفقة. لا يزال بإمكانك المتابعة، لكن تحقق من كمية IRM مع البائع قبل الدفع.",
-        "continue_and_link": "تابع واربط",
+        "continue_and_link": "Confirm trade and continue",
         "trade_complete_title": "اكتملت الصفقة",
         "trade_complete_body": "وصل IRM إلى محفظتك.",
         "seller_locked_for_you_title": "تم قفل IRM الخاص بالبائع لك",
@@ -3211,13 +3211,13 @@
         "header2_title": "راجع الصفقة",
         "header2_subtitle": "تأكد من أن المبلغ والبائع يتطابقان مع ما تتوقعه.",
         "header3_title": "صفقتك مباشرة",
-        "header3_subtitle": "أرسل الدفعة خارج السلسلة، ثم أبلغ عنها حتى يتمكن البائع من تحرير IRM."
+        "header3_subtitle": "Send the off-chain payment via the agreed method, then report it. IRM releases to you automatically after the seller confirms."
       },
       "fuel_banner_title": "تحتاج إلى IRM لإنشاء تسوية.",
       "fuel_banner_prefix": "اذهب إلى",
       "fuel_banner_link": "السوق ← المبادلة الفورية",
       "fuel_banner_suffix": "للحصول على IRM أولًا.",
-      "toast_buyer_linked": "تم ربط جانبك بالصفقة الآن. أرسل الدفعة خارج السلسلة إلى البائع.",
+      "toast_buyer_linked": "Trade confirmed. Send the off-chain payment to the seller, then report it.",
       "toast_payment_reported": "تم الإبلاغ عن الدفعة. في انتظار تأكيد البائع.",
       "toast_dispute_opened": "تم فتح النزاع. سيقوم محكّم بمراجعة الأدلة.",
       "dispute_reason_buyer": "المشتري لا يستطيع إكمال الصفقة",

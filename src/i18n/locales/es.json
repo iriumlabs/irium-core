@@ -3163,15 +3163,15 @@
         "deadline_label_short": "Plazo para que el comprador pague",
         "deadline_helper_refund": "Si no llega ningún pago antes del plazo, puedes reclamar un reembolso.",
         "locked_hero_title": "Tus IRM ya están bloqueados y protegidos",
-        "locked_hero_body": "El comprador no puede tomarlos sin tu confirmación. Comparte el código de operación de abajo para que pueda unirse, y luego espera su pago.",
+        "locked_hero_body": "The buyer cannot receive the IRM without your confirmation. Share the deal code below — when they paste it in their wallet, the trade goes live. Wait for them to send your off-chain payment, then confirm receipt to release the IRM.",
         "share_code_title": "Comparte este código de operación",
-        "share_code_body": "El comprador pega este código en su wallet para unirse a la operación.",
+        "share_code_body": "The buyer pastes this code in their wallet to confirm the trade and start the payment step.",
         "header1_title": "Configura tu operación de venta",
         "header1_subtitle": "Indícanos quién es el comprador y cuántos IRM quieres vender.",
         "header2_title": "Revisa y bloquea",
         "header2_subtitle": "Confirma los detalles. Bloquear envía los IRM al escrow.",
         "header3_title": "Tu operación está activa",
-        "header3_subtitle": "Comparte el código de operación con el comprador y espera su pago."
+        "header3_subtitle": "Share the deal code with the buyer. After they send payment, confirm receipt to release the IRM."
       },
       "buying": {
         "step2_title": "Pega el código de operación de tu vendedor",
@@ -3195,7 +3195,7 @@
         "seller_is_locking": "El vendedor está bloqueando",
         "seller_short_label": "Vendedor",
         "details_did_not_load": "No se cargaron los detalles de la operación. Aún puedes continuar, pero verifica la cantidad de IRM con el vendedor antes de pagar.",
-        "continue_and_link": "Continuar y vincular",
+        "continue_and_link": "Confirm trade and continue",
         "trade_complete_title": "Operación completada",
         "trade_complete_body": "Los IRM han llegado a tu wallet.",
         "seller_locked_for_you_title": "Los IRM del vendedor están bloqueados para ti",
@@ -3211,13 +3211,13 @@
         "header2_title": "Revisa la operación",
         "header2_subtitle": "Asegúrate de que la cantidad y el vendedor coinciden con lo que esperas.",
         "header3_title": "Tu operación está activa",
-        "header3_subtitle": "Envía el pago fuera de cadena y luego repórtalo para que el vendedor pueda liberar los IRM."
+        "header3_subtitle": "Send the off-chain payment via the agreed method, then report it. IRM releases to you automatically after the seller confirms."
       },
       "fuel_banner_title": "Necesitas IRM para crear una liquidación.",
       "fuel_banner_prefix": "Ve a",
       "fuel_banner_link": "Mercado → Intercambio Spot",
       "fuel_banner_suffix": "para adquirir IRM primero.",
-      "toast_buyer_linked": "Tu lado está ahora vinculado a la operación. Envía el pago fuera de cadena al vendedor.",
+      "toast_buyer_linked": "Trade confirmed. Send the off-chain payment to the seller, then report it.",
       "toast_payment_reported": "Pago reportado. Esperando la confirmación del vendedor.",
       "toast_dispute_opened": "Disputa abierta. Un resolutor revisará la evidencia.",
       "dispute_reason_buyer": "el comprador no puede completar la operación",
