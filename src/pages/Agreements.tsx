@@ -444,7 +444,14 @@ export default function AgreementsPage() {
       );
       if (!userIsParty) return false;
     }
-    if (filter !== 'all' && a.status !== filter) return false;
+    // Use the same status resolution as StatusBadge: prefer the live
+    // status from statusByAgreement (per-card RPC fetch) over the stale
+    // 'unknown' from agreement_list. While the per-card fetch is in
+    // flight the row passes any filter; refilter happens once status
+    // arrives. Pairs with the agreement_list deadline backend fix in
+    // src-tauri/src/main.rs.
+    const effectiveStatus = statusByAgreement[a.id]?.status ?? a.status;
+    if (filter !== 'all' && effectiveStatus !== filter) return false;
     const q = searchQuery.trim().toLowerCase();
     if (!q) return true;
     const label = agreementLabels[a.id]?.toLowerCase() ?? '';
