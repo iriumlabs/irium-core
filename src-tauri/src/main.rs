@@ -4749,11 +4749,11 @@ async fn agreement_list(state: State<'_, AppState>) -> Result<Vec<Agreement>, St
                 v["total_amount"].as_u64().unwrap_or(0),
                 v["template_type"].as_str().map(String::from),
                 v["creation_time"].as_i64(),
-                // refund_timeout is a block height on the on-disk
+                // deadlines.refund_deadline is a block height on the on-disk
                 // AgreementObject. Frontend formatDeadline auto-detects
                 // block-height vs unix-timestamp shape and renders the
                 // right thing (Agreements.tsx P1 safety net from v1.0.100).
-                v["refund_timeout"].as_u64().map(|h| h as i64),
+                v["deadlines"]["refund_deadline"].as_u64().map(|h| h as i64),
             ))
             .unwrap_or((None, None, 0, None, None, None));
         agreements.push(Agreement {
