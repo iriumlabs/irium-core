@@ -3001,12 +3001,12 @@
     "hub": {
       "title": "Settlement",
       "subtitle": "IRM'yi escrow'a kilitleyin. Onay üzerine serbest bırakın. Zaman aşımında iade edin.",
-      "safe_trade_title": "Güvenli Ticaret",
-      "safe_trade_subtitle": "IRM'yi kilitleyin, herhangi bir şey için takas edin. Her iki taraf da korunur.",
+      "safe_trade_title": "OTC Trade",
+      "safe_trade_subtitle": "Sell IRM for cash, bank transfer, or any off-chain payment",
       "pay_for_work_title": "İş için Öde",
-      "pay_for_work_subtitle": "Bir işi tek ödemeyle veya kilometre taşıyla fonlayın. İş bittiğinde para serbest bırakılır.",
+      "pay_for_work_subtitle": "Lock IRM to pay for a service. Funds held in escrow until you confirm delivery.",
       "deposit_title": "İade Edilebilir Depozito",
-      "deposit_subtitle": "IRM'yi garanti olarak kilitleyin. Koşullar karşılanmazsa otomatik olarak geri alın.",
+      "deposit_subtitle": "Lock IRM as a guarantee. Auto-refunds if conditions are not met by deadline.",
       "active_title": "Aktif agreement'lar",
       "active_empty": "Henüz aktif agreement yok. Yukarıdan birini başlatın.",
       "active_load_error": "agreement'lar yüklenemedi — node'unuz çevrimdışı olabilir.",
@@ -3015,8 +3015,8 @@
       "start_cta": "Başla",
       "toast_released": "Fonlar karşı tarafa serbest bırakıldı.",
       "toast_refunded": "İade talep edildi — fonlar wallet'ınıza dönüyor.",
-      "intro_security": "Tüm settlement'lar, zincir üzerinde kilitlenmiş IRM ile güvence altına alınır. Bir anlaşma oluşturmak veya katılmak için her iki tarafın da IRM'ye sahip olması gerekir.",
-      "intro_use_cases": "Herhangi bir güvensiz işlem için IRM'yi emanet hesabına kilitleyin — mallar, hizmetler, serbest çalışma veya takas. Her iki taraf da onayladığında IRM otomatik olarak serbest bırakılır."
+      "intro_security": "Settlement locks IRM on-chain as a neutral guarantee for any trade. Both parties must hold IRM. The chain enforces the agreement — no bank, no intermediary.",
+      "intro_use_cases": "IRM releases when delivery is confirmed, or refunds automatically if the deadline passes."
     },
     "status": {
       "setting_up": "Kuruluyor",

@@ -3001,12 +3001,12 @@
     "hub": {
       "title": "Settlement",
       "subtitle": "Заблокируйте IRM в escrow. Освободите при подтверждении. Возврат при таймауте.",
-      "safe_trade_title": "Безопасная сделка",
-      "safe_trade_subtitle": "Заблокируйте IRM, обменяйте на что угодно. Обе стороны защищены.",
+      "safe_trade_title": "OTC Trade",
+      "safe_trade_subtitle": "Sell IRM for cash, bank transfer, or any off-chain payment",
       "pay_for_work_title": "Оплата работы",
-      "pay_for_work_subtitle": "Оплатите работу одним платежом или по вехам. Средства освобождаются по факту.",
+      "pay_for_work_subtitle": "Lock IRM to pay for a service. Funds held in escrow until you confirm delivery.",
       "deposit_title": "Возвратный залог",
-      "deposit_subtitle": "Заблокируйте IRM как гарантию. Получите обратно автоматически, если условия не выполнены.",
+      "deposit_subtitle": "Lock IRM as a guarantee. Auto-refunds if conditions are not met by deadline.",
       "active_title": "Активные agreement",
       "active_empty": "Пока нет активных agreement. Начните выше.",
       "active_load_error": "Не удалось загрузить agreement — возможно, node офлайн.",
@@ -3015,8 +3015,8 @@
       "start_cta": "Начать",
       "toast_released": "Средства отправлены второй стороне.",
       "toast_refunded": "Возврат запрошен — средства идут в ваш wallet.",
-      "intro_security": "Все расчёты защищены IRM, заблокированными в блокчейне. Обе стороны должны иметь IRM, чтобы создать соглашение или участвовать в нём.",
-      "intro_use_cases": "Заблокируйте IRM в эскроу для любой бездоверительной транзакции — товары, услуги, фриланс или сделки. IRM освобождается автоматически, когда обе стороны подтверждают."
+      "intro_security": "Settlement locks IRM on-chain as a neutral guarantee for any trade. Both parties must hold IRM. The chain enforces the agreement — no bank, no intermediary.",
+      "intro_use_cases": "IRM releases when delivery is confirmed, or refunds automatically if the deadline passes."
     },
     "status": {
       "setting_up": "Настройка",

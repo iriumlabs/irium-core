@@ -3001,12 +3001,12 @@
     "hub": {
       "title": "Settlement",
       "subtitle": "IRM को escrow में लॉक करें। पुष्टि पर जारी करें। समय समाप्ति पर रिफंड।",
-      "safe_trade_title": "सुरक्षित ट्रेड",
-      "safe_trade_subtitle": "IRM लॉक करें, किसी भी चीज़ के लिए बदलें। दोनों पक्ष संरक्षित।",
+      "safe_trade_title": "OTC Trade",
+      "safe_trade_subtitle": "Sell IRM for cash, bank transfer, or any off-chain payment",
       "pay_for_work_title": "काम के लिए भुगतान",
-      "pay_for_work_subtitle": "एक भुगतान में या माइलस्टोन द्वारा काम को फंड करें। काम होने पर पैसे जारी होते हैं।",
+      "pay_for_work_subtitle": "Lock IRM to pay for a service. Funds held in escrow until you confirm delivery.",
       "deposit_title": "वापसी योग्य जमा",
-      "deposit_subtitle": "IRM को गारंटी के रूप में लॉक करें। शर्तें पूरी नहीं होने पर स्वतः वापस पाएँ।",
+      "deposit_subtitle": "Lock IRM as a guarantee. Auto-refunds if conditions are not met by deadline.",
       "active_title": "सक्रिय agreement",
       "active_empty": "अभी तक कोई सक्रिय agreement नहीं हैं। ऊपर से एक शुरू करें।",
       "active_load_error": "agreement लोड नहीं हो सके — आपका node ऑफ़लाइन हो सकता है।",
@@ -3015,8 +3015,8 @@
       "start_cta": "शुरू",
       "toast_released": "फंड दूसरे पक्ष को जारी किए गए।",
       "toast_refunded": "रिफंड क्लेम किया गया — फंड आपके wallet में लौट रहे हैं।",
-      "intro_security": "सभी सेटलमेंट ऑन-चेन लॉक किए गए IRM से सुरक्षित हैं। एक समझौता बनाने या उसमें भाग लेने के लिए दोनों पक्षों के पास IRM होना चाहिए।",
-      "intro_use_cases": "किसी भी भरोसा-रहित लेनदेन के लिए IRM को एस्क्रो में लॉक करें — सामान, सेवाएँ, फ्रीलांस काम या ट्रेड। दोनों पक्षों के पुष्टि करने पर IRM स्वचालित रूप से रिलीज़ हो जाता है।"
+      "intro_security": "Settlement locks IRM on-chain as a neutral guarantee for any trade. Both parties must hold IRM. The chain enforces the agreement — no bank, no intermediary.",
+      "intro_use_cases": "IRM releases when delivery is confirmed, or refunds automatically if the deadline passes."
     },
     "status": {
       "setting_up": "सेट अप",

@@ -3001,12 +3001,12 @@
     "hub": {
       "title": "Settlement",
       "subtitle": "اقفل IRM في escrow. حرِّر عند التأكيد. استرد عند انتهاء الوقت.",
-      "safe_trade_title": "تجارة آمنة",
-      "safe_trade_subtitle": "اقفل IRM، بدِّل بأي شيء. كلا الطرفين محميان.",
+      "safe_trade_title": "OTC Trade",
+      "safe_trade_subtitle": "Sell IRM for cash, bank transfer, or any off-chain payment",
       "pay_for_work_title": "ادفع مقابل عمل",
-      "pay_for_work_subtitle": "مَوِّل عملاً بدفعة واحدة أو بالمرحلة. تُحرَّر الأموال عند إنجاز العمل.",
+      "pay_for_work_subtitle": "Lock IRM to pay for a service. Funds held in escrow until you confirm delivery.",
       "deposit_title": "إيداع قابل للاسترداد",
-      "deposit_subtitle": "اقفل IRM كضمان. استرده تلقائياً إذا لم تُستوفَ الشروط.",
+      "deposit_subtitle": "Lock IRM as a guarantee. Auto-refunds if conditions are not met by deadline.",
       "active_title": "agreement النشطة",
       "active_empty": "لا توجد agreement نشطة بعد. ابدأ واحدة أعلاه.",
       "active_load_error": "تعذّر تحميل agreement — قد يكون node غير متصل.",
@@ -3015,8 +3015,8 @@
       "start_cta": "ابدأ",
       "toast_released": "تم تحرير الأموال للطرف الآخر.",
       "toast_refunded": "تمت المطالبة بالاسترداد — الأموال تعود إلى wallet.",
-      "intro_security": "كل عمليات التسوية مؤمَّنة بـ IRM مغلق على السلسلة. يجب أن يملك الطرفان IRM لإنشاء اتفاقية أو المشاركة فيها.",
-      "intro_use_cases": "أودِع IRM في الضمان لأي معاملة بدون وسيط — سلع أو خدمات أو عمل مستقل أو صفقات. يُحرَّر IRM تلقائيًا عند تأكيد الطرفين."
+      "intro_security": "Settlement locks IRM on-chain as a neutral guarantee for any trade. Both parties must hold IRM. The chain enforces the agreement — no bank, no intermediary.",
+      "intro_use_cases": "IRM releases when delivery is confirmed, or refunds automatically if the deadline passes."
     },
     "status": {
       "setting_up": "جاري الإعداد",

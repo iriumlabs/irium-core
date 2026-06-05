@@ -3001,12 +3001,12 @@
     "hub": {
       "title": "Settlement",
       "subtitle": "Kunci IRM di escrow. Lepaskan saat konfirmasi. Pengembalian saat waktu habis.",
-      "safe_trade_title": "Perdagangan Aman",
-      "safe_trade_subtitle": "Kunci IRM, tukar dengan apa saja. Kedua sisi terlindungi.",
+      "safe_trade_title": "OTC Trade",
+      "safe_trade_subtitle": "Sell IRM for cash, bank transfer, or any off-chain payment",
       "pay_for_work_title": "Bayar Pekerjaan",
-      "pay_for_work_subtitle": "Danai pekerjaan dengan satu pembayaran atau per tonggak. Uang dilepaskan saat pekerjaan selesai.",
+      "pay_for_work_subtitle": "Lock IRM to pay for a service. Funds held in escrow until you confirm delivery.",
       "deposit_title": "Deposit yang dapat dikembalikan",
-      "deposit_subtitle": "Kunci IRM sebagai jaminan. Dapatkan kembali otomatis jika kondisi tidak terpenuhi.",
+      "deposit_subtitle": "Lock IRM as a guarantee. Auto-refunds if conditions are not met by deadline.",
       "active_title": "agreement Aktif",
       "active_empty": "Belum ada agreement aktif. Mulai satu di atas.",
       "active_load_error": "Tidak dapat memuat agreement — node Anda mungkin offline.",
@@ -3015,8 +3015,8 @@
       "start_cta": "Mulai",
       "toast_released": "Dana dilepaskan ke pihak lain.",
       "toast_refunded": "Pengembalian dana diklaim — dana kembali ke wallet Anda.",
-      "intro_security": "Semua settlement diamankan oleh IRM yang dikunci on-chain. Kedua pihak harus memiliki IRM untuk membuat atau berpartisipasi dalam perjanjian.",
-      "intro_use_cases": "Kunci IRM di escrow untuk transaksi tanpa kepercayaan apa pun — barang, jasa, pekerjaan freelance, atau perdagangan. IRM dilepas otomatis ketika kedua pihak mengkonfirmasi."
+      "intro_security": "Settlement locks IRM on-chain as a neutral guarantee for any trade. Both parties must hold IRM. The chain enforces the agreement — no bank, no intermediary.",
+      "intro_use_cases": "IRM releases when delivery is confirmed, or refunds automatically if the deadline passes."
     },
     "status": {
       "setting_up": "Sedang diatur",

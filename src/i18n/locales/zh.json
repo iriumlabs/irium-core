@@ -3001,12 +3001,12 @@
     "hub": {
       "title": "Settlement",
       "subtitle": "在escrow中锁定 IRM。确认后释放。超时后退款。",
-      "safe_trade_title": "安全交易",
-      "safe_trade_subtitle": "锁定 IRM,交换任何东西。双方都受保护。",
+      "safe_trade_title": "OTC Trade",
+      "safe_trade_subtitle": "Sell IRM for cash, bank transfer, or any off-chain payment",
       "pay_for_work_title": "为工作付款",
-      "pay_for_work_subtitle": "通过一次性付款或按里程碑为工作付款。工作完成后资金释放。",
+      "pay_for_work_subtitle": "Lock IRM to pay for a service. Funds held in escrow until you confirm delivery.",
       "deposit_title": "可退还押金",
-      "deposit_subtitle": "将 IRM 作为保证金锁定。如果条件未满足,将自动取回。",
+      "deposit_subtitle": "Lock IRM as a guarantee. Auto-refunds if conditions are not met by deadline.",
       "active_title": "活跃 agreement",
       "active_empty": "暂无活跃的 agreement。在上方开始一个。",
       "active_load_error": "无法加载 agreement — 您的node可能已离线。",
@@ -3015,8 +3015,8 @@
       "start_cta": "开始",
       "toast_released": "资金已释放给对方。",
       "toast_refunded": "退款已申请 — 资金正在返回您的wallet。",
-      "intro_security": "所有结算均由链上锁定的 IRM 提供保护。双方都必须持有 IRM 才能创建或参与协议。",
-      "intro_use_cases": "为任何无需信任的交易将 IRM 锁定在托管中 — 商品、服务、自由职业工作或交易。当双方确认时,IRM 自动释放。"
+      "intro_security": "Settlement locks IRM on-chain as a neutral guarantee for any trade. Both parties must hold IRM. The chain enforces the agreement — no bank, no intermediary.",
+      "intro_use_cases": "IRM releases when delivery is confirmed, or refunds automatically if the deadline passes."
     },
     "status": {
       "setting_up": "设置中",

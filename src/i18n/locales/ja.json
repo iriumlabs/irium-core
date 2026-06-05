@@ -3001,12 +3001,12 @@
     "hub": {
       "title": "Settlement",
       "subtitle": "IRMをescrowにロック。確認で解放。タイムアウトで返金。",
-      "safe_trade_title": "安全な取引",
-      "safe_trade_subtitle": "IRMをロックして何にでも交換。両側を保護。",
+      "safe_trade_title": "OTC Trade",
+      "safe_trade_subtitle": "Sell IRM for cash, bank transfer, or any off-chain payment",
       "pay_for_work_title": "作業に支払う",
-      "pay_for_work_subtitle": "1回の支払いまたはマイルストーンで作業に資金を提供します。作業完了時にお金が解放されます。",
+      "pay_for_work_subtitle": "Lock IRM to pay for a service. Funds held in escrow until you confirm delivery.",
       "deposit_title": "返金可能な預け金",
-      "deposit_subtitle": "IRMを保証としてロックします。条件が満たされなければ自動的に返却されます。",
+      "deposit_subtitle": "Lock IRM as a guarantee. Auto-refunds if conditions are not met by deadline.",
       "active_title": "アクティブなagreement",
       "active_empty": "まだアクティブなagreementはありません。上から開始してください。",
       "active_load_error": "agreementを読み込めませんでした — nodeがオフラインかもしれません。",
@@ -3015,8 +3015,8 @@
       "start_cta": "開始",
       "toast_released": "資金が相手に解放されました。",
       "toast_refunded": "返金を請求しました — 資金がwalletに戻ります。",
-      "intro_security": "すべての決済はオンチェーンにロックされたIRMで保護されています。契約を作成または参加するには、両者がIRMを保有している必要があります。",
-      "intro_use_cases": "あらゆる信頼不要の取引でIRMをエスクローにロック — 商品、サービス、フリーランスの仕事、または取引。両者が確認するとIRMは自動的にリリースされます。"
+      "intro_security": "Settlement locks IRM on-chain as a neutral guarantee for any trade. Both parties must hold IRM. The chain enforces the agreement — no bank, no intermediary.",
+      "intro_use_cases": "IRM releases when delivery is confirmed, or refunds automatically if the deadline passes."
     },
     "status": {
       "setting_up": "セットアップ中",

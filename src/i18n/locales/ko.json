@@ -3001,12 +3001,12 @@
     "hub": {
       "title": "Settlement",
       "subtitle": "IRM을 escrow에 잠금. 확인 시 해제. 시간 초과 시 환불.",
-      "safe_trade_title": "안전한 거래",
-      "safe_trade_subtitle": "IRM을 잠그고 무엇이든 교환. 양쪽 모두 보호됩니다.",
+      "safe_trade_title": "OTC Trade",
+      "safe_trade_subtitle": "Sell IRM for cash, bank transfer, or any off-chain payment",
       "pay_for_work_title": "작업 지불",
-      "pay_for_work_subtitle": "한 번의 지불 또는 마일스톤별로 작업에 자금을 댑니다. 작업이 완료되면 돈이 해제됩니다.",
+      "pay_for_work_subtitle": "Lock IRM to pay for a service. Funds held in escrow until you confirm delivery.",
       "deposit_title": "환불 가능한 예치금",
-      "deposit_subtitle": "IRM을 보증으로 잠급니다. 조건이 충족되지 않으면 자동으로 되찾습니다.",
+      "deposit_subtitle": "Lock IRM as a guarantee. Auto-refunds if conditions are not met by deadline.",
       "active_title": "활성 agreement",
       "active_empty": "아직 활성 agreement가 없습니다. 위에서 시작하세요.",
       "active_load_error": "agreement를 불러올 수 없습니다 — node가 오프라인일 수 있습니다.",
@@ -3015,8 +3015,8 @@
       "start_cta": "시작",
       "toast_released": "자금이 상대방에게 해제되었습니다.",
       "toast_refunded": "환불을 청구했습니다 — 자금이 wallet으로 돌아갑니다.",
-      "intro_security": "모든 정산은 온체인에 잠긴 IRM으로 보안됩니다. 계약을 생성하거나 참여하려면 양측 모두 IRM을 보유해야 합니다.",
-      "intro_use_cases": "신뢰 없는 모든 거래에 IRM을 에스크로에 잠그세요 — 상품, 서비스, 프리랜서 작업 또는 거래. 양측이 확인하면 IRM이 자동으로 해제됩니다."
+      "intro_security": "Settlement locks IRM on-chain as a neutral guarantee for any trade. Both parties must hold IRM. The chain enforces the agreement — no bank, no intermediary.",
+      "intro_use_cases": "IRM releases when delivery is confirmed, or refunds automatically if the deadline passes."
     },
     "status": {
       "setting_up": "설정 중",

@@ -1282,12 +1282,12 @@
     "hub": {
       "title": "Settlement",
       "subtitle": "Lock IRM in escrow. Release on confirmation. Refund on timeout.",
-      "safe_trade_title": "Safe Trade",
-      "safe_trade_subtitle": "Lock IRM, swap for anything. Both sides protected.",
+      "safe_trade_title": "OTC Trade",
+      "safe_trade_subtitle": "Sell IRM for cash, bank transfer, or any off-chain payment",
       "pay_for_work_title": "Pay for Work",
-      "pay_for_work_subtitle": "Fund a job in one payment or by milestone. Money releases when work is done.",
+      "pay_for_work_subtitle": "Lock IRM to pay for a service. Funds held in escrow until you confirm delivery.",
       "deposit_title": "Refundable Deposit",
-      "deposit_subtitle": "Lock IRM as a guarantee. Get it back automatically if conditions aren't met.",
+      "deposit_subtitle": "Lock IRM as a guarantee. Auto-refunds if conditions are not met by deadline.",
       "active_title": "Active Agreements",
       "active_empty": "No active agreements yet. Start one above.",
       "active_load_error": "Couldn't load agreements — your node may be offline.",
@@ -1296,8 +1296,8 @@
       "start_cta": "Start",
       "toast_released": "Funds released to the other party.",
       "toast_refunded": "Refund claimed — funds are returning to your wallet.",
-      "intro_security": "All settlements are secured by IRM locked on-chain. Both parties must hold IRM to create or participate in an agreement.",
-      "intro_use_cases": "Lock IRM in escrow for any trustless transaction — goods, services, freelance work, or trades. IRM releases automatically when both parties confirm."
+      "intro_security": "Settlement locks IRM on-chain as a neutral guarantee for any trade. Both parties must hold IRM. The chain enforces the agreement — no bank, no intermediary.",
+      "intro_use_cases": "IRM releases when delivery is confirmed, or refunds automatically if the deadline passes."
     },
     "status": {
       "setting_up": "Setting up",

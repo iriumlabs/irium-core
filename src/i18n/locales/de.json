@@ -3001,12 +3001,12 @@
     "hub": {
       "title": "Settlement",
       "subtitle": "IRM in escrow sperren. Bei Bestätigung freigeben. Bei Timeout erstatten.",
-      "safe_trade_title": "Sicherer Handel",
-      "safe_trade_subtitle": "IRM sperren, gegen alles tauschen. Beide Seiten geschützt.",
+      "safe_trade_title": "OTC Trade",
+      "safe_trade_subtitle": "Sell IRM for cash, bank transfer, or any off-chain payment",
       "pay_for_work_title": "Für Arbeit zahlen",
-      "pay_for_work_subtitle": "Finanzieren Sie einen Auftrag mit einer Zahlung oder nach Meilenstein. Geld wird freigegeben, wenn die Arbeit fertig ist.",
+      "pay_for_work_subtitle": "Lock IRM to pay for a service. Funds held in escrow until you confirm delivery.",
       "deposit_title": "Erstattungsfähige Einlage",
-      "deposit_subtitle": "IRM als Garantie sperren. Erhalten Sie es automatisch zurück, wenn Bedingungen nicht erfüllt sind.",
+      "deposit_subtitle": "Lock IRM as a guarantee. Auto-refunds if conditions are not met by deadline.",
       "active_title": "Aktive agreement",
       "active_empty": "Noch keine aktiven agreement. Starten Sie oben.",
       "active_load_error": "agreement konnten nicht geladen werden — Ihr node ist möglicherweise offline.",
@@ -3015,8 +3015,8 @@
       "start_cta": "Start",
       "toast_released": "Mittel an die andere Partei freigegeben.",
       "toast_refunded": "Erstattung beansprucht — Mittel kehren in Ihren wallet zurück.",
-      "intro_security": "Alle Settlements sind durch IRM auf der Blockchain gesichert. Beide Parteien müssen IRM besitzen, um eine Vereinbarung zu erstellen oder daran teilzunehmen.",
-      "intro_use_cases": "Sperre IRM in Treuhand für jede vertrauensfreie Transaktion — Waren, Dienstleistungen, Freelance-Arbeit oder Handel. IRM wird automatisch freigegeben, wenn beide Parteien bestätigen."
+      "intro_security": "Settlement locks IRM on-chain as a neutral guarantee for any trade. Both parties must hold IRM. The chain enforces the agreement — no bank, no intermediary.",
+      "intro_use_cases": "IRM releases when delivery is confirmed, or refunds automatically if the deadline passes."
     },
     "status": {
       "setting_up": "Einrichtung",
