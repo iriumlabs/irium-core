@@ -83,6 +83,20 @@ export default function PairOrderBook({
         setTotalOpen(result.total_open);
         setError(null);
         setLastUpdated(Date.now());
+        // FIX BUG 2: surface server/client shape mismatches for debugging.
+        // If the node reports N open orders but returns an empty rows
+        // array (or vice versa), we want a console trail so a debug
+        // session can grab the raw RPC response. The visible empty
+        // state below also shows a "X orders reported, none visible —
+        // Reset filters" hint so the user can recover without devtools.
+        if (result.total_open > 0 && result.orders.length === 0) {
+          console.warn(
+            `[PairOrderBook] listOrders reports total_open=${result.total_open}` +
+              ` but returned 0 rows for pair=${pair.id} direction=${direction}.` +
+              ` Server/client shape mismatch suspected — capture the raw response from` +
+              ` /rpc/listswaporders for diagnosis.`,
+          );
+        }
       } catch (e) {
         if (cancelled) return;
         setError(e instanceof Error ? e.message : String(e));
@@ -224,8 +238,34 @@ export default function PairOrderBook({
           {error}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="py-10 text-center text-xs" style={{ color: 'rgba(238,240,255,0.45)' }}>
-          {t('marketplace.pair_order_book.empty_state', { pair: pair.label })}
+        // FIX BUG 2: when the node reports orders exist (totalOpen > 0)
+        // or rows came back but all got filtered out locally (orders.length
+        // > 0 with hideMine on), the previous "No live orders" copy was
+        // misleading — the user couldn't tell whether the market was empty
+        // or whether filters were hiding everything. Show a discrepancy
+        // hint + Reset filters button so the user can recover with one
+        // click instead of having to manually retoggle BOTH and the
+        // hide-mine checkbox.
+        <div className="py-8 text-center text-xs space-y-3" style={{ color: 'rgba(238,240,255,0.45)' }}>
+          {totalOpen > 0 || orders.length > 0 ? (
+            <>
+              <div>
+                {orders.length > 0
+                  ? `${orders.length} order${orders.length === 1 ? '' : 's'} returned, but your filters hid them all.`
+                  : `The node reports ${totalOpen} open order${totalOpen === 1 ? '' : 's'} but returned no rows. ` +
+                    `Filters or a stale local response may be hiding them.`}
+              </div>
+              <button
+                type="button"
+                onClick={() => { setDirection('both'); setHideMine(false); }}
+                className="btn-secondary inline-flex items-center gap-1 text-[11px] px-2 py-1"
+              >
+                <RefreshCw size={11} /> Reset filters
+              </button>
+            </>
+          ) : (
+            t('marketplace.pair_order_book.empty_state', { pair: pair.label })
+          )}
         </div>
       ) : (
         <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">

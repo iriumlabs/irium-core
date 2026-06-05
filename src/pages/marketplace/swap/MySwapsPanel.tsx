@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, ArrowRight, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { SwapOrderRow, SwapPairConfig } from './pairs/types';
 
@@ -7,12 +7,27 @@ const POLL_INTERVAL_MS = 15_000;
 
 type Tab = 'mine' | 'available' | 'expired';
 
+// FIX BUG 1: in-flight swap hint passed down from SwapPanel. After
+// fillOrder consumes the original SwapOrder outpoint, the new
+// HtlcBtcSwap outpoint isn't returned by listSwapOrders anymore — so
+// MySwapsPanel never sees it, which is why "no open orders" showed
+// even though escrow was locked. The parent passes the active swap
+// here and we render it as a pinned "Active trade" row at the top of
+// the Mine tab.
+export interface ActiveSwapHint {
+  pairId: string;
+  outpoint: { txid: string; vout: number };
+  paymentSent: boolean;
+}
+
 export interface MySwapsPanelProps {
   pair: SwapPairConfig;
   myAddresses: Set<string>;
   activeIriumdAddress: string;
   onOpenOrder: (row: SwapOrderRow) => void;
   refreshTick?: number;
+  activeSwap?: ActiveSwapHint | null;
+  onOpenActiveSwap?: () => void;
 }
 
 function truncateAddr(addr: string): string {
@@ -27,6 +42,8 @@ export default function MySwapsPanel({
   activeIriumdAddress,
   onOpenOrder,
   refreshTick = 0,
+  activeSwap = null,
+  onOpenActiveSwap,
 }: MySwapsPanelProps) {
   const [orders, setOrders] = useState<SwapOrderRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -160,6 +177,59 @@ export default function MySwapsPanel({
         </div>
       </div>
 
+      {/* FIX BUG 1: pinned "Active trade" row on the Mine tab. Renders
+          whenever SwapPanel has an in-flight swap for the current pair,
+          regardless of whether the user is the maker or the taker — the
+          original SwapOrder outpoint is gone from listSwapOrders once
+          filled, but the trade is still in progress and the user
+          deserves to see it under their own list. */}
+      {tab === 'mine' && activeSwap && !error && (
+        <div
+          className="rounded p-2 text-xs space-y-1.5"
+          style={{
+            background: 'rgba(34,197,94,0.08)',
+            border: `1px solid ${pair.accent.primary}`,
+          }}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-display font-semibold uppercase tracking-wider"
+              style={{
+                background: 'rgba(34,197,94,0.15)',
+                color: '#22c55e',
+                border: '1px solid rgba(34,197,94,0.30)',
+              }}
+            >
+              <Activity size={10} />
+              Active trade
+            </span>
+            <span
+              className="text-[10px]"
+              style={{ color: 'rgba(238,240,255,0.55)', fontFamily: '"JetBrains Mono", monospace' }}
+              title={`${activeSwap.outpoint.txid}:${activeSwap.outpoint.vout}`}
+            >
+              {activeSwap.outpoint.txid.slice(0, 8)}…:{activeSwap.outpoint.vout}
+            </span>
+          </div>
+          <div
+            className="text-[11px]"
+            style={{ color: 'rgba(238,240,255,0.72)', lineHeight: 1.4 }}
+          >
+            {activeSwap.paymentSent
+              ? `${pair.label} swap — proof submitted, waiting for the IRM release to confirm.`
+              : `${pair.label} swap — escrow is locked. Send the ${pair.quote.code} payment, then submit the proof from the Swap Progress panel.`}
+          </div>
+          <button
+            type="button"
+            onClick={() => onOpenActiveSwap?.()}
+            className="btn-secondary inline-flex items-center gap-1 px-2 py-1 text-[10px]"
+          >
+            <ArrowRight size={10} />
+            Open trade
+          </button>
+        </div>
+      )}
+
       {loading && orders.length === 0 ? (
         <div
           className="flex items-center justify-center py-6 text-xs"
@@ -182,7 +252,9 @@ export default function MySwapsPanel({
       ) : view.length === 0 ? (
         <div className="text-xs py-4 text-center" style={{ color: 'rgba(238,240,255,0.45)' }}>
           {tab === 'mine'
-            ? `You have no open ${pair.label} orders yet. Post one to get started.`
+            ? activeSwap
+              ? `You have no other open ${pair.label} orders. Your active trade is shown above.`
+              : `You have no open ${pair.label} orders yet. Post one to get started.`
             : tab === 'available'
             ? `No live ${pair.label} orders from other wallets right now.`
             : `No expired ${pair.label} orders waiting to be swept.`}
