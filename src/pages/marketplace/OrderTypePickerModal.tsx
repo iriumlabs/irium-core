@@ -1,6 +1,9 @@
 import { ArrowRight, Bitcoin, Coins } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { TradingModal } from '../../components/ui';
+import { useStore } from '../../lib/store';
+import { getPairById } from './swap/pairs';
+import { pairAvailability } from './swap/hooks/usePairAvailability';
 
 // First-step picker shown when the user clicks "Create Order" from the OTC
 // tab of the Marketplace. Previously the click jumped straight into the OTC
@@ -12,8 +15,12 @@ import { TradingModal } from '../../components/ui';
 // OTC option proceeds to the existing fiat/USDT CreateOrderModal.
 // BTC / LTC / DOGE options close the picker and switch the Marketplace
 // page to the Spot Swap tab with the corresponding trading pair
-// pre-selected — LTC and DOGE land on the Coming Soon overlay until
-// their activation heights so the user immediately sees the timeline.
+// pre-selected. The LTC and DOGE badges now flip from "Coming soon" to
+// "Live" automatically as the local chain tip crosses their activation
+// height (24,800) — see pairAvailability() for the rule. Pre-2026-06-04
+// this badge was hardcoded to 'soon' which left the picker stale after
+// the consolidation commit (iriumlabs/irium 338f3395) moved both pairs
+// to a single activation height of 24,800.
 
 export type OrderTypeChoice = 'otc' | 'swap-btc' | 'swap-ltc' | 'swap-doge';
 
@@ -38,6 +45,21 @@ export default function OrderTypePickerModal({
 }: OrderTypePickerModalProps) {
   const { t } = useTranslation();
 
+  // Dynamic LIVE-vs-COMING-SOON badge derivation. The Spot Swap page
+  // already uses pairAvailability() to decide whether each pair is
+  // tradable; the picker now reads the same source of truth so the
+  // badge here can't drift from what the user sees when they click in.
+  // Chain tip comes from the global node-status store (poll-backed).
+  // Returns availability=true when activationHeight is set AND tip
+  // >= activationHeight, which is the case for LTC and DOGE on any
+  // node synced past block 24,800 (consolidation commit 338f3395).
+  const tipHeight = useStore((s) => s.nodeStatus?.height ?? 0);
+  const liveBadgeText = t('marketplace.order_type_picker.btc_badge');
+  const ltcPair = getPairById('IRM_LTC');
+  const dogePair = getPairById('IRM_DOGE');
+  const ltcLive = ltcPair ? pairAvailability(ltcPair, tipHeight).available : false;
+  const dogeLive = dogePair ? pairAvailability(dogePair, tipHeight).available : false;
+
   const options: OptionDef[] = [
     {
       choice: 'otc',
@@ -60,8 +82,8 @@ export default function OrderTypePickerModal({
       choice: 'swap-ltc',
       title: t('marketplace.order_type_picker.ltc_title'),
       description: t('marketplace.order_type_picker.ltc_description'),
-      badge: t('marketplace.order_type_picker.ltc_badge'),
-      badgeIntent: 'soon',
+      badge: ltcLive ? liveBadgeText : t('marketplace.order_type_picker.ltc_badge'),
+      badgeIntent: ltcLive ? 'live' : 'soon',
       accent: '#345d9d',
       Icon: Coins,
     },
@@ -69,8 +91,8 @@ export default function OrderTypePickerModal({
       choice: 'swap-doge',
       title: t('marketplace.order_type_picker.doge_title'),
       description: t('marketplace.order_type_picker.doge_description'),
-      badge: t('marketplace.order_type_picker.doge_badge'),
-      badgeIntent: 'soon',
+      badge: dogeLive ? liveBadgeText : t('marketplace.order_type_picker.doge_badge'),
+      badgeIntent: dogeLive ? 'live' : 'soon',
       accent: '#c2a633',
       Icon: Coins,
     },

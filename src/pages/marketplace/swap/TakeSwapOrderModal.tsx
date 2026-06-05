@@ -27,7 +27,13 @@ export interface TakeSwapOrderModalProps {
   takerIriumdAddress: string;
   takerForeignAddress?: string;
   onClose: () => void;
-  onFilled: (result: SwapTxResult) => void;
+  // FIX BUG 3: opts.keepOpen=true means "the on-chain HTLC is funded but
+  // the user hasn't submitted proof yet — register the activeSwap with
+  // SwapPanel so MySwapsPanel + SwapProgress can pick it up, but leave
+  // this modal mounted so the user can continue through steps 2 and 3".
+  // Called at step 1 (fillOrder success) with keepOpen=true and again at
+  // step 3 (claim submitted) without keepOpen so the modal closes.
+  onFilled: (result: SwapTxResult, opts?: { keepOpen?: boolean }) => void;
 }
 
 type Step = 1 | 2 | 3;
@@ -167,6 +173,14 @@ export default function TakeSwapOrderModal({
       });
       setFilled(result);
       setStep(2);
+      // FIX BUG 3: register the funded HTLC with SwapPanel immediately so
+      // MySwapsPanel surfaces it under "Mine" and SwapProgress mounts the
+      // inline proof-submission panel. keepOpen=true so SwapPanel does
+      // not setTakeTarget(null) — the user can still walk through step 2
+      // payment instructions and step 3 proof submission in this modal.
+      // If they close the modal at this point, the activeSwap is now
+      // tracked and they can resume proof submission from SwapProgress.
+      onFilled(result, { keepOpen: true });
       toast.success(
         takerReceivesIrm
           ? t('marketplace.take_swap.toast_locked_buyer', { code: pair.quote.code })

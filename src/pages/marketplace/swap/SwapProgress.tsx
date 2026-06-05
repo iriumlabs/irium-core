@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Check, FileText, Loader2, Send, ShieldCheck, Trophy } from 'lucide-react';
 import type { SwapPairConfig } from './pairs/types';
+import ProofSubmitInline from './ProofSubmitInline';
 
 // 4-step progress tracker for an active swap.
 //   1. Order Created   — escrow tx confirmed on the Irium side
@@ -44,6 +45,11 @@ export interface SwapProgressProps {
   // continue to render the pre-FIX-2 copy.
   pendingConfirmation?: boolean;
   fetchStatus?: (outpoint: { txid: string; vout: number }) => Promise<{ lifecycle?: SwapLifecycle }>;
+  // FIX BUG 3: taker's Irium address, needed by the inline proof
+  // submission panel so it can populate the destination_address field on
+  // claim{Btc,Ltc,Doge}Swap. Optional — when missing, the inline panel
+  // surfaces a "no wallet loaded yet" error instead of submitting.
+  takerIriumdAddress?: string;
 }
 
 interface StepDef {
@@ -94,7 +100,10 @@ function statusSentence(
     case 'funded':
       return paymentSent
         ? `Waiting for the ${pair.quote.code} payment to confirm on the ${pair.quote.network ?? pair.quote.name} side.`
-        : `Escrow is locked. Send the ${pair.quote.code} payment and report it from the trade screen.`;
+        // FIX BUG 3: previous copy referred to a non-existent "trade
+        // screen". Now points the user at the ProofSubmitInline panel
+        // rendered immediately below this status sentence.
+        : `Escrow is locked. Send the ${pair.quote.code} payment to the seller, then submit the proof below.`;
     case 'partially_released':
       return `${pair.quote.code} payment proof has been submitted. The IRM is on its way to the recipient.`;
     case 'released':
@@ -125,6 +134,7 @@ export default function SwapProgress({
   paymentSent,
   pendingConfirmation = false,
   fetchStatus,
+  takerIriumdAddress,
 }: SwapProgressProps) {
   const [life, setLife] = useState<SwapLifecycle>('unknown');
   const [error, setError] = useState<string | null>(null);
@@ -225,6 +235,24 @@ export default function SwapProgress({
       >
         {statusSentence(life, paymentSent, pair, pendingConfirmation)}
       </div>
+
+      {/* FIX BUG 3: inline proof-submission panel for the taker. Renders
+          while the swap is funded (escrow locked) and not in a terminal
+          state. The status sentence above instructs the user to "submit
+          the proof below" — this is the "below". If the user is the
+          maker, iriumd will reject the claim and ProofSubmitInline will
+          surface the error. Hidden while the post-create confirmation
+          poll hasn't seen the order yet (pendingConfirmation) and after
+          the lifecycle transitions out of funded. */}
+      {!pendingConfirmation &&
+        (life === 'funded' || life === 'draft' || life === 'proposed') &&
+        !terminal && (
+          <ProofSubmitInline
+            pair={pair}
+            swapOutpoint={swapOutpoint}
+            takerIriumdAddress={takerIriumdAddress ?? ''}
+          />
+        )}
 
       {error && (
         <div className="text-xs" style={{ color: '#fbbf24' }}>

@@ -211,18 +211,51 @@ export default function SwapPanel({ requestedPairId }: SwapPanelProps = {}) {
     }
   }, [activePairId]);
 
-  const handleOrderFilled = useCallback((result: SwapTxResult) => {
+  const handleOrderFilled = useCallback((result: SwapTxResult, opts?: { keepOpen?: boolean }) => {
     setRefreshTick((n) => n + 1);
     const outpoint = result.new_swap_outpoint ?? result.order_outpoint;
     if (outpoint) {
       setActiveSwap({
         pairId: activePairId,
         outpoint,
-        paymentSent: true,
+        // FIX BUG 3: when called immediately after step 1 (fillOrder
+        // success, escrow funded but payment not yet sent), keepOpen=true
+        // and paymentSent stays false so SwapProgress surfaces the
+        // "send the payment, then submit proof" copy. When called from
+        // step 3 (after claim submission), keepOpen is undefined and
+        // paymentSent flips true (existing semantics).
+        paymentSent: opts?.keepOpen ? false : true,
       });
     }
-    setTakeTarget(null);
+    // FIX BUG 3: keep TakeSwapOrderModal mounted when the early step-1
+    // signal fires so the user can continue through steps 2 and 3 in the
+    // same modal. Only close after the terminal call (proof submitted or
+    // explicit cancel).
+    if (!opts?.keepOpen) {
+      setTakeTarget(null);
+    }
   }, [activePairId]);
+
+  // FIX BUG 1: scroll the SwapProgress card into view and trigger a
+  // brief pulse highlight when the user clicks "Open trade" on the
+  // synthesized active-swap row in MySwapsPanel. The ref points at the
+  // wrapper div that holds SwapProgress; the auto-clear useEffect below
+  // resets the pulse 1.4s after each trigger so repeated clicks re-fire
+  // the animation cleanly.
+  const swapProgressRef = useRef<HTMLDivElement>(null);
+  const [pulseSwapProgress, setPulseSwapProgress] = useState(false);
+  useEffect(() => {
+    if (!pulseSwapProgress) return;
+    const t = setTimeout(() => setPulseSwapProgress(false), 1400);
+    return () => clearTimeout(t);
+  }, [pulseSwapProgress]);
+
+  const handleOpenActiveSwap = useCallback(() => {
+    if (swapProgressRef.current) {
+      swapProgressRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    setPulseSwapProgress(true);
+  }, []);
 
   // fetchStatus for the SwapProgress tracker. Without this prop wired, the
   // tracker's polling useEffect early-returns and `life` stays at 'unknown',
@@ -310,16 +343,31 @@ export default function SwapPanel({ requestedPairId }: SwapPanelProps = {}) {
               />
 
               <div className="space-y-3">
-                {activeSwap && activeSwap.pairId === activePairId && (
-                  <SwapProgress
-                    pair={activePair}
-                    swapOutpoint={activeSwap.outpoint}
-                    paymentSent={activeSwap.paymentSent}
-                    pendingConfirmation={pendingOrderConfirmation}
-                    fetchStatus={fetchSwapStatus}
-                  />
-                )}
-                {!activeSwap && (
+                {activeSwap && activeSwap.pairId === activePairId ? (
+                  // FIX BUG 1: wrapper for scroll-into-view + pulse
+                  // highlight when "Open trade" is clicked in MySwapsPanel.
+                  // Box-shadow transitions ~250ms; the pulse stays on for
+                  // ~1.4s before the useEffect auto-clears it.
+                  <div
+                    ref={swapProgressRef}
+                    style={{
+                      transition: 'box-shadow 250ms ease',
+                      boxShadow: pulseSwapProgress
+                        ? `0 0 0 2px ${activePair.accent.primary}, 0 0 24px ${activePair.accent.glow}`
+                        : '0 0 0 0 rgba(0,0,0,0)',
+                      borderRadius: 8,
+                    }}
+                  >
+                    <SwapProgress
+                      pair={activePair}
+                      swapOutpoint={activeSwap.outpoint}
+                      paymentSent={activeSwap.paymentSent}
+                      pendingConfirmation={pendingOrderConfirmation}
+                      fetchStatus={fetchSwapStatus}
+                      takerIriumdAddress={activeWalletAddr}
+                    />
+                  </div>
+                ) : !activeSwap ? (
                   <div className="bg-[#181a20] border border-[#2b3139] rounded-lg p-4 text-[12px] text-[#b7bdc6] leading-relaxed">
                     <div className="text-[13px] font-semibold text-[#eaecef] mb-2">
                       {t('marketplace.swap.how_it_works_title', { pair: activePair.label })}
@@ -331,7 +379,7 @@ export default function SwapPanel({ requestedPairId }: SwapPanelProps = {}) {
                       <li>{t('marketplace.swap.how_it_works_step4')}</li>
                     </ol>
                   </div>
-                )}
+                ) : null}
               </div>
 
               <MySwapsPanel
@@ -340,6 +388,8 @@ export default function SwapPanel({ requestedPairId }: SwapPanelProps = {}) {
                 activeIriumdAddress={activeWalletAddr}
                 onOpenOrder={handleSelectOrder}
                 refreshTick={refreshTick}
+                activeSwap={activeSwap && activeSwap.pairId === activePairId ? activeSwap : null}
+                onOpenActiveSwap={handleOpenActiveSwap}
               />
             </div>
           </>
