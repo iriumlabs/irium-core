@@ -25,6 +25,12 @@ export interface PairOrderBookProps {
   // polling sees the new outpoint confirmed). Default 0 means existing
   // callers without the prop keep the pre-FIX-2 10-second poll cadence.
   refreshTick?: number;
+  // The current user has just posted an order (maker role) that has not
+  // yet been confirmed in an Irium block. listSwapOrders won't return it
+  // for the first ~2 min, so the order book would otherwise look empty
+  // with no explanation. SwapPanel passes this hint so the order book
+  // surfaces a "your order is broadcasting" banner instead.
+  pendingActiveSwap?: { outpoint: { txid: string; vout: number } } | null;
 }
 
 function truncateAddr(addr: string): string {
@@ -54,6 +60,7 @@ export default function PairOrderBook({
   onCreateOrder,
   myAddresses,
   refreshTick = 0,
+  pendingActiveSwap = null,
 }: PairOrderBookProps) {
   const { t } = useTranslation();
   const [orders, setOrders] = useState<SwapOrderRow[]>([]);
@@ -216,6 +223,35 @@ export default function PairOrderBook({
           {t('marketplace.pair_order_book.hide_my_orders')}
         </label>
       </div>
+
+      {/* Pending-confirmation banner. Shown while the local user has a
+          freshly-posted order that has not yet been included in an Irium
+          block. Without this, listSwapOrders won't return the new order
+          for ~2 min and the user would see an unexplained empty list
+          (or only other people's orders). */}
+      {pendingActiveSwap && (
+        <div
+          className="rounded px-3 py-2 text-[11px]"
+          style={{
+            background: 'rgba(252,211,77,0.08)',
+            border: '1px solid rgba(252,211,77,0.25)',
+            color: 'rgba(238,240,255,0.85)',
+            lineHeight: 1.45,
+          }}
+        >
+          Your new {pair.label} order is broadcasting. It will appear in
+          this list once it confirms in an Irium block (~2 min).{' '}
+          <span
+            style={{
+              color: 'rgba(238,240,255,0.45)',
+              fontFamily: '"JetBrains Mono", monospace',
+              fontSize: 10,
+            }}
+          >
+            outpoint {pendingActiveSwap.outpoint.txid.slice(0, 8)}…:{pendingActiveSwap.outpoint.vout}
+          </span>
+        </div>
+      )}
 
       {/* Body */}
       {loading && orders.length === 0 ? (

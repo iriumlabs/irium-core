@@ -3001,12 +3001,12 @@
     "hub": {
       "title": "Settlement",
       "subtitle": "Khóa IRM trong escrow. Giải phóng khi xác nhận. Hoàn tiền khi hết thời gian.",
-      "safe_trade_title": "Giao dịch An toàn",
-      "safe_trade_subtitle": "Khóa IRM, đổi lấy bất cứ thứ gì. Cả hai bên đều được bảo vệ.",
+      "safe_trade_title": "OTC Trade",
+      "safe_trade_subtitle": "Sell IRM for cash, bank transfer, or any off-chain payment",
       "pay_for_work_title": "Thanh toán cho công việc",
-      "pay_for_work_subtitle": "Tài trợ một công việc với một khoản thanh toán hoặc theo mốc. Tiền giải phóng khi công việc hoàn thành.",
+      "pay_for_work_subtitle": "Lock IRM to pay for a service. Funds held in escrow until you confirm delivery.",
       "deposit_title": "Tiền đặt cọc hoàn lại",
-      "deposit_subtitle": "Khóa IRM làm bảo đảm. Tự động lấy lại nếu các điều kiện không được đáp ứng.",
+      "deposit_subtitle": "Lock IRM as a guarantee. Auto-refunds if conditions are not met by deadline.",
       "active_title": "agreement đang hoạt động",
       "active_empty": "Chưa có agreement đang hoạt động. Bắt đầu một ở trên.",
       "active_load_error": "Không thể tải agreement — node của bạn có thể đang ngoại tuyến.",
@@ -3015,8 +3015,8 @@
       "start_cta": "Bắt đầu",
       "toast_released": "Đã giải phóng tiền cho bên kia.",
       "toast_refunded": "Đã yêu cầu hoàn tiền — tiền đang trở lại wallet của bạn.",
-      "intro_security": "Tất cả thanh toán đều được bảo mật bằng IRM khóa trên chuỗi. Cả hai bên phải sở hữu IRM để tạo hoặc tham gia thỏa thuận.",
-      "intro_use_cases": "Khóa IRM trong ký quỹ cho bất kỳ giao dịch không cần tin tưởng nào — hàng hóa, dịch vụ, công việc tự do, hoặc giao dịch. IRM được giải phóng tự động khi cả hai bên xác nhận."
+      "intro_security": "Settlement locks IRM on-chain as a neutral guarantee for any trade. Both parties must hold IRM. The chain enforces the agreement — no bank, no intermediary.",
+      "intro_use_cases": "IRM releases when delivery is confirmed, or refunds automatically if the deadline passes."
     },
     "status": {
       "setting_up": "Đang thiết lập",

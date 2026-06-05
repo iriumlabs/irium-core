@@ -3001,12 +3001,12 @@
     "hub": {
       "title": "Settlement",
       "subtitle": "Bloquea IRM en escrow. Libera al confirmar. Reembolso por tiempo de espera.",
-      "safe_trade_title": "Operación segura",
-      "safe_trade_subtitle": "Bloquea IRM, intercambia por cualquier cosa. Ambas partes protegidas.",
+      "safe_trade_title": "OTC Trade",
+      "safe_trade_subtitle": "Sell IRM for cash, bank transfer, or any off-chain payment",
       "pay_for_work_title": "Pagar trabajo",
-      "pay_for_work_subtitle": "Financia un trabajo con un pago o por hito. El dinero se libera cuando el trabajo está listo.",
+      "pay_for_work_subtitle": "Lock IRM to pay for a service. Funds held in escrow until you confirm delivery.",
       "deposit_title": "Depósito reembolsable",
-      "deposit_subtitle": "Bloquea IRM como garantía. Recupéralo automáticamente si no se cumplen las condiciones.",
+      "deposit_subtitle": "Lock IRM as a guarantee. Auto-refunds if conditions are not met by deadline.",
       "active_title": "agreement activos",
       "active_empty": "Aún no hay agreement activos. Inicia uno arriba.",
       "active_load_error": "No se pudieron cargar los agreement — tu node podría estar fuera de línea.",
@@ -3015,8 +3015,8 @@
       "start_cta": "Iniciar",
       "toast_released": "Fondos liberados a la otra parte.",
       "toast_refunded": "Reembolso reclamado — los fondos vuelven a tu wallet.",
-      "intro_security": "Todas las liquidaciones están aseguradas por IRM bloqueado en la cadena. Ambas partes deben tener IRM para crear o participar en un acuerdo.",
-      "intro_use_cases": "Bloquea IRM en custodia para cualquier transacción sin confianza — bienes, servicios, trabajo freelance o intercambios. IRM se libera automáticamente cuando ambas partes confirman."
+      "intro_security": "Settlement locks IRM on-chain as a neutral guarantee for any trade. Both parties must hold IRM. The chain enforces the agreement — no bank, no intermediary.",
+      "intro_use_cases": "IRM releases when delivery is confirmed, or refunds automatically if the deadline passes."
     },
     "status": {
       "setting_up": "Configurando",

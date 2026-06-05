@@ -30,6 +30,11 @@ interface ActiveSwap {
   pairId: string;
   outpoint: { txid: string; vout: number };
   paymentSent: boolean;
+  // Which side of the trade the local user is on. Drives the role-aware
+  // status copy in SwapProgress and the maker/taker text in MySwapsPanel's
+  // Active-trade row. Set explicitly at each entry point: handleOrderCreated
+  // -> 'maker', handleOrderFilled -> 'taker'.
+  role: 'maker' | 'taker';
 }
 
 // localStorage key for cross-navigation persistence of the in-flight swap.
@@ -49,7 +54,17 @@ function readPersistedActiveSwap(): ActiveSwap | null {
       typeof parsed.outpoint.vout === 'number' &&
       typeof parsed.paymentSent === 'boolean'
     ) {
-      return parsed as ActiveSwap;
+      // Legacy entries (pre role-fix) lack the role field; default to
+      // 'maker' since rendering the taker proof form to a maker is the
+      // bug we are fixing — maker UI is the safer default. Post-fix
+      // sessions write the role field explicitly.
+      const role: 'maker' | 'taker' = parsed.role === 'taker' ? 'taker' : 'maker';
+      return {
+        pairId: parsed.pairId,
+        outpoint: parsed.outpoint as { txid: string; vout: number },
+        paymentSent: parsed.paymentSent,
+        role,
+      };
     }
     return null;
   } catch {
@@ -201,6 +216,7 @@ export default function SwapPanel({ requestedPairId }: SwapPanelProps = {}) {
         pairId: activePairId,
         outpoint: result.order_outpoint,
         paymentSent: false,
+        role: 'maker',
       });
       // FIX 2: the order has been broadcast but is not yet in a block;
       // surface "Waiting for confirmation (~2 min)" in SwapProgress until
@@ -218,6 +234,7 @@ export default function SwapPanel({ requestedPairId }: SwapPanelProps = {}) {
       setActiveSwap({
         pairId: activePairId,
         outpoint,
+        role: 'taker',
         // FIX BUG 3: when called immediately after step 1 (fillOrder
         // success, escrow funded but payment not yet sent), keepOpen=true
         // and paymentSent stays false so SwapProgress surfaces the
@@ -340,6 +357,14 @@ export default function SwapPanel({ requestedPairId }: SwapPanelProps = {}) {
                 onCreateOrder={() => setShowCreate(true)}
                 myAddresses={myAddrs}
                 refreshTick={refreshTick}
+                pendingActiveSwap={
+                  pendingOrderConfirmation &&
+                  activeSwap &&
+                  activeSwap.pairId === activePairId &&
+                  activeSwap.role === 'maker'
+                    ? { outpoint: activeSwap.outpoint }
+                    : null
+                }
               />
 
               <div className="space-y-3">
@@ -365,6 +390,7 @@ export default function SwapPanel({ requestedPairId }: SwapPanelProps = {}) {
                       pendingConfirmation={pendingOrderConfirmation}
                       fetchStatus={fetchSwapStatus}
                       takerIriumdAddress={activeWalletAddr}
+                      role={activeSwap.role}
                     />
                   </div>
                 ) : !activeSwap ? (

@@ -3001,12 +3001,12 @@
     "hub": {
       "title": "Settlement",
       "subtitle": "Blocca IRM in escrow. Rilascia alla conferma. Rimborso al timeout.",
-      "safe_trade_title": "Scambio sicuro",
-      "safe_trade_subtitle": "Blocca IRM, scambia con qualsiasi cosa. Entrambe le parti protette.",
+      "safe_trade_title": "OTC Trade",
+      "safe_trade_subtitle": "Sell IRM for cash, bank transfer, or any off-chain payment",
       "pay_for_work_title": "Paga per il lavoro",
-      "pay_for_work_subtitle": "Finanzia un lavoro con un pagamento o per traguardi. Il denaro viene rilasciato a lavoro completato.",
+      "pay_for_work_subtitle": "Lock IRM to pay for a service. Funds held in escrow until you confirm delivery.",
       "deposit_title": "Deposito rimborsabile",
-      "deposit_subtitle": "Blocca IRM come garanzia. Recuperalo automaticamente se le condizioni non sono soddisfatte.",
+      "deposit_subtitle": "Lock IRM as a guarantee. Auto-refunds if conditions are not met by deadline.",
       "active_title": "agreement attivi",
       "active_empty": "Ancora nessun agreement attivo. Iniziane uno sopra.",
       "active_load_error": "Impossibile caricare gli agreement — il tuo node potrebbe essere offline.",
@@ -3015,8 +3015,8 @@
       "start_cta": "Inizia",
       "toast_released": "Fondi rilasciati all'altra parte.",
       "toast_refunded": "Rimborso richiesto — i fondi tornano al tuo wallet.",
-      "intro_security": "Tutti i settlement sono garantiti da IRM bloccato sulla blockchain. Entrambe le parti devono possedere IRM per creare o partecipare a un accordo.",
-      "intro_use_cases": "Blocca IRM in deposito a garanzia per qualsiasi transazione trustless — beni, servizi, lavoro freelance o scambi. IRM viene rilasciato automaticamente quando entrambe le parti confermano."
+      "intro_security": "Settlement locks IRM on-chain as a neutral guarantee for any trade. Both parties must hold IRM. The chain enforces the agreement — no bank, no intermediary.",
+      "intro_use_cases": "IRM releases when delivery is confirmed, or refunds automatically if the deadline passes."
     },
     "status": {
       "setting_up": "Configurazione",
