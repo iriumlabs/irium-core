@@ -3163,15 +3163,15 @@
         "deadline_label_short": "구매자의 결제 마감 시간",
         "deadline_helper_refund": "마감 시간까지 결제가 도착하지 않으면 환불을 청구할 수 있습니다.",
         "locked_hero_title": "IRM이 이제 잠기고 보호됩니다",
-        "locked_hero_body": "구매자는 본인의 확인 없이 가져갈 수 없습니다. 아래 거래 코드를 공유하여 참여하게 한 후 결제를 기다리세요.",
+        "locked_hero_body": "The buyer cannot receive the IRM without your confirmation. Share the deal code below — when they paste it in their wallet, the trade goes live. Wait for them to send your off-chain payment, then confirm receipt to release the IRM.",
         "share_code_title": "이 거래 코드를 공유하세요",
-        "share_code_body": "구매자가 이 코드를 자신의 지갑에 붙여넣어 거래에 참여합니다.",
+        "share_code_body": "The buyer pastes this code in their wallet to confirm the trade and start the payment step.",
         "header1_title": "매도 거래 설정",
         "header1_subtitle": "구매자가 누구인지, IRM을 얼마나 판매할지 알려주세요.",
         "header2_title": "검토 및 잠금",
         "header2_subtitle": "세부 정보를 확인하세요. 잠그면 IRM이 에스크로로 전송됩니다.",
         "header3_title": "거래가 활성화되었습니다",
-        "header3_subtitle": "구매자와 거래 코드를 공유하고 결제를 기다리세요."
+        "header3_subtitle": "Share the deal code with the buyer. After they send payment, confirm receipt to release the IRM."
       },
       "buying": {
         "step2_title": "판매자의 거래 코드 붙여넣기",
@@ -3195,7 +3195,7 @@
         "seller_is_locking": "판매자가 잠그는 금액",
         "seller_short_label": "판매자",
         "details_did_not_load": "거래 세부 정보를 로드하지 못했습니다. 계속할 수 있지만 결제 전에 판매자와 IRM 수량을 확인하세요.",
-        "continue_and_link": "계속 및 연결",
+        "continue_and_link": "Confirm trade and continue",
         "trade_complete_title": "거래 완료",
         "trade_complete_body": "IRM이 지갑에 도착했습니다.",
         "seller_locked_for_you_title": "판매자의 IRM이 잠겼습니다",
@@ -3211,13 +3211,13 @@
         "header2_title": "거래 검토",
         "header2_subtitle": "금액과 판매자가 예상과 일치하는지 확인하세요.",
         "header3_title": "거래가 활성화되었습니다",
-        "header3_subtitle": "오프체인 결제를 보낸 후, 판매자가 IRM을 해제할 수 있도록 보고하세요."
+        "header3_subtitle": "Send the off-chain payment via the agreed method, then report it. IRM releases to you automatically after the seller confirms."
       },
       "fuel_banner_title": "정산을 생성하려면 IRM이 필요합니다.",
       "fuel_banner_prefix": "이동",
       "fuel_banner_link": "마켓플레이스 → 스팟 스왑",
       "fuel_banner_suffix": "먼저 IRM을 획득하려면.",
-      "toast_buyer_linked": "거래에 본인 측이 연결되었습니다. 판매자에게 오프체인 결제를 보내세요.",
+      "toast_buyer_linked": "Trade confirmed. Send the off-chain payment to the seller, then report it.",
       "toast_payment_reported": "결제가 보고되었습니다. 판매자의 확인을 기다리는 중입니다.",
       "toast_dispute_opened": "분쟁이 개시되었습니다. 조정자가 증거를 검토합니다.",
       "dispute_reason_buyer": "구매자가 거래를 완료할 수 없음",

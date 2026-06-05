@@ -3163,15 +3163,15 @@
         "deadline_label_short": "买家付款的截止时间",
         "deadline_helper_refund": "如果在截止时间前没有收到付款，你可以申请退款。",
         "locked_hero_title": "你的 IRM 现在已锁定并受保护",
-        "locked_hero_body": "未经你的确认，买家无法取走。请将下方的交易代码分享给买家以加入交易，然后等待其付款。",
+        "locked_hero_body": "The buyer cannot receive the IRM without your confirmation. Share the deal code below — when they paste it in their wallet, the trade goes live. Wait for them to send your off-chain payment, then confirm receipt to release the IRM.",
         "share_code_title": "分享此交易代码",
-        "share_code_body": "买家在其钱包中粘贴此代码以加入交易。",
+        "share_code_body": "The buyer pastes this code in their wallet to confirm the trade and start the payment step.",
         "header1_title": "设置你的卖出交易",
         "header1_subtitle": "告诉我们买家是谁，以及你想出售多少 IRM。",
         "header2_title": "审核并锁定",
         "header2_subtitle": "确认详情。锁定将把 IRM 发送到托管。",
         "header3_title": "你的交易已生效",
-        "header3_subtitle": "将交易代码分享给买家并等待其付款。"
+        "header3_subtitle": "Share the deal code with the buyer. After they send payment, confirm receipt to release the IRM."
       },
       "buying": {
         "step2_title": "粘贴卖家发送的交易代码",
@@ -3195,7 +3195,7 @@
         "seller_is_locking": "卖家正在锁定",
         "seller_short_label": "卖家",
         "details_did_not_load": "交易详情未加载。你仍然可以继续，但请在付款前与卖家核实 IRM 数量。",
-        "continue_and_link": "继续并关联",
+        "continue_and_link": "Confirm trade and continue",
         "trade_complete_title": "交易完成",
         "trade_complete_body": "IRM 已到达你的钱包。",
         "seller_locked_for_you_title": "卖家的 IRM 已为你锁定",
@@ -3211,13 +3211,13 @@
         "header2_title": "审核交易",
         "header2_subtitle": "请确保金额和卖家与你的预期相符。",
         "header3_title": "你的交易已生效",
-        "header3_subtitle": "发送链下付款，然后上报，以便卖家释放 IRM。"
+        "header3_subtitle": "Send the off-chain payment via the agreed method, then report it. IRM releases to you automatically after the seller confirms."
       },
       "fuel_banner_title": "您需要 IRM 才能创建结算。",
       "fuel_banner_prefix": "前往",
       "fuel_banner_link": "市场 → 现货互换",
       "fuel_banner_suffix": "以先获取 IRM。",
-      "toast_buyer_linked": "你的一方已关联到此交易。请向卖家发送链下付款。",
+      "toast_buyer_linked": "Trade confirmed. Send the off-chain payment to the seller, then report it.",
       "toast_payment_reported": "付款已上报。等待卖家确认。",
       "toast_dispute_opened": "争议已发起。仲裁人将审查证据。",
       "dispute_reason_buyer": "买家无法完成交易",

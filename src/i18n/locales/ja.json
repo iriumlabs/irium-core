@@ -3163,15 +3163,15 @@
         "deadline_label_short": "買い手の支払い期限",
         "deadline_helper_refund": "期限までに支払いが届かない場合、返金を請求できます。",
         "locked_hero_title": "IRM がロックされ保護されました",
-        "locked_hero_body": "買い手はあなたの確認なしに取得できません。下のディールコードを共有して参加させ、支払いを待ってください。",
+        "locked_hero_body": "The buyer cannot receive the IRM without your confirmation. Share the deal code below — when they paste it in their wallet, the trade goes live. Wait for them to send your off-chain payment, then confirm receipt to release the IRM.",
         "share_code_title": "このディールコードを共有",
-        "share_code_body": "買い手はこのコードをウォレットに貼り付けて取引に参加します。",
+        "share_code_body": "The buyer pastes this code in their wallet to confirm the trade and start the payment step.",
         "header1_title": "売り取引をセットアップ",
         "header1_subtitle": "買い手と売却したい IRM の量を教えてください。",
         "header2_title": "確認してロック",
         "header2_subtitle": "詳細を確認します。ロックすると IRM がエスクローに送られます。",
         "header3_title": "取引がアクティブです",
-        "header3_subtitle": "ディールコードを買い手と共有し、支払いを待ってください。"
+        "header3_subtitle": "Share the deal code with the buyer. After they send payment, confirm receipt to release the IRM."
       },
       "buying": {
         "step2_title": "売り手の取引コードを貼り付け",
@@ -3195,7 +3195,7 @@
         "seller_is_locking": "売り手がロック中",
         "seller_short_label": "売り手",
         "details_did_not_load": "取引詳細を読み込めませんでした。続行できますが、支払い前に売り手と IRM の数量を確認してください。",
-        "continue_and_link": "続行してリンク",
+        "continue_and_link": "Confirm trade and continue",
         "trade_complete_title": "取引完了",
         "trade_complete_body": "IRM がウォレットに届きました。",
         "seller_locked_for_you_title": "売り手の IRM があなたのためにロックされました",
@@ -3211,13 +3211,13 @@
         "header2_title": "取引を確認",
         "header2_subtitle": "数量と売り手が期待通りであることを確認してください。",
         "header3_title": "取引がアクティブです",
-        "header3_subtitle": "オフチェーン支払いを送り、報告して売り手が IRM をリリースできるようにしてください。"
+        "header3_subtitle": "Send the off-chain payment via the agreed method, then report it. IRM releases to you automatically after the seller confirms."
       },
       "fuel_banner_title": "決済を作成するにはIRMが必要です。",
       "fuel_banner_prefix": "移動先:",
       "fuel_banner_link": "マーケットプレイス → スポットスワップ",
       "fuel_banner_suffix": "まずIRMを取得してください。",
-      "toast_buyer_linked": "取引にあなたの側がリンクされました。売り手にオフチェーン支払いを送ってください。",
+      "toast_buyer_linked": "Trade confirmed. Send the off-chain payment to the seller, then report it.",
       "toast_payment_reported": "支払いを報告しました。売り手の確認を待っています。",
       "toast_dispute_opened": "紛争が開始されました。リゾルバーが証拠を確認します。",
       "dispute_reason_buyer": "買い手が取引を完了できません",

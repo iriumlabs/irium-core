@@ -353,6 +353,11 @@ export interface Agreement {
   proof_status?: ProofStatus;
   release_eligible?: boolean;
   created_at?: number;
+  // Unix-timestamp-seconds OR block-height (refund_timeout from the
+  // on-disk AgreementObject). Auto-detected at render time via
+  // formatDeadline() in Agreements.tsx. Currently always undefined from
+  // the agreement_list backend (hardcoded to None at main.rs:4767); the
+  // safety net is in place for when the backend starts populating it.
   deadline?: number;
   policy?: AgreementPolicy;
 }

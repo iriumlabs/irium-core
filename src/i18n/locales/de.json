@@ -3163,15 +3163,15 @@
         "deadline_label_short": "Zahlungsfrist für den Käufer",
         "deadline_helper_refund": "Wenn bis zum Ablauf der Frist keine Zahlung eingeht, können Sie eine Rückerstattung beantragen.",
         "locked_hero_title": "Ihre IRM sind nun gesperrt und geschützt",
-        "locked_hero_body": "Der Käufer kann sie ohne Ihre Bestätigung nicht erhalten. Teilen Sie unten den Deal-Code, damit er beitreten kann, und warten Sie dann auf seine Zahlung.",
+        "locked_hero_body": "The buyer cannot receive the IRM without your confirmation. Share the deal code below — when they paste it in their wallet, the trade goes live. Wait for them to send your off-chain payment, then confirm receipt to release the IRM.",
         "share_code_title": "Diesen Deal-Code teilen",
-        "share_code_body": "Der Käufer fügt diesen Code in sein Wallet ein, um dem Trade beizutreten.",
+        "share_code_body": "The buyer pastes this code in their wallet to confirm the trade and start the payment step.",
         "header1_title": "Ihren Verkaufs-Trade einrichten",
         "header1_subtitle": "Teilen Sie uns mit, wer der Käufer ist und wie viel IRM Sie verkaufen möchten.",
         "header2_title": "Prüfen und sperren",
         "header2_subtitle": "Bestätigen Sie die Details. Das Sperren sendet das IRM in den Escrow.",
         "header3_title": "Ihr Trade ist aktiv",
-        "header3_subtitle": "Teilen Sie den Deal-Code mit dem Käufer und warten Sie auf seine Zahlung."
+        "header3_subtitle": "Share the deal code with the buyer. After they send payment, confirm receipt to release the IRM."
       },
       "buying": {
         "step2_title": "Handelscode des Verkäufers einfügen",
@@ -3195,7 +3195,7 @@
         "seller_is_locking": "Verkäufer sperrt",
         "seller_short_label": "Verkäufer",
         "details_did_not_load": "Trade-Details konnten nicht geladen werden. Sie können trotzdem fortfahren, verifizieren Sie jedoch die IRM-Menge vor der Zahlung mit dem Verkäufer.",
-        "continue_and_link": "Fortfahren und verknüpfen",
+        "continue_and_link": "Confirm trade and continue",
         "trade_complete_title": "Trade abgeschlossen",
         "trade_complete_body": "Das IRM ist in Ihrem Wallet angekommen.",
         "seller_locked_for_you_title": "Die IRM des Verkäufers sind für Sie gesperrt",
@@ -3211,13 +3211,13 @@
         "header2_title": "Trade prüfen",
         "header2_subtitle": "Stellen Sie sicher, dass Menge und Verkäufer Ihren Erwartungen entsprechen.",
         "header3_title": "Ihr Trade ist aktiv",
-        "header3_subtitle": "Senden Sie die Off-Chain-Zahlung und melden Sie sie, damit der Verkäufer das IRM freigeben kann."
+        "header3_subtitle": "Send the off-chain payment via the agreed method, then report it. IRM releases to you automatically after the seller confirms."
       },
       "fuel_banner_title": "Du benötigst IRM, um ein Settlement zu erstellen.",
       "fuel_banner_prefix": "Gehe zu",
       "fuel_banner_link": "Marktplatz → Spot Swap",
       "fuel_banner_suffix": "um zuerst IRM zu erwerben.",
-      "toast_buyer_linked": "Ihre Seite ist jetzt mit dem Trade verknüpft. Senden Sie die Off-Chain-Zahlung an den Verkäufer.",
+      "toast_buyer_linked": "Trade confirmed. Send the off-chain payment to the seller, then report it.",
       "toast_payment_reported": "Zahlung gemeldet. Warten auf Bestätigung durch den Verkäufer.",
       "toast_dispute_opened": "Streitfall eröffnet. Ein Resolver wird die Beweise prüfen.",
       "dispute_reason_buyer": "Käufer kann den Trade nicht abschließen",

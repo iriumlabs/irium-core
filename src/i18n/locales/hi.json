@@ -3163,15 +3163,15 @@
         "deadline_label_short": "खरीदार के भुगतान की समय सीमा",
         "deadline_helper_refund": "यदि समय सीमा तक भुगतान नहीं आता तो आप रिफंड का दावा कर सकते हैं।",
         "locked_hero_title": "आपका IRM अब लॉक्ड और सुरक्षित है",
-        "locked_hero_body": "खरीदार आपकी पुष्टि के बिना इसे नहीं ले सकता। नीचे deal code साझा करें ताकि वे जुड़ सकें, फिर उनके भुगतान की प्रतीक्षा करें।",
+        "locked_hero_body": "The buyer cannot receive the IRM without your confirmation. Share the deal code below — when they paste it in their wallet, the trade goes live. Wait for them to send your off-chain payment, then confirm receipt to release the IRM.",
         "share_code_title": "यह deal code साझा करें",
-        "share_code_body": "खरीदार व्यापार में शामिल होने के लिए इस कोड को अपने वॉलेट में पेस्ट करता है।",
+        "share_code_body": "The buyer pastes this code in their wallet to confirm the trade and start the payment step.",
         "header1_title": "अपना विक्रय व्यापार सेट करें",
         "header1_subtitle": "हमें बताएं कि खरीदार कौन है और आप कितना IRM बेचना चाहते हैं।",
         "header2_title": "समीक्षा करें और लॉक करें",
         "header2_subtitle": "विवरण की पुष्टि करें। लॉक करना IRM को एस्क्रो में भेजता है।",
         "header3_title": "आपका व्यापार लाइव है",
-        "header3_subtitle": "खरीदार के साथ deal code साझा करें और उनके भुगतान की प्रतीक्षा करें।"
+        "header3_subtitle": "Share the deal code with the buyer. After they send payment, confirm receipt to release the IRM."
       },
       "buying": {
         "step2_title": "अपने विक्रेता से ट्रेड कोड पेस्ट करें",
@@ -3195,7 +3195,7 @@
         "seller_is_locking": "विक्रेता लॉक कर रहा है",
         "seller_short_label": "विक्रेता",
         "details_did_not_load": "व्यापार विवरण लोड नहीं हुए। आप फिर भी जारी रख सकते हैं, लेकिन भुगतान करने से पहले विक्रेता के साथ IRM राशि सत्यापित करें।",
-        "continue_and_link": "जारी रखें और लिंक करें",
+        "continue_and_link": "Confirm trade and continue",
         "trade_complete_title": "व्यापार पूर्ण",
         "trade_complete_body": "IRM आपके वॉलेट में आ गया है।",
         "seller_locked_for_you_title": "विक्रेता का IRM आपके लिए लॉक है",
@@ -3211,13 +3211,13 @@
         "header2_title": "व्यापार की समीक्षा करें",
         "header2_subtitle": "सुनिश्चित करें कि मात्रा और विक्रेता आपकी अपेक्षा से मेल खाते हैं।",
         "header3_title": "आपका व्यापार लाइव है",
-        "header3_subtitle": "ऑफ-चेन भुगतान भेजें, फिर उसे रिपोर्ट करें ताकि विक्रेता IRM रिलीज़ कर सके।"
+        "header3_subtitle": "Send the off-chain payment via the agreed method, then report it. IRM releases to you automatically after the seller confirms."
       },
       "fuel_banner_title": "सेटलमेंट बनाने के लिए आपको IRM की आवश्यकता है।",
       "fuel_banner_prefix": "जाएँ",
       "fuel_banner_link": "मार्केटप्लेस → स्पॉट स्वैप",
       "fuel_banner_suffix": "पहले IRM प्राप्त करने के लिए।",
-      "toast_buyer_linked": "आपका पक्ष अब व्यापार से लिंक है। विक्रेता को ऑफ-चेन भुगतान भेजें।",
+      "toast_buyer_linked": "Trade confirmed. Send the off-chain payment to the seller, then report it.",
       "toast_payment_reported": "भुगतान रिपोर्ट किया गया। विक्रेता द्वारा पुष्टि की प्रतीक्षा है।",
       "toast_dispute_opened": "विवाद खोला गया। एक मध्यस्थ साक्ष्य की समीक्षा करेगा।",
       "dispute_reason_buyer": "खरीदार व्यापार पूरा नहीं कर सकता",

@@ -3163,15 +3163,15 @@
         "deadline_label_short": "Échéance pour que l'acheteur paie",
         "deadline_helper_refund": "Si aucun paiement n'arrive avant l'échéance, vous pouvez réclamer un remboursement.",
         "locked_hero_title": "Vos IRM sont maintenant verrouillés et protégés",
-        "locked_hero_body": "L'acheteur ne peut pas les prendre sans votre confirmation. Partagez le code de transaction ci-dessous pour qu'il puisse rejoindre, puis attendez son paiement.",
+        "locked_hero_body": "The buyer cannot receive the IRM without your confirmation. Share the deal code below — when they paste it in their wallet, the trade goes live. Wait for them to send your off-chain payment, then confirm receipt to release the IRM.",
         "share_code_title": "Partagez ce code de transaction",
-        "share_code_body": "L'acheteur colle ce code dans son portefeuille pour rejoindre l'échange.",
+        "share_code_body": "The buyer pastes this code in their wallet to confirm the trade and start the payment step.",
         "header1_title": "Configurez votre vente",
         "header1_subtitle": "Indiquez qui est l'acheteur et combien d'IRM vous souhaitez vendre.",
         "header2_title": "Vérifier et verrouiller",
         "header2_subtitle": "Confirmez les détails. Le verrouillage envoie les IRM en escrow.",
         "header3_title": "Votre échange est en cours",
-        "header3_subtitle": "Partagez le code de transaction avec l'acheteur et attendez son paiement."
+        "header3_subtitle": "Share the deal code with the buyer. After they send payment, confirm receipt to release the IRM."
       },
       "buying": {
         "step2_title": "Collez le code d’opération de votre vendeur",
@@ -3195,7 +3195,7 @@
         "seller_is_locking": "Le vendeur verrouille",
         "seller_short_label": "Vendeur",
         "details_did_not_load": "Les détails de l'échange n'ont pas pu être chargés. Vous pouvez continuer, mais vérifiez le montant d'IRM auprès du vendeur avant de payer.",
-        "continue_and_link": "Continuer et lier",
+        "continue_and_link": "Confirm trade and continue",
         "trade_complete_title": "Échange terminé",
         "trade_complete_body": "Les IRM sont arrivés dans votre portefeuille.",
         "seller_locked_for_you_title": "Les IRM du vendeur sont verrouillés pour vous",
@@ -3211,13 +3211,13 @@
         "header2_title": "Vérifiez l'échange",
         "header2_subtitle": "Assurez-vous que le montant et le vendeur correspondent à ce que vous attendez.",
         "header3_title": "Votre échange est en cours",
-        "header3_subtitle": "Envoyez le paiement off-chain, puis signalez-le pour que le vendeur puisse libérer les IRM."
+        "header3_subtitle": "Send the off-chain payment via the agreed method, then report it. IRM releases to you automatically after the seller confirms."
       },
       "fuel_banner_title": "Vous avez besoin d'IRM pour créer un règlement.",
       "fuel_banner_prefix": "Allez sur",
       "fuel_banner_link": "Marketplace → Échange au comptant",
       "fuel_banner_suffix": "pour acquérir IRM d'abord.",
-      "toast_buyer_linked": "Votre partie est désormais liée à l'échange. Envoyez le paiement off-chain au vendeur.",
+      "toast_buyer_linked": "Trade confirmed. Send the off-chain payment to the seller, then report it.",
       "toast_payment_reported": "Paiement signalé. En attente de la confirmation du vendeur.",
       "toast_dispute_opened": "Litige ouvert. Un résolveur examinera les preuves.",
       "dispute_reason_buyer": "l'acheteur ne peut pas finaliser l'échange",

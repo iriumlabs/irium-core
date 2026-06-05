@@ -3163,15 +3163,15 @@
         "deadline_label_short": "Tenggat waktu pembeli membayar",
         "deadline_helper_refund": "Jika tidak ada pembayaran sampai tenggat waktu, Anda dapat mengklaim pengembalian dana.",
         "locked_hero_title": "IRM Anda kini terkunci dan terlindungi",
-        "locked_hero_body": "Pembeli tidak dapat mengambilnya tanpa konfirmasi Anda. Bagikan kode perdagangan di bawah agar mereka bisa bergabung, lalu tunggu pembayaran mereka.",
+        "locked_hero_body": "The buyer cannot receive the IRM without your confirmation. Share the deal code below — when they paste it in their wallet, the trade goes live. Wait for them to send your off-chain payment, then confirm receipt to release the IRM.",
         "share_code_title": "Bagikan kode perdagangan ini",
-        "share_code_body": "Pembeli menempelkan kode ini di dompet mereka untuk bergabung dalam perdagangan.",
+        "share_code_body": "The buyer pastes this code in their wallet to confirm the trade and start the payment step.",
         "header1_title": "Atur perdagangan jual Anda",
         "header1_subtitle": "Beri tahu kami siapa pembelinya dan berapa banyak IRM yang ingin Anda jual.",
         "header2_title": "Tinjau dan kunci",
         "header2_subtitle": "Konfirmasi detailnya. Mengunci mengirim IRM ke escrow.",
         "header3_title": "Perdagangan Anda sedang berlangsung",
-        "header3_subtitle": "Bagikan kode perdagangan dengan pembeli dan tunggu pembayaran mereka."
+        "header3_subtitle": "Share the deal code with the buyer. After they send payment, confirm receipt to release the IRM."
       },
       "buying": {
         "step2_title": "Tempel kode perdagangan dari penjual Anda",
@@ -3195,7 +3195,7 @@
         "seller_is_locking": "Penjual sedang mengunci",
         "seller_short_label": "Penjual",
         "details_did_not_load": "Detail perdagangan tidak dimuat. Anda tetap dapat melanjutkan, tetapi verifikasi jumlah IRM dengan penjual sebelum membayar.",
-        "continue_and_link": "Lanjutkan dan hubungkan",
+        "continue_and_link": "Confirm trade and continue",
         "trade_complete_title": "Perdagangan selesai",
         "trade_complete_body": "IRM telah tiba di dompet Anda.",
         "seller_locked_for_you_title": "IRM penjual terkunci untuk Anda",
@@ -3211,13 +3211,13 @@
         "header2_title": "Tinjau perdagangan",
         "header2_subtitle": "Pastikan jumlah dan penjual sesuai dengan yang Anda harapkan.",
         "header3_title": "Perdagangan Anda sedang berlangsung",
-        "header3_subtitle": "Kirim pembayaran off-chain, lalu laporkan agar penjual dapat melepas IRM."
+        "header3_subtitle": "Send the off-chain payment via the agreed method, then report it. IRM releases to you automatically after the seller confirms."
       },
       "fuel_banner_title": "Anda memerlukan IRM untuk membuat settlement.",
       "fuel_banner_prefix": "Pergi ke",
       "fuel_banner_link": "Marketplace → Spot Swap",
       "fuel_banner_suffix": "untuk memperoleh IRM terlebih dahulu.",
-      "toast_buyer_linked": "Sisi Anda kini terhubung ke perdagangan. Kirim pembayaran off-chain ke penjual.",
+      "toast_buyer_linked": "Trade confirmed. Send the off-chain payment to the seller, then report it.",
       "toast_payment_reported": "Pembayaran dilaporkan. Menunggu konfirmasi dari penjual.",
       "toast_dispute_opened": "Sengketa dibuka. Penengah akan meninjau bukti.",
       "dispute_reason_buyer": "pembeli tidak dapat menyelesaikan perdagangan",
