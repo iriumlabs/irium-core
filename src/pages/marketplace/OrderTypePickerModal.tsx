@@ -8,21 +8,17 @@ import { pairAvailability } from './swap/hooks/usePairAvailability';
 // First-step picker shown when the user clicks "Create Order" from the OTC
 // tab of the Marketplace. Previously the click jumped straight into the OTC
 // fiat/USDT form, which hid the fact that IRM is also tradable trustlessly
-// against BTC / LTC / DOGE via the atomic-swap layer. The picker surfaces
-// all four paths at parity so the user picks the one that matches their
-// intent before filling out any form.
+// against BTC / LTC via the atomic-swap layer. The picker surfaces all
+// three paths at parity so the user picks the one that matches their intent
+// before filling out any form.
 //
 // OTC option proceeds to the existing fiat/USDT CreateOrderModal.
-// BTC / LTC / DOGE options close the picker and switch the Marketplace
-// page to the Spot Swap tab with the corresponding trading pair
-// pre-selected. The LTC and DOGE badges now flip from "Coming soon" to
-// "Live" automatically as the local chain tip crosses their activation
-// height (24,800) — see pairAvailability() for the rule. Pre-2026-06-04
-// this badge was hardcoded to 'soon' which left the picker stale after
-// the consolidation commit (iriumlabs/irium 338f3395) moved both pairs
-// to a single activation height of 24,800.
+// BTC / LTC options close the picker and switch the Marketplace page to the
+// Spot Swap tab with the corresponding trading pair pre-selected. The LTC
+// badge flips from "Coming soon" to "Live" automatically as the local chain
+// tip crosses its activation height — see pairAvailability() for the rule.
 
-export type OrderTypeChoice = 'otc' | 'swap-btc' | 'swap-ltc' | 'swap-doge';
+export type OrderTypeChoice = 'otc' | 'swap-btc' | 'swap-ltc';
 
 interface OrderTypePickerModalProps {
   onClose: () => void;
@@ -56,9 +52,7 @@ export default function OrderTypePickerModal({
   const tipHeight = useStore((s) => s.nodeStatus?.height ?? 0);
   const liveBadgeText = t('marketplace.order_type_picker.btc_badge');
   const ltcPair = getPairById('IRM_LTC');
-  const dogePair = getPairById('IRM_DOGE');
   const ltcLive = ltcPair ? pairAvailability(ltcPair, tipHeight).available : false;
-  const dogeLive = dogePair ? pairAvailability(dogePair, tipHeight).available : false;
 
   const options: OptionDef[] = [
     {
@@ -85,15 +79,6 @@ export default function OrderTypePickerModal({
       badge: ltcLive ? liveBadgeText : t('marketplace.order_type_picker.ltc_badge'),
       badgeIntent: ltcLive ? 'live' : 'soon',
       accent: '#345d9d',
-      Icon: Coins,
-    },
-    {
-      choice: 'swap-doge',
-      title: t('marketplace.order_type_picker.doge_title'),
-      description: t('marketplace.order_type_picker.doge_description'),
-      badge: dogeLive ? liveBadgeText : t('marketplace.order_type_picker.doge_badge'),
-      badgeIntent: dogeLive ? 'live' : 'soon',
-      accent: '#c2a633',
       Icon: Coins,
     },
   ];

@@ -122,11 +122,11 @@ export default function MarketplacePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateOrder, setShowCreateOrder] = useState(false);
   const [showOrderTypePicker, setShowOrderTypePicker] = useState(false);
-  // Pair id requested from the OrderTypePickerModal (swap-btc / swap-ltc /
-  // swap-doge). Forwarded to <SwapPanel> so it switches to the matching pair
-  // on the next render. Bumping a counter on every pick (even if the same
-  // pair was already active) would be overkill — SwapPanel's effect handles
-  // duplicate ids as a no-op.
+  // Pair id requested from the OrderTypePickerModal (swap-btc / swap-ltc).
+  // Forwarded to <SwapPanel> so it switches to the matching pair on the next
+  // render. Bumping a counter on every pick (even if the same pair was already
+  // active) would be overkill — SwapPanel's effect handles duplicate ids as a
+  // no-op.
   const [requestedSwapPairId, setRequestedSwapPairId] = useState<string | undefined>(undefined);
   const [myTradesTab, setMyTradesTab] = useState<MyTradesTab>('active');
   const [resolverPickerAgreement, setResolverPickerAgreement] = useState<Agreement | null>(null);
@@ -138,13 +138,9 @@ export default function MarketplacePage() {
       setShowCreateOrder(true);
       return;
     }
-    // Swap option: switch mode + pre-select pair. LTC/DOGE land on the
-    // Coming Soon overlay until their activation heights; BTC lands on the
-    // live order book.
-    const pairId =
-      choice === 'swap-btc' ? 'IRM_BTC' :
-      choice === 'swap-ltc' ? 'IRM_LTC' :
-      'IRM_DOGE';
+    // Swap option: switch mode + pre-select pair. LTC lands on the Coming
+    // Soon overlay until its activation height; BTC lands on the live order book.
+    const pairId = choice === 'swap-btc' ? 'IRM_BTC' : 'IRM_LTC';
     setRequestedSwapPairId(pairId);
     setMode('swap');
   };

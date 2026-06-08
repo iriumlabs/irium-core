@@ -1431,7 +1431,7 @@
     },
     "swap": {
       "fuel_banner_title": "IRMは決済レイヤーの基盤です。",
-      "fuel_banner_body": "BTC、LTC、またはDOGEをIRMに交換して、信頼不要の取引を始めましょう。",
+      "fuel_banner_body": "BTCまたはLTCをIRMに交換して、信頼不要の取引を始めましょう。",
       "pair_not_available": "このペアはまだ利用できません",
       "own_order_hint": "それはあなた自身の注文です。右の「自分のスワップ」パネルでキャンセルしてください。",
       "not_available_yet": "まだ利用できません",
@@ -1625,10 +1625,7 @@
       "btc_badge": "Live",
       "ltc_title": "Swap IRM ↔ LTC",
       "ltc_description": "Atomic swap via Litecoin SPV header relay. Same trust-minimised design as the BTC pair, settling on Litecoin's faster blocks.",
-      "ltc_badge": "Activates at block 25,000",
-      "doge_title": "Swap IRM ↔ DOGE",
-      "doge_description": "Atomic swap via Dogecoin SPV header relay. Pair will go live as the network reaches the activation height.",
-      "doge_badge": "Activates at block 25,200"
+      "ltc_badge": "Activates at block 25,000"
     }
   },
   "miner": {

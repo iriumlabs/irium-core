@@ -108,9 +108,8 @@ export default function SwapPanel({ requestedPairId }: SwapPanelProps = {}) {
   // start a swap in one click instead of two. Tracked via lastHandledRef so
   // re-renders with the same id don't re-fire the modal after the user has
   // closed it. The {showCreate && availability.available && ...} gate below
-  // means setShowCreate(true) is a no-op for chain-gated pairs (LTC pre-25k,
-  // DOGE pre-25.2k) — the user just sees the ComingSoonOverlay with the
-  // countdown, which is the intended fallback.
+  // means setShowCreate(true) is a no-op for chain-gated pairs (LTC pre-25k)
+  // — the user just sees the ComingSoonOverlay with the countdown.
   const lastHandledRequestedPairRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!requestedPairId) return;

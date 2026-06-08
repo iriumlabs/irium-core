@@ -155,8 +155,7 @@ export interface SwapPairConfig {
   comingSoonReason?: string;
   // Optional consensus activation height. When set, the pair is treated as
   // unavailable until the local chain tip reaches this height. Used for
-  // LTC (25,000) and DOGE (25,200) which are post-fork rollouts. BTC and
-  // USDT leave this undefined.
+  // LTC which is a post-fork rollout. BTC and USDT leave this undefined.
   activationHeight?: number;
 
   // UI accent color for chrome, pill highlights, chart lines.

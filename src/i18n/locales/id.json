@@ -1431,7 +1431,7 @@
     },
     "swap": {
       "fuel_banner_title": "IRM menggerakkan lapisan Settlement.",
-      "fuel_banner_body": "Tukar BTC, LTC, atau DOGE menjadi IRM untuk mulai trading tanpa kepercayaan.",
+      "fuel_banner_body": "Tukar BTC atau LTC menjadi IRM untuk mulai trading tanpa kepercayaan.",
       "pair_not_available": "Pasangan ini belum tersedia",
       "own_order_hint": "Itu pesanan Anda sendiri. Gunakan panel My Swaps di sebelah kanan untuk membatalkannya.",
       "not_available_yet": "Belum tersedia",
@@ -1625,10 +1625,7 @@
       "btc_badge": "Live",
       "ltc_title": "Swap IRM ↔ LTC",
       "ltc_description": "Atomic swap via Litecoin SPV header relay. Same trust-minimised design as the BTC pair, settling on Litecoin's faster blocks.",
-      "ltc_badge": "Activates at block 25,000",
-      "doge_title": "Swap IRM ↔ DOGE",
-      "doge_description": "Atomic swap via Dogecoin SPV header relay. Pair will go live as the network reaches the activation height.",
-      "doge_badge": "Activates at block 25,200"
+      "ltc_badge": "Activates at block 25,000"
     }
   },
   "miner": {

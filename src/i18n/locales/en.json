@@ -1792,7 +1792,7 @@
     },
     "swap": {
       "fuel_banner_title": "IRM powers the Settlement layer.",
-      "fuel_banner_body": "Swap BTC, LTC or DOGE for IRM to start trading trustlessly.",
+      "fuel_banner_body": "Swap BTC or LTC for IRM to start trading trustlessly.",
       "pair_not_available": "This pair is not available yet",
       "own_order_hint": "That is your own order. Use the My Swaps panel on the right to cancel it.",
       "not_available_yet": "Not available yet",
@@ -1986,10 +1986,7 @@
       "btc_badge": "Live",
       "ltc_title": "Swap IRM ↔ LTC",
       "ltc_description": "Atomic swap via Litecoin SPV header relay. Same trust-minimised design as the BTC pair, settling on Litecoin's faster blocks.",
-      "ltc_badge": "Activates at block 24,800",
-      "doge_title": "Swap IRM ↔ DOGE",
-      "doge_description": "Atomic swap via Dogecoin SPV header relay. Pair will go live as the network reaches the activation height.",
-      "doge_badge": "Activates at block 24,800"
+      "ltc_badge": "Activates at block 24,800"
     }
   },
   "miner": {

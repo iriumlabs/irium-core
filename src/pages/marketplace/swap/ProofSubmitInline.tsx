@@ -208,14 +208,6 @@ export default function ProofSubmitInline({
           ltc_merkle_branch_hex: proof.merkle_branch_hex,
           ltc_merkle_index: proof.merkle_index,
         });
-      } else if (pair.id === 'IRM_DOGE') {
-        resp = await rpcCall.claimDogeSwap({
-          ...base,
-          doge_block_hash: proof.block_hash,
-          doge_tx_hex: proof.tx_hex,
-          doge_merkle_branch_hex: proof.merkle_branch_hex,
-          doge_merkle_index: proof.merkle_index,
-        });
       } else {
         throw new Error(`Claim is not supported for ${pair.label} yet.`);
       }

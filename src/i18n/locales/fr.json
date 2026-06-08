@@ -1431,7 +1431,7 @@
     },
     "swap": {
       "fuel_banner_title": "IRM alimente la couche de Règlement.",
-      "fuel_banner_body": "Échangez BTC, LTC ou DOGE contre IRM pour commencer à trader sans intermédiaire.",
+      "fuel_banner_body": "Échangez BTC ou LTC contre IRM pour commencer à trader sans intermédiaire.",
       "pair_not_available": "Cette paire n'est pas encore disponible",
       "own_order_hint": "Il s'agit de votre propre ordre. Utilisez le panneau Mes swaps à droite pour l'annuler.",
       "not_available_yet": "Pas encore disponible",
@@ -1625,10 +1625,7 @@
       "btc_badge": "Live",
       "ltc_title": "Swap IRM ↔ LTC",
       "ltc_description": "Atomic swap via Litecoin SPV header relay. Same trust-minimised design as the BTC pair, settling on Litecoin's faster blocks.",
-      "ltc_badge": "Activates at block 25,000",
-      "doge_title": "Swap IRM ↔ DOGE",
-      "doge_description": "Atomic swap via Dogecoin SPV header relay. Pair will go live as the network reaches the activation height.",
-      "doge_badge": "Activates at block 25,200"
+      "ltc_badge": "Activates at block 25,000"
     }
   },
   "miner": {
