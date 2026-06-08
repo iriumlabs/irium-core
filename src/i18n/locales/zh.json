@@ -1431,7 +1431,7 @@
     },
     "swap": {
       "fuel_banner_title": "IRM 为结算层提供动力。",
-      "fuel_banner_body": "将 BTC、LTC 或 DOGE 兑换为 IRM,开始无需信任的交易。",
+      "fuel_banner_body": "将 BTC 或 LTC 兑换为 IRM,开始无需信任的交易。",
       "pair_not_available": "此交易对暂不可用",
       "own_order_hint": "这是你自己的订单。请使用右侧的「我的 Swap」面板取消。",
       "not_available_yet": "暂不可用",
@@ -1625,10 +1625,7 @@
       "btc_badge": "Live",
       "ltc_title": "Swap IRM ↔ LTC",
       "ltc_description": "Atomic swap via Litecoin SPV header relay. Same trust-minimised design as the BTC pair, settling on Litecoin's faster blocks.",
-      "ltc_badge": "Activates at block 25,000",
-      "doge_title": "Swap IRM ↔ DOGE",
-      "doge_description": "Atomic swap via Dogecoin SPV header relay. Pair will go live as the network reaches the activation height.",
-      "doge_badge": "Activates at block 25,200"
+      "ltc_badge": "Activates at block 25,000"
     }
   },
   "miner": {

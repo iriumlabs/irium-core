@@ -28,8 +28,8 @@ export default function CreateSwapOrderModal({
   const [amountIrm, setAmountIrm] = useState('');
   const [quoteAmount, setQuoteAmount] = useState('');
   // FIX 3: lazy-initialize from localStorage so the user does not have to
-  // re-type their BTC / LTC / DOGE address on every open. See the
-  // storageKey useMemo + mirror useEffect below for the write side.
+  // re-type their BTC / LTC address on every open. See the storageKey
+  // useMemo + mirror useEffect below for the write side.
   const [makerForeignAddress, setMakerForeignAddress] = useState<string>(() => {
     try {
       return localStorage.getItem(`irium_swap_address_${pair.quote.code.toLowerCase()}`) ?? '';
@@ -42,11 +42,11 @@ export default function CreateSwapOrderModal({
   const [busy, setBusy] = useState(false);
 
   // FIX 3: per-pair localStorage key so the maker foreign address (BTC /
-  // LTC / DOGE / etc) persists across modal opens and across app
-  // restarts. Pattern: irium_swap_address_<lowercase quote code>. BTC →
-  // irium_swap_address_btc, LTC → irium_swap_address_ltc, DOGE →
-  // irium_swap_address_doge. USDT and any future pair share the same
-  // pattern automatically — no per-pair branching required.
+  // LTC / USDT / etc) persists across modal opens and across app restarts.
+  // Pattern: irium_swap_address_<lowercase quote code>. BTC →
+  // irium_swap_address_btc, LTC → irium_swap_address_ltc. USDT and any
+  // future pair share the same pattern automatically — no per-pair
+  // branching required.
   const storageKey = useMemo(
     () => `irium_swap_address_${pair.quote.code.toLowerCase()}`,
     [pair.quote.code],

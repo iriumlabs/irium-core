@@ -282,9 +282,8 @@ export default function TakeSwapOrderModal({
 
     setBusy(true);
     try {
-      // iriumd's /rpc/claim{btc,ltc,doge}swap endpoints each carry the
-      // chain prefix on the four proof fields. Build the right body per
-      // pair instead of trying to share a single shape.
+      // iriumd's /rpc/claim{btc,ltc}swap endpoints each carry the chain prefix
+      // on the four proof fields. Build the right body per pair.
       const base = {
         funding_txid: fundingTxid,
         vout: fundingVout,
@@ -307,14 +306,6 @@ export default function TakeSwapOrderModal({
           ltc_tx_hex: proof.tx_hex,
           ltc_merkle_branch_hex: proof.merkle_branch_hex,
           ltc_merkle_index: proof.merkle_index,
-        });
-      } else if (pair.id === 'IRM_DOGE') {
-        resp = await rpcCall.claimDogeSwap({
-          ...base,
-          doge_block_hash: proof.block_hash,
-          doge_tx_hex: proof.tx_hex,
-          doge_merkle_branch_hex: proof.merkle_branch_hex,
-          doge_merkle_index: proof.merkle_index,
         });
       } else {
         throw new Error(`Claim is not supported for ${pair.label} yet.`);

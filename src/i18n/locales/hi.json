@@ -1431,7 +1431,7 @@
     },
     "swap": {
       "fuel_banner_title": "IRM सेटलमेंट परत को शक्ति देता है।",
-      "fuel_banner_body": "भरोसे के बिना ट्रेडिंग शुरू करने के लिए BTC, LTC या DOGE को IRM में बदलें।",
+      "fuel_banner_body": "भरोसे के बिना ट्रेडिंग शुरू करने के लिए BTC या LTC को IRM में बदलें।",
       "pair_not_available": "यह जोड़ी अभी उपलब्ध नहीं है",
       "own_order_hint": "यह आपका अपना ऑर्डर है। इसे रद्द करने के लिए दाईं ओर My Swaps पैनल का उपयोग करें।",
       "not_available_yet": "अभी उपलब्ध नहीं",
@@ -1625,10 +1625,7 @@
       "btc_badge": "Live",
       "ltc_title": "Swap IRM ↔ LTC",
       "ltc_description": "Atomic swap via Litecoin SPV header relay. Same trust-minimised design as the BTC pair, settling on Litecoin's faster blocks.",
-      "ltc_badge": "Activates at block 25,000",
-      "doge_title": "Swap IRM ↔ DOGE",
-      "doge_description": "Atomic swap via Dogecoin SPV header relay. Pair will go live as the network reaches the activation height.",
-      "doge_badge": "Activates at block 25,200"
+      "ltc_badge": "Activates at block 25,000"
     }
   },
   "miner": {

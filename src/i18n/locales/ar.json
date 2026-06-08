@@ -1431,7 +1431,7 @@
     },
     "swap": {
       "fuel_banner_title": "يدعم IRM طبقة التسوية.",
-      "fuel_banner_body": "بدّل BTC أو LTC أو DOGE مقابل IRM لبدء التداول بدون وسيط.",
+      "fuel_banner_body": "بدّل BTC أو LTC مقابل IRM لبدء التداول بدون وسيط.",
       "pair_not_available": "هذا الزوج غير متاح بعد",
       "own_order_hint": "هذا أمرك الخاص. استخدم لوحة مبادلاتي على اليمين لإلغائه.",
       "not_available_yet": "غير متاح بعد",
@@ -1625,10 +1625,7 @@
       "btc_badge": "Live",
       "ltc_title": "Swap IRM ↔ LTC",
       "ltc_description": "Atomic swap via Litecoin SPV header relay. Same trust-minimised design as the BTC pair, settling on Litecoin's faster blocks.",
-      "ltc_badge": "Activates at block 25,000",
-      "doge_title": "Swap IRM ↔ DOGE",
-      "doge_description": "Atomic swap via Dogecoin SPV header relay. Pair will go live as the network reaches the activation height.",
-      "doge_badge": "Activates at block 25,200"
+      "ltc_badge": "Activates at block 25,000"
     }
   },
   "miner": {

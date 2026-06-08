@@ -1431,7 +1431,7 @@
     },
     "swap": {
       "fuel_banner_title": "IRM은 정산 계층을 구동합니다.",
-      "fuel_banner_body": "BTC, LTC 또는 DOGE를 IRM으로 교환하여 신뢰 없는 거래를 시작하세요.",
+      "fuel_banner_body": "BTC 또는 LTC를 IRM으로 교환하여 신뢰 없는 거래를 시작하세요.",
       "pair_not_available": "이 페어는 아직 사용할 수 없습니다",
       "own_order_hint": "본인의 주문입니다. 오른쪽의 My Swaps 패널을 사용하여 취소하세요.",
       "not_available_yet": "아직 사용할 수 없음",
@@ -1625,10 +1625,7 @@
       "btc_badge": "Live",
       "ltc_title": "Swap IRM ↔ LTC",
       "ltc_description": "Atomic swap via Litecoin SPV header relay. Same trust-minimised design as the BTC pair, settling on Litecoin's faster blocks.",
-      "ltc_badge": "Activates at block 25,000",
-      "doge_title": "Swap IRM ↔ DOGE",
-      "doge_description": "Atomic swap via Dogecoin SPV header relay. Pair will go live as the network reaches the activation height.",
-      "doge_badge": "Activates at block 25,200"
+      "ltc_badge": "Activates at block 25,000"
     }
   },
   "miner": {
