@@ -1197,23 +1197,23 @@ export function truncateAddr(addr: string, front = 6, back = 6): string {
 }
 
 export function timeAgo(timestamp: number): string {
-  // All timestamps in this codebase (iriumd block times, offer created_at,
-  // peer last_seen, stratum events, etc.) are Unix seconds. We compare
-  // against Math.floor(Date.now() / 1000) so the unit is unambiguously
-  // seconds throughout — no 1e12 heuristic needed.
   const nowSecs = Math.floor(Date.now() / 1000);
   const diff = nowSecs - timestamp;
-  // Clock-skew guard: block timestamps from miners with fast system clocks
-  // can be a few seconds ahead of the viewer's local clock, producing a
-  // negative diff. Clamp to "just now" — the only honest answer when the
-  // recorded timestamp is at-or-after our local now.
-  if (diff <= 0) return 'just now';
+
+  if (diff < 0) {
+    // Block timestamp is in the future — show absolute time
+    const date = new Date(timestamp * 1000);
+    return date.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+  }
   if (diff < 60) return `${diff}s ago`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  const days = Math.floor(diff / 86400);
-  if (days < 7) return `${days}d ago`;
-  return new Date(timestamp * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return `${Math.floor(diff / 86400)}d ago`;
 }
 
 // Canonical timestamp formatter. Returns BOTH the user's local-timezone
