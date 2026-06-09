@@ -514,9 +514,22 @@ const TH_STYLE: React.CSSProperties = {
   fontFamily: '"Space Grotesk", sans-serif',
 };
 
+// When the embedded block timestamp is in the future (chain MTP inflation
+// from miners with fast clocks), use height distance from the current tip
+// multiplied by the observed ~60 s/block rate to estimate actual age.
+// Blocks with correct timestamps fall through to timeAgo() unchanged.
+function blockAge(blockTime: number, blockHeight: number, tipHeight: number): string {
+  const nowSecs = Math.floor(Date.now() / 1000);
+  if (blockTime > nowSecs && tipHeight > 0 && blockHeight <= tipHeight) {
+    const estimatedAgeSecs = (tipHeight - blockHeight) * 60;
+    return timeAgo(nowSecs - estimatedAgeSecs);
+  }
+  return timeAgo(blockTime);
+}
+
 // ── Block table row ───────────────────────────────────────────
 
-function BlockRow({ block, onClick }: { block: ExplorerBlock; onClick: () => void }) {
+function BlockRow({ block, onClick, tipHeight = 0 }: { block: ExplorerBlock; onClick: () => void; tipHeight?: number }) {
   const { t } = useTranslation();
   return (
     <motion.tr
@@ -550,7 +563,7 @@ function BlockRow({ block, onClick }: { block: ExplorerBlock; onClick: () => voi
       {/* Age */}
       <td className="px-2 py-2.5 whitespace-nowrap">
         <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.30)' }}>
-          {block.time ? timeAgo(block.time) : '—'}
+          {block.time ? blockAge(block.time, block.height, tipHeight) : '—'}
         </span>
       </td>
       {/* Txs */}
@@ -2816,7 +2829,7 @@ export default function Explorer() {
                     {/* AnimatePresence with initial=false so only newly added blocks animate */}
                     <AnimatePresence initial={false}>
                       {blocks.map((block) => (
-                        <BlockRow key={block.hash || block.height} block={block} onClick={() => setSelectedBlock(block)} />
+                        <BlockRow key={block.hash || block.height} block={block} onClick={() => setSelectedBlock(block)} tipHeight={height} />
                       ))}
                     </AnimatePresence>
                   </tbody>

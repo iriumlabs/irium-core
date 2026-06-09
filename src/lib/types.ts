@@ -1200,16 +1200,7 @@ export function timeAgo(timestamp: number): string {
   const nowSecs = Math.floor(Date.now() / 1000);
   const diff = nowSecs - timestamp;
 
-  if (diff < 0) {
-    // Block timestamp is in the future — show absolute time
-    const date = new Date(timestamp * 1000);
-    return date.toLocaleTimeString(undefined, {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true
-    });
-  }
+  if (diff <= 0) return 'just now';
   if (diff < 60) return `${diff}s ago`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
