@@ -1048,7 +1048,7 @@ export interface PoolApiMinerDetail {
   blocks_found_in_db: number;
   estimated_earnings_irm: string;
   reject_reasons?: Record<string, number>;
-  recent_blocks: Array<{ height: number; timestamp: number; reward_irm: string; }>;
+  recent_blocks: Array<{ height: number; block_time: number; reward_irm: string; }>;
 }
 
 export interface PoolApiBlock {
