@@ -914,7 +914,7 @@ function MinerDetailModal({ address, onClose }: { address: string; onClose: () =
                     <div key={b.height} className="flex items-center justify-between text-xs font-mono" style={{ color: 'rgba(255,255,255,0.65)' }}>
                       <span style={{ color: '#fbbf24' }}>#{b.height.toLocaleString('en-US')}</span>
                       <span style={{ color: '#a78bfa' }}>{b.reward_irm} IRM</span>
-                      <span style={{ color: 'rgba(255,255,255,0.35)' }}>{new Date(b.timestamp * 1000).toLocaleDateString()}</span>
+                      <span style={{ color: 'rgba(255,255,255,0.35)' }}>{b.block_time ? new Date(b.block_time * 1000).toLocaleDateString() : '—'}</span>
                     </div>
                   ))}
                 </div>
