@@ -965,6 +965,109 @@ export interface StatsProxyResponse {
   blocks_found_today?: number | null;
 }
 
+// ── Pool API v2 types (irium-pool-api on :3339, exposed at /pool/api/v1) ─────
+// These replace the old stats-proxy shapes (PoolStats, StatsProxyResponse) in
+// the Explorer UI. Old types are kept for the Rust-side Tauri command.
+
+export interface PoolApiPortStats {
+  port: number;
+  sessions: number;
+  accepted: number;
+  rejected: number;
+  hashrate_hps: number;
+}
+
+export interface PoolApiResponse {
+  total_hashrate_hps: number;
+  active_miners: number;
+  blocks_found_today: number;
+  blocks_found_total: number;
+  accepted_shares: number;
+  rejected_shares: number;
+  reject_rate_pct: number;
+  updated_at: number;
+  ports: {
+    asic: PoolApiPortStats;
+    cpu_gpu: PoolApiPortStats;
+    solo: PoolApiPortStats;
+    firewall_bypass: PoolApiPortStats;
+  };
+}
+
+export interface PoolApiMiner {
+  address: string;
+  hashrate_hps: number;
+  accepted: number;
+  rejected: number;
+  reject_rate_pct: number;
+  last_share_at: number;
+  current_diff: number;
+  port: number;
+  profile: 'asic' | 'cpu_gpu' | 'solo' | 'port443';
+  active: boolean;
+}
+
+export interface PoolApiMinersResponse {
+  miners: PoolApiMiner[];
+}
+
+export interface PoolApiNetworkResponse {
+  height: number;
+  difficulty: number;
+  hashrate_hps: number;
+  peers: number;
+  supply_irm: string;
+  block_time_target_secs: number;
+  best_block_hash: string;
+  synced: boolean;
+}
+
+export interface PoolApiRelayStatus {
+  active: boolean;
+  tip_height: number;
+  tip_hash: string;
+}
+
+export interface PoolApiRelayResponse {
+  btc: PoolApiRelayStatus;
+  ltc: PoolApiRelayStatus;
+}
+
+export interface PoolApiHashratePoint {
+  unix_time: number;
+  hashrate_hps: number;
+}
+
+export interface PoolApiMinerDetail {
+  address: string;
+  hashrate_hps: number;
+  accepted: number;
+  rejected: number;
+  reject_rate_pct: number;
+  last_share_at: number;
+  active: boolean;
+  blocks_found_total: number;
+  blocks_found_session: number;
+  estimated_earnings_irm: string;
+  recent_blocks: Array<{ height: number; timestamp: number; reward_irm: string; }>;
+}
+
+export interface PoolApiBlock {
+  height: number;
+  miner_address: string;
+  timestamp: number;
+  difficulty: number;
+  reward_irm: string;
+  hash: string;
+}
+
+export interface PoolApiBlocksResponse {
+  blocks: PoolApiBlock[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 // Returned by check_port_open. `open` is the simple boolean the UI uses
 // to flip a green/red status; `reason` is a human-readable explanation.
 // `upnp_external_ip` and `inbound_count` carry the two underlying signals

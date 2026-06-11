@@ -14,9 +14,14 @@ import { useStore } from '../lib/store';
 import { rpc, wallet, miner, gpuMiner, stratum } from '../lib/tauri';
 import { timeAgo, formatIRM, formatLocalDateTime, SATS_PER_IRM } from '../lib/types';
 import type {
-  ExplorerBlock, NetworkHashrateInfo, RichListEntry, PoolStats, StatsProxyResponse,
+  ExplorerBlock, NetworkHashrateInfo, RichListEntry,
+  PoolApiResponse, PoolApiPortStats, PoolApiMiner, PoolApiMinersResponse,
+  PoolApiRelayResponse, PoolApiHashratePoint, PoolApiMinerDetail,
   MinerStatus, GpuMinerStatus, StratumStatus,
 } from '../lib/types';
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip,
+} from 'recharts';
 
 type SearchTab = 'block' | 'tx' | 'address';
 type PageTab = 'overview' | 'rich_list' | 'pool_stats';
@@ -642,54 +647,11 @@ function shortAddr(a: string): string {
 }
 
 // ── Pool Stats section ───────────────────────────────────────
-//
-// Renders the official-pool snapshot fetched via get_pool_stats. The
-// data source is a Python proxy on irium-vps:3337 that scrapes the
-// loopback /metrics endpoints of both irium-stratum profiles and
-// combines them. We never poll automatically — the section fetches once
-// on mount and on each Refresh click. Stats change slowly enough that
-// background polling would be wasteful and risk hammering the proxy.
 
-// Per-miner row returned by pool.iriumlabs.org:3337/miners. Matches the
-// shape produced by /opt/irium-pool/stats-proxy.py: workers are keyed by
-// Stratum worker name (<address>.<rig>), profile distinguishes ASIC vs
-// CPU/GPU, hashrate_15m and last_share_ago_seconds may be null while the
-// rolling window warms up (< 2 min of samples).
-interface MinerRow {
-  worker: string;
-  // 'solo' was added when the stats-proxy patch merged the solo-stratum
-  // profile into the unified /miners and /stats endpoints (a previously
-  // separate /solo-miners route). The desktop's mining-overview panel
-  // cross-references myAddresses against this list to surface pool-mining
-  // hashrate even when the local CPU/GPU sidecar is idle.
-  // 'port443' rows come from the sslh-multiplexed cpuminer stratum on
-  // 127.0.0.1:3443 (publicly reached as :443). The UI merges port443
-  // rows into the ASIC Miners panel rather than rendering a separate
-  // section — see PoolStatsSection.
-  profile: 'asic' | 'cpu_gpu' | 'solo' | 'port443';
-  accepted: number;
-  rejected: number;
-  // Rolling deltas over the proxy's 15-min window. Distinct from
-  // accepted/rejected (which are cumulative since the stratum's last
-  // restart) so the GUI can show recent activity without the historical
-  // warmup-burst tail dominating. Null during warmup, after a counter
-  // rollback, or when the proxy's deque hasn't surfaced delta data yet
-  // (pre-upgrade 2-tuple entries).
-  accepted_15m?: number | null;
-  rejected_15m?: number | null;
-  reject_rate_pct: number | null;
-  hashrate_15m: number | null;
-  last_share_ago_seconds: number | null;
-  // Cumulative blocks the worker has found at this stratum, populated by
-  // the stats-proxy. Optional + nullable because older proxies and the
-  // warmup window emit null; the column renders "—" when missing.
-  blocks_found?: number | null;
-}
-
-interface MinersResponse {
-  total_miners: number;
-  miners: MinerRow[];
-}
+// PoolApiMiner (imported from types.ts) replaces the old stats-proxy
+// MinerRow shape. Key differences: address (not worker.<rig>),
+// hashrate_hps (not hashrate_15m), last_share_at unix timestamp
+// (not last_share_ago_seconds delta).
 
 // Hashrate formatter that tolerates null and 0 — the existing inline
 // formatHashrate inside PoolStatsSection is typed `(hps: number)` and is
@@ -742,17 +704,11 @@ const truncateMinerWorker = (w: string, n: number = 12): string => {
   return `${w.slice(0, headLen)}…${w.slice(-tailLen)}`;
 };
 
-// A miner is "offline" if they've stopped submitting shares recently.
-// Two thresholds: hard cutoff at last share > 5 min (hide regardless of
-// hashrate), and a stalled cutoff for zero 15-min hashrate + last share
-// > 2 min. Rows where last_share_ago_seconds is null (proxy warmup) stay
-// visible — "no data" must not be treated as "offline" because the
-// rolling window genuinely has no samples yet.
-const isMinerOffline = (m: MinerRow): boolean => {
-  const last = m.last_share_ago_seconds;
-  if (last == null) return false;
-  if (last > 300) return true;
-  if ((m.hashrate_15m ?? 0) === 0 && last > 120) return true;
+const isMinerOffline = (m: PoolApiMiner): boolean => {
+  if (!m.active) return true;
+  const ago = Math.floor(Date.now() / 1000) - m.last_share_at;
+  if (ago > 300) return true;
+  if (m.hashrate_hps === 0 && ago > 120) return true;
   return false;
 };
 
@@ -780,6 +736,193 @@ function PoolStatsTile({
         {value}
       </span>
       {sub && <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.40)' }}>{sub}</span>}
+    </div>
+  );
+}
+
+function PoolHashrateChart() {
+  const [points, setPoints] = useState<PoolApiHashratePoint[]>([]);
+  useEffect(() => {
+    tauriFetch<{ data: PoolApiHashratePoint[] }>('https://api.iriumlabs.org/pool/api/v1/pool/hashrate', {
+      method: 'GET',
+      responseType: ResponseType.JSON,
+      timeout: 10,
+    }).then((r) => {
+      if (r.ok && r.data?.data) {
+        const raw = r.data.data;
+        const step = Math.max(1, Math.floor(raw.length / 200));
+        setPoints(raw.filter((_, i) => i % step === 0));
+      }
+    }).catch(() => {});
+  }, []);
+
+  if (points.length < 4) return null;
+
+  const data = points.map((p) => ({
+    t: p.unix_time,
+    hr: parseFloat((p.hashrate_hps / 1e12).toFixed(3)),
+  }));
+
+  return (
+    <div
+      className="p-4"
+      style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.13)', borderRadius: 8 }}
+    >
+      <span style={{ fontSize: 12, fontWeight: 700, color: '#d4eeff', fontFamily: '"Space Grotesk", sans-serif' }}>
+        Pool Hashrate (24h)
+      </span>
+      <div className="mt-3">
+        <ResponsiveContainer width="100%" height={100}>
+          <LineChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+            <XAxis dataKey="t" hide />
+            <YAxis hide domain={['auto', 'auto']} />
+            <RechartsTooltip
+              contentStyle={{ background: 'var(--bg-elev-2)', border: '1px solid rgba(110,198,255,0.20)', borderRadius: 6, fontSize: 11 }}
+              labelStyle={{ display: 'none' }}
+              formatter={(v: number) => [`${v} TH/s`, 'Hashrate']}
+            />
+            <Line
+              type="monotone"
+              dataKey="hr"
+              stroke="#6ec6ff"
+              strokeWidth={1.5}
+              dot={false}
+              isAnimationActive={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+function RelayStatusPanel() {
+  const [relay, setRelay] = useState<PoolApiRelayResponse | null>(null);
+  useEffect(() => {
+    tauriFetch<PoolApiRelayResponse>('https://api.iriumlabs.org/pool/api/v1/relay', {
+      method: 'GET',
+      responseType: ResponseType.JSON,
+      timeout: 10,
+    }).then((r) => {
+      if (r.ok && r.data) setRelay(r.data);
+    }).catch(() => {});
+  }, []);
+
+  if (!relay) return null;
+
+  return (
+    <div
+      className="p-4"
+      style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.13)', borderRadius: 8 }}
+    >
+      <span style={{ fontSize: 12, fontWeight: 700, color: '#d4eeff', fontFamily: '"Space Grotesk", sans-serif' }}>
+        Relay Status
+      </span>
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        {(['btc', 'ltc'] as const).map((chain) => {
+          const s = relay[chain];
+          return (
+            <div key={chain} className="flex items-center justify-between gap-2 text-xs">
+              <span style={{ fontWeight: 700, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: '"Space Grotesk", sans-serif' }}>
+                {chain}
+              </span>
+              <span
+                style={{
+                  padding: '1px 7px',
+                  borderRadius: 4,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  background: s.active ? 'rgba(52,211,153,0.12)' : 'rgba(244,63,94,0.10)',
+                  border: `1px solid ${s.active ? 'rgba(52,211,153,0.35)' : 'rgba(244,63,94,0.25)'}`,
+                  color: s.active ? '#34d399' : '#f87171',
+                }}
+              >
+                {s.active ? 'ACTIVE' : 'INACTIVE'}
+              </span>
+              <span className="font-mono" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                #{s.tip_height.toLocaleString('en-US')}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MinerDetailModal({ address, onClose }: { address: string; onClose: () => void }) {
+  const [detail, setDetail] = useState<PoolApiMinerDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    tauriFetch<PoolApiMinerDetail>(`https://api.iriumlabs.org/pool/api/v1/miner/${encodeURIComponent(address)}`, {
+      method: 'GET',
+      responseType: ResponseType.JSON,
+      timeout: 10,
+    }).then((r) => {
+      if (r.ok && r.data) setDetail(r.data);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [address]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.72)' }}
+      onClick={onClose}
+    >
+      <div
+        className="p-5 space-y-4"
+        style={{ background: 'var(--bg-elev-2)', borderRadius: 12, border: '1px solid rgba(110,198,255,0.20)', maxWidth: 480, width: '90%', maxHeight: '80vh', overflowY: 'auto' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <span style={{ fontSize: 13, fontWeight: 800, color: '#d4eeff', fontFamily: '"Space Grotesk", sans-serif' }}>
+            Miner Detail
+          </span>
+          <button onClick={onClose} style={{ color: 'rgba(255,255,255,0.45)', cursor: 'pointer', background: 'none', border: 'none', fontSize: 18, lineHeight: 1 }}>×</button>
+        </div>
+        <div className="font-mono text-xs break-all" style={{ color: 'rgba(110,198,255,0.80)', background: 'rgba(110,198,255,0.05)', borderRadius: 6, padding: '6px 10px' }}>
+          {address}
+        </div>
+        {loading ? (
+          <div className="py-6 text-center text-sm" style={{ color: 'rgba(255,255,255,0.30)' }}>Loading...</div>
+        ) : !detail ? (
+          <div className="py-6 text-center text-sm" style={{ color: 'rgba(255,255,255,0.30)' }}>No data available</div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
+              <span style={{ color: 'rgba(255,255,255,0.40)' }}>Hashrate</span>
+              <span className="font-mono text-right" style={{ color: '#d4eeff' }}>{formatMinerHashrate(detail.hashrate_hps)}</span>
+              <span style={{ color: 'rgba(255,255,255,0.40)' }}>Accepted</span>
+              <span className="font-mono text-right" style={{ color: '#34d399' }}>{detail.accepted.toLocaleString('en-US')}</span>
+              <span style={{ color: 'rgba(255,255,255,0.40)' }}>Rejected</span>
+              <span className="font-mono text-right" style={{ color: '#fda4af' }}>{detail.rejected.toLocaleString('en-US')}</span>
+              <span style={{ color: 'rgba(255,255,255,0.40)' }}>Reject rate</span>
+              <span className="font-mono text-right" style={{ color: 'rgba(255,255,255,0.70)' }}>{detail.reject_rate_pct.toFixed(1)}%</span>
+              <span style={{ color: 'rgba(255,255,255,0.40)' }}>Blocks (all time)</span>
+              <span className="font-mono text-right" style={{ color: '#fbbf24' }}>{detail.blocks_found_total.toLocaleString('en-US')}</span>
+              <span style={{ color: 'rgba(255,255,255,0.40)' }}>Blocks (session)</span>
+              <span className="font-mono text-right" style={{ color: '#fbbf24' }}>{detail.blocks_found_session.toLocaleString('en-US')}</span>
+              <span style={{ color: 'rgba(255,255,255,0.40)' }}>Est. earnings</span>
+              <span className="font-mono text-right" style={{ color: '#a78bfa' }}>{detail.estimated_earnings_irm} IRM</span>
+            </div>
+            {detail.recent_blocks.length > 0 && (
+              <div>
+                <div className="mb-2" style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.40)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Recent Blocks</div>
+                <div className="space-y-1">
+                  {detail.recent_blocks.slice(0, 5).map((b) => (
+                    <div key={b.height} className="flex items-center justify-between text-xs font-mono" style={{ color: 'rgba(255,255,255,0.65)' }}>
+                      <span style={{ color: '#fbbf24' }}>#{b.height.toLocaleString('en-US')}</span>
+                      <span style={{ color: '#a78bfa' }}>{b.reward_irm} IRM</span>
+                      <span style={{ color: 'rgba(255,255,255,0.35)' }}>{new Date(b.timestamp * 1000).toLocaleDateString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -836,12 +979,8 @@ function formatBlockTime(secs: number | null | undefined): string {
 function NetworkMiningOverview() {
   const { t } = useTranslation();
   const [network, setNetwork] = useState<NetworkHashrateResp | null>(null);
-  const [poolMiners, setPoolMiners] = useState<MinerRow[] | null>(null);
-  const [poolAggregate, setPoolAggregate] = useState<PoolStats | null>(null);
-  // Direct stats-proxy snapshot. Carries the per-profile rolling-window
-  // hashrate_estimate_hps (asic + cpu_gpu + solo) plus the blocks_found_today
-  // counter, neither of which the get_pool_stats Tauri command surfaces.
-  const [statsProxy, setStatsProxy] = useState<StatsProxyResponse | null>(null);
+  const [poolMiners, setPoolMiners] = useState<PoolApiMiner[] | null>(null);
+  const [poolData, setPoolData] = useState<PoolApiResponse | null>(null);
   const [cpuStatus, setCpuStatus] = useState<MinerStatus | null>(null);
   const [gpuStatus, setGpuStatus] = useState<GpuMinerStatus | null>(null);
   const [stratumS, setStratumS] = useState<StratumStatus | null>(null);
@@ -854,19 +993,18 @@ function NetworkMiningOverview() {
   const [myAddresses, setMyAddresses] = useState<Set<string>>(new Set());
 
   const fetchAll = useCallback(async () => {
-    const [netR, poolMinersR, poolStatsR, statsProxyR, cpuR, gpuR, strR, addrR] = await Promise.allSettled([
+    const [netR, poolMinersR, poolR, cpuR, gpuR, strR, addrR] = await Promise.allSettled([
       tauriFetch<NetworkHashrateResp>('http://127.0.0.1:38300/rpc/network_hashrate', {
         method: 'GET',
         responseType: ResponseType.JSON,
         timeout: 5,
       }),
-      tauriFetch<MinersResponse>('http://pool.iriumlabs.org:3337/miners', {
+      tauriFetch<PoolApiMinersResponse>('https://api.iriumlabs.org/pool/api/v1/miners', {
         method: 'GET',
         responseType: ResponseType.JSON,
         timeout: 10,
       }),
-      rpc.poolStats().catch(() => null),
-      tauriFetch<StatsProxyResponse>('http://pool.iriumlabs.org:3337/stats', {
+      tauriFetch<PoolApiResponse>('https://api.iriumlabs.org/pool/api/v1/pool', {
         method: 'GET',
         responseType: ResponseType.JSON,
         timeout: 10,
@@ -882,9 +1020,8 @@ function NetworkMiningOverview() {
     if (poolMinersR.status === 'fulfilled' && poolMinersR.value.ok && poolMinersR.value.data) {
       setPoolMiners(poolMinersR.value.data.miners ?? []);
     }
-    if (poolStatsR.status === 'fulfilled') setPoolAggregate(poolStatsR.value);
-    if (statsProxyR.status === 'fulfilled' && statsProxyR.value.ok && statsProxyR.value.data) {
-      setStatsProxy(statsProxyR.value.data);
+    if (poolR.status === 'fulfilled' && poolR.value.ok && poolR.value.data) {
+      setPoolData(poolR.value.data);
     }
     if (cpuR.status === 'fulfilled') setCpuStatus(cpuR.value);
     if (gpuR.status === 'fulfilled') setGpuStatus(gpuR.value);
@@ -909,39 +1046,13 @@ function NetworkMiningOverview() {
   const networkDifficulty = network?.difficulty ?? null;
   const avgBlockTime = network?.avg_block_time ?? null;
 
-  // Panel 2: pool aggregate from the per-miner rows.
+  // Panel 2: pool aggregate from the new pool API.
   const poolRows = poolMiners ?? [];
-  // Filter offline workers before aggregating. Same isMinerOffline
-  // predicate the Active Miners table uses below, so the displayed Pool
-  // Hashrate, Active Pool Miners count, and the table all agree on who
-  // counts. The /miners feed's 15-min EMA tail keeps stale rows visible
-  // for ~15 min after a worker disconnects (notably MRR rental sessions
-  // that auto-failover after a stratum bounce), which would otherwise
-  // inflate the aggregate Pool Hashrate.
   const activeRows = poolRows.filter((m) => !isMinerOffline(m));
-  // Pool hashrate comes from the stats-proxy's per-profile rolling-window
-  // hashrate_estimate_hps (asic + cpu_gpu + solo) — the authoritative value
-  // the proxy itself computes from accepted shares × current_diff. Summing
-  // per-miner hashrate_15m from /miners (the previous source) produced
-  // overestimates from vardiff drift that frequently exceeded the network
-  // value, requiring a clamp-to-network fallback that made pool and network
-  // hashrate display identical. The proxy aggregates are bounded per profile,
-  // so the sum is honest even if the displayed pool hashrate happens to
-  // exceed network for a poll due to estimator-window misalignment.
-  const poolHashrate = statsProxy != null
-    ? (statsProxy.asic.hashrate_estimate_hps ?? 0)
-      + (statsProxy.cpu_gpu.hashrate_estimate_hps ?? 0)
-      + (statsProxy.solo?.hashrate_estimate_hps ?? 0)
-    : null;
-  // Active miner count derived from the activeRows filter so the count and
-  // the per-row table stay consistent (the stats-proxy aggregate's
-  // active_miners would count proxy-side which can drift from /miners).
+  const poolHashrate = poolData?.total_hashrate_hps ?? null;
   const activePoolMiners = activeRows.length;
-  // Two block counters: today (from the proxy's rolling daily counter) and
-  // cumulative all-time. Prefer the proxy's top-level total_blocks_found
-  // (always present on /stats) over the legacy poolAggregate field.
-  const poolBlocksToday = statsProxy?.blocks_found_today ?? null;
-  const poolBlocksFound = statsProxy?.total_blocks_found ?? poolAggregate?.total_blocks_found ?? null;
+  const poolBlocksToday = poolData?.blocks_found_today ?? null;
+  const poolBlocksFound = poolData?.blocks_found_total ?? null;
   const poolShareOfNetwork = (poolHashrate != null && networkHashrate != null && networkHashrate > 0)
     ? (poolHashrate / networkHashrate) * 100
     : null;
@@ -990,28 +1101,14 @@ function NetworkMiningOverview() {
   //     larger hashrate; ties prefer the profile with more accepted
   //     shares so a single high-hashrate row in solo doesn't mask a
   //     larger sustained ASIC presence on the official pool
-  // ExtRow extends MinerRow with the proxy's optional session_status
-  // field. Profile union mirrors MinerRow (including 'port443' which
-  // was added when sslh-multiplexed cpuminer stratum got wired into
-  // /miners). The narrower 'asic'|'cpu_gpu'|'solo' typing here was a
-  // pre-port443 artifact that forced an unsafe `as unknown as ExtRow`
-  // cast; the new union lets the rows flow through with a clean cast.
-  type ExtRow = MinerRow & { session_status?: 'active' | 'stale' };
-  const myPoolRows: ExtRow[] = (poolMiners ?? [])
-    .filter((m) => {
-      const baseAddr = (m.worker.split('.')[0] ?? '').trim();
-      return baseAddr.length > 0 && myAddresses.has(baseAddr);
-    })
-    .map((m) => m as ExtRow);
-  const myPoolHashrateHps = myPoolRows.reduce(
-    (sum, m) => sum + (m.hashrate_15m ?? 0),
-    0,
-  );
-  const myPoolAccepted = myPoolRows.reduce((sum, m) => sum + (m.accepted ?? 0), 0);
+  const myPoolRows = (poolMiners ?? []).filter((m) => myAddresses.has(m.address));
+  const myPoolHashrateHps = myPoolRows.reduce((sum, m) => sum + m.hashrate_hps, 0);
+  const myPoolAccepted = myPoolRows.reduce((sum, m) => sum + m.accepted, 0);
+  const nowSecs = Math.floor(Date.now() / 1000);
   const myPoolLastShareSecs = myPoolRows.reduce<number | null>((min, m) => {
-    if (m.last_share_ago_seconds == null) return min;
-    if (min == null) return m.last_share_ago_seconds;
-    return Math.min(min, m.last_share_ago_seconds);
+    const ago = nowSecs - m.last_share_at;
+    if (min == null) return ago;
+    return Math.min(min, ago);
   }, null);
   const myPoolMode: 'Pool' | 'Solo' | null = (() => {
     if (myPoolRows.length === 0) return null;
@@ -1020,15 +1117,8 @@ function NetworkMiningOverview() {
     let soloAcc = 0;
     let poolAcc = 0;
     for (const m of myPoolRows) {
-      const hr = m.hashrate_15m ?? 0;
-      const acc = m.accepted ?? 0;
-      if (m.profile === 'solo') {
-        soloHr += hr;
-        soloAcc += acc;
-      } else {
-        poolHr += hr;
-        poolAcc += acc;
-      }
+      if (m.profile === 'solo') { soloHr += m.hashrate_hps; soloAcc += m.accepted; }
+      else { poolHr += m.hashrate_hps; poolAcc += m.accepted; }
     }
     if (poolHr > soloHr) return 'Pool';
     if (soloHr > poolHr) return 'Solo';
@@ -1204,12 +1294,9 @@ function NetworkMiningOverview() {
 
 function PoolStatsSection() {
   const { t } = useTranslation();
-  const [stats, setStats] = useState<PoolStats | null>(null);
-  // Per-miner rows from pool.iriumlabs.org:3337/miners. Fetched in parallel
-  // with /stats via Promise.all so a slow upstream on one endpoint doesn't
-  // serialize the other. Null until the first successful fetch; empty
-  // array on a fetch that succeeded but returned zero workers.
-  const [miners, setMiners] = useState<MinerRow[]>([]);
+  const [poolData, setPoolData] = useState<PoolApiResponse | null>(null);
+  const [miners, setMiners] = useState<PoolApiMiner[]>([]);
+  const [selectedMinerAddr, setSelectedMinerAddr] = useState<string | null>(null);
   // User's wallet addresses — used to highlight rows for workers the user
   // owns (worker name "<address>.<rig>"). Once on mount; wallet addition
   // mid-session is rare and the next refresh picks it up if needed.
@@ -1238,9 +1325,13 @@ function PoolStatsSection() {
     if (!silent) setLoading(true);
     setErr('');
     try {
-      const [statsResult, minersResp] = await Promise.all([
-        rpc.poolStats(),
-        tauriFetch<MinersResponse>('http://pool.iriumlabs.org:3337/miners', {
+      const [poolResp, minersResp] = await Promise.all([
+        tauriFetch<PoolApiResponse>('https://api.iriumlabs.org/pool/api/v1/pool', {
+          method: 'GET',
+          responseType: ResponseType.JSON,
+          timeout: 10,
+        }),
+        tauriFetch<PoolApiMinersResponse>('https://api.iriumlabs.org/pool/api/v1/miners', {
           method: 'GET',
           responseType: ResponseType.JSON,
           timeout: 10,
@@ -1259,8 +1350,8 @@ function PoolStatsSection() {
             return null;
           }),
       ]);
-      if (!statsResult) throw new Error('empty response');
-      setStats(statsResult);
+      if (!poolResp.ok || !poolResp.data) throw new Error('pool endpoint error');
+      setPoolData(poolResp.data);
       if (minersResp) setMiners(minersResp.miners ?? []);
       setLastUpdated(Math.floor(Date.now() / 1000));
     } catch (e) {
@@ -1292,83 +1383,15 @@ function PoolStatsSection() {
     return () => { cancelled = true; };
   }, []);
 
-  // Merge + sort. /miners emits one row per (worker, profile) pair —
-  // a wallet connected to multiple stratums (e.g. ASIC 3333 + port-443
-  // multiplex + solo 3336) gets a row each, and even on the same port
-  // multiple rigs under the same address (worker name = "<addr>.<rig>")
-  // produce separate rows. Aggregating the table view by summing all
-  // those rows double-counts the wallet's true contribution and was
-  // producing pool totals that exceeded the network hashrate — an
-  // impossible result.
-  //
-  // Merge rule (per user spec): group rows by wallet base address (the
-  // part before "."). For each group: SUM accepted, SUM rejected, take
-  // MAX hashrate_15m ("use the higher hashrate" — avoids inflating
-  // when the same physical rig is observed on multiple ports), take
-  // MAX reject_rate_pct (most conservative for ops visibility), take
-  // MIN last_share_ago_seconds (most-recent activity wins). Sort the
-  // merged groups: wallet-owned first, then by hashrate desc, then by
-  // accepted desc.
+  // New pool API returns one row per address (keyed in the Rust HashMap).
+  // No merging needed — just sort: wallet-owned first, then by hashrate desc.
   const sortedMiners = useMemo(() => {
-    type Merged = MinerRow;
-    const byBase = new Map<string, Merged>();
-    for (const m of miners) {
-      const base = (m.worker.split('.')[0] ?? '').trim();
-      if (!base) continue;
-      const existing = byBase.get(base);
-      if (!existing) {
-        byBase.set(base, {
-          worker: base,
-          profile: m.profile,
-          accepted: m.accepted ?? 0,
-          rejected: m.rejected ?? 0,
-          accepted_15m: m.accepted_15m ?? null,
-          rejected_15m: m.rejected_15m ?? null,
-          reject_rate_pct: m.reject_rate_pct,
-          hashrate_15m: m.hashrate_15m,
-          last_share_ago_seconds: m.last_share_ago_seconds,
-          blocks_found: m.blocks_found ?? null,
-        });
-        continue;
-      }
-      existing.accepted = (existing.accepted ?? 0) + (m.accepted ?? 0);
-      existing.rejected = (existing.rejected ?? 0) + (m.rejected ?? 0);
-      // Sum rolling deltas across the merged group so the "Rejected
-      // (15m)" column shows the wallet's full recent-window picture,
-      // not just one connection's slice. Nulls treated as 0 for
-      // accumulation but the sum stays null if NO row had data
-      // (preserves "warmup" semantics in the UI).
-      if (m.accepted_15m != null) {
-        existing.accepted_15m = (existing.accepted_15m ?? 0) + m.accepted_15m;
-      }
-      if (m.rejected_15m != null) {
-        existing.rejected_15m = (existing.rejected_15m ?? 0) + m.rejected_15m;
-      }
-      // Sum blocks_found across the merged group so the column reflects
-      // the wallet's total per-pool block credit. Same null-as-0
-      // accumulation as the rejected_15m field above; the sum stays
-      // null if NO row in the group had data.
-      if (m.blocks_found != null) {
-        existing.blocks_found = (existing.blocks_found ?? 0) + m.blocks_found;
-      }
-      const eHr = existing.hashrate_15m ?? -1;
-      const mHr = m.hashrate_15m ?? -1;
-      if (mHr > eHr) existing.hashrate_15m = m.hashrate_15m;
-      const eRr = existing.reject_rate_pct ?? -1;
-      const mRr = m.reject_rate_pct ?? -1;
-      if (mRr > eRr) existing.reject_rate_pct = m.reject_rate_pct;
-      const eLs = existing.last_share_ago_seconds ?? Number.POSITIVE_INFINITY;
-      const mLs = m.last_share_ago_seconds ?? Number.POSITIVE_INFINITY;
-      if (mLs < eLs) existing.last_share_ago_seconds = m.last_share_ago_seconds;
-    }
-    return Array.from(byBase.values()).sort((a, b) => {
-      const aMine = myAddresses.has(a.worker);
-      const bMine = myAddresses.has(b.worker);
+    return [...miners].sort((a, b) => {
+      const aMine = myAddresses.has(a.address);
+      const bMine = myAddresses.has(b.address);
       if (aMine !== bMine) return aMine ? -1 : 1;
-      const aHr = a.hashrate_15m ?? 0;
-      const bHr = b.hashrate_15m ?? 0;
-      if (aHr !== bHr) return bHr - aHr;
-      return (b.accepted ?? 0) - (a.accepted ?? 0);
+      if (a.hashrate_hps !== b.hashrate_hps) return b.hashrate_hps - a.hashrate_hps;
+      return b.accepted - a.accepted;
     });
   }, [miners, myAddresses]);
 
@@ -1384,18 +1407,6 @@ function PoolStatsSection() {
   const offlineCount = sortedMiners.length - activeMiners.length;
   const displayedMiners = showOffline ? sortedMiners : activeMiners;
 
-  const integrityLabel = (raw: string) =>
-    raw === 'healthy' ? t('explorer.pool_stats.integrity_healthy')
-    : t('explorer.pool_stats.integrity_unknown');
-
-  const integrityColor = (raw: string) =>
-    raw === 'healthy' ? '#34d399' : 'rgba(255,255,255,0.40)';
-
-  // Format a hashrate in H/s into a compact unit (KH/s, MH/s, GH/s, TH/s).
-  // The pool proxy's estimate is best-effort: it uses the configured default
-  // share difficulty, so under vardiff drift the displayed number lags the
-  // true hashrate by up to ~2-4x. Confidence is signalled separately by the
-  // proxy and rendered as a small subscript.
   const formatHashrate = (hps: number) => {
     if (hps >= 1e12) return `${(hps / 1e12).toFixed(2)} TH/s`;
     if (hps >= 1e9)  return `${(hps / 1e9).toFixed(2)} GH/s`;
@@ -1403,12 +1414,6 @@ function PoolStatsSection() {
     if (hps >= 1e3)  return `${(hps / 1e3).toFixed(2)} KH/s`;
     return `${Math.round(hps)} H/s`;
   };
-  const confidenceLabel = (c: string) =>
-    c === 'high'   ? t('explorer.pool_stats.confidence_high')
-    : c === 'medium' ? t('explorer.pool_stats.confidence_medium')
-    : t('explorer.pool_stats.confidence_low');
-  const confidenceColor = (c: string) =>
-    c === 'high' ? '#34d399' : c === 'medium' ? '#fbbf24' : 'rgba(255,255,255,0.45)';
 
   return (
     <div className="space-y-4">
@@ -1442,60 +1447,33 @@ function PoolStatsSection() {
         <div className="py-10 text-center text-sm" style={{ background: 'rgba(244,63,94,0.06)', border: '1px solid rgba(244,63,94,0.20)', borderRadius: 8, color: '#fda4af' }}>
           {t('explorer.pool_stats.load_error')}
         </div>
-      ) : loading && !stats ? (
+      ) : loading && !poolData ? (
         <div className="py-10 text-center text-sm" style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.08)', borderRadius: 8, color: 'rgba(255,255,255,0.30)' }}>
           {t('explorer.pool_stats.loading')}
         </div>
-      ) : !stats ? (
+      ) : !poolData ? (
         <div className="py-10 text-center text-sm" style={{ background: 'var(--bg-elev-1)', border: '1px solid rgba(110,198,255,0.07)', borderRadius: 8, color: 'rgba(255,255,255,0.30)' }}>
           {t('explorer.pool_stats.empty')}
         </div>
       ) : (() => {
-        // Port 443 (sslh-multiplexed cpuminer stratum) is its own service
-        // but Ibrahim's intent is to surface it as part of the ASIC Miners
-        // section, not as a separate pool. The /stats endpoint doesn't
-        // expose port443 as a top-level key (yet), so we sum the port443
-        // rows from /miners client-side and merge them into the ASIC
-        // numbers for display purposes. Done at the JSX-block level (not
-        // inside the inner IIFE) so the per-profile detail panel below
-        // can see the same merged data.
-        type RowExt = MinerRow & { session_status?: 'active' | 'stale' };
-        const port443Rows = miners.filter((m) => m.profile === 'port443');
-        const port443Active = port443Rows.filter((m) => {
-          const ext = m as RowExt;
-          return ext.session_status
-            ? ext.session_status === 'active'
-            : (m.hashrate_15m ?? 0) > 0;
-        }).length;
-        const port443Accepted = port443Rows.reduce((s, m) => s + (m.accepted ?? 0), 0);
-        const port443Rejected = port443Rows.reduce((s, m) => s + (m.rejected ?? 0), 0);
-        const port443Hashrate = port443Rows.reduce((s, m) => s + (m.hashrate_15m ?? 0), 0);
-        const has443 = port443Rows.length > 0;
-
-        const asicMerged = {
-          ...stats.asic,
-          active_miners: stats.asic.active_miners + port443Active,
-          tcp_sessions: stats.asic.tcp_sessions + port443Rows.length,
-          accepted_shares: stats.asic.accepted_shares + port443Accepted,
-          rejected_shares: stats.asic.rejected_shares + port443Rejected,
-          hashrate_estimate_hps: (stats.asic.hashrate_estimate_hps ?? 0) + port443Hashrate,
+        const has443 = poolData.ports.firewall_bypass.sessions > 0 || poolData.ports.firewall_bypass.accepted > 0;
+        const asicMerged: PoolApiPortStats = {
+          port: poolData.ports.asic.port,
+          sessions: poolData.ports.asic.sessions + poolData.ports.firewall_bypass.sessions,
+          accepted: poolData.ports.asic.accepted + poolData.ports.firewall_bypass.accepted,
+          rejected: poolData.ports.asic.rejected + poolData.ports.firewall_bypass.rejected,
+          hashrate_hps: poolData.ports.asic.hashrate_hps + poolData.ports.firewall_bypass.hashrate_hps,
         };
 
         return (
         <>
           {(() => {
-            // Effective miner count per profile: only count a profile as
-            // having "active miners" once at least one share has been
-            // accepted. Otherwise the displayed number is 0, regardless of
-            // how many raw TCP sessions are open — those are dominated by
-            // port scanners and abandoned connections in practice. The raw
-            // socket count is still surfaced below as "TCP connections".
-            const asicEffective = asicMerged.accepted_shares > 0 ? asicMerged.active_miners : 0;
-            const cpuEffective = stats.cpu_gpu.accepted_shares > 0 ? stats.cpu_gpu.active_miners : 0;
+            const asicEffective = miners.filter((m) => !isMinerOffline(m) && (m.profile === 'asic' || m.profile === 'port443')).length;
+            const cpuEffective = miners.filter((m) => !isMinerOffline(m) && m.profile === 'cpu_gpu').length;
             const totalEffective = asicEffective + cpuEffective;
             const asicPortSub = has443
-              ? t('explorer.pool_stats.asic_port_with_443', { port: stats.asic_port })
-              : t('explorer.pool_stats.asic_port', { port: stats.asic_port });
+              ? t('explorer.pool_stats.asic_port_with_443', { port: poolData.ports.asic.port })
+              : t('explorer.pool_stats.asic_port', { port: poolData.ports.asic.port });
             return (
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -1513,12 +1491,12 @@ function PoolStatsSection() {
                   <PoolStatsTile
                     label={t('explorer.pool_stats.cpu_gpu_miners')}
                     value={cpuEffective.toLocaleString('en-US')}
-                    sub={t('explorer.pool_stats.cpu_gpu_port', { port: stats.cpu_gpu_port })}
+                    sub={t('explorer.pool_stats.cpu_gpu_port', { port: poolData.ports.cpu_gpu.port })}
                     accent="#a78bfa"
                   />
                   <PoolStatsTile
                     label={t('explorer.pool_stats.total_blocks_found')}
-                    value={stats.total_blocks_found.toLocaleString('en-US')}
+                    value={poolData.blocks_found_total.toLocaleString('en-US')}
                     accent="#34d399"
                   />
                 </div>
@@ -1532,9 +1510,9 @@ function PoolStatsSection() {
           {/* Per-profile detail panel */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {([
-              { key: 'asic',    label: t('explorer.pool_stats.asic_miners'),    port: has443 ? `${stats.asic_port}+443` : `${stats.asic_port}`, data: asicMerged },
-              { key: 'cpu_gpu', label: t('explorer.pool_stats.cpu_gpu_miners'), port: `${stats.cpu_gpu_port}`,                                  data: stats.cpu_gpu },
-            ] as const).map(({ key, label, port, data }) => (
+              { key: 'asic',    label: t('explorer.pool_stats.asic_miners'),    port: has443 ? `${poolData.ports.asic.port}+443` : `${poolData.ports.asic.port}`, data: asicMerged },
+              { key: 'cpu_gpu', label: t('explorer.pool_stats.cpu_gpu_miners'), port: `${poolData.ports.cpu_gpu.port}`,                                           data: poolData.ports.cpu_gpu },
+            ] as Array<{ key: string; label: string; port: string; data: PoolApiPortStats }>).map(({ key, label, port, data }) => (
               <div
                 key={key}
                 className="p-4"
@@ -1546,7 +1524,6 @@ function PoolStatsSection() {
                   </span>
                   <span className="font-mono" style={{ fontSize: 11, color: 'rgba(110,198,255,0.55)' }}>:{port}</span>
                 </div>
-                {/* Rolling-window hashrate estimate from the proxy. */}
                 <div
                   className="mb-3 px-3 py-2 flex items-baseline justify-between gap-3"
                   style={{
@@ -1559,49 +1536,29 @@ function PoolStatsSection() {
                     <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.30)', fontFamily: '"Space Grotesk", sans-serif' }}>
                       {t('explorer.pool_stats.hashrate')}
                     </span>
-                    {data.hashrate_estimate_hps == null ? (
+                    {data.hashrate_hps === 0 ? (
                       <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.55)', fontFamily: '"Space Grotesk", sans-serif' }}>
                         {t('explorer.pool_stats.hashrate_collecting')}
                       </span>
                     ) : (
                       <span style={{ fontSize: 17, fontWeight: 800, color: '#d4eeff', fontVariantNumeric: 'tabular-nums', fontFamily: '"Space Grotesk", sans-serif', lineHeight: 1.15 }}>
-                        ~{formatHashrate(data.hashrate_estimate_hps)}
+                        ~{formatHashrate(data.hashrate_hps)}
                       </span>
                     )}
                   </div>
-                  {data.hashrate_estimate_hps != null && (
-                    <div className="flex flex-col items-end gap-0.5">
-                      <span className="font-mono" style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.45)' }}>
-                        {t('explorer.pool_stats.hashrate_avg_window', {
-                          minutes: Math.max(1, Math.round(data.hashrate_window_seconds / 60)),
-                        })}
-                      </span>
-                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: confidenceColor(data.hashrate_confidence), fontFamily: '"Space Grotesk", sans-serif' }}>
-                        {confidenceLabel(data.hashrate_confidence)}
-                      </span>
-                    </div>
-                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
                   <span style={{ color: 'rgba(255,255,255,0.40)' }}>{t('explorer.pool_stats.tcp_connections')}</span>
                   <span className="font-mono text-right" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                    {(data.tcp_sessions || data.active_miners).toLocaleString('en-US')}
+                    {data.sessions.toLocaleString('en-US')}
                   </span>
                   <span style={{ color: 'rgba(255,255,255,0.40)' }}>{t('explorer.pool_stats.accepted_shares')}</span>
                   <span className="font-mono text-right" style={{ color: '#34d399' }}>
-                    {data.accepted_shares.toLocaleString('en-US')}
+                    {data.accepted.toLocaleString('en-US')}
                   </span>
                   <span style={{ color: 'rgba(255,255,255,0.40)' }}>{t('explorer.pool_stats.rejected_shares')}</span>
                   <span className="font-mono text-right" style={{ color: '#fda4af' }}>
-                    {data.rejected_shares.toLocaleString('en-US')}
-                  </span>
-                  <span style={{ color: 'rgba(255,255,255,0.40)' }}>{t('explorer.pool_stats.total_blocks_found')}</span>
-                  <span className="font-mono text-right" style={{ color: '#fbbf24' }}>
-                    {data.blocks_found.toLocaleString('en-US')}
-                  </span>
-                  <span style={{ color: 'rgba(255,255,255,0.40)' }}>{t('explorer.pool_stats.integrity')}</span>
-                  <span className="font-mono text-right" style={{ color: integrityColor(data.integrity) }}>
-                    {integrityLabel(data.integrity)}
+                    {data.rejected.toLocaleString('en-US')}
                   </span>
                 </div>
               </div>
@@ -1626,7 +1583,7 @@ function PoolStatsSection() {
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                {myAddresses.size > 0 && displayedMiners.some((m) => myAddresses.has((m.worker.split('.')[0] ?? '').trim())) && (
+                {myAddresses.size > 0 && displayedMiners.some((m) => myAddresses.has(m.address)) && (
                   <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.45)' }}>
                     {t('explorer.pool_stats.your_miners_pinned')}
                   </span>
@@ -1665,29 +1622,26 @@ function PoolStatsSection() {
                     <tr style={{ color: 'rgba(255,255,255,0.40)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: '"Space Grotesk", sans-serif' }}>
                       <th className="text-left py-2 pr-3 font-semibold">{t('explorer.pool_stats.col_worker')}</th>
                       <th className="text-right py-2 px-3 font-semibold">{t('explorer.pool_stats.col_accepted')}</th>
-                      <th className="text-right py-2 px-3 font-semibold" title={t('explorer.pool_stats.col_rejected_15m_tooltip')}>{t('explorer.pool_stats.col_rejected_15m')}</th>
                       <th className="text-right py-2 px-3 font-semibold" title={t('explorer.pool_stats.col_reject_pct_15m_tooltip')}>{t('explorer.pool_stats.col_reject_pct_15m')}</th>
                       <th className="text-right py-2 px-3 font-semibold">{t('explorer.pool_stats.col_hashrate_15m')}</th>
-                      <th className="text-right py-2 px-3 font-semibold" title={t('explorer.pool_stats.col_blocks_tooltip')}>{t('explorer.pool_stats.col_blocks')}</th>
                       <th className="text-right py-2 pl-3 font-semibold">{t('explorer.pool_stats.col_last_share')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {displayedMiners.map((m, idx) => {
-                      const addressPart = (m.worker.split('.')[0] ?? '').trim();
-                      const isMine = addressPart.length > 0 && myAddresses.has(addressPart);
-                      // Color by reject rate: < 10% green, 10-30% amber,
-                      // > 30% red. Null (not enough samples) → dim grey.
+                      const isMine = myAddresses.has(m.address);
                       const rejectColor =
-                        m.reject_rate_pct == null ? 'rgba(255,255,255,0.40)'
-                        : m.reject_rate_pct < 10 ? '#34d399'
+                        m.reject_rate_pct < 10 ? '#34d399'
                         : m.reject_rate_pct < 30 ? '#fbbf24'
                         : '#f87171';
+                      const agoSecs = Math.floor(Date.now() / 1000) - m.last_share_at;
                       return (
                         <tr
-                          key={`${m.worker}-${m.profile}-${idx}`}
+                          key={`${m.address}-${m.profile}-${idx}`}
+                          onClick={() => setSelectedMinerAddr(m.address)}
                           style={{
                             borderTop: '1px solid rgba(255,255,255,0.04)',
+                            cursor: 'pointer',
                             ...(isMine ? {
                               background: 'rgba(110,198,255,0.07)',
                               boxShadow: 'inset 3px 0 0 0 rgba(110,198,255,0.55)',
@@ -1695,7 +1649,7 @@ function PoolStatsSection() {
                           }}
                         >
                           <td className="py-2 pr-3" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
-                            <span title={m.worker}>{truncateMinerWorker(m.worker, 12)}</span>
+                            <span title={m.address}>{truncateMinerWorker(m.address, 12)}</span>
                             {isMine && (
                               <span
                                 className="ml-2"
@@ -1721,20 +1675,14 @@ function PoolStatsSection() {
                           <td className="py-2 px-3 text-right font-mono" style={{ color: '#34d399' }}>
                             {m.accepted.toLocaleString('en-US')}
                           </td>
-                          <td className="py-2 px-3 text-right font-mono" style={{ color: (m.rejected_15m ?? 0) > 0 ? '#fda4af' : 'rgba(255,255,255,0.30)' }}>
-                            {(m.rejected_15m ?? 0).toLocaleString('en-US')}
-                          </td>
                           <td className="py-2 px-3 text-right font-mono" style={{ color: rejectColor }}>
-                            {m.reject_rate_pct == null ? '—' : `${m.reject_rate_pct.toFixed(1)}%`}
+                            {m.reject_rate_pct.toFixed(1)}%
                           </td>
                           <td className="py-2 px-3 text-right font-mono" style={{ color: 'rgba(255,255,255,0.80)' }}>
-                            {formatMinerHashrate(m.hashrate_15m)}
-                          </td>
-                          <td className="py-2 px-3 text-right font-mono" style={{ color: (m.blocks_found ?? 0) > 0 ? '#fbbf24' : 'rgba(255,255,255,0.30)' }}>
-                            {m.blocks_found == null ? '—' : m.blocks_found.toLocaleString('en-US')}
+                            {formatMinerHashrate(m.hashrate_hps)}
                           </td>
                           <td className="py-2 pl-3 text-right" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                            {formatAgoPlainEnglish(m.last_share_ago_seconds, t)}
+                            {formatAgoPlainEnglish(agoSecs, t)}
                           </td>
                         </tr>
                       );
@@ -1744,9 +1692,18 @@ function PoolStatsSection() {
               </div>
             )}
           </div>
+
+          <RelayStatusPanel />
+          <PoolHashrateChart />
         </>
         );
       })()}
+      {selectedMinerAddr && (
+        <MinerDetailModal
+          address={selectedMinerAddr}
+          onClose={() => setSelectedMinerAddr(null)}
+        />
+      )}
     </div>
   );
 }
