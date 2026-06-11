@@ -706,7 +706,7 @@ const truncateMinerWorker = (w: string, n: number = 12): string => {
 
 const isMinerOffline = (m: PoolApiMiner): boolean => {
   if (!m.active) return true;
-  const ago = Math.floor(Date.now() / 1000) - m.last_share_at;
+  const ago = m.last_share_ago_secs;
   if (ago > 300) return true;
   if (m.hashrate_hps === 0 && ago > 120) return true;
   return false;
@@ -894,15 +894,15 @@ function MinerDetailModal({ address, onClose }: { address: string; onClose: () =
               <span style={{ color: 'rgba(255,255,255,0.40)' }}>Hashrate</span>
               <span className="font-mono text-right" style={{ color: '#d4eeff' }}>{formatMinerHashrate(detail.hashrate_hps)}</span>
               <span style={{ color: 'rgba(255,255,255,0.40)' }}>Accepted</span>
-              <span className="font-mono text-right" style={{ color: '#34d399' }}>{detail.accepted.toLocaleString('en-US')}</span>
+              <span className="font-mono text-right" style={{ color: '#34d399' }}>{detail.accepted_shares.toLocaleString('en-US')}</span>
               <span style={{ color: 'rgba(255,255,255,0.40)' }}>Rejected</span>
-              <span className="font-mono text-right" style={{ color: '#fda4af' }}>{detail.rejected.toLocaleString('en-US')}</span>
+              <span className="font-mono text-right" style={{ color: '#fda4af' }}>{detail.rejected_shares.toLocaleString('en-US')}</span>
               <span style={{ color: 'rgba(255,255,255,0.40)' }}>Reject rate</span>
               <span className="font-mono text-right" style={{ color: 'rgba(255,255,255,0.70)' }}>{detail.reject_rate_pct.toFixed(1)}%</span>
               <span style={{ color: 'rgba(255,255,255,0.40)' }}>Blocks (all time)</span>
               <span className="font-mono text-right" style={{ color: '#fbbf24' }}>{detail.blocks_found_total.toLocaleString('en-US')}</span>
-              <span style={{ color: 'rgba(255,255,255,0.40)' }}>Blocks (session)</span>
-              <span className="font-mono text-right" style={{ color: '#fbbf24' }}>{detail.blocks_found_session.toLocaleString('en-US')}</span>
+              <span style={{ color: 'rgba(255,255,255,0.40)' }}>Blocks (in DB)</span>
+              <span className="font-mono text-right" style={{ color: '#fbbf24' }}>{detail.blocks_found_in_db.toLocaleString('en-US')}</span>
               <span style={{ color: 'rgba(255,255,255,0.40)' }}>Est. earnings</span>
               <span className="font-mono text-right" style={{ color: '#a78bfa' }}>{detail.estimated_earnings_irm} IRM</span>
             </div>
@@ -999,7 +999,7 @@ function NetworkMiningOverview() {
         responseType: ResponseType.JSON,
         timeout: 5,
       }),
-      tauriFetch<PoolApiMinersResponse>('https://api.iriumlabs.org/pool/api/v1/miners', {
+      tauriFetch<PoolApiMiner[]>('https://api.iriumlabs.org/pool/api/v1/miners', {
         method: 'GET',
         responseType: ResponseType.JSON,
         timeout: 10,
@@ -1018,7 +1018,7 @@ function NetworkMiningOverview() {
       setNetwork(netR.value.data);
     }
     if (poolMinersR.status === 'fulfilled' && poolMinersR.value.ok && poolMinersR.value.data) {
-      setPoolMiners(poolMinersR.value.data.miners ?? []);
+      setPoolMiners(poolMinersR.value.data ?? []);
     }
     if (poolR.status === 'fulfilled' && poolR.value.ok && poolR.value.data) {
       setPoolData(poolR.value.data);
@@ -1053,7 +1053,7 @@ function NetworkMiningOverview() {
   const activePoolMiners = activeRows.length;
   const poolBlocksToday = poolData?.blocks_found_today ?? null;
   const poolBlocksFound = poolData?.blocks_found_total ?? null;
-  const poolShareOfNetwork = (poolHashrate != null && networkHashrate != null && networkHashrate > 0)
+  const poolShareOfNetwork = (poolHashrate != null && networkHashrate != null && networkHashrate > 0 && poolHashrate <= networkHashrate)
     ? (poolHashrate / networkHashrate) * 100
     : null;
 
@@ -1103,10 +1103,9 @@ function NetworkMiningOverview() {
   //     larger sustained ASIC presence on the official pool
   const myPoolRows = (poolMiners ?? []).filter((m) => myAddresses.has(m.address));
   const myPoolHashrateHps = myPoolRows.reduce((sum, m) => sum + m.hashrate_hps, 0);
-  const myPoolAccepted = myPoolRows.reduce((sum, m) => sum + m.accepted, 0);
-  const nowSecs = Math.floor(Date.now() / 1000);
+  const myPoolAccepted = myPoolRows.reduce((sum, m) => sum + m.accepted_shares, 0);
   const myPoolLastShareSecs = myPoolRows.reduce<number | null>((min, m) => {
-    const ago = nowSecs - m.last_share_at;
+    const ago = m.last_share_ago_secs;
     if (min == null) return ago;
     return Math.min(min, ago);
   }, null);
@@ -1117,8 +1116,8 @@ function NetworkMiningOverview() {
     let soloAcc = 0;
     let poolAcc = 0;
     for (const m of myPoolRows) {
-      if (m.profile === 'solo') { soloHr += m.hashrate_hps; soloAcc += m.accepted; }
-      else { poolHr += m.hashrate_hps; poolAcc += m.accepted; }
+      if (m.profile === 'solo') { soloHr += m.hashrate_hps; soloAcc += m.accepted_shares; }
+      else { poolHr += m.hashrate_hps; poolAcc += m.accepted_shares; }
     }
     if (poolHr > soloHr) return 'Pool';
     if (soloHr > poolHr) return 'Solo';
@@ -1179,6 +1178,7 @@ function NetworkMiningOverview() {
             <PoolStatsTile
               label={t('explorer.mining_overview.network_hashrate')}
               value={networkHashrate != null ? formatHashrate(networkHashrate) : '—'}
+              sub="estimated from block intervals"
               accent="#6ec6ff"
             />
             <PoolStatsTile
@@ -1331,7 +1331,7 @@ function PoolStatsSection() {
           responseType: ResponseType.JSON,
           timeout: 10,
         }),
-        tauriFetch<PoolApiMinersResponse>('https://api.iriumlabs.org/pool/api/v1/miners', {
+        tauriFetch<PoolApiMiner[]>('https://api.iriumlabs.org/pool/api/v1/miners', {
           method: 'GET',
           responseType: ResponseType.JSON,
           timeout: 10,
@@ -1352,7 +1352,7 @@ function PoolStatsSection() {
       ]);
       if (!poolResp.ok || !poolResp.data) throw new Error('pool endpoint error');
       setPoolData(poolResp.data);
-      if (minersResp) setMiners(minersResp.miners ?? []);
+      if (minersResp) setMiners(minersResp ?? []);
       setLastUpdated(Math.floor(Date.now() / 1000));
     } catch (e) {
       if (!silent) setErr(String(e));
@@ -1391,7 +1391,7 @@ function PoolStatsSection() {
       const bMine = myAddresses.has(b.address);
       if (aMine !== bMine) return aMine ? -1 : 1;
       if (a.hashrate_hps !== b.hashrate_hps) return b.hashrate_hps - a.hashrate_hps;
-      return b.accepted - a.accepted;
+      return b.accepted_shares - a.accepted_shares;
     });
   }, [miners, myAddresses]);
 
@@ -1457,13 +1457,6 @@ function PoolStatsSection() {
         </div>
       ) : (() => {
         const has443 = poolData.ports.firewall_bypass.sessions > 0 || poolData.ports.firewall_bypass.accepted > 0;
-        const asicMerged: PoolApiPortStats = {
-          port: poolData.ports.asic.port,
-          sessions: poolData.ports.asic.sessions + poolData.ports.firewall_bypass.sessions,
-          accepted: poolData.ports.asic.accepted + poolData.ports.firewall_bypass.accepted,
-          rejected: poolData.ports.asic.rejected + poolData.ports.firewall_bypass.rejected,
-          hashrate_hps: poolData.ports.asic.hashrate_hps + poolData.ports.firewall_bypass.hashrate_hps,
-        };
 
         return (
         <>
@@ -1510,8 +1503,10 @@ function PoolStatsSection() {
           {/* Per-profile detail panel */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {([
-              { key: 'asic',    label: t('explorer.pool_stats.asic_miners'),    port: has443 ? `${poolData.ports.asic.port}+443` : `${poolData.ports.asic.port}`, data: asicMerged },
-              { key: 'cpu_gpu', label: t('explorer.pool_stats.cpu_gpu_miners'), port: `${poolData.ports.cpu_gpu.port}`,                                           data: poolData.ports.cpu_gpu },
+              { key: 'asic',            label: t('explorer.pool_stats.asic_miners'),    port: `${poolData.ports.asic.port}`,            data: poolData.ports.asic },
+              { key: 'cpu_gpu',         label: t('explorer.pool_stats.cpu_gpu_miners'), port: `${poolData.ports.cpu_gpu.port}`,         data: poolData.ports.cpu_gpu },
+              { key: 'solo',            label: 'Solo Miners',                           port: `${poolData.ports.solo.port}`,            data: poolData.ports.solo },
+              { key: 'firewall_bypass', label: 'Firewall Bypass',                       port: `${poolData.ports.firewall_bypass.port}`, data: poolData.ports.firewall_bypass },
             ] as Array<{ key: string; label: string; port: string; data: PoolApiPortStats }>).map(({ key, label, port, data }) => (
               <div
                 key={key}
@@ -1634,7 +1629,7 @@ function PoolStatsSection() {
                         m.reject_rate_pct < 10 ? '#34d399'
                         : m.reject_rate_pct < 30 ? '#fbbf24'
                         : '#f87171';
-                      const agoSecs = Math.floor(Date.now() / 1000) - m.last_share_at;
+                      const agoSecs = m.last_share_ago_secs;
                       return (
                         <tr
                           key={`${m.address}-${m.profile}-${idx}`}
@@ -1673,7 +1668,7 @@ function PoolStatsSection() {
                             )}
                           </td>
                           <td className="py-2 px-3 text-right font-mono" style={{ color: '#34d399' }}>
-                            {m.accepted.toLocaleString('en-US')}
+                            {m.accepted_shares.toLocaleString('en-US')}
                           </td>
                           <td className="py-2 px-3 text-right font-mono" style={{ color: rejectColor }}>
                             {m.reject_rate_pct.toFixed(1)}%

@@ -997,19 +997,17 @@ export interface PoolApiResponse {
 export interface PoolApiMiner {
   address: string;
   hashrate_hps: number;
-  accepted: number;
-  rejected: number;
+  accepted_shares: number;
+  rejected_shares: number;
   reject_rate_pct: number;
-  last_share_at: number;
-  current_diff: number;
+  last_share_ago_secs: number;
   port: number;
   profile: 'asic' | 'cpu_gpu' | 'solo' | 'port443';
   active: boolean;
+  reject_reasons?: Record<string, number>;
 }
 
-export interface PoolApiMinersResponse {
-  miners: PoolApiMiner[];
-}
+export type PoolApiMinersResponse = PoolApiMiner[];
 
 export interface PoolApiNetworkResponse {
   height: number;
@@ -1041,14 +1039,15 @@ export interface PoolApiHashratePoint {
 export interface PoolApiMinerDetail {
   address: string;
   hashrate_hps: number;
-  accepted: number;
-  rejected: number;
+  accepted_shares: number;
+  rejected_shares: number;
   reject_rate_pct: number;
-  last_share_at: number;
+  last_share_ago_secs: number;
   active: boolean;
   blocks_found_total: number;
-  blocks_found_session: number;
+  blocks_found_in_db: number;
   estimated_earnings_irm: string;
+  reject_reasons?: Record<string, number>;
   recent_blocks: Array<{ height: number; timestamp: number; reward_irm: string; }>;
 }
 
