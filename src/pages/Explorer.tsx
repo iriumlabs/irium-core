@@ -1178,7 +1178,7 @@ function NetworkMiningOverview() {
             <PoolStatsTile
               label={t('explorer.mining_overview.network_hashrate')}
               value={networkHashrate != null ? formatHashrate(networkHashrate) : '—'}
-              sub="estimated from block intervals"
+              sub="estimated from block intervals — may be inflated due to timestamp variance"
               accent="#6ec6ff"
             />
             <PoolStatsTile
