@@ -10,6 +10,7 @@ import { getLanguageMeta } from './i18n';
 import { X, Download, Loader2 } from 'lucide-react';
 import { lazy, Suspense } from 'react';
 import ErrorBoundary from './components/ErrorBoundary';
+import PoawxActivationBanner from './components/PoawxActivationBanner';
 import Sidebar    from './components/layout/Sidebar';
 import TopBar     from './components/layout/TopBar';
 import StatusBar  from './components/layout/StatusBar';
@@ -434,6 +435,7 @@ function AppLayout() {
           <UpdateBanner />
         </AnimatePresence>
         <SyncProgressBanner />
+        <PoawxActivationBanner />
 
         <main className="flex-1 overflow-y-auto">
           {/* Pages render instantly on navigation. The previous
