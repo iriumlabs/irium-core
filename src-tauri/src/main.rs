@@ -6171,6 +6171,7 @@ async fn start_miner(
     state: State<'_, AppState>,
     address: String,
     threads: Option<u32>,
+    poawx: Option<bool>,
 ) -> Result<bool, String> {
     let mut miner_lock = state.miner_process.lock().map_err(lock_err)?;
 
@@ -6187,6 +6188,12 @@ async fn start_miner(
     if let Some(t) = threads {
         args.push("--threads".to_string());
         args.push(t.to_string());
+    }
+    // PoAW-X solo proposer mining: run_poawx_solo does auto-registration + VRF
+    // eligibility + role-work and builds/submits as the user's own proposer.
+    // Off by default => args are byte-identical to plain-PoW mining.
+    if poawx == Some(true) {
+        args.push("--poawx".to_string());
     }
 
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
