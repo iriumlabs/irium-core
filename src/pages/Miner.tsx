@@ -647,8 +647,6 @@ function CpuMinerTab() {
   const maxThreads = cpuCores ?? navigator.hardwareConcurrency ?? 8;
   const [threads, setThreads] = useState(() => Math.max(1, Math.floor(maxThreads / 2)));
   const [threadsTouched, setThreadsTouched] = useState(false);
-  // PoAW-X solo proposer mining toggle (default off = plain PoW, unchanged).
-  const [poawx, setPoawx] = useState(false);
   useEffect(() => {
     if (!threadsTouched && cpuCores && !status?.running) {
       setThreads(Math.max(1, Math.floor(cpuCores / 2)));
@@ -695,7 +693,7 @@ function CpuMinerTab() {
     if (!/^[QP]/.test(addr)) { toast.error(t('miner.toasts.miner_address_invalid')); return; }
     setStartLoading(true);
     try {
-      await miner.start(addr, threads, poawx);
+      await miner.start(addr, threads);
       toast.success(t('miner.toasts.miner_started'));
     } catch (e) { toast.error(String(e)); }
     finally { setStartLoading(false); }
@@ -1043,23 +1041,6 @@ function CpuMinerTab() {
               );
             })}
           </div>
-        </div>
-
-        <div className="pt-1">
-          <label className="flex items-center gap-2 cursor-pointer text-sm" style={{ color: '#c9d4ff' }}>
-            <input
-              type="checkbox"
-              checked={poawx}
-              disabled={!!status?.running}
-              onChange={e => setPoawx(e.target.checked)}
-            />
-            {t('miner.fields.poawx_label', { defaultValue: 'PoAW-X solo mining (auto-registration + VRF + individual role rewards)' })}
-          </label>
-          {poawx && (
-            <p className="text-xs mt-1" style={{ color: '#8aa0d0' }}>
-              {t('miner.fields.poawx_hint', { defaultValue: 'Mines as your own proposer via run_poawx_solo and registers automatically. Winning blocks needs competitive hashpower; registration/VRF status appears in the miner output below.' })}
-            </p>
-          )}
         </div>
 
         <div className="flex items-center gap-3 pt-1">

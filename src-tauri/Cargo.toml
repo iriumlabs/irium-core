@@ -37,6 +37,9 @@ getrandom = "0.2"
 # what gets embedded in the agreement's secret_hash field.
 sha2 = "0.10"
 hex = "0.4"
+# base58check decoding of the wallet WIF to recover the 32-byte private key for
+# the PoAW-X miner secret (IRIUM_POAWX_MINER_SECRET_HEX).
+bs58 = { version = "0.5", features = ["check"] }
 # FIX 1 (UPnP multi-adapter): enumerate local IPv4 adapters so UPnP
 # AddPortMapping picks the LAN-facing IP rather than a Hyper-V / WSL
 # virtual switch or VPN tunnel adapter (the most common cause of

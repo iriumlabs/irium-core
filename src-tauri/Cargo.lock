@@ -170,6 +170,7 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf88ba1141d185c399bee5288d850d63b8369520c1eafc32a0430b5b6c287bf4"
 dependencies = [
+ "sha2",
  "tinyvec",
 ]
 
@@ -1700,6 +1701,7 @@ name = "irium-core"
 version = "1.0.136"
 dependencies = [
  "anyhow",
+ "bs58",
  "dirs",
  "futures-util",
  "getrandom 0.2.17",
