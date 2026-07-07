@@ -3342,6 +3342,40 @@ async fn ensure_wallet_unlocked(state: State<'_, AppState>) -> Result<(), String
     Ok(())
 }
 
+/// Derive the 32-byte PoAW-X miner secret (64 hex chars) for `address` from the
+/// wallet. Reads the address's WIF via iriumd's `GET /wallet/export_wif` (the
+/// same path the wallet backup/export features use; works on encrypted wallets
+/// after unlock), then base58check-decodes it to the raw private key. The secret
+/// IS the mining address's own key — the PoAW-X reward/identity key that
+/// `run_poawx_solo` requires. Nothing is written to disk; the hex is only handed
+/// to the local miner sidecar's environment by the callers. Requires the wallet
+/// to be unlocked (surfaces the machine-readable WALLET_LOCKED tag if not).
+async fn derive_poawx_secret_hex(
+    state: State<'_, AppState>,
+    address: &str,
+) -> Result<String, String> {
+    ensure_wallet_unlocked(state.clone()).await?;
+    let mut query = HashMap::new();
+    query.insert("address".to_string(), address.to_string());
+    let resp: WalletExportWifRpcResponse =
+        iriumd_rpc(state, "GET", "/wallet/export_wif", Some(query), None)
+            .await
+            .map_err(|e| format!("PoAW-X secret: could not read wallet key for {}: {}", address, e))?;
+    // WIF is base58check(version(1) || key(32) || [compression flag(1)]); with_check
+    // validates and strips the 4-byte checksum. Extract the 32-byte private key.
+    let raw = bs58::decode(resp.wif.trim())
+        .with_check(None)
+        .into_vec()
+        .map_err(|e| format!("PoAW-X secret: invalid wallet WIF: {}", e))?;
+    if raw.len() < 33 {
+        return Err(format!(
+            "PoAW-X secret: decoded WIF too short ({} bytes)",
+            raw.len()
+        ));
+    }
+    Ok(hex::encode(&raw[1..33]))
+}
+
 #[tauri::command]
 async fn wallet_send(
     state: State<'_, AppState>,
@@ -6171,8 +6205,16 @@ async fn start_miner(
     state: State<'_, AppState>,
     address: String,
     threads: Option<u32>,
-    poawx: Option<bool>,
 ) -> Result<bool, String> {
+    // PoAW-X is the only solo mining mode: post-activation, plain-PoW blocks are
+    // rejected by consensus, so the app always mines as the user's own PoAW-X
+    // proposer. Derive the wallet secret BEFORE taking the process lock — the
+    // derivation is async and the rest of start_miner is synchronous, so this
+    // keeps the only .await out of the lock's scope. Requires the wallet unlocked
+    // (surfaces the machine-readable WALLET_LOCKED tag otherwise, which the UI
+    // turns into an unlock prompt).
+    let poawx_secret = derive_poawx_secret_hex(state.clone(), &address).await?;
+
     let mut miner_lock = state.miner_process.lock().map_err(lock_err)?;
 
     if miner_lock.is_some() {
@@ -6191,10 +6233,8 @@ async fn start_miner(
     }
     // PoAW-X solo proposer mining: run_poawx_solo does auto-registration + VRF
     // eligibility + role-work and builds/submits as the user's own proposer.
-    // Off by default => args are byte-identical to plain-PoW mining.
-    if poawx == Some(true) {
-        args.push("--poawx".to_string());
-    }
+    // Always on — this is the only solo mode.
+    args.push("--poawx".to_string());
 
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
     let home_dir = dirs::home_dir().unwrap_or_default();
@@ -6214,6 +6254,8 @@ async fn start_miner(
         "IRIUM_RPC_TOKEN".to_string(),
         snapshot_gui_rpc_bearer(&state.rpc_token_override).unwrap_or_default(),
     );
+    // PoAW-X: the wallet-derived proposer/reward secret (see start_miner top).
+    miner_env.insert("IRIUM_POAWX_MINER_SECRET_HEX".to_string(), poawx_secret);
 
     let cmd = Command::new_sidecar("irium-miner")
         .map_err(|e| format!("irium-miner not found: {}", e))?
@@ -6650,6 +6692,11 @@ async fn start_gpu_miner(
     device_indices: Vec<u32>,
     intensity: u32,
 ) -> Result<bool, String> {
+    // PoAW-X is the only solo mining mode (see start_miner). Always derive the
+    // wallet secret before taking the process lock; irium-miner-gpu --poawx
+    // (run_poawx_solo_gpu) requires IRIUM_POAWX_MINER_SECRET_HEX just like CPU.
+    let poawx_secret = derive_poawx_secret_hex(state.clone(), &address).await?;
+
     let mut miner_lock = state.miner_process.lock().map_err(lock_err)?;
     if miner_lock.is_some() {
         return Err("Miner already running — stop it first".to_string());
@@ -6684,6 +6731,10 @@ async fn start_gpu_miner(
     let batch = ((intensity.clamp(10, 100) as f64 / 100.0) * DEFAULT_BATCH_SIZE as f64).round() as u32;
     args.push("--batch".into());
     args.push(batch.to_string());
+    // PoAW-X solo proposer mining on GPU: run_poawx_solo_gpu does
+    // auto-registration + VRF eligibility + all-gates block building, grinding
+    // the header nonce on the GPU. Always on — this is the only solo mode.
+    args.push("--poawx".into());
 
     // FIX 2 (IRIUM_RPC_TOKEN): same Bearer-auth requirement as the CPU
     // miner — irium-miner-gpu's fetch_template path 401s without this
@@ -6694,6 +6745,8 @@ async fn start_gpu_miner(
         "IRIUM_RPC_TOKEN".to_string(),
         snapshot_gui_rpc_bearer(&state.rpc_token_override).unwrap_or_default(),
     );
+    // PoAW-X: the wallet-derived proposer/reward secret (see start_gpu_miner top).
+    gpu_env.insert("IRIUM_POAWX_MINER_SECRET_HEX".to_string(), poawx_secret);
 
     let (mut rx, child) = Command::new_sidecar("irium-miner-gpu")
         .map_err(|e| format!("irium-miner-gpu not bundled: {}", e))?

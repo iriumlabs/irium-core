@@ -396,8 +396,8 @@ export const settlement = {
 
 // ── CPU MINER ─────────────────────────────────────────────────
 export const miner = {
-  start: (address: string, threads?: number, poawx?: boolean) =>
-    safeInvoke<boolean>('start_miner', { address, threads, poawx }),
+  start: (address: string, threads?: number) =>
+    safeInvoke<boolean>('start_miner', { address, threads }),
 
   stop: () =>
     safeInvoke<boolean>('stop_miner'),
