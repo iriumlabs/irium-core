@@ -3376,6 +3376,61 @@ async fn derive_poawx_secret_hex(
     Ok(hex::encode(&raw[1..33]))
 }
 
+/// Step C: "Enable direct pool rewards" -- the one-time delegation signup. Derives the
+/// payout secret from the unlocked wallet (never written to disk), then runs the bundled
+/// irium-wallet delegate-pool against the configured pool: it fetches the pool identity
+/// (pool + custodial proposer keys), signs a Delegation with the payout key, and submits it.
+/// Returns a plain-language result including the deleg_nonce the miner keeps to revoke later.
+#[tauri::command]
+async fn enable_direct_pool_rewards(
+    state: State<'_, AppState>,
+    address: String,
+    pool_url: String,
+    worker: String,
+    expiry_height: u64,
+) -> Result<String, String> {
+    if pool_url.trim().is_empty() {
+        return Err("A pool delegation URL is required.".to_string());
+    }
+    let secret = derive_poawx_secret_hex(state.clone(), &address).await?;
+    let pool_url = pool_url.trim().to_string();
+    let mut env_vars: HashMap<String, String> = HashMap::new();
+    env_vars.insert("IRIUM_POAWX_DELEGATION_SECRET_HEX".to_string(), secret);
+    if let Ok(ca) = std::env::var("IRIUM_RPC_CA") {
+        env_vars.insert("IRIUM_RPC_CA".to_string(), ca);
+    }
+    let args: Vec<String> = vec![
+        "delegate-pool".to_string(),
+        address.clone(),
+        "--pool".to_string(),
+        pool_url,
+        "--worker".to_string(),
+        worker,
+        "--expiry-height".to_string(),
+        expiry_height.to_string(),
+    ];
+    let output = Command::new_sidecar("irium-wallet")
+        .map_err(|e| format!("irium-wallet sidecar not found: {}", e))?
+        .envs(env_vars)
+        .args(&args)
+        .output()
+        .map_err(|e| format!("Failed to run delegate-pool: {}", e))?;
+    if output.status.success() {
+        let nonce_line = output
+            .stderr
+            .lines()
+            .find(|l| l.contains("deleg_nonce"))
+            .map(|l| format!("\n{}", l.trim()))
+            .unwrap_or_default();
+        Ok(format!("{}{}", output.stdout.trim(), nonce_line))
+    } else {
+        Err(format!(
+            "Direct pool rewards signup failed: {}",
+            output.stderr.trim()
+        ))
+    }
+}
+
 #[tauri::command]
 async fn wallet_send(
     state: State<'_, AppState>,
@@ -9628,6 +9683,8 @@ fn main() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            // PoAW-X delegation (Step C/D/E)
+            enable_direct_pool_rewards,
             // Node
             start_node,
             stop_node,
