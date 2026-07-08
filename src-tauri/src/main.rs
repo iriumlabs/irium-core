@@ -3431,6 +3431,77 @@ async fn enable_direct_pool_rewards(
     }
 }
 
+/// Step D: query the pool for this wallet's delegation status (delegated? which workers,
+/// expiry, deleg_nonce). Decodes the base58 address to its pkh and GETs the pool's
+/// /poawx/delegation-status. Read-only; no key material involved.
+#[tauri::command]
+async fn get_delegation_status(
+    address: String,
+    pool_url: String,
+) -> Result<serde_json::Value, String> {
+    if pool_url.trim().is_empty() {
+        return Err("A pool delegation URL is required.".to_string());
+    }
+    let raw = bs58::decode(address.trim())
+        .with_check(None)
+        .into_vec()
+        .map_err(|e| format!("invalid address: {}", e))?;
+    if raw.len() < 21 {
+        return Err("invalid address (decoded too short)".to_string());
+    }
+    let pkh_hex = hex::encode(&raw[1..21]);
+    let base = pool_url.trim().trim_end_matches('/');
+    let url = format!("{}/poawx/delegation-status?miner_pkh={}", base, pkh_hex);
+    let resp = reqwest::Client::new()
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("query pool: {}", e))?;
+    if !resp.status().is_success() {
+        return Err(format!("pool delegation-status HTTP {}", resp.status()));
+    }
+    resp.json::<serde_json::Value>()
+        .await
+        .map_err(|e| format!("decode delegation-status: {}", e))
+}
+
+/// Step E: generate a signed delegation revocation ("generate and hand off"). Derives the
+/// payout secret from the unlocked wallet, runs the bundled irium-wallet revoke-delegation
+/// with the secret in env, and returns the signed 130-byte revocation hex for the user to
+/// hand to the pool operator (revocation is on-chain only right now, not instant).
+#[tauri::command]
+async fn generate_delegation_revocation(
+    state: State<'_, AppState>,
+    address: String,
+    deleg_nonce: String,
+    network_id: u8,
+) -> Result<String, String> {
+    let secret = derive_poawx_secret_hex(state.clone(), &address).await?;
+    let mut env_vars: HashMap<String, String> = HashMap::new();
+    env_vars.insert("IRIUM_POAWX_DELEGATION_SECRET_HEX".to_string(), secret);
+    let args: Vec<String> = vec![
+        "revoke-delegation".to_string(),
+        "--addr".to_string(),
+        address,
+        "--deleg-nonce".to_string(),
+        deleg_nonce,
+        "--network-id".to_string(),
+        network_id.to_string(),
+    ];
+    let output = Command::new_sidecar("irium-wallet")
+        .map_err(|e| format!("irium-wallet sidecar not found: {}", e))?
+        .envs(env_vars)
+        .args(&args)
+        .output()
+        .map_err(|e| format!("Failed to run revoke-delegation: {}", e))?;
+    if output.status.success() {
+        // stdout is the 130-byte revocation hex; stderr carries the hand-off guidance.
+        Ok(output.stdout.trim().to_string())
+    } else {
+        Err(format!("Revocation failed: {}", output.stderr.trim()))
+    }
+}
+
 #[tauri::command]
 async fn wallet_send(
     state: State<'_, AppState>,
@@ -9685,6 +9756,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             // PoAW-X delegation (Step C/D/E)
             enable_direct_pool_rewards,
+            get_delegation_status,
+            generate_delegation_revocation,
             // Node
             start_node,
             stop_node,

@@ -15,6 +15,7 @@ import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { platform as osPlatform } from '@tauri-apps/api/os';
 import { miner, gpuMiner, stratum, wallet, soloStratum } from '../lib/tauri';
+import PoawxDelegationStub from '../components/PoawxDelegationStub';
 import { useStore } from '../lib/store';
 import type { LucideIcon } from 'lucide-react';
 import type { FoundBlock, GpuPlatform, AddressInfo, StratumEvent } from '../lib/types';
@@ -2291,6 +2292,7 @@ export default function Miner() {
       className="h-full overflow-y-auto scroll-visible"
     >
       <div className="w-full space-y-5 px-8 py-6">
+      <PoawxDelegationStub />
       <NodeOfflineBanner />
       <QuarantineRecoveryBanner />
       {/* FIX 4 (Mining UI): celebratory block-found banner. Auto-dismisses

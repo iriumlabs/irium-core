@@ -400,6 +400,10 @@ export const settlement = {
 export const poolRewards = {
   enableDirect: (address: string, poolUrl: string, worker: string, expiryHeight: number) =>
     safeInvoke<string>('enable_direct_pool_rewards', { address, poolUrl, worker, expiryHeight }),
+  status: (address: string, poolUrl: string) =>
+    safeInvoke<any>('get_delegation_status', { address, poolUrl }),
+  generateRevocation: (address: string, delegNonce: string, networkId: number) =>
+    safeInvoke<string>('generate_delegation_revocation', { address, delegNonce, networkId }),
 };
 
 export const miner = {
