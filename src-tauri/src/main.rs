@@ -3465,6 +3465,29 @@ async fn get_delegation_status(
         .map_err(|e| format!("decode delegation-status: {}", e))
 }
 
+/// Step F: query the node for this wallet's proposer registration/eligibility status.
+/// Decodes the base58 address to its pkh (a solo miner's proposer key is its address key)
+/// and GETs the node's /poawx/proposer-status. Read-only.
+#[tauri::command]
+async fn get_proposer_status(
+    state: State<'_, AppState>,
+    address: String,
+) -> Result<serde_json::Value, String> {
+    let raw = bs58::decode(address.trim())
+        .with_check(None)
+        .into_vec()
+        .map_err(|e| format!("invalid address: {}", e))?;
+    if raw.len() < 21 {
+        return Err("invalid address (decoded too short)".to_string());
+    }
+    let pkh_hex = hex::encode(&raw[1..21]);
+    let mut query = HashMap::new();
+    query.insert("pkh".to_string(), pkh_hex);
+    iriumd_rpc(state, "GET", "/poawx/proposer-status", Some(query), None)
+        .await
+        .map_err(|e| format!("proposer-status: {}", e))
+}
+
 /// Step E: generate a signed delegation revocation ("generate and hand off"). Derives the
 /// payout secret from the unlocked wallet, runs the bundled irium-wallet revoke-delegation
 /// with the secret in env, and returns the signed 130-byte revocation hex for the user to
@@ -9758,6 +9781,7 @@ fn main() {
             enable_direct_pool_rewards,
             get_delegation_status,
             generate_delegation_revocation,
+            get_proposer_status,
             // Node
             start_node,
             stop_node,

@@ -56,6 +56,9 @@ export default function PoawxDelegationStub() {
       </button>{' '}
       <button onClick={() => run(() => poolRewards.status(address, poolUrl))}>
         Check delegation status (D)
+      </button>{' '}
+      <button onClick={() => run(() => poolRewards.proposerStatus(address))}>
+        Check proposer status (F)
       </button>
       <hr />
       <div>

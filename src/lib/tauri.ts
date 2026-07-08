@@ -404,6 +404,8 @@ export const poolRewards = {
     safeInvoke<any>('get_delegation_status', { address, poolUrl }),
   generateRevocation: (address: string, delegNonce: string, networkId: number) =>
     safeInvoke<string>('generate_delegation_revocation', { address, delegNonce, networkId }),
+  proposerStatus: (address: string) =>
+    safeInvoke<any>('get_proposer_status', { address }),
 };
 
 export const miner = {
