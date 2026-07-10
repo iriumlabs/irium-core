@@ -13,6 +13,7 @@ import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
 import { rpc, wallet, miner, gpuMiner, stratum } from '../lib/tauri';
 import { timeAgo, formatIRM, formatLocalDateTime, SATS_PER_IRM } from '../lib/types';
+import { decodeCoinbaseRewards } from '../lib/coinbase';
 import type {
   ExplorerBlock, NetworkHashrateInfo, RichListEntry,
   PoolApiResponse, PoolApiPortStats, PoolApiMiner, PoolApiMinersResponse,
@@ -442,6 +443,35 @@ function BlockDetailModal({ block, onClose }: { block: ExplorerBlock; onClose: (
             </div>
           ))}
         </div>
+
+        {block.coinbase_rewards && block.coinbase_rewards.length > 0 && (
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(110,198,255,0.10)' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(110,198,255,0.55)', fontFamily: '"Space Grotesk", sans-serif', marginBottom: 12 }}>
+              Reward Distribution
+            </div>
+            <div className="space-y-2.5">
+              {block.coinbase_rewards.map((r) => {
+                const noPayout = r.address == null;
+                return (
+                  <div key={r.vout} className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-28 text-right" style={{ fontSize: 10, color: 'rgba(255,255,255,0.28)', textTransform: 'uppercase', letterSpacing: '0.08em', paddingTop: 2, fontFamily: '"Space Grotesk", sans-serif' }}>
+                      {r.role}{r.pct ? ` · ${r.pct}` : ''}
+                    </span>
+                    <div className="group flex items-center min-w-0 flex-1">
+                      <span className="break-all" style={{ fontSize: 12, color: noPayout ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.80)', fontFamily: '"JetBrains Mono", monospace', fontStyle: noPayout ? 'italic' : 'normal' }}>
+                        {r.address ?? (r.scriptType === 'op_return' ? 'irx1 commitment (no payout)' : 'data (no payout)')}
+                      </span>
+                      {r.address && <CopyBtn text={r.address} />}
+                    </div>
+                    <span className="flex-shrink-0" style={{ fontSize: 12, color: r.valueSats === 0 ? 'rgba(255,255,255,0.35)' : '#34d399', fontFamily: '"JetBrains Mono", monospace', paddingTop: 1 }}>
+                      {formatIRM(r.valueSats)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );
@@ -2271,6 +2301,14 @@ export default function Explorer() {
         miner_address: str(raw.miner_address) || str(raw.miner) || passedBlock?.miner_address,
         reward_sats:  passedBlock?.reward_sats,
       };
+      // Decode the raw coinbase (tx_hex[0]) into the PoAW-X reward-distribution
+      // breakdown so the modal can show role → address → amount honestly. This
+      // is display-only parsing of bytes iriumd already produced; on any parse
+      // issue decodeCoinbaseRewards returns [] and the section is simply omitted.
+      const cbHex = Array.isArray(raw.tx_hex) && typeof raw.tx_hex[0] === 'string'
+        ? (raw.tx_hex[0] as string)
+        : '';
+      if (cbHex) block.coinbase_rewards = decodeCoinbaseRewards(cbHex);
       setSelectedBlock(block);
       setPendingBlock(null);
     } catch (e) {

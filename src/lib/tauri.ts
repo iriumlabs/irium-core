@@ -395,6 +395,19 @@ export const settlement = {
 };
 
 // ── CPU MINER ─────────────────────────────────────────────────
+// PoAW-X one-time pool delegation (Step C): sign up to be paid PRIMARY rewards
+// directly on-chain to your own address when mining via the pool.
+export const poolRewards = {
+  enableDirect: (address: string, poolUrl: string, worker: string, expiryHeight: number) =>
+    safeInvoke<string>('enable_direct_pool_rewards', { address, poolUrl, worker, expiryHeight }),
+  status: (address: string, poolUrl: string) =>
+    safeInvoke<any>('get_delegation_status', { address, poolUrl }),
+  generateRevocation: (address: string, delegNonce: string, networkId: number) =>
+    safeInvoke<string>('generate_delegation_revocation', { address, delegNonce, networkId }),
+  proposerStatus: (address: string) =>
+    safeInvoke<any>('get_proposer_status', { address }),
+};
+
 export const miner = {
   start: (address: string, threads?: number) =>
     safeInvoke<boolean>('start_miner', { address, threads }),

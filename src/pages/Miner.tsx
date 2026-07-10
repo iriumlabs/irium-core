@@ -15,6 +15,7 @@ import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { platform as osPlatform } from '@tauri-apps/api/os';
 import { miner, gpuMiner, stratum, wallet, soloStratum } from '../lib/tauri';
+import PoawxDelegationStub from '../components/PoawxDelegationStub';
 import { useStore } from '../lib/store';
 import type { LucideIcon } from 'lucide-react';
 import type { FoundBlock, GpuPlatform, AddressInfo, StratumEvent } from '../lib/types';
@@ -758,7 +759,11 @@ function CpuMinerTab() {
             const notFullySynced = nodeStatusForSync?.running === true
               && nodeStatusForSync?.fully_synced === false;
             const nodeSyncing = heightBehind || gapPending || notFullySynced;
-            const minerWarmup = !!status?.running && status.hashrate_khs === 0 && !nodeSyncing;
+            // Option A: solo --poawx mining emits no periodic hashrate line,
+            // so a hashrate===0 warm-up gate would stick on "waiting for first
+            // share rate" indefinitely. A running sidecar IS "Mining Active";
+            // a genuine chain lag is still surfaced separately via nodeSyncing.
+            const minerWarmup = false;
             // Legacy alias kept for the header badge below — preserves
             // the existing "Mining Active — Syncing blocks…" copy when
             // EITHER the node is syncing OR the miner is warming up.
@@ -775,7 +780,7 @@ function CpuMinerTab() {
                           ? (isSyncing ? t('miner.status.mining_active_syncing') : t('miner.status.mining_active'))
                           : t('miner.status.cpu_idle')}
                     </span>
-                    {status?.running && !isSyncing && (
+                    {status?.running && !isSyncing && status.hashrate_khs > 0 && (
                       <span className="badge badge-irium">{status.hashrate_khs.toFixed(1)} KH/s</span>
                     )}
                     {isSyncing && (
@@ -1244,7 +1249,7 @@ function GpuMinerTab() {
               <span className="font-display font-semibold text-sm" style={{ color: status?.running ? '#60a5fa' : 'rgba(238,240,255,0.35)' }}>
                 {loading ? t('miner.status.loading') : status?.running ? t('miner.status.gpu_active') : t('miner.status.gpu_idle')}
               </span>
-              {status?.running && (
+              {status?.running && status.hashrate_khs > 0 && (
                 <span className="badge badge-info">{status.hashrate_khs.toFixed(1)} KH/s</span>
               )}
             </div>
@@ -2291,6 +2296,7 @@ export default function Miner() {
       className="h-full overflow-y-auto scroll-visible"
     >
       <div className="w-full space-y-5 px-8 py-6">
+      <PoawxDelegationStub />
       <NodeOfflineBanner />
       <QuarantineRecoveryBanner />
       {/* FIX 4 (Mining UI): celebratory block-found banner. Auto-dismisses

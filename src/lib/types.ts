@@ -1,6 +1,8 @@
 // Irium Core GUI - TypeScript Types
 // Mirrors src-tauri/src/types.rs
 
+import type { RewardRow } from './coinbase';
+
 // ============================================================
 // NODE
 // ============================================================
@@ -883,6 +885,11 @@ export interface ExplorerBlock {
   // modal today — kept for parity with the source object so we don't drop
   // it on the deep-link hop.
   reward_sats?: number;
+  // Decoded coinbase reward-distribution rows (PoAW-X role → address →
+  // amount). Populated client-side in fetchBlockDeepLink from the raw coinbase
+  // tx_hex[0]; the BlockDetailModal renders these when present. Optional
+  // because list-view rows and estimate-only deep links don't carry it.
+  coinbase_rewards?: RewardRow[];
 }
 
 export interface NetworkHashrateInfo {

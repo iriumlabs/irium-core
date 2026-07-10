@@ -3376,6 +3376,155 @@ async fn derive_poawx_secret_hex(
     Ok(hex::encode(&raw[1..33]))
 }
 
+/// Step C: "Enable direct pool rewards" -- the one-time delegation signup. Derives the
+/// payout secret from the unlocked wallet (never written to disk), then runs the bundled
+/// irium-wallet delegate-pool against the configured pool: it fetches the pool identity
+/// (pool + custodial proposer keys), signs a Delegation with the payout key, and submits it.
+/// Returns a plain-language result including the deleg_nonce the miner keeps to revoke later.
+#[tauri::command]
+async fn enable_direct_pool_rewards(
+    state: State<'_, AppState>,
+    address: String,
+    pool_url: String,
+    worker: String,
+    expiry_height: u64,
+) -> Result<String, String> {
+    if pool_url.trim().is_empty() {
+        return Err("A pool delegation URL is required.".to_string());
+    }
+    let secret = derive_poawx_secret_hex(state.clone(), &address).await?;
+    let pool_url = pool_url.trim().to_string();
+    let mut env_vars: HashMap<String, String> = HashMap::new();
+    env_vars.insert("IRIUM_POAWX_DELEGATION_SECRET_HEX".to_string(), secret);
+    if let Ok(ca) = std::env::var("IRIUM_RPC_CA") {
+        env_vars.insert("IRIUM_RPC_CA".to_string(), ca);
+    }
+    let args: Vec<String> = vec![
+        "delegate-pool".to_string(),
+        address.clone(),
+        "--pool".to_string(),
+        pool_url,
+        "--worker".to_string(),
+        worker,
+        "--expiry-height".to_string(),
+        expiry_height.to_string(),
+    ];
+    let output = Command::new_sidecar("irium-wallet")
+        .map_err(|e| format!("irium-wallet sidecar not found: {}", e))?
+        .envs(env_vars)
+        .args(&args)
+        .output()
+        .map_err(|e| format!("Failed to run delegate-pool: {}", e))?;
+    if output.status.success() {
+        let nonce_line = output
+            .stderr
+            .lines()
+            .find(|l| l.contains("deleg_nonce"))
+            .map(|l| format!("\n{}", l.trim()))
+            .unwrap_or_default();
+        Ok(format!("{}{}", output.stdout.trim(), nonce_line))
+    } else {
+        Err(format!(
+            "Direct pool rewards signup failed: {}",
+            output.stderr.trim()
+        ))
+    }
+}
+
+/// Step D: query the pool for this wallet's delegation status (delegated? which workers,
+/// expiry, deleg_nonce). Decodes the base58 address to its pkh and GETs the pool's
+/// /poawx/delegation-status. Read-only; no key material involved.
+#[tauri::command]
+async fn get_delegation_status(
+    address: String,
+    pool_url: String,
+) -> Result<serde_json::Value, String> {
+    if pool_url.trim().is_empty() {
+        return Err("A pool delegation URL is required.".to_string());
+    }
+    let raw = bs58::decode(address.trim())
+        .with_check(None)
+        .into_vec()
+        .map_err(|e| format!("invalid address: {}", e))?;
+    if raw.len() < 21 {
+        return Err("invalid address (decoded too short)".to_string());
+    }
+    let pkh_hex = hex::encode(&raw[1..21]);
+    let base = pool_url.trim().trim_end_matches('/');
+    let url = format!("{}/poawx/delegation-status?miner_pkh={}", base, pkh_hex);
+    let resp = reqwest::Client::new()
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("query pool: {}", e))?;
+    if !resp.status().is_success() {
+        return Err(format!("pool delegation-status HTTP {}", resp.status()));
+    }
+    resp.json::<serde_json::Value>()
+        .await
+        .map_err(|e| format!("decode delegation-status: {}", e))
+}
+
+/// Step F: query the node for this wallet's proposer registration/eligibility status.
+/// Decodes the base58 address to its pkh (a solo miner's proposer key is its address key)
+/// and GETs the node's /poawx/proposer-status. Read-only.
+#[tauri::command]
+async fn get_proposer_status(
+    state: State<'_, AppState>,
+    address: String,
+) -> Result<serde_json::Value, String> {
+    let raw = bs58::decode(address.trim())
+        .with_check(None)
+        .into_vec()
+        .map_err(|e| format!("invalid address: {}", e))?;
+    if raw.len() < 21 {
+        return Err("invalid address (decoded too short)".to_string());
+    }
+    let pkh_hex = hex::encode(&raw[1..21]);
+    let mut query = HashMap::new();
+    query.insert("pkh".to_string(), pkh_hex);
+    iriumd_rpc(state, "GET", "/poawx/proposer-status", Some(query), None)
+        .await
+        .map_err(|e| format!("proposer-status: {}", e))
+}
+
+/// Step E: generate a signed delegation revocation ("generate and hand off"). Derives the
+/// payout secret from the unlocked wallet, runs the bundled irium-wallet revoke-delegation
+/// with the secret in env, and returns the signed 130-byte revocation hex for the user to
+/// hand to the pool operator (revocation is on-chain only right now, not instant).
+#[tauri::command]
+async fn generate_delegation_revocation(
+    state: State<'_, AppState>,
+    address: String,
+    deleg_nonce: String,
+    network_id: u8,
+) -> Result<String, String> {
+    let secret = derive_poawx_secret_hex(state.clone(), &address).await?;
+    let mut env_vars: HashMap<String, String> = HashMap::new();
+    env_vars.insert("IRIUM_POAWX_DELEGATION_SECRET_HEX".to_string(), secret);
+    let args: Vec<String> = vec![
+        "revoke-delegation".to_string(),
+        "--addr".to_string(),
+        address,
+        "--deleg-nonce".to_string(),
+        deleg_nonce,
+        "--network-id".to_string(),
+        network_id.to_string(),
+    ];
+    let output = Command::new_sidecar("irium-wallet")
+        .map_err(|e| format!("irium-wallet sidecar not found: {}", e))?
+        .envs(env_vars)
+        .args(&args)
+        .output()
+        .map_err(|e| format!("Failed to run revoke-delegation: {}", e))?;
+    if output.status.success() {
+        // stdout is the 130-byte revocation hex; stderr carries the hand-off guidance.
+        Ok(output.stdout.trim().to_string())
+    } else {
+        Err(format!("Revocation failed: {}", output.stderr.trim()))
+    }
+}
+
 #[tauri::command]
 async fn wallet_send(
     state: State<'_, AppState>,
@@ -9628,6 +9777,11 @@ fn main() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            // PoAW-X delegation (Step C/D/E)
+            enable_direct_pool_rewards,
+            get_delegation_status,
+            generate_delegation_revocation,
+            get_proposer_status,
             // Node
             start_node,
             stop_node,
