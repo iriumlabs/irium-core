@@ -1046,6 +1046,7 @@ function CpuMinerTab() {
               );
             })}
           </div>
+          <p className="text-xs mt-2" style={{ color: 'var(--t3)' }}>{t('miner.fields.poawx_perf_note')}</p>
         </div>
 
         <div className="flex items-center gap-3 pt-1">
@@ -1469,6 +1470,7 @@ function GpuMinerTab() {
             style={{ background: `linear-gradient(to right, #3B82F6 0%, #06B6D4 ${(intensity / maxIntensity) * 100}%, rgba(255,255,255,0.08) ${(intensity / maxIntensity) * 100}%, rgba(255,255,255,0.08) 100%)` }}
           />
           <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>{t('miner.fields.intensity_hint')}</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>{t('miner.fields.poawx_perf_note')}</p>
         </div>
 
         {/* Start / Stop */}

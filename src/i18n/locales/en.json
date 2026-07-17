@@ -2063,6 +2063,7 @@
       "devices_label": "Devices (multi-GPU)",
       "threads_label_full": "Threads — {{current}} of {{max}} cores{{suffix}}",
       "threads_running_suffix": "(running)",
+      "poawx_perf_note": "On mainnet, block production uses PoAW-X consensus (authorization/receipt-based), not a hashrate race — so this setting does not affect your chance of finding blocks.",
       "opencl_platform": "OpenCL Platform",
       "device": "Device",
       "gpu_address_placeholder": "P…",
