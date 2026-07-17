@@ -1698,7 +1698,7 @@ checksum = "d98f6fed1fde3f8c21bc40a1abb88dd75e67924f9cffc3ef95607bad8017f8e2"
 
 [[package]]
 name = "irium-core"
-version = "1.0.138"
+version = "1.0.140"
 dependencies = [
  "anyhow",
  "bs58",
