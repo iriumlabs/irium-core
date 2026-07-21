@@ -363,6 +363,16 @@ function AppLayout() {
         // but tolerate any error here — the next sync still picks up
         // whatever is in feeds.json.
       }
+      // Public marketplace feed on the new domain (api.irium.org). Additive
+      // and idempotent — feeds.add dedups by URL. App-layer belt-and-suspenders
+      // so builds bundling an older irium-wallet (whose BOOTSTRAP_FEEDS still
+      // seeds the old host) still reach the new-domain feed. The old
+      // iriumlabs.org feed keeps working via the additive proxy.
+      try {
+        await feeds.add('https://api.irium.org/offers/feed');
+      } catch {
+        // Same swallow rationale as the loopback add above.
+      }
       try {
         await feeds.sync();
       } catch {
