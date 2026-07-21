@@ -773,7 +773,7 @@ function PoolStatsTile({
 function PoolHashrateChart() {
   const [points, setPoints] = useState<PoolApiHashratePoint[]>([]);
   useEffect(() => {
-    tauriFetch<{ data: PoolApiHashratePoint[] }>('https://api.iriumlabs.org/pool/api/v1/pool/hashrate', {
+    tauriFetch<{ data: PoolApiHashratePoint[] }>('https://api.irium.org/pool/api/v1/pool/hashrate', {
       method: 'GET',
       responseType: ResponseType.JSON,
       timeout: 10,
@@ -829,7 +829,7 @@ function PoolHashrateChart() {
 function RelayStatusPanel() {
   const [relay, setRelay] = useState<PoolApiRelayResponse | null>(null);
   useEffect(() => {
-    tauriFetch<PoolApiRelayResponse>('https://api.iriumlabs.org/pool/api/v1/relay', {
+    tauriFetch<PoolApiRelayResponse>('https://api.irium.org/pool/api/v1/relay', {
       method: 'GET',
       responseType: ResponseType.JSON,
       timeout: 10,
@@ -885,7 +885,7 @@ function MinerDetailModal({ address, onClose }: { address: string; onClose: () =
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    tauriFetch<PoolApiMinerDetail>(`https://api.iriumlabs.org/pool/api/v1/miner/${encodeURIComponent(address)}`, {
+    tauriFetch<PoolApiMinerDetail>(`https://api.irium.org/pool/api/v1/miner/${encodeURIComponent(address)}`, {
       method: 'GET',
       responseType: ResponseType.JSON,
       timeout: 10,
@@ -1029,12 +1029,12 @@ function NetworkMiningOverview() {
         responseType: ResponseType.JSON,
         timeout: 5,
       }),
-      tauriFetch<PoolApiMiner[]>('https://api.iriumlabs.org/pool/api/v1/miners', {
+      tauriFetch<PoolApiMiner[]>('https://api.irium.org/pool/api/v1/miners', {
         method: 'GET',
         responseType: ResponseType.JSON,
         timeout: 10,
       }),
-      tauriFetch<PoolApiResponse>('https://api.iriumlabs.org/pool/api/v1/pool', {
+      tauriFetch<PoolApiResponse>('https://api.irium.org/pool/api/v1/pool', {
         method: 'GET',
         responseType: ResponseType.JSON,
         timeout: 10,
@@ -1356,12 +1356,12 @@ function PoolStatsSection() {
     setErr('');
     try {
       const [poolResp, minersResp] = await Promise.all([
-        tauriFetch<PoolApiResponse>('https://api.iriumlabs.org/pool/api/v1/pool', {
+        tauriFetch<PoolApiResponse>('https://api.irium.org/pool/api/v1/pool', {
           method: 'GET',
           responseType: ResponseType.JSON,
           timeout: 10,
         }),
-        tauriFetch<PoolApiMiner[]>('https://api.iriumlabs.org/pool/api/v1/miners', {
+        tauriFetch<PoolApiMiner[]>('https://api.irium.org/pool/api/v1/miners', {
           method: 'GET',
           responseType: ResponseType.JSON,
           timeout: 10,

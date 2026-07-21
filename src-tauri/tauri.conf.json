@@ -9,7 +9,7 @@
   },
   "package": {
     "productName": "Irium Core",
-    "version": "1.0.140"
+    "version": "1.0.141"
   },
   "tauri": {
     "allowlist": {
@@ -56,6 +56,9 @@
           "http://pool.iriumlabs.org/**",
           "http://pool.iriumlabs.org:3337/**",
           "https://api.iriumlabs.org/pool/**",
+          "http://pool.irium.org/**",
+          "http://pool.irium.org:3337/**",
+          "https://api.irium.org/pool/**",
           "https://mempool.space/**",
           "https://litecoinspace.org/**",
           "https://dogechain.info/**"
@@ -137,7 +140,7 @@
       }
     },
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: asset: https://asset.localhost; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:38300 http://localhost:38300 http://pool.iriumlabs.org:3337 https://api.iriumlabs.org"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: asset: https://asset.localhost; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:38300 http://localhost:38300 http://pool.iriumlabs.org:3337 https://api.iriumlabs.org http://pool.irium.org:3337 https://api.irium.org"
     },
     "systemTray": {
       "iconPath": "icons/icon.png",

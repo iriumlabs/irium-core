@@ -70,11 +70,11 @@ _Coming soon._
 
 # Quick Links
 
-Website https://iriumlabs.org
+Website https://irium.org
 
-Explorer https://www.iriumlabs.org/explorer
+Explorer https://www.irium.org/explorer
 
-Mining Pool stratum+tcp://pool.iriumlabs.org:3333
+Mining Pool stratum+tcp://pool.irium.org:3333
 
 Bitcointalk ANN https://bitcointalk.org/index.php?topic=5572239.0
 

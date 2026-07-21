@@ -1654,8 +1654,8 @@ function GpuMinerTab() {
 // modern SHA-256 ASICs at a higher base difficulty. Both run on
 // irium-vps from pool/irium-stratum/ in the source tree.
 const PRESET_POOLS: Array<{ name: string; url: string; labelKey?: string }> = [
-  { name: 'Irium Official Pool (CPU/GPU)', url: 'stratum+tcp://pool.iriumlabs.org:3335', labelKey: 'miner.pool_presets.irium_official_cpu_gpu' },
-  { name: 'Irium Official Pool (ASIC)',    url: 'stratum+tcp://pool.iriumlabs.org:3333', labelKey: 'miner.pool_presets.irium_official_asic' },
+  { name: 'Irium Official Pool (CPU/GPU)', url: 'stratum+tcp://pool.irium.org:3335', labelKey: 'miner.pool_presets.irium_official_cpu_gpu' },
+  { name: 'Irium Official Pool (ASIC)',    url: 'stratum+tcp://pool.irium.org:3333', labelKey: 'miner.pool_presets.irium_official_asic' },
   { name: 'F2Pool',                         url: 'stratum+tcp://irium.f2pool.com:3333'   },
   { name: 'ViaBTC',                         url: 'stratum+tcp://irium.viabtc.com:3333'   },
   { name: 'AntPool',                        url: 'stratum+tcp://irium.antpool.com:3333'  },
@@ -1690,7 +1690,7 @@ function StratumTab() {
   const setGpuPlatforms = useStore((s) => s.setGpuPlatforms);
 
   const [connectLoading, setConnectLoading] = useState(false);
-  const [poolUrl, setPoolUrl] = useState('stratum+tcp://pool.iriumlabs.org:3335');
+  const [poolUrl, setPoolUrl] = useState('stratum+tcp://pool.irium.org:3335');
   const [worker, setWorker] = useState('');
   const [password, setPassword] = useState('');
   const [selectedPreset, setSelectedPreset] = useState(0);
@@ -2045,7 +2045,7 @@ function StratumTab() {
           <p style={{ color: 'var(--t3)' }}>
             {t('miner.asic_info.external_body_before_url')}
             <span className="font-mono" style={{ color: 'var(--t2)', fontFamily: '"JetBrains Mono", monospace' }}>
-              stratum+tcp://pool.iriumlabs.org:3333
+              stratum+tcp://pool.irium.org:3333
             </span>
             {t('miner.asic_info.external_body_after_url')}
           </p>

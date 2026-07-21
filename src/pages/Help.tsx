@@ -35,7 +35,7 @@ const SPEC_KEYS: { labelKey: string; valueKey: string }[] = [
 
 const LINKS: { labelKey: string; url: string; icon: React.ElementType }[] = [
   { labelKey: 'help.links.github',       url: 'https://github.com/iriumlabs/irium',                                    icon: Github  },
-  { labelKey: 'help.links.website',      url: 'https://iriumlabs.org',                                                  icon: Globe   },
+  { labelKey: 'help.links.website',      url: 'https://irium.org',                                                      icon: Globe   },
   { labelKey: 'help.links.whitepaper',   url: 'https://github.com/iriumlabs/irium/blob/main/docs/WHITEPAPER.md',        icon: FileText },
   { labelKey: 'help.links.mining_guide', url: 'https://github.com/iriumlabs/irium/blob/main/MINING.md',                icon: Pickaxe },
 ];
