@@ -9,7 +9,7 @@
   },
   "package": {
     "productName": "Irium Core",
-    "version": "1.0.142"
+    "version": "1.0.143"
   },
   "tauri": {
     "allowlist": {
@@ -39,6 +39,11 @@
           {
             "name": "irium-miner-gpu",
             "cmd": "irium-miner-gpu",
+            "args": true,
+            "sidecar": true
+          },
+          {
+            "name": "poawx-role-worker",
             "args": true,
             "sidecar": true
           }
@@ -112,7 +117,8 @@
         "binaries/irium-wallet",
         "binaries/irium-miner",
         "binaries/irium-explorer",
-        "binaries/irium-miner-gpu"
+        "binaries/irium-miner-gpu",
+        "binaries/poawx-role-worker"
       ],
       "longDescription": "Irium Core is the official full-node desktop wallet and miner for the Irium (IRM) blockchain. It bundles an embedded full node (iriumd), a non-custodial BIP39 HD wallet, CPU and GPU mining, ASIC and Stratum pool support, an in-app block explorer, and a settlement UI in a single native window. Your keys never leave your machine; all node operations go through a locally-spawned iriumd on loopback RPC.",
       "shortDescription": "Full-node desktop wallet and miner for the Irium blockchain",
