@@ -28,7 +28,7 @@ const BINARIES_DIR = path.join(ROOT, 'src-tauri', 'binaries');
 // `tauri build --target X` fail in CI because tauri.conf.json declares
 // `binaries/irium-explorer` in externalBin but the script never produced
 // the corresponding sidecar with the target-triple suffix.
-const BINARIES     = ['iriumd', 'irium-wallet', 'irium-miner', 'irium-explorer'];
+const BINARIES     = ['iriumd', 'irium-wallet', 'irium-miner', 'irium-explorer', 'poawx-role-worker'];
 // GPU miner needs the `gpu` cargo feature + an OpenCL ICD on the build host.
 // Built separately so a missing OpenCL.lib doesn't block the core binaries.
 const GPU_BINARY   = 'irium-miner-gpu';

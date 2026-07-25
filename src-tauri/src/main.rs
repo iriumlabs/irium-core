@@ -35,6 +35,10 @@ enum MinerKind { Cpu, Gpu }
 struct AppState {
     node_process: Arc<Mutex<Option<CommandChild>>>,
     miner_process: Arc<Mutex<Option<CommandChild>>>,
+    // Seamless PoAW-X contributor enrollment: the role-worker loop sidecar (dedicated role
+    // key), spawned alongside the miner so the user is also selected + paid for the
+    // compute/verify/support roles in OTHER producers' blocks. Tracked separately.
+    role_worker_process: Arc<Mutex<Option<CommandChild>>>,
     // BUG 1: which miner currently owns miner_process. Set together
     // with miner_process on spawn success, cleared together in
     // stop_miner and in each spawn loop's Terminated branch.
@@ -160,6 +164,7 @@ impl AppState {
         AppState {
             node_process: Arc::new(Mutex::new(None)),
             miner_process: Arc::new(Mutex::new(None)),
+            role_worker_process: Arc::new(Mutex::new(None)),
             miner_kind: Arc::new(Mutex::new(None)),
             explorer_process: Arc::new(Mutex::new(None)),
             rpc_url: Arc::new(Mutex::new("http://127.0.0.1:38300".to_string())),
@@ -6348,6 +6353,46 @@ fn update_block_details(
     }
 }
 
+/// Load (or first-time generate) the DEDICATED PoAW-X role key. This is SEPARATE from the
+/// wallet/proposer key: role-worker rewards land at THIS key's own address (the user can
+/// sweep it into their main wallet), so the wallet's private key is never handed to the
+/// role-worker sidecar. Stored 0600 at ~/.irium/poawx_role.secret.
+fn poawx_role_secret_hex() -> Result<String, String> {
+    let path = dirs::home_dir()
+        .unwrap_or_default()
+        .join(".irium")
+        .join("poawx_role.secret");
+    if let Ok(existing) = std::fs::read_to_string(&path) {
+        let t = existing.trim();
+        if t.len() == 64 && hex::decode(t).is_ok() {
+            return Ok(t.to_string());
+        }
+    }
+    let mut key = [0u8; 32];
+    getrandom::getrandom(&mut key).map_err(|e| format!("role key rng: {e}"))?;
+    let hexk = hex::encode(key);
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    std::fs::write(&path, &hexk).map_err(|e| format!("write role key: {e}"))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
+    }
+    Ok(hexk)
+}
+
+/// Deterministically spread app users across the 3 contributor roles from their role key,
+/// so the whole app population doesn't pile onto a single role.
+fn poawx_role_for_key(secret_hex: &str) -> &'static str {
+    let b = hex::decode(secret_hex)
+        .ok()
+        .and_then(|v| v.first().copied())
+        .unwrap_or(0);
+    ["compute", "verify", "support"][(b % 3) as usize]
+}
+
 #[tauri::command]
 async fn start_miner(
     app: tauri::AppHandle,
@@ -6546,6 +6591,56 @@ async fn start_miner(
     *state.miner_start_time.lock().map_err(lock_err)? = Some(std::time::Instant::now());
     *state.miner_address.lock().map_err(lock_err)? = Some(address);
     *state.miner_threads.lock().map_err(lock_err)? = threads.unwrap_or(1);
+
+    // Seamless PoAW-X contributor enrollment: spawn the role-worker loop with a DEDICATED
+    // role key so this user is ALSO selected + paid for a contributor role (compute/verify/
+    // support) in OTHER producers' blocks, not just their own proposer blocks. Best-effort:
+    // any failure here must NOT stop proposer mining.
+    match poawx_role_secret_hex() {
+        Ok(role_secret) => {
+            let role = poawx_role_for_key(&role_secret);
+            let rw_dir = dirs::home_dir().unwrap_or_default().join(".irium");
+            let mut rw_env = HashMap::new();
+            rw_env.insert("IRIUM_POAWX_ROLE_SECRET_HEX".to_string(), role_secret);
+            rw_env.insert("IRIUM_NODE_RPC".to_string(), rpc_url.clone());
+            rw_env.insert(
+                "IRIUM_RPC_TOKEN".to_string(),
+                snapshot_gui_rpc_bearer(&state.rpc_token_override).unwrap_or_default(),
+            );
+            rw_env.insert("IRIUM_POAWX_ROLE_WORKER_LOOP".to_string(), "1".to_string());
+            let spawned = Command::new_sidecar("poawx-role-worker")
+                .map_err(|e| format!("poawx-role-worker sidecar: {e}"))
+                .and_then(|c| {
+                    c.envs(rw_env)
+                        .args([role])
+                        .current_dir(rw_dir)
+                        .spawn()
+                        .map_err(|e| format!("spawn: {e}"))
+                });
+            match spawned {
+                Ok((mut rw_rx, rw_child)) => {
+                    if let Ok(mut slot) = state.role_worker_process.lock() {
+                        *slot = Some(rw_child);
+                    }
+                    // Drain the sidecar's output so its pipe never blocks; surface only
+                    // enrollment confirmations and errors to the app log.
+                    tauri::async_runtime::spawn(async move {
+                        while let Some(ev) = rw_rx.recv().await {
+                            if let CommandEvent::Stdout(l) | CommandEvent::Stderr(l) = ev {
+                                let l = l.trim();
+                                if l.contains("ENROLLED") || l.contains("error") {
+                                    println!("[role-worker] {l}");
+                                }
+                            }
+                        }
+                    });
+                    println!("[app] PoAW-X contributor enrollment started (role={role})");
+                }
+                Err(e) => eprintln!("[app] role-worker enrollment skipped (non-fatal): {e}"),
+            }
+        }
+        Err(e) => eprintln!("[app] role key unavailable, skipping contributor enrollment: {e}"),
+    }
     // Update tray tooltip so users who minimize-to-tray can see at a glance
     // that mining is still active. Non-fatal if the platform doesn't support
     // tray tooltips.
@@ -6559,6 +6654,12 @@ async fn stop_miner(app: tauri::AppHandle, state: State<'_, AppState>) -> Result
     // signal so the event-loop's Terminated handler classifies the exit
     // correctly and does NOT emit the unexpected-exit banner event.
     *state.miner_user_initiated_stop.lock().map_err(lock_err)? = true;
+    // Stop the seamless contributor-enrollment role-worker alongside the miner.
+    if let Ok(mut rw) = state.role_worker_process.lock() {
+        if let Some(child) = rw.take() {
+            let _ = child.kill();
+        }
+    }
     let mut miner_lock = state.miner_process.lock().map_err(lock_err)?;
     if let Some(child) = miner_lock.take() {
         child.kill().map_err(|e| e.to_string())?;
