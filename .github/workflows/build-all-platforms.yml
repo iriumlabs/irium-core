@@ -104,7 +104,9 @@ jobs:
           ) | ForEach-Object {
             if (Test-Path $_) {
               $bytes    = [IO.File]::ReadAllBytes($_)
-              $stripped = [byte[]]($bytes | Where-Object { $_ -ne 13 })
+              # Guard: an empty file (or one that is all CR) pipes to $null, and
+              # WriteAllBytes($null) throws. Coerce to an empty byte[] instead.
+              $stripped = [byte[]]@($bytes | Where-Object { $_ -ne 13 })
               [IO.File]::WriteAllBytes($_, $stripped)
               Write-Host ("  normalized {0}: {1} -> {2} bytes" -f $_, $bytes.Length, $stripped.Length)
             }
