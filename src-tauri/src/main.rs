@@ -6383,14 +6383,17 @@ fn poawx_role_secret_hex() -> Result<String, String> {
     Ok(hexk)
 }
 
-/// Deterministically spread app users across the 3 contributor roles from their role key,
-/// so the whole app population doesn't pile onto a single role.
-fn poawx_role_for_key(secret_hex: &str) -> &'static str {
-    let b = hex::decode(secret_hex)
-        .ok()
-        .and_then(|v| v.first().copied())
-        .unwrap_or(0);
-    ["compute", "verify", "support"][(b % 3) as usize]
+/// ASK THE CHAIN which role this user holds, per docs/POAWX.md: the chain draws four role
+/// holders per block -- proposer, compute, verify, support -- one distinct miner address each.
+///
+/// This used to be `secret[0] % 3`: the APP picked the role. That let the whole population
+/// self-assign, gave no guarantee the four roles were filled by four distinct miners, and
+/// meant an app user competed for a role the chain had not given it. `"auto"` makes the
+/// bundled role-worker query `/poawx/assignment` for this address and work only the role it
+/// is drawn for -- idling when it is not drawn, which is the normal case once more miners are
+/// registered than there are roles.
+fn poawx_role_for_key(_secret_hex: &str) -> &'static str {
+    "auto"
 }
 
 #[tauri::command]
