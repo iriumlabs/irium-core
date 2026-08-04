@@ -886,10 +886,14 @@ export interface ExplorerBlock {
   // it on the deep-link hop.
   reward_sats?: number;
   // Decoded coinbase reward-distribution rows (PoAW-X role → address →
-  // amount). Populated client-side in fetchBlockDeepLink from the raw coinbase
-  // tx_hex[0]; the BlockDetailModal renders these when present. Optional
-  // because list-view rows and estimate-only deep links don't carry it.
+  // amount). Populated client-side — from the raw coinbase tx_hex[0] in
+  // fetchBlockDeepLink, and for every list row via enrichBlock. The block
+  // list and BlockDetailModal both render these when present.
   coinbase_rewards?: RewardRow[];
+  // Raw coinbase tx hex (tx_hex[0]) forwarded by the backend block fetches so
+  // the frontend can decode the PoAW-X reward split. Absent on payloads from
+  // sources that don't carry tx_hex.
+  coinbase_hex?: string;
 }
 
 export interface NetworkHashrateInfo {

@@ -13,7 +13,7 @@ import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
 import { rpc, wallet, miner, gpuMiner, stratum, explorerSource } from '../lib/tauri';
 import { timeAgo, formatIRM, formatLocalDateTime, SATS_PER_IRM } from '../lib/types';
-import { decodeCoinbaseRewards } from '../lib/coinbase';
+import { decodeCoinbaseRewards, groupRewardPayees, firstP2pkhAddress } from '../lib/coinbase';
 import type {
   ExplorerBlock, NetworkHashrateInfo, RichListEntry,
   PoolApiResponse, PoolApiPortStats, PoolApiMiner, PoolApiMinersResponse,
@@ -109,6 +109,22 @@ function mergeBlocks(existing: ExplorerBlock[], incoming: ExplorerBlock[]): Expl
   const map = new Map(existing.map((b) => [b.height, b]));
   for (const b of incoming) map.set(b.height, b);
   return Array.from(map.values()).sort((a, b) => b.height - a.height);
+}
+
+// Decode a fetched block's raw coinbase (when the backend forwarded it) into
+// PoAW-X reward rows, and derive the miner address from the first P2PKH payout
+// when the node reported none — post-activation coinbases start with an irx1
+// OP_RETURN, so iriumd's own outputs[0] derivation returns null. This is the
+// same first-P2PKH fix the public irium.org explorer applies server-side.
+export function enrichBlock(b: ExplorerBlock): ExplorerBlock {
+  if (b.coinbase_rewards || !b.coinbase_hex) return b;
+  const rewards = decodeCoinbaseRewards(b.coinbase_hex);
+  if (rewards.length === 0) return b;
+  return {
+    ...b,
+    coinbase_rewards: rewards,
+    miner_address: b.miner_address || firstP2pkhAddress(rewards) || undefined,
+  };
 }
 
 // ── Copy button ───────────────────────────────────────────────
@@ -564,8 +580,18 @@ function blockAge(blockTime: number, blockHeight: number, tipHeight: number): st
 
 // ── Block table row ───────────────────────────────────────────
 
-function BlockRow({ block, onClick, tipHeight = 0 }: { block: ExplorerBlock; onClick: () => void; tipHeight?: number }) {
+export function BlockRow({ block, onClick, tipHeight = 0 }: { block: ExplorerBlock; onClick: () => void; tipHeight?: number }) {
   const { t } = useTranslation();
+  // Grouped PoAW-X payees (address → summed amount + role tags), decoded from
+  // the coinbase by enrichBlock. Multiple distinct payees → the row lists each
+  // worker with its role(s) and its actual payout, exactly like irium.org's
+  // explorer; a single payee (self-filled or pre-activation) keeps the classic
+  // one-address presentation. actualRewardSats replaces the halving-formula
+  // estimate whenever the real coinbase total is known.
+  const payees = block.coinbase_rewards ? groupRewardPayees(block.coinbase_rewards) : [];
+  const actualRewardSats = block.coinbase_rewards
+    ? block.coinbase_rewards.reduce((s, r) => s + r.valueSats, 0)
+    : 0;
   return (
     <motion.tr
       initial={{ opacity: 0, y: 4 }}
@@ -609,22 +635,54 @@ function BlockRow({ block, onClick, tipHeight = 0 }: { block: ExplorerBlock; onC
       </td>
       {/* Miner — whitespace-nowrap keeps full address on one line; browser sizes column naturally */}
       <td className="px-2 py-2.5 whitespace-nowrap">
-        <div className="group flex items-center">
-          <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
-            {block.miner_address || '—'}
-          </span>
-          {block.miner_address && <CopyBtn text={block.miner_address} />}
-        </div>
+        {payees.length > 1 ? (
+          <div className="flex flex-col gap-0.5">
+            {payees.map((p) => (
+              <div key={p.address} className="group flex items-center gap-1.5">
+                <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
+                  {p.address}
+                </span>
+                <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)' }}>
+                  {p.roles.join(' + ')}
+                </span>
+                <CopyBtn text={p.address} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="group flex items-center">
+            <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
+              {block.miner_address || '—'}
+            </span>
+            {block.miner_address && <CopyBtn text={block.miner_address} />}
+          </div>
+        )}
       </td>
-      {/* Reward */}
+      {/* Reward — per-payee actual amounts when the coinbase paid multiple
+          workers (proposer green, workers blue, same as irium.org), the actual
+          single total when decoded, else the halving-formula estimate. */}
       <td className="pl-2 pr-4 py-2.5 text-right whitespace-nowrap">
-        <span
-          style={{ fontSize: 11, color: '#34d399', fontVariantNumeric: 'tabular-nums', fontFamily: '"JetBrains Mono", monospace' }}
-          title={t('explorer.blocks_table.estimated_tooltip')}
-        >
-          {blockReward(block.height)}
-          <span style={{ color: 'rgba(255,255,255,0.30)', marginLeft: 4 }}>~</span>
-        </span>
+        {payees.length > 1 ? (
+          <div className="flex flex-col gap-0.5">
+            {payees.map((p, i) => (
+              <div key={p.address} style={{ fontSize: 11, color: i === 0 ? '#34d399' : '#6ec6ff', fontVariantNumeric: 'tabular-nums', fontFamily: '"JetBrains Mono", monospace' }}>
+                {formatIRM(p.totalSats)}
+              </div>
+            ))}
+          </div>
+        ) : actualRewardSats > 0 ? (
+          <span style={{ fontSize: 11, color: '#34d399', fontVariantNumeric: 'tabular-nums', fontFamily: '"JetBrains Mono", monospace' }}>
+            {formatIRM(actualRewardSats)}
+          </span>
+        ) : (
+          <span
+            style={{ fontSize: 11, color: '#34d399', fontVariantNumeric: 'tabular-nums', fontFamily: '"JetBrains Mono", monospace' }}
+            title={t('explorer.blocks_table.estimated_tooltip')}
+          >
+            {blockReward(block.height)}
+            <span style={{ color: 'rgba(255,255,255,0.30)', marginLeft: 4 }}>~</span>
+          </span>
+        )}
       </td>
     </motion.tr>
   );
@@ -2341,7 +2399,14 @@ export default function Explorer() {
       const cbHex = Array.isArray(raw.tx_hex) && typeof raw.tx_hex[0] === 'string'
         ? (raw.tx_hex[0] as string)
         : '';
-      if (cbHex) block.coinbase_rewards = decodeCoinbaseRewards(cbHex);
+      if (cbHex) {
+        block.coinbase_rewards = decodeCoinbaseRewards(cbHex);
+        // Post-activation the node reports miner_address: null (its outputs[0]
+        // read hits the irx1 OP_RETURN) — derive it from the first P2PKH payout.
+        if (!block.miner_address) {
+          block.miner_address = firstP2pkhAddress(block.coinbase_rewards) ?? undefined;
+        }
+      }
       setSelectedBlock(block);
       setPendingBlock(null);
     } catch (e) {
@@ -2404,7 +2469,7 @@ export default function Explorer() {
   const fetchLatest = useCallback(async () => {
     const result = await rpc.recentBlocks(30, undefined).catch(() => null);
     if (result != null) {
-      const incoming = result as ExplorerBlock[];
+      const incoming = (result as ExplorerBlock[]).map(enrichBlock);
       setBlocks((prev) => mergeBlocks(prev, incoming));
       setInitialLoaded(true);
       if (incoming.length > 0) {
@@ -2421,7 +2486,7 @@ export default function Explorer() {
     try {
       const result = await rpc.recentBlocks(50, blockCursor);
       if (result && (result as ExplorerBlock[]).length > 0) {
-        const incoming = result as ExplorerBlock[];
+        const incoming = (result as ExplorerBlock[]).map(enrichBlock);
         setBlocks((prev) => mergeBlocks(prev, incoming));
         const minH = Math.min(...incoming.map((b) => b.height));
         setBlockCursor(minH > 0 ? minH - 1 : 0);

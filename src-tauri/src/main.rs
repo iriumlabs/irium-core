@@ -7789,6 +7789,21 @@ async fn get_recent_blocks(
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
     let n = limit.unwrap_or(20).min(100) as u64;
 
+    // When the explorer source is remote (the default since 1.0.147), serve the
+    // list from the SAME enriched API the irium.org explorer reads: one request
+    // returns the whole window with miner_address already derived (first P2PKH —
+    // the node's own derivation is null post-activation) and tx_hex present for
+    // the client-side reward-split decode. Any failure falls through to the
+    // local-node loop below, so a broken network path never blanks the list.
+    let source = explorer_base_url();
+    if !source.starts_with("http://127.0.0.1") {
+        if let Some(blocks) = fetch_remote_recent_blocks(&source, n, end_height).await {
+            if !blocks.is_empty() {
+                return Ok(blocks);
+            }
+        }
+    }
+
     let info = get_rpc_info(&state, &rpc_url).await
         .map_err(|_| "node offline".to_string())?;
     let tip = info.height.unwrap_or(0);
@@ -7840,6 +7855,10 @@ async fn get_recent_blocks(
                         .or_else(|| hdr["bits"].as_u64().map(|n| format!("{:#010x}", n)))
                         .or_else(|| hdr["bits"].as_f64().map(|n| format!("{:.0}", n))),
                     nonce:         hdr["nonce"].as_u64(),
+                    coinbase_hex:  b["tx_hex"].as_array()
+                        .and_then(|a| a.first())
+                        .and_then(|v| v.as_str())
+                        .map(String::from),
                 };
                 if blk.hash.is_empty() { None } else { Some(blk) }
             })
@@ -7855,6 +7874,74 @@ async fn get_recent_blocks(
     blocks.sort_by(|a, b| b.height.cmp(&a.height));
 
     Ok(blocks)
+}
+
+/// Fetch a recent-blocks window from the remote explorer's enriched
+/// `/rpc/blocks` passthrough (miner_address filled server-side, tx_hex intact).
+/// Returns None on any failure so get_recent_blocks can fall back to the
+/// local node. Display-only; no consensus effect.
+async fn fetch_remote_recent_blocks(
+    base: &str,
+    n: u64,
+    end_height: Option<u64>,
+) -> Option<Vec<ExplorerBlock>> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(8))
+        .build()
+        .ok()?;
+
+    // The window's top: caller-provided cursor, else the remote tip.
+    let tip = match end_height {
+        Some(h) => h,
+        None => {
+            let st: serde_json::Value = client
+                .get(format!("{}/api/status", base))
+                .send().await.ok()?
+                .json().await.ok()?;
+            st["height"].as_u64()
+                .or_else(|| st["best_header_tip"]["height"].as_u64())?
+        }
+    };
+    if tip == 0 {
+        return None;
+    }
+    let start = tip.saturating_sub(n - 1);
+
+    let v: serde_json::Value = client
+        .get(format!("{}/rpc/blocks?from={}&count={}", base, start, n))
+        .send().await.ok()?
+        .json().await.ok()?;
+    let arr = v["blocks"].as_array().or_else(|| v.as_array())?;
+
+    let mut blocks: Vec<ExplorerBlock> = arr.iter().filter_map(|b| {
+        let hdr = &b["header"];
+        let hash = hdr["hash"].as_str().or_else(|| b["hash"].as_str())?.to_string();
+        if hash.is_empty() {
+            return None;
+        }
+        Some(ExplorerBlock {
+            height:        b["height"].as_u64()?,
+            hash,
+            miner_address: b["miner_address"].as_str()
+                .or_else(|| b["miner"].as_str())
+                .map(String::from),
+            time:          hdr["time"].as_u64().or_else(|| b["time"].as_u64()).unwrap_or(0),
+            tx_count:      b["tx_hex"].as_array().map(|a| a.len() as u32).unwrap_or(0),
+            prev_hash:     hdr["prev_hash"].as_str().map(String::from),
+            merkle_root:   hdr["merkle_root"].as_str().map(String::from),
+            bits:          hdr["bits"].as_str()
+                .map(String::from)
+                .or_else(|| hdr["bits"].as_u64().map(|x| format!("{:#010x}", x)))
+                .or_else(|| hdr["bits"].as_f64().map(|x| format!("{:.0}", x))),
+            nonce:         hdr["nonce"].as_u64(),
+            coinbase_hex:  b["tx_hex"].as_array()
+                .and_then(|a| a.first())
+                .and_then(|v| v.as_str())
+                .map(String::from),
+        })
+    }).collect();
+    blocks.sort_by(|a, b| b.height.cmp(&a.height));
+    Some(blocks)
 }
 
 #[tauri::command]
@@ -8127,6 +8214,10 @@ async fn get_explorer_blocks() -> Result<Vec<ExplorerBlock>, String> {
         merkle_root:   b["merkle_root"].as_str().map(String::from),
         bits:          b["bits"].as_str().map(String::from).or_else(|| b["bits"].as_u64().map(|n| format!("{:#010x}", n))),
         nonce:         b["nonce"].as_u64(),
+        coinbase_hex:  b["tx_hex"].as_array()
+            .and_then(|a| a.first())
+            .and_then(|v| v.as_str())
+            .map(String::from),
     }).collect())
 }
 

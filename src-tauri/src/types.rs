@@ -625,6 +625,10 @@ pub struct ExplorerBlock {
     pub merkle_root: Option<String>,
     pub bits: Option<String>,
     pub nonce: Option<u64>,
+    // Raw coinbase tx hex (tx_hex[0]) so the frontend can decode the PoAW-X
+    // reward split (role → payee → amount) client-side. None when the source
+    // payload carries no tx_hex.
+    pub coinbase_hex: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]

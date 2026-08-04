@@ -12,11 +12,13 @@
 // 0x39 + double-SHA256 checksum) — proven by the fact that the decoded PRIMARY
 // payout address equals the node-reported miner_address for the same block.
 //
-// Role model (PoAW-X): the first four P2PKH coinbase outputs are, in vout
-// order, PRIMARY (55%), COMPUTE (22%), VERIFY (13%) and SUPPORT (10%) of the
-// block reward. Today all four typically pay the SAME pool address (they simply
-// repeat); if a future change pays DISTINCT addresses, each row already carries
-// its own decoded address and renders correctly with no further work.
+// Role model (PoAW-X): roles are identified by each payout's SHARE of the
+// coinbase, not by output position — identical thresholds to the irium.org
+// explorer (explorer/index.html roleOfShare): Proposer 55%, Compute 22%,
+// Verify 13%, Support 10%. Verify and Support are each paid as two halves
+// (6.5% / 5%) on live blocks, so a share alone identifies the role whether the
+// slot was filled whole or split. Position-based labeling was wrong for real
+// post-activation blocks (six P2PKH payouts, irx1 OP_RETURNs at both ends).
 
 export interface RewardRow {
   vout: number
@@ -161,12 +163,52 @@ function classify(spk: Uint8Array, value: number): { type: string; address: stri
   return { type: 'unknown', address: null }
 }
 
-const ROLES: Array<[string, string]> = [
-  ['Primary', '55%'],
-  ['Compute', '22%'],
-  ['Verify', '13%'],
-  ['Support', '10%'],
-]
+/** Role slot for a payout's percentage share of the coinbase. */
+export function roleOfShare(pct: number): string {
+  if (pct >= 50) return 'Proposer'
+  if (pct >= 20) return 'Compute'
+  if (pct >= 12) return 'Verify'
+  if (pct >= 9)  return 'Support'
+  if (pct >= 6)  return 'Verify'
+  return 'Support'
+}
+
+/** One coinbase payee after grouping reward rows by address. */
+export interface PayeeGroup {
+  address: string
+  totalSats: number
+  roles: string[]
+}
+
+/**
+ * Group P2PKH reward rows by address — roles landing on the same key are
+ * summed, first-seen order is preserved — so a self-filled block reads as one
+ * miner while a distributed block lists every worker actually paid. Mirrors
+ * the irium.org explorer's list rendering.
+ */
+export function groupRewardPayees(rows: RewardRow[]): PayeeGroup[] {
+  const order: string[] = []
+  const by: Record<string, PayeeGroup> = {}
+  for (const r of rows) {
+    if (!r.address) continue
+    let g = by[r.address]
+    if (!g) {
+      g = { address: r.address, totalSats: 0, roles: [] }
+      by[r.address] = g
+      order.push(r.address)
+    }
+    g.totalSats += r.valueSats
+    if (!g.roles.includes(r.role)) g.roles.push(r.role)
+  }
+  return order.map((a) => by[a])
+}
+
+/** First P2PKH payee — the proposer/miner address the node fails to derive
+ *  post-activation (its outputs[0] read hits the irx1 OP_RETURN). */
+export function firstP2pkhAddress(rows: RewardRow[]): string | null {
+  for (const r of rows) if (r.address) return r.address
+  return null
+}
 
 /**
  * Decode a raw coinbase transaction hex (tx_hex[0] from /rpc/block) into
@@ -193,8 +235,10 @@ export function decodeCoinbaseRewards(coinbaseHex: string): RewardRow[] {
     i += 4                       // sequence
     let outCount: number
     ;[outCount, i] = readVarint(b, i)
-    const rows: RewardRow[] = []
-    let p2pkhSeen = 0
+    // Pass 1 — parse every output so the total is known before roles are
+    // assigned (role identity is share-based, and a share needs the total).
+    const outs: Array<{ value: number; c: { type: string; address: string | null } }> = []
+    let total = 0
     for (let n = 0; n < outCount; n++) {
       const value = readU64le(b, i)
       i += 8
@@ -202,17 +246,20 @@ export function decodeCoinbaseRewards(coinbaseHex: string): RewardRow[] {
       ;[sl, i] = readVarint(b, i)
       const spk = b.subarray(i, i + sl)
       i += sl
-      const c = classify(spk, value)
+      outs.push({ value, c: classify(spk, value) })
+      total += value
+    }
+    // Pass 2 — label. Percentage is the payout's share of the actual coinbase
+    // total (rounded to 1 decimal, same as the public explorer's share_pct).
+    const rows: RewardRow[] = []
+    for (let n = 0; n < outs.length; n++) {
+      const { value, c } = outs[n]
       let role: string
       let pct: string | null = null
       if (c.type === 'p2pkh') {
-        if (p2pkhSeen < ROLES.length) {
-          role = ROLES[p2pkhSeen][0]
-          pct = ROLES[p2pkhSeen][1]
-        } else {
-          role = `Output ${n}`
-        }
-        p2pkhSeen++
+        const share = total > 0 ? Math.round((value / total) * 1000) / 10 : 0
+        role = roleOfShare(share)
+        pct = `${share % 1 === 0 ? share.toFixed(0) : share.toFixed(1)}%`
       } else if (c.type === 'op_return') {
         role = 'Commitment (irx1)'
       } else if (c.type === 'irium_data') {
