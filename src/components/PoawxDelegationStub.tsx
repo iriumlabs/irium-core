@@ -81,3 +81,15 @@ export default function PoawxDelegationStub() {
     </div>
   );
 }
+
+// NOT RENDERED. Unmounted from Miner.tsx before v1.0.149.
+//
+// This shipped visibly to production in every build up to v1.0.148: a dashed-border box
+// reading "PoAW-X pool delegation (stub — unstyled)" sat at the TOP of the Mining page,
+// above the offline banner, for every user. Its own comment says visual polish was deferred
+// "until a display + a live pool are available" — i.e. it was never meant to be user-facing.
+//
+// The file and its wiring to the real backend commands (enable_direct_pool_rewards,
+// get_delegation_status, generate_delegation_revocation) are preserved so the flow can still
+// be smoke-tested by re-adding the import and the <PoawxDelegationStub /> element. Do not
+// re-mount it until it is styled and tested against a live pool.
