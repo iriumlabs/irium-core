@@ -7879,7 +7879,36 @@ async fn rpc_set_url(state: State<'_, AppState>, url: String) -> Result<bool, St
 // EXPLORER SIDECAR COMMANDS (queries irium-explorer on :38310)
 // ============================================================
 
-const EXPLORER_BASE_URL: &str = "http://127.0.0.1:38310";
+/// Public explorer API — the SAME source irium.org/explorer reads.
+///
+/// Verified live: the website's page sets `var API = 'https://api.irium.org'`, and this
+/// host serves `/api/*` and `/rpc/blocks` (proxied to irium-explorer) plus `/status` and
+/// `/rpc/richlist` (proxied to iriumd). Matching it byte-for-byte was confirmed against
+/// block 66,237.
+const EXPLORER_REMOTE_URL: &str = "https://api.irium.org";
+
+/// The locally-bundled irium-explorer sidecar.
+///
+/// This reads THIS install's own node. If that node is stalled or isolated, everything
+/// served from here is stale — which is exactly the reported failure: an install pinned at
+/// 64,290 while the network was at 66,237. Remote is therefore the default.
+const EXPLORER_LOCAL_URL: &str = "http://127.0.0.1:38310";
+
+/// Which explorer backend to read. Default REMOTE, so a stuck local node does not mean a
+/// stuck explorer view. `IRIUM_EXPLORER_SOURCE=local` (or the in-app toggle) forces the
+/// bundled sidecar for genuine offline / local-node use.
+fn explorer_base_url() -> String {
+    match std::env::var("IRIUM_EXPLORER_SOURCE").as_deref() {
+        Ok("local") => EXPLORER_LOCAL_URL.to_string(),
+        Ok(url) if url.starts_with("http") => url.to_string(),
+        _ => EXPLORER_REMOTE_URL.to_string(),
+    }
+}
+
+#[tauri::command]
+fn get_explorer_source() -> String {
+    explorer_base_url()
+}
 
 /// Starts the irium-explorer sidecar if it isn't already running.
 /// Called lazily by the Explorer page on mount — keeps it isolated from iriumd's lifecycle.
@@ -7940,8 +7969,8 @@ async fn get_explorer_stats() -> Result<ExplorerNetworkStats, String> {
         .map_err(|e| format!("client build failed: {}", e))?;
 
     let (stats_res, metrics_res) = tokio::join!(
-        client.get(format!("{}/api/stats", EXPLORER_BASE_URL)).send(),
-        client.get(format!("{}/api/metrics", EXPLORER_BASE_URL)).send(),
+        client.get(format!("{}/api/stats", explorer_base_url())).send(),
+        client.get(format!("{}/api/metrics", explorer_base_url())).send(),
     );
 
     let stats_val: serde_json::Value = stats_res
@@ -7976,7 +8005,7 @@ async fn get_explorer_peers() -> Result<Vec<ExplorerPeer>, String> {
         .map_err(|e| format!("client build failed: {}", e))?;
 
     let val: serde_json::Value = client
-        .get(format!("{}/api/peers", EXPLORER_BASE_URL))
+        .get(format!("{}/api/peers", explorer_base_url()))
         .send()
         .await
         .map_err(|_| "explorer offline".to_string())?
@@ -8007,7 +8036,7 @@ async fn get_explorer_blocks() -> Result<Vec<ExplorerBlock>, String> {
         .map_err(|e| format!("client build failed: {}", e))?;
 
     let val: serde_json::Value = client
-        .get(format!("{}/api/blocks?limit=10", EXPLORER_BASE_URL))
+        .get(format!("{}/api/blocks?limit=10", explorer_base_url()))
         .send()
         .await
         .map_err(|_| "explorer offline".to_string())?
@@ -9947,6 +9976,7 @@ fn main() {
             // active.
             upnp_diagnostics,
             get_app_version,
+            get_explorer_source,
             check_network_reachable,
             get_system_info,
             // Wallet
