@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useStore } from '../../lib/store';
+import { nodeVersionInfo, type NodeVersionInfo } from '../../lib/tauri';
 
 const CHAIN_NODES = 7;
 
@@ -15,6 +16,11 @@ const StatusBar = memo(function StatusBar() {
   const height  = nodeStatus?.height       ?? 0;
   const tipH    = nodeStatus?.network_tip  ?? 0;
   const synced  = nodeStatus?.synced       ?? false;
+  // Node sidecar identity, shown beside the app version. App and node are two
+  // independently updatable binaries; representing them with a single number is what let a
+  // mismatched sidecar run unnoticed under a freshly-updated app.
+  const [nodeVer, setNodeVer] = useState<NodeVersionInfo | null>(null);
+  useEffect(() => { nodeVersionInfo().then(setNodeVer).catch(() => setNodeVer(null)); }, []);
   const running = nodeStatus?.running      ?? false;
   const peers   = nodeStatus?.peers        ?? 0;
   const upnp    = nodeStatus?.upnp_active  ?? false;
@@ -100,6 +106,29 @@ const StatusBar = memo(function StatusBar() {
           Irium Core
         </span>
         <span style={{ color: 'rgba(110,198,255,0.45)', fontSize: 10 }}>v{appVersion}</span>
+        {/* Node sidecar identity. Shown ALWAYS — app and node are two independently
+            updatable binaries, and representing them with one number is what let a
+            mismatched sidecar run unnoticed. Version is display-only; the HASH is what
+            actually distinguishes builds (many report the same version string). */}
+        {(nodeVer?.actual_sha || nodeVer?.version) && (
+          <span
+            title={nodeVer.stale
+              ? `Bundled node does not match this build.\n`
+                + `installed ${nodeVer.actual_sha ?? '?'} / expected ${nodeVer.expected_sha ?? '?'}\n`
+                + 'The app updated but its bundled node did not. Reinstall Irium Core from '
+                + 'the installer rather than updating in place.'
+              : `Node ${nodeVer.version ?? ''} ${nodeVer.actual_sha ?? ''}`.trim()}
+            style={{
+              color: nodeVer.stale ? '#fbbf24' : 'rgba(110,198,255,0.45)',
+              fontSize: 10,
+              fontWeight: nodeVer.stale ? 700 : 400,
+            }}
+          >
+            {nodeVer.stale
+              ? `⚠ node ${nodeVer.actual_sha ?? '?'} ≠ ${nodeVer.expected_sha ?? '?'}`
+              : `node ${nodeVer.version ?? ''}${nodeVer.actual_sha ? ` ${nodeVer.actual_sha}` : ''}`}
+          </span>
+        )}
         <Dot />
         <span style={{ color: 'rgba(238,240,255,0.40)' }}>{t('status_bar.mainnet')}</span>
 

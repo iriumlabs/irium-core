@@ -12,6 +12,8 @@ rust-version = "1.70"
 
 [build-dependencies]
 tauri-build = { version = "1", features = [] }
+sha2 = "0.10"
+hex = "0.4"
 
 [dependencies]
 tauri = { version = "1", features = [ "dialog-open", "dialog-save", "fs-create-dir", "process-all", "fs-exists", "fs-write-file", "fs-read-file", "path-all", "http-request", "fs-read-dir", "shell-sidecar", "shell-open", "process-command-api", "window-all", "system-tray", "clipboard-all", "updater"] }

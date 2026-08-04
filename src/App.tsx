@@ -170,6 +170,24 @@ function UpdateBanner() {
         unlistenStatus();
         return;
       }
+      // Stop the bundled node BEFORE the installer runs.
+      //
+      // THE BUG THIS FIXES. On Windows a running .exe is locked by the OS, and the
+      // bundled iriumd.exe is running whenever the node is up — which is whenever the
+      // updater fires (dialog:false, so it applies in the background). NSIS cannot
+      // overwrite a locked file and skips it SILENTLY. Result: the app updated across
+      // releases while its sidecar did not. One install was found running node 1.9.158
+      // under app v1.0.148 — ~34 versions stale, with no error, warning or symptom until
+      // the node stopped being able to follow the chain.
+      //
+      // Best-effort: if stopping fails we still attempt the update rather than block it,
+      // because a skipped sidecar is now DETECTED at startup (get_node_version_info)
+      // instead of being invisible.
+      try {
+        await node.stop();
+        // Give the OS a moment to release the file handle before NSIS runs.
+        await new Promise((r) => setTimeout(r, 2000));
+      } catch { /* fall through — the version check will surface a skipped sidecar */ }
       await installUpdate();
     } catch (e) {
       toast.error(String(e));

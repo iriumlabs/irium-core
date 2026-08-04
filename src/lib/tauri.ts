@@ -1387,3 +1387,16 @@ export const rpcCall = {
  *  sidecar when IRIUM_EXPLORER_SOURCE=local). Used by the Explorer header. */
 export const explorerSource = (): Promise<string> =>
   safeInvoke<string>('get_explorer_source') as Promise<string>;
+
+/** Identity of the installed node sidecar, compared by HASH against the bytes this app
+ *  build shipped. `version` is display-only: many distinct builds report the same string
+ *  (both the mainnet binary and the bundled one report 1.9.158), so it cannot detect
+ *  staleness. `stale` is true only when BOTH hashes are known and differ. */
+export interface NodeVersionInfo {
+  version: string | null;
+  actual_sha: string | null;
+  expected_sha: string | null;
+  stale: boolean;
+}
+export const nodeVersionInfo = (): Promise<NodeVersionInfo | null> =>
+  safeInvoke<NodeVersionInfo>('get_node_version_info');

@@ -522,6 +522,74 @@ fn silent_command(program: &str) -> std::process::Command {
     cmd
 }
 
+/// sha256 of the iriumd bundled into THIS build, computed by build.rs from the actual
+/// shipped bytes. Empty when the binary was absent at build time.
+///
+/// A HASH, NOT A VERSION STRING. `iriumd --version` reflects its Cargo.toml, which lags real
+/// builds: the binary running mainnet as "iriumd-v1.9.192-9634508b" and the one bundled here
+/// BOTH report "iriumd version 1.9.158". Comparing version strings cannot tell a current
+/// sidecar from a stale one — an earlier draft of this check would have flagged EVERY user
+/// as stale. Bytes can't lie the way that string does.
+const EXPECTED_NODE_SHA256: &str = env!("EXPECTED_NODE_SHA256");
+
+/// Path of the sidecar Tauri actually installed: alongside the main executable.
+fn bundled_node_path() -> Option<std::path::PathBuf> {
+    let dir = std::env::current_exe().ok()?.parent()?.to_path_buf();
+    let p = dir.join(if cfg!(windows) { "iriumd.exe" } else { "iriumd" });
+    p.is_file().then_some(p)
+}
+
+/// The bundled node's own reported version. Kept for DISPLAY only — never for staleness.
+#[tauri::command]
+async fn get_node_binary_version() -> Option<String> {
+    let out = Command::new_sidecar("iriumd").ok()?.args(["--version"]).output().ok()?;
+    let text = format!("{}{}", out.stdout, out.stderr);
+    text.split_whitespace()
+        .find(|t| t.chars().next().is_some_and(|c| c.is_ascii_digit()) && t.contains('.'))
+        .map(|v| v.trim().to_string())
+}
+
+#[derive(serde::Serialize)]
+struct NodeBinaryInfo {
+    /// Reported version — display only, identical across many distinct builds.
+    version: Option<String>,
+    /// First 12 hex chars of the sidecar's actual sha256, or None if unreadable.
+    actual_sha: Option<String>,
+    /// First 12 hex chars of what this build shipped, or None if unknown.
+    expected_sha: Option<String>,
+    /// True ONLY when both hashes are known AND differ. Any unknown => false.
+    stale: bool,
+}
+
+/// Compare the installed sidecar against the bytes this build shipped.
+///
+/// FALSE POSITIVES ARE STRUCTURALLY IMPOSSIBLE: `stale` is true only when both hashes are
+/// known and differ. If build.rs could not read the binary (empty constant), or the sidecar
+/// cannot be located or read at runtime — e.g. `cargo run` in dev, where no sidecar sits
+/// beside the executable — the answer is "unknown", which reports as NOT stale. The check
+/// disables itself rather than guessing, which is the direction that cannot cry wolf.
+#[tauri::command]
+async fn get_node_version_info() -> NodeBinaryInfo {
+    let expected_full = EXPECTED_NODE_SHA256.trim();
+    let actual_full = bundled_node_path()
+        .and_then(|p| std::fs::read(p).ok())
+        .map(|b| {
+            use sha2::{Digest, Sha256};
+            hex::encode(Sha256::digest(&b))
+        });
+    let stale = match (expected_full.is_empty(), actual_full.as_deref()) {
+        (false, Some(a)) => a != expected_full,
+        _ => false,
+    };
+    let short = |s: &str| s.chars().take(12).collect::<String>();
+    NodeBinaryInfo {
+        version: get_node_binary_version().await,
+        actual_sha: actual_full.as_deref().map(short),
+        expected_sha: (!expected_full.is_empty()).then(|| short(expected_full)),
+        stale,
+    }
+}
+
 #[tauri::command]
 fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
@@ -9976,6 +10044,8 @@ fn main() {
             // active.
             upnp_diagnostics,
             get_app_version,
+            get_node_binary_version,
+            get_node_version_info,
             get_explorer_source,
             check_network_reachable,
             get_system_info,
