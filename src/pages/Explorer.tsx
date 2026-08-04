@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
-import { rpc, wallet, miner, gpuMiner, stratum } from '../lib/tauri';
+import { rpc, wallet, miner, gpuMiner, stratum, explorerSource } from '../lib/tauri';
 import { timeAgo, formatIRM, formatLocalDateTime, SATS_PER_IRM } from '../lib/types';
 import { decodeCoinbaseRewards } from '../lib/coinbase';
 import type {
@@ -2206,6 +2206,39 @@ export default function Explorer() {
   const nodeStatus  = useStore((s) => s.nodeStatus);
   const location    = useLocation();
 
+  // Chain state read from the explorer SOURCE, not from this install's node.
+  //
+  // The header below (height / peers / synced) used to come entirely from
+  // `nodeStatus`, i.e. from `get_node_status` -> this machine's own iriumd. When that
+  // node is stalled or isolated the header showed ITS height forever: an install pinned
+  // at 64,290 while the network was at 66,237, with peers connected but none ahead.
+  // Changing the explorer SIDECAR commands did not help, because this component never
+  // called them. This is the code path the header actually renders from.
+  const [remoteChain, setRemoteChain] = useState<{ height: number; peers: number } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async () => {
+      const base = await explorerSource().catch(() => null);
+      // Empty / local source => keep using the local node, unchanged behaviour.
+      if (!base || base.startsWith('http://127.0.0.1')) { if (!cancelled) setRemoteChain(null); return; }
+      try {
+        const r = await tauriFetch<{ height?: number; peer_count?: number }>(
+          `${base}/api/status`, { method: 'GET', timeout: 8, responseType: ResponseType.JSON },
+        );
+        if (cancelled) return;
+        const d = (r as { ok: boolean; data?: { height?: number; peer_count?: number } });
+        // Unreachable / malformed => null, so the header falls back to the local node
+        // rather than silently showing nothing.
+        setRemoteChain(d.ok && Number(d.data?.height) > 0
+          ? { height: Number(d.data?.height), peers: Number(d.data?.peer_count ?? 0) }
+          : null);
+      } catch { if (!cancelled) setRemoteChain(null); }
+    };
+    poll();
+    const id = setInterval(poll, 15000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
   // Page-level tab: 'overview' renders the existing stats + search + blocks
   // table; 'rich_list' swaps the body for the Top Holders table;
   // 'pool_stats' shows the public pool snapshot. Lazy initializer reads
@@ -2351,10 +2384,20 @@ export default function Explorer() {
   }, []);
 
   const running   = nodeStatus?.running  ?? false;
-  const height    = nodeStatus?.height   ?? 0;
-  const tip       = nodeStatus?.network_tip ?? 0;
-  const peerCount = nodeStatus?.peers    ?? 0;
-  const synced    = nodeStatus?.synced   ?? false;
+
+  // `height` stays THIS NODE'S height, deliberately. Chain-reset detection below keys off
+  // it (prev > 200 && height < 50 => wipe the block list); pointing it at the network tip
+  // would break that, since the network never resets to 0.
+  const height    = nodeStatus?.height ?? 0;
+  const peerCount = nodeStatus?.peers  ?? 0;
+
+  // The network tip, from the explorer SOURCE when one is reachable, else this node's own
+  // view. This is what makes a stuck local node VISIBLE instead of invisible.
+  const netHeight = remoteChain?.height ?? nodeStatus?.network_tip ?? 0;
+  const tip       = netHeight;
+  // Behind by more than the 10-block tolerance => show both numbers rather than one.
+  const behind    = netHeight > 0 && height > 0 && netHeight - height > 10;
+  const synced    = netHeight > 0 ? !behind : (nodeStatus?.synced ?? false);
 
   // Fetch latest 30 blocks and merge into the existing list.
   // Only initialises blockCursor on the very first successful fetch.
@@ -2564,7 +2607,12 @@ export default function Explorer() {
             </div>
             <div className="mt-1" style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, color: 'rgba(110,198,255,0.50)' }}>
               {live
-                ? `#${height.toLocaleString('en-US')} · ${peerCount}p · ${synced ? t('explorer.synced') : `${((height / (tip || 1)) * 100).toFixed(1)}% ${t('explorer.sync_suffix')}`}`
+                ? behind
+                  // Local node is materially behind the network: show BOTH, so isolation is
+                  // visible. A single truthful network number would hide the real problem —
+                  // an install sat at 64,290 reading "Synced" while the chain was at 66,237.
+                  ? `network #${netHeight.toLocaleString('en-US')} · local #${height.toLocaleString('en-US')} · ${peerCount}p`
+                  : `#${netHeight.toLocaleString('en-US')} · ${peerCount}p · ${synced ? t('explorer.synced') : `${((height / (tip || 1)) * 100).toFixed(1)}% ${t('explorer.sync_suffix')}`}`
                 : running ? t('explorer.loading_chain') : t('explorer.node_offline_hint')}
             </div>
           </div>

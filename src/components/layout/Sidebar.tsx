@@ -8,19 +8,17 @@ import {
 import clsx from 'clsx';
 import { useStore } from '../../lib/store';
 
-// Settlement / Marketplace / Agreements / Reputation removed from the
-// sidebar by request — their routes are redirected to /dashboard in
-// App.tsx, but the page files, lazy imports, and the four lucide icons
-// (ShieldCheck, ShoppingBag, FileText, Star) above are intentionally
-// preserved so the entries can be reinstated by re-adding them here.
+// Settlement / Marketplace / Agreements / Reputation are NOT in this list.
+//
+// A comment here claimed they had been removed since 2026-05-29 (f5675d3) while all four
+// were still present in NAV and still rendering — the comment was simply false. They are
+// now genuinely gone. Their routes redirect to /dashboard in App.tsx; the page files, lazy
+// imports and the four lucide icons are preserved so the entries can be reinstated by
+// re-adding them here.
 const NAV = [
   { to: '/dashboard',   icon: LayoutDashboard, labelKey: 'nav.dashboard'   },
   { to: '/explorer',    icon: Globe,           labelKey: 'nav.explorer'    },
   { to: '/wallet',      icon: Wallet,          labelKey: 'nav.wallet'      },
-  { to: '/settlement',  icon: ShieldCheck,     labelKey: 'nav.settlement'  },
-  { to: '/marketplace', icon: ShoppingBag,     labelKey: 'nav.marketplace' },
-  { to: '/agreements',  icon: FileText,        labelKey: 'nav.agreements'  },
-  { to: '/reputation',  icon: Star,            labelKey: 'nav.reputation'  },
   { to: '/miner',       icon: Cpu,             labelKey: 'nav.miner'       },
   { to: '/terminal',    icon: TerminalSquare,  labelKey: 'nav.terminal'    },
   { to: '/logs',        icon: Terminal,        labelKey: 'nav.logs'        },

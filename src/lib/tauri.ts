@@ -1382,3 +1382,8 @@ export const rpcCall = {
     allow_overwrite?: boolean;
   }) => rpcPost('/wallet/recover_from_seed', body),
 };
+
+/** Which explorer backend the Rust side resolved (remote by default, or the local
+ *  sidecar when IRIUM_EXPLORER_SOURCE=local). Used by the Explorer header. */
+export const explorerSource = (): Promise<string> =>
+  safeInvoke<string>('get_explorer_source') as Promise<string>;
