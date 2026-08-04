@@ -3044,6 +3044,44 @@ async fn get_node_metrics(state: State<'_, AppState>) -> Result<NodeMetrics, Str
     Ok(metrics)
 }
 
+/// How far behind the external tip we may sit and still call ourselves synced.
+const SYNC_TOLERANCE_BLOCKS: u64 = 10;
+
+/// The network tip as known from something OUTSIDE this node — 0 when nothing external is known.
+///
+/// This must never be floored at `local_height`. The original code computed
+/// `peer_max_height.max(best_header_height).max(local_height)` and then tested
+/// `local_height >= network_tip - 10`, which reduces to `local_height >= local_height - 10` —
+/// **always true**. A node stuck 1,947 blocks behind (64,290 while mainnet was 66,237) with one
+/// peer connected reported itself SYNCED, and `fully_synced` inherited it, ungating Send. It was
+/// comparing the node against itself.
+///
+/// `best_header_height` is only PARTLY external: in iriumd it is the height of `best_header_hash()`
+/// in the header index, falling back to `tip_height()` (bin/iriumd.rs:3899), so it EQUALS the local
+/// chain height whenever no headers are known beyond our own tip — exactly the stuck-node case. It
+/// is evidence only when it EXCEEDS `local_height` (header-first sync fetches headers ahead of
+/// blocks; observed local 0 / header tip 23). Folding it in unconditionally would reintroduce the
+/// self-comparison this function exists to remove.
+///
+/// `peer_max_height` degrades silently to 0 on RPC error, JSON parse error, or peers that report no
+/// height — so absence of evidence must read as UNKNOWN, never as agreement.
+fn external_network_tip(local_height: u64, peer_max_height: u64, best_header_height: u64) -> u64 {
+    let header_evidence = if best_header_height > local_height {
+        best_header_height
+    } else {
+        0
+    };
+    peer_max_height.max(header_evidence)
+}
+
+/// Whether `local_height` agrees with a tip known from outside this node.
+///
+/// `external_tip == 0` means we have no outside knowledge at all, which is NOT sync — we simply do
+/// not know, and claiming sync we cannot evidence is the worse failure.
+fn is_synced_against_external_tip(local_height: u64, external_tip: u64) -> bool {
+    external_tip > 0 && local_height >= external_tip.saturating_sub(SYNC_TOLERANCE_BLOCKS)
+}
+
 // get_node_status: fully decentralized — reads only from the local node's RPC.
 // network_tip is derived from the maximum height reported by connected peers.
 // best_header_tip from /status mirrors the local chain height, not the true peer tip.
@@ -3077,16 +3115,16 @@ async fn get_node_status(state: State<'_, AppState>) -> Result<NodeStatus, Strin
                 }
             };
 
-            // Use the maximum of: peer-reported tip, best_header_tip, local height.
-            // peer_max_height is the authoritative network tip when peers are connected.
             let best_header_height = info.best_header_tip.as_ref().map(|t| t.height).unwrap_or(0);
-            let network_tip = peer_max_height.max(best_header_height).max(local_height);
+            let external_tip =
+                external_network_tip(local_height, peer_max_height, best_header_height);
 
-            // Synced when: anchor loaded, at least one peer, and within 10 blocks of tip.
             let synced = info.anchor_loaded.unwrap_or(false)
                 && peers > 0
-                && network_tip > 0
-                && local_height >= network_tip.saturating_sub(10);
+                && is_synced_against_external_tip(local_height, external_tip);
+
+            // Reported to the UI for progress display only — never for the synced decision.
+            let network_tip = external_tip.max(local_height);
 
             // FIX 1 interim mitigation — see NodeStatus docstring. After a
             // local iriumd restart the in-memory tip can be ahead of the
@@ -10124,4 +10162,113 @@ fn main() {
                 std::thread::sleep(std::time::Duration::from_millis(1500));
             }
         });
+}
+
+#[cfg(test)]
+mod sync_status_tests {
+    use super::{external_network_tip, is_synced_against_external_tip, SYNC_TOLERANCE_BLOCKS};
+
+    /// The exact formula that shipped before this fix, kept verbatim so the defect is pinned by a
+    /// test rather than only described in a comment. If someone reverts to it, `old_formula_*`
+    /// below documents precisely what breaks.
+    fn old_synced(local_height: u64, peer_max_height: u64, best_header_height: u64) -> bool {
+        let network_tip = peer_max_height.max(best_header_height).max(local_height);
+        network_tip > 0 && local_height >= network_tip.saturating_sub(SYNC_TOLERANCE_BLOCKS)
+    }
+
+    fn synced(local_height: u64, peer_max_height: u64, best_header_height: u64) -> bool {
+        is_synced_against_external_tip(
+            local_height,
+            external_network_tip(local_height, peer_max_height, best_header_height),
+        )
+    }
+
+    // ---- BREAK-CHECK: the old formula must FAIL these, the new one must PASS them ----
+
+    /// The reported bug: node stuck at 64,290 while mainnet is at 66,237. Peers are connected but
+    /// report no usable height (peer_max degrades to 0) and best_header_tip has fallen back to
+    /// tip_height, so it equals local height.
+    #[test]
+    fn old_formula_calls_a_stuck_node_synced_and_new_one_does_not() {
+        let (local, peer_max, best_header) = (64_290, 0, 64_290);
+        assert!(
+            old_synced(local, peer_max, best_header),
+            "control: the old formula must reproduce the bug, else this test proves nothing"
+        );
+        assert!(
+            !synced(local, peer_max, best_header),
+            "a node 1,947 blocks behind with no external evidence must NOT report synced"
+        );
+    }
+
+    /// Self-comparison is unconditional in the old formula: with no external signal at all it
+    /// reports synced at ANY height. This is the general form of the bug above.
+    #[test]
+    fn old_formula_is_synced_at_every_height_with_no_external_signal() {
+        for local in [1_u64, 10, 1_000, 64_290, 66_237, u64::MAX / 2] {
+            assert!(
+                old_synced(local, 0, local),
+                "control: old formula must be trivially true at height {local}"
+            );
+            assert!(
+                !synced(local, 0, local),
+                "no external evidence at height {local} must read as UNKNOWN, not synced"
+            );
+        }
+    }
+
+    /// best_header_tip at or below local height is our own tip echoed back and must contribute
+    /// nothing — folding it in unconditionally would reintroduce the self-comparison.
+    #[test]
+    fn best_header_at_or_below_local_height_is_not_evidence() {
+        assert_eq!(external_network_tip(64_290, 0, 64_290), 0);
+        assert_eq!(external_network_tip(64_290, 0, 12_345), 0);
+        assert_eq!(external_network_tip(64_290, 0, 0), 0);
+    }
+
+    // ---- the signals that ARE external ----
+
+    /// Header-first sync fetches headers ahead of blocks (observed: local 0, header tip 23), so a
+    /// best_header ABOVE local height is genuine outside knowledge.
+    #[test]
+    fn best_header_above_local_height_is_evidence() {
+        assert_eq!(external_network_tip(0, 0, 23), 23);
+        assert!(!synced(0, 0, 23), "23 blocks of headers ahead is beyond tolerance");
+        // Inside tolerance: headers 5 ahead is still agreement.
+        assert!(synced(66_232, 0, 66_237));
+    }
+
+    #[test]
+    fn peer_height_is_evidence_in_both_directions() {
+        assert!(!synced(64_290, 66_237, 64_290), "peer says we are 1,947 behind");
+        assert!(synced(66_237, 66_237, 66_237), "at tip with a peer confirming it");
+        assert!(synced(66_227, 66_237, 66_227), "exactly at the tolerance boundary");
+        assert!(!synced(66_226, 66_237, 66_226), "one block past tolerance");
+    }
+
+    /// Whichever external source is higher wins; local height never raises the bar.
+    #[test]
+    fn external_tip_takes_the_max_of_real_signals_only() {
+        assert_eq!(external_network_tip(100, 66_237, 150), 66_237);
+        assert_eq!(external_network_tip(100, 50, 150), 150);
+        assert_eq!(external_network_tip(100, 50, 90), 50);
+        assert_eq!(
+            external_network_tip(u64::MAX, 0, u64::MAX),
+            0,
+            "a huge local height must not manufacture an external tip"
+        );
+    }
+
+    /// A fresh node at genesis with no peers answering has no evidence — not synced.
+    #[test]
+    fn genesis_with_no_signal_is_not_synced() {
+        assert!(!synced(0, 0, 0));
+    }
+
+    #[test]
+    fn saturating_below_tolerance_does_not_underflow() {
+        assert!(synced(0, 5, 0), "tip 5 is within the 10-block tolerance of height 0");
+        assert!(synced(3, 10, 3));
+        assert!(!synced(0, 11, 0));
+    }
 }

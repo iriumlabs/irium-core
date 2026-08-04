@@ -52,14 +52,36 @@ async function fetchRpcStatus(rpcUrl: string): Promise<NodeStatus | null> {
     const tipHash: string = d.best_header_tip?.hash ?? '';
 
     let peers = Number(d.peer_count ?? 0);
+    // The /peers response was already being fetched and its HEIGHTS discarded — only the count
+    // was used. Those heights are the one genuinely external view of where the network is, so
+    // take the max as the authoritative tip.
+    let peerMaxHeight = 0;
     if (peersSettled.status === 'fulfilled' && peersSettled.value.ok) {
       const pd = peersSettled.value.data ?? {};
       peers = Array.isArray(pd.peers) ? pd.peers.length : (Number(pd.peer_count) || peers);
+      if (Array.isArray(pd.peers)) {
+        for (const p of pd.peers as Array<{ height?: number }>) {
+          peerMaxHeight = Math.max(peerMaxHeight, Number(p?.height ?? 0));
+        }
+      }
     }
 
-    // Mirror Rust logic: synced only when anchor loaded, have peers, know the tip,
-    // and local height is within 10 blocks of the network tip.
-    const synced = Boolean(d.anchor_loaded) && peers > 0 && tipH > 0 && height >= tipH - 10;
+    // Mirror the Rust `get_node_status` rule: synced requires a tip known from OUTSIDE this node.
+    //
+    // `tipH` (best_header_tip) falls back to the node's own tip_height in iriumd, so on a stuck
+    // node it EQUALS `height` and the old test `height >= tipH - 10` was satisfied trivially —
+    // reporting synced while arbitrarily far behind (observed 64,290 against a real tip of 66,237).
+    // It is real evidence only when it EXCEEDS our height (headers fetched ahead of blocks).
+    // peerMaxHeight is the other external signal and degrades to 0 when /peers fails or peers omit
+    // a height, so a missing signal must read as NOT synced — claiming agreement we cannot evidence
+    // is the worse failure: it ungates Send.
+    const headerEvidence = tipH > height ? tipH : 0;
+    const externalTip = Math.max(peerMaxHeight, headerEvidence);
+    const synced =
+      Boolean(d.anchor_loaded) &&
+      peers > 0 &&
+      externalTip > 0 &&
+      height >= externalTip - 10;
     // Mirror Rust's stricter fully_synced gate (FIX 1 mitigation): the
     // persisted state has caught up to the in-memory tip AND no gap-healer
     // entries remain. Falls back to 0 / matches the offline-branch
