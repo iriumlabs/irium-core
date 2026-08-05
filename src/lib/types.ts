@@ -450,8 +450,23 @@ export interface Reputation {
 
 export interface MinerStatus {
   running: boolean;
-  hashrate_khs: number;
-  blocks_found: number;
+  // PoAW-X replaces the hash race with VRF sortition over registered
+  // proposer keys — proposer_threshold() takes no hashrate input, so no
+  // hashrate figure can move the odds. What the miner actually announces
+  // once per slot is whether it was selected to propose:
+  //   true  — "[poawx] proposer SELECTED height=…"
+  //   false — "[poawx] not proposer this slot height=…"
+  //   null  — no slot line seen yet (warming up, or not mining)
+  selected_this_round?: boolean | null;
+  // Lifetime PoAW-X blocks won by the mining address, counted on-chain
+  // from /rpc/history: coinbase receipts at height >= the 61,414
+  // activation. Survives app restarts, and — unlike /rpc/balance's
+  // mined_blocks, which scans the UNSPENT UTXO set — survives spending
+  // the rewards. Between 61,414 and the 66,400 single-payee fork a
+  // receipt may be a contributor-role payout rather than a proposer win;
+  // at and after 66,400 it is unambiguously a win. null when no mining
+  // address is known yet, so the UI renders "—" not a false zero.
+  lifetime_blocks_won?: number | null;
   uptime_secs: number;
   difficulty: number;
   threads: number;

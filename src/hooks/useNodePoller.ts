@@ -188,7 +188,6 @@ export function useNodePoller() {
   // miner is actually running, so non-mining users don't accumulate a
   // useless trail of zero samples.
   const setMinerStatus = useStore((s) => s.setMinerStatus);
-  const appendMinerHistory = useStore((s) => s.appendMinerHistory);
   const setGpuMinerStatus = useStore((s) => s.setGpuMinerStatus);
   const setGpuDevices = useStore((s) => s.setGpuDevices);
   const appendGpuMinerHistory = useStore((s) => s.appendGpuMinerHistory);
@@ -199,9 +198,12 @@ export function useNodePoller() {
     try {
       const s = await miner.status();
       setMinerStatus(s);
-      if (s.running) appendMinerHistory({ t: Date.now(), khs: s.hashrate_khs });
+      // No CPU hashrate series any more: under PoAW-X the solo miner emits
+      // no periodic rate line, and a hashrate chart would plot a number
+      // that cannot affect block selection. The GPU poll below still keeps
+      // its series (GpuMinerStatus is unchanged by this pass).
     } catch { /* miner sidecar not running — leave status as is */ }
-  }, [setMinerStatus, appendMinerHistory]);
+  }, [setMinerStatus]);
 
   const pollGpuMiner = useCallback(async () => {
     try {

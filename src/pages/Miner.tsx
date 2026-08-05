@@ -624,9 +624,7 @@ function CpuMinerTab() {
   // 3-second poll lives in useNodePoller and runs regardless of which page
   // is mounted.
   const status = useStore((s) => s.minerStatus);
-  const history = useStore((s) => s.minerHistory);
   const cpuCores = useStore((s) => s.cpuCores);
-  const resetMinerHistory = useStore((s) => s.resetMinerHistory);
   const rpcUrl = useStore((s) => s.settings.rpc_url);
   // FIX D: bring nodeStatus into scope so we can distinguish "the node
   // is genuinely still syncing the chain" (worth a long-form sync
@@ -657,9 +655,12 @@ function CpuMinerTab() {
   // This survives tab switches that would otherwise reset local `threads` state.
   const displayThreads = (status?.running && status.threads) ? status.threads : threads;
 
-  const etaSeconds = (netInfo?.difficulty && status?.hashrate_khs && status.hashrate_khs > 0)
-    ? (netInfo.difficulty * 4_294_967_296) / (status.hashrate_khs * 1000)
-    : null;
+  // No block-time ETA here any more. The old estimate was
+  // difficulty * 2^32 / hashrate, which assumes a hash race decides who
+  // produces a block. Under PoAW-X it doesn't: the proposer is drawn by VRF
+  // sortition over registered keys and proposer_threshold() takes no
+  // hashrate input, so that formula had no relationship to when this miner
+  // would next win. It is removed rather than recomputed.
 
   // Poll iriumd /network-status every 3s while mining is active. Uses Tauri's
   // HTTP API (allowlist.http scope) so the request bypasses the renderer CSP
@@ -719,7 +720,6 @@ function CpuMinerTab() {
     try {
       await miner.stop();
       toast.success(t('miner.toasts.miner_stopped'));
-      resetMinerHistory();
     } catch (e) { toast.error(String(e)); }
   };
 
@@ -779,8 +779,12 @@ function CpuMinerTab() {
                           ? (isSyncing ? t('miner.status.mining_active_syncing') : t('miner.status.mining_active'))
                           : t('miner.status.cpu_idle')}
                     </span>
-                    {status?.running && !isSyncing && status.hashrate_khs > 0 && (
-                      <span className="badge badge-irium">{status.hashrate_khs.toFixed(1)} KH/s</span>
+                    {status?.running && !isSyncing && status.selected_this_round != null && (
+                      <span className={status.selected_this_round ? 'badge badge-irium' : 'badge badge-info'}>
+                        {status.selected_this_round
+                          ? t('miner.selection.selected')
+                          : t('miner.selection.not_selected')}
+                      </span>
                     )}
                     {isSyncing && (
                       <span className="badge badge-warning text-[10px]">{t('miner.status.syncing_badge')}</span>
@@ -901,7 +905,7 @@ function CpuMinerTab() {
                 </div>
 
                 {/* Block time — hidden while syncing to avoid showing stale data */}
-                {netInfo.seconds_since_last_block != null && status.hashrate_khs !== 0 && (
+                {netInfo.seconds_since_last_block != null && (
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1.5">
                       <Clock size={11} color="#34d399" className="opacity-50" />
@@ -927,34 +931,12 @@ function CpuMinerTab() {
             </motion.div>
           )}
 
+          {/* The CPU hashrate chart is gone with the hashrate itself: under
+              PoAW-X the solo miner emits no periodic rate line, so the series
+              was permanently empty, and plotting it implied hashing speed
+              affects block selection. It does not. */}
           <AnimatePresence>
-            {status?.running && history.length > 1 ? (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 120 }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.35 }}
-              >
-                <ResponsiveContainer width="100%" height={120}>
-                  <AreaChart data={history} margin={{ top: 4, right: 0, left: -30, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="cpuGrad" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#6ec6ff" />
-                        <stop offset="100%" stopColor="#3B82F6" />
-                      </linearGradient>
-                      <linearGradient id="cpuFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#6ec6ff" stopOpacity={0.20} />
-                        <stop offset="100%" stopColor="#6ec6ff" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="t" hide />
-                    <YAxis hide />
-                    <Tooltip content={<ChartTooltip />} />
-                    <Area type="monotone" dataKey="khs" stroke="url(#cpuGrad)" strokeWidth={2} fill="url(#cpuFill)" dot={false} isAnimationActive={false} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </motion.div>
-            ) : !status?.running ? (
+            {!status?.running ? (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -971,23 +953,31 @@ function CpuMinerTab() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
-        <StatCard label={t('miner.stats.hashrate')}       value={status === null ? '—' : status.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#A78BFA" icon={Activity} />
-        <StatCard label={t('miner.stats.est_block_time')} value={etaSeconds ? formatEta(etaSeconds) : '—'} color="#6ec6ff" icon={Timer} />
-        <StatCard label={t('miner.stats.blocks_found')}   value={String(status?.blocks_found ?? 0)} color="#34d399" icon={Hash} />
+      {/* Four tiles, not six. Hashrate, Est. Block Time and Est. Daily IRM
+          were all derived from a hashrate that cannot influence PoAW-X block
+          selection, so they are removed rather than left showing 0.0 KH/s. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard
+          label={t('miner.stats.this_round')}
+          value={status === null || !status.running
+            ? '—'
+            : status.selected_this_round == null
+              ? t('miner.selection.waiting')
+              : status.selected_this_round
+                ? t('miner.selection.selected')
+                : t('miner.selection.not_selected')}
+          color="#A78BFA"
+          icon={Activity}
+        />
+        {/* Lifetime, chain-sourced, spend-independent — not a session counter. */}
+        <StatCard
+          label={t('miner.stats.blocks_won')}
+          value={status?.lifetime_blocks_won == null ? '—' : String(status.lifetime_blocks_won)}
+          color="#34d399"
+          icon={Hash}
+        />
         <StatCard label={t('miner.stats.uptime')}         value={status?.uptime_secs ? formatUptime(status.uptime_secs) : '—'} color="#60a5fa" icon={Clock} />
         <StatCard label={t('miner.stats.difficulty')}     value={netInfo?.difficulty != null ? netInfo.difficulty.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'} color="#fbbf24" icon={Target} />
-        {/* FIX 4 (Mining UI): expected daily IRM at current hashrate × difficulty.
-            Shows "—" until both numbers are available so we never claim 0. */}
-        <StatCard
-          label={t('miner.stats.est_daily_irm')}
-          value={(() => {
-            const e = estimateDailyEarnings(status?.hashrate_khs, netInfo?.difficulty, netInfo?.height);
-            return e == null ? '—' : `${e.toFixed(e >= 1 ? 2 : 4)} IRM`;
-          })()}
-          color="#fbbf24"
-          icon={Coins}
-        />
       </div>
 
       {/* Found Blocks list (Bug 1) */}

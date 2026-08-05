@@ -1162,12 +1162,10 @@ function NetworkMiningOverview() {
   const cpuRunning = cpuStatus?.running === true;
   const gpuRunning = gpuStatus?.running === true;
   const localMining = cpuRunning || gpuRunning;
-  // Hashrate fields on both miner-status structs are in kH/s; convert to
-  // H/s for the shared formatter. Sum across CPU + GPU when both run.
-  const localHashrateHps = (
-    (cpuRunning ? (cpuStatus?.hashrate_khs ?? 0) : 0) +
-    (gpuRunning ? (gpuStatus?.hashrate_khs ?? 0) : 0)
-  ) * 1000;
+  // Hashrate is in kH/s; convert to H/s for the shared formatter. Only the
+  // GPU miner still reports one: the CPU miner's PoAW-X path is VRF-selected,
+  // not hash-raced, so MinerStatus no longer carries a hashrate to add here.
+  const localHashrateHps = (gpuRunning ? (gpuStatus?.hashrate_khs ?? 0) : 0) * 1000;
   // Solo vs pool for the LOCAL miner: stratum.connected is the
   // authoritative bit. When the user starts mining via the Miner page's
   // "Pool" button the desktop wires the miner up to the stratum client,
@@ -1175,7 +1173,14 @@ function NetworkMiningOverview() {
   // keeps stratum disconnected, so localMining + !stratum.connected =
   // Solo.
   const stratumConnected = stratumS?.connected === true;
-  const localBlocksFound = (cpuStatus?.blocks_found ?? 0) + (gpuStatus?.blocks_found ?? 0);
+  // The CPU status now carries a chain-sourced LIFETIME PoAW-X win count for
+  // the mining address. That already includes anything the GPU miner won to
+  // the same address, so adding the GPU session counter on top would double
+  // count. Prefer the chain figure; fall back to the GPU session counter only
+  // when no mining address is known yet.
+  const cpuLifetimeWins = cpuStatus?.lifetime_blocks_won ?? null;
+  const localBlocksFound = cpuLifetimeWins ?? (gpuStatus?.blocks_found ?? 0);
+  const localBlocksAreLifetime = cpuLifetimeWins != null;
 
   // Pool-side cross-reference: rows on the /miners feed whose worker
   // name's base address is in the user's wallet. Profile distinguishes
@@ -1370,7 +1375,11 @@ function NetworkMiningOverview() {
               value={myPoolRows.length > 0
                 ? formatAgoPlainEnglish(myPoolLastShareSecs, t)
                 : yourBlocksFound.toLocaleString('en-US')}
-              sub={myPoolRows.length > 0 ? t('explorer.mining_overview.from_pool_worker') : t('explorer.mining_overview.this_session')}
+              sub={myPoolRows.length > 0
+                ? t('explorer.mining_overview.from_pool_worker')
+                : localBlocksAreLifetime
+                  ? t('explorer.mining_overview.lifetime_onchain')
+                  : t('explorer.mining_overview.this_session')}
               accent="#34d399"
             />
           </div>

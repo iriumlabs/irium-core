@@ -51,6 +51,18 @@ struct AppState {
     miner_address: Arc<Mutex<Option<String>>>,
     miner_threads: Arc<Mutex<u32>>,
     miner_hashrate: Arc<Mutex<f64>>,
+    // PoAW-X proposer selection for the current slot, parsed from the CPU
+    // miner sidecar's stdout by parse_poawx_selection. None until the first
+    // slot line arrives; reset to None whenever the sidecar starts or exits
+    // so a stale "Selected" can never outlive the run that produced it.
+    miner_selected_this_round: Arc<Mutex<Option<bool>>>,
+    // The address the CPU miner was last started with. Unlike miner_address
+    // this is NOT cleared on stop, so the lifetime win count keeps rendering
+    // after the user stops mining instead of collapsing to "—".
+    miner_last_address: Arc<Mutex<Option<String>>>,
+    // Cached lifetime PoAW-X win count, keyed by address — see
+    // POAWX_WINS_CACHE_TTL_SECS.
+    poawx_wins_cache: Arc<Mutex<Option<PoawxWinsCacheEntry>>>,
     // Last sync-progress line from the miner sidecar (e.g. `[sync] Miner
     // downloading blocks 1..21269 from node`). Populated by start_miner's
     // event loop while no rate line has arrived yet; cleared on the first
@@ -153,6 +165,24 @@ struct PoolStatsCacheEntry {
     pool_hashrate_khs: Option<f64>,
 }
 
+/// First mainnet height at which PoAW-X proposer selection decides who
+/// produces a block (the combined activation, live since 2026-07-23).
+/// Coinbase receipts below this height are legacy PoW rewards and are not
+/// PoAW-X wins, so they are excluded from the lifetime win count.
+const POAWX_ACTIVATION_HEIGHT: u64 = 61_414;
+
+/// TTL for the lifetime-win count. /rpc/history is a full chain scan on the
+/// node side and get_miner_status is polled every 3 s, so the raw call is
+/// cached — a win count changes at most once per block (~120 s target).
+const POAWX_WINS_CACHE_TTL_SECS: u64 = 60;
+
+#[derive(Clone)]
+struct PoawxWinsCacheEntry {
+    fetched_at_unix: u64,
+    address: String,
+    wins: u64,
+}
+
 impl AppState {
     fn new() -> Self {
         // Always start with wallet.json as the active wallet so the user sees
@@ -174,6 +204,9 @@ impl AppState {
             miner_address: Arc::new(Mutex::new(None)),
             miner_threads: Arc::new(Mutex::new(0)),
             miner_hashrate: Arc::new(Mutex::new(0.0)),
+            miner_selected_this_round: Arc::new(Mutex::new(None)),
+            miner_last_address: Arc::new(Mutex::new(None)),
+            poawx_wins_cache: Arc::new(Mutex::new(None)),
             miner_sync_status: Arc::new(Mutex::new(None)),
             last_node_status: Arc::new(Mutex::new(None)),
             pool_url: Arc::new(Mutex::new(None)),
@@ -432,6 +465,23 @@ fn push_stratum_event(
             g.pop_back();
         }
         g.push_front(StratumEvent { ts: now, kind, detail });
+    }
+}
+
+/// Map a miner-sidecar stdout line to a PoAW-X proposer-selection state.
+///
+/// irium-miner prints exactly one of these per slot once solo PoAW-X mining
+/// is running (irium-miner.rs:3539 / :3550):
+///   "[poawx] proposer SELECTED height=… round=… priority=… eligible=…"
+///   "[poawx] not proposer this slot height=… (…); waiting"
+/// Returns None for every other line so the caller leaves the state alone.
+fn parse_poawx_selection(line: &str) -> Option<bool> {
+    if line.contains("[poawx] proposer SELECTED") {
+        Some(true)
+    } else if line.contains("not proposer this slot") {
+        Some(false)
+    } else {
+        None
     }
 }
 
@@ -827,6 +877,85 @@ async fn get_first_wallet_address(
         .map(|l| l.trim().to_string())
         .find(|l| !l.is_empty())
         .ok_or_else(|| "No wallet addresses found — run new-address first".to_string())
+}
+
+/// Count lifetime PoAW-X blocks won by `address`, straight from the chain.
+///
+/// Counts coinbase receipts at height >= POAWX_ACTIVATION_HEIGHT in
+/// /rpc/history. That is spend-independent — a coinbase stays in the history
+/// after it is spent — which is exactly why this does not use /rpc/balance's
+/// mined_blocks, a scan of the UNSPENT UTXO set that collapses to 0 once the
+/// miner spends a reward.
+///
+/// Returns None on any transport/decode failure so the caller can leave the
+/// previous value in place rather than render a spurious 0.
+async fn fetch_poawx_lifetime_wins(rpc_url: &str, token: Option<String>, address: &str) -> Option<u64> {
+    let client = rpc_client_with_token(token);
+    let url = format!(
+        "{}/rpc/history?address={}",
+        rpc_url.trim_end_matches('/'),
+        address
+    );
+    let resp = client
+        .get(&url)
+        .timeout(Duration::from_secs(5))
+        .send()
+        .await
+        .ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+    let history = resp.json::<RpcHistoryResponse>().await.ok()?;
+    Some(
+        history
+            .txs
+            .iter()
+            .filter(|e| e.is_coinbase && e.height >= POAWX_ACTIVATION_HEIGHT)
+            .count() as u64,
+    )
+}
+
+/// Cached wrapper around fetch_poawx_lifetime_wins. /rpc/history walks the
+/// whole chain on the node, and get_miner_status is polled every 3 s, so an
+/// uncached call would hammer a node endpoint for a number that can only
+/// change once per block. A cache entry for a different address is discarded.
+///
+/// On a failed refresh the previous value is retained (stale-but-true beats a
+/// flash of "—" on a transient RPC miss).
+async fn fetch_poawx_wins_cached(state: &AppState, rpc_url: &str, address: &str) -> Option<u64> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    if let Ok(guard) = state.poawx_wins_cache.lock() {
+        if let Some(entry) = guard.as_ref() {
+            if entry.address == address
+                && now.saturating_sub(entry.fetched_at_unix) < POAWX_WINS_CACHE_TTL_SECS
+            {
+                return Some(entry.wins);
+            }
+        }
+    }
+
+    let token = snapshot_gui_rpc_bearer(&state.rpc_token_override);
+    match fetch_poawx_lifetime_wins(rpc_url, token, address).await {
+        Some(wins) => {
+            if let Ok(mut guard) = state.poawx_wins_cache.lock() {
+                *guard = Some(PoawxWinsCacheEntry {
+                    fetched_at_unix: now,
+                    address: address.to_string(),
+                    wins,
+                });
+            }
+            Some(wins)
+        }
+        None => state
+            .poawx_wins_cache
+            .lock()
+            .ok()
+            .and_then(|g| g.as_ref().filter(|e| e.address == address).map(|e| e.wins)),
+    }
 }
 
 async fn fetch_address_balance_sats(client: &reqwest::Client, rpc_url: &str, address: &str) -> Option<u64> {
@@ -6568,6 +6697,7 @@ async fn start_miner(
 
     let (mut rx, child) = cmd.spawn().map_err(|e| format!("Failed to start miner: {}", e))?;
     let hashrate_ref = Arc::clone(&state.miner_hashrate);
+    let selected_ref = Arc::clone(&state.miner_selected_this_round);
     let sync_ref = Arc::clone(&state.miner_sync_status);
     let blocks_found_ref = Arc::clone(&state.blocks_found);
     let found_blocks_ref = Arc::clone(&state.found_blocks);
@@ -6590,6 +6720,7 @@ async fn start_miner(
     let miner_kind_for_cleanup = Arc::clone(&state.miner_kind);
     let hashrate_for_clear = Arc::clone(&state.miner_hashrate);
     let sync_for_clear = Arc::clone(&state.miner_sync_status);
+    let selected_for_clear = Arc::clone(&state.miner_selected_this_round);
     tauri::async_runtime::spawn(async move {
         // Buffer of recent stderr lines included in the unexpected-exit
         // payload so the GUI banner can show a snippet of what the miner
@@ -6613,6 +6744,10 @@ async fn start_miner(
                     if let Ok(mut k) = miner_kind_for_cleanup.lock() { *k = None; }
                     if let Ok(mut h) = hashrate_for_clear.lock() { *h = 0.0; }
                     if let Ok(mut s) = sync_for_clear.lock() { *s = None; }
+                    // The sidecar is gone, so there is no current slot — drop
+                    // the last selection rather than leave "Selected" frozen
+                    // on screen after the miner died.
+                    if let Ok(mut s) = selected_for_clear.lock() { *s = None; }
                     if !user_initiated {
                         let _ = app_for_event.emit_all(
                             "miner-exited-unexpectedly",
@@ -6678,6 +6813,16 @@ async fn start_miner(
                 continue;
             }
 
+            // PoAW-X: the sidecar prints one selection line per slot. Checked
+            // independently of the hashrate/sync chain below, because a slot
+            // line carries no rate and must not be swallowed by that `else`.
+            if let Some(sel) = parse_poawx_selection(&line) {
+                if let Ok(mut s) = selected_ref.lock() { *s = Some(sel); }
+                // A slot line proves the miner is past startup and taking
+                // part in selection, so any stale sync banner is finished.
+                if let Ok(mut s) = sync_ref.lock() { *s = None; }
+            }
+
             if let Some(khs) = parse_hashrate_khs(&line) {
                 if let Ok(mut h) = hashrate_ref.lock() { *h = khs; }
                 // Mining started — drop any stale sync line so the UI
@@ -6698,7 +6843,12 @@ async fn start_miner(
     // this sidecar is alive.
     *state.miner_kind.lock().map_err(lock_err)? = Some(MinerKind::Cpu);
     *state.miner_start_time.lock().map_err(lock_err)? = Some(std::time::Instant::now());
-    *state.miner_address.lock().map_err(lock_err)? = Some(address);
+    *state.miner_address.lock().map_err(lock_err)? = Some(address.clone());
+    // Sticky: survives stop_miner so the lifetime win count keeps rendering
+    // for the address the user was mining to.
+    *state.miner_last_address.lock().map_err(lock_err)? = Some(address);
+    // A fresh run has not been through a slot yet.
+    *state.miner_selected_this_round.lock().map_err(lock_err)? = None;
     *state.miner_threads.lock().map_err(lock_err)? = threads.unwrap_or(1);
 
     // Seamless PoAW-X contributor enrollment: spawn the role-worker loop with a DEDICATED
@@ -6800,8 +6950,8 @@ async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, Str
     // process slot. Previously this read miner_process.is_some() which
     // was also true while the GPU miner was active, causing the CPU tab
     // to render "Mining Active" with warmup banner while the user was
-    // actually GPU-mining. The associated counters (hashrate, threads,
-    // uptime, sync_status) all describe the active sidecar — those are
+    // actually GPU-mining. The associated counters (threads, uptime,
+    // sync_status, selected_this_round) all describe the active sidecar — those are
     // only meaningful on the CPU tab when the active miner IS CPU, so we
     // zero them on the inactive tab to keep the UI tab-local.
     let kind = *state.miner_kind.lock().map_err(lock_err)?;
@@ -6813,9 +6963,27 @@ async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, Str
     let address = if running { state.miner_address.lock().map_err(lock_err)?.clone() } else { None };
     let threads = if running { *state.miner_threads.lock().map_err(lock_err)? } else { 0 };
 
-    let hashrate_khs = if running { *state.miner_hashrate.lock().map_err(lock_err)? } else { 0.0 };
     let sync_status = if running { state.miner_sync_status.lock().map_err(lock_err)?.clone() } else { None };
-    let blocks_found = *state.blocks_found.lock().map_err(lock_err)?;
+
+    // PoAW-X selection state for the current slot. Only meaningful while a
+    // CPU sidecar is actually running — when it isn't there is no slot, so
+    // the GUI gets None and renders "—" rather than a stale verdict.
+    let selected_this_round = if running {
+        *state.miner_selected_this_round.lock().map_err(lock_err)?
+    } else {
+        None
+    };
+
+    // Lifetime, chain-sourced win count for the address being mined to. Uses
+    // the sticky miner_last_address so stopping the miner doesn't blank it.
+    // None when no address is known yet (fresh launch, never started) — the
+    // GUI shows "—", never a false 0.
+    let wins_address = state.miner_last_address.lock().map_err(lock_err)?.clone();
+    let rpc_url_for_wins = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let lifetime_blocks_won = match wins_address {
+        Some(addr) => fetch_poawx_wins_cached(&state, &rpc_url_for_wins, &addr).await,
+        None => None,
+    };
 
     // Pool stats merge — fetch the proxy's /stats with a tight budget so
     // the local Miner page stays snappy when the official pool is
@@ -6826,8 +6994,8 @@ async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, Str
 
     Ok(MinerStatus {
         running,
-        hashrate_khs,
-        blocks_found,
+        selected_this_round,
+        lifetime_blocks_won,
         uptime_secs,
         difficulty: 0,
         threads,

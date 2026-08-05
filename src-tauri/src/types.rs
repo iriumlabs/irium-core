@@ -540,8 +540,35 @@ pub struct Reputation {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MinerStatus {
     pub running: bool,
-    pub hashrate_khs: f64,
-    pub blocks_found: u64,
+    // PoAW-X replaces the hash race with VRF sortition over registered
+    // proposer keys — proposer_threshold() takes no hashrate input, so no
+    // rate figure could ever move this miner's odds. What the sidecar does
+    // announce, once per slot, is whether it was drawn to propose:
+    //   Some(true)  — "[poawx] proposer SELECTED height=…"   (irium-miner.rs:3539)
+    //   Some(false) — "[poawx] not proposer this slot height=…" (:3550)
+    //   None        — no slot line seen yet (warming up, or not mining)
+    pub selected_this_round: Option<bool>,
+    // Lifetime PoAW-X blocks won by the mining address, counted on-chain from
+    // /rpc/history: coinbase receipts at height >= POAWX_ACTIVATION_HEIGHT.
+    //
+    // Deliberately NOT /rpc/balance's mined_blocks, which the node computes by
+    // scanning the UNSPENT UTXO set. That figure is wrong in both directions,
+    // measured on mainnet at tip 66,494:
+    //   Q9WdgUw3… → mined_blocks 0, but /rpc/history has 5 real coinbases
+    //               (all spent, so the UTXO scan sees none)
+    //   PzP2TzB4… → mined_blocks 4208 from only 1625 coinbase txs, because a
+    //               fan-out coinbase pays one address several times and the
+    //               scan counts OUTPUTS, not blocks
+    //
+    // Honest bound: between the 61,414 activation and the 66,400 single-payee
+    // fork, rewards fanned out 55/22/13/10, so a coinbase receipt in that
+    // window can be a contributor-role payout rather than a proposer win. At
+    // and after 66,400 the full subsidy goes to the one VRF proposer, so a
+    // receipt is unambiguously a win.
+    //
+    // None when no mining address is known yet, so the GUI can render "—"
+    // rather than a false zero.
+    pub lifetime_blocks_won: Option<u64>,
     pub uptime_secs: u64,
     pub difficulty: u64,
     pub threads: u32,

@@ -2019,7 +2019,9 @@
       "est_daily_irm": "Est. Daily IRM",
       "na_linux_only": "N/A (Linux only)",
       "pool_difficulty": "Pool Difficulty",
-      "pool_hashrate": "Pool Hashrate"
+      "pool_hashrate": "Pool Hashrate",
+      "this_round": "This Round",
+      "blocks_won": "Blocks Won"
     },
     "buttons": {
       "start_mining": "Start mining",
@@ -2236,6 +2238,11 @@
       "irium_official_cpu_gpu": "Irium Official Pool (CPU/GPU)",
       "irium_official_asic": "Irium Official Pool (ASIC)",
       "custom": "Custom"
+    },
+    "selection": {
+      "selected": "Selected",
+      "not_selected": "Not selected",
+      "waiting": "Waiting for slot…"
     }
   },
   "onboarding": {
@@ -2750,7 +2757,8 @@
       "from_pool_worker": "from pool worker",
       "this_session": "this session",
       "pool_blocks_today": "Pool Blocks Today",
-      "today": "today"
+      "today": "today",
+      "lifetime_onchain": "lifetime, on-chain"
     },
     "relative_time": {
       "just_now": "just now",
