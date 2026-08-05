@@ -2180,7 +2180,11 @@
       "block_hash_marker": "· block #{{height}}",
       "section_title": "Recent Activity",
       "last_count": "last {{count}}",
-      "waiting_for_first_share": "Waiting for first share…"
+      "waiting_for_first_share": "Waiting for first share…",
+      "competing": "Competing for block selection",
+      "selected": "Selected — building block",
+      "waiting": "Waiting for first slot…",
+      "stale": "No slot activity for {{secs}}s"
     },
     "status": {
       "loading": "Loading…",

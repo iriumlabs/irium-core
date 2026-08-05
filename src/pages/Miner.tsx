@@ -187,6 +187,65 @@ type NetInfo = {
   seconds_since_last_block: number | null;
 };
 
+// Freshness window for the PoAW-X slot signal. irium-miner / irium-miner-gpu
+// print one verdict per slot and then sleep 3 s, so lines normally arrive every
+// ~3 s. A round the miner WINS goes quiet while it builds and submits the
+// block, so the window has to be generous enough not to flicker on a win --
+// 60 s sits well inside the 120 s block target while still catching a wedged or
+// dead sidecar quickly.
+const SLOT_FRESH_SECS = 60;
+
+// Mining activity indicator.
+//
+// Deliberately NOT driven by hashrate: under PoAW-X the CPU miner emits no rate
+// line at all and the GPU PoAW-X path does not either, so a hashrate-driven
+// animation sat frozen at zero and told the user nothing.
+//
+// It is also deliberately not driven by `running` alone. That flag only means
+// "a sidecar was spawned and has not exited", which would make this another
+// always-on green light. The animation runs only while slot verdicts are
+// arriving FRESH -- i.e. the miner is demonstrably still entering the draw each
+// round. A miner that dies or wedges goes quiet here within SLOT_FRESH_SECS.
+function MiningActivity({ running, selected, slotAgeSecs }: {
+  running?: boolean;
+  selected?: boolean | null;
+  slotAgeSecs?: number | null;
+}) {
+  const { t } = useTranslation();
+  if (!running) return null;
+
+  const live = slotAgeSecs != null && slotAgeSecs <= SLOT_FRESH_SECS;
+  const accent = !live ? 'rgba(238,240,255,0.22)' : selected ? '#34d399' : '#6ec6ff';
+  const label = !live
+    ? (slotAgeSecs == null
+        ? t('miner.activity.waiting')
+        : t('miner.activity.stale', { secs: slotAgeSecs }))
+    : selected
+      ? t('miner.activity.selected')
+      : t('miner.activity.competing');
+
+  return (
+    <div className="flex items-center gap-2.5 mb-3">
+      <div className="flex items-end gap-[3px] h-4" aria-hidden="true">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <motion.span
+            key={i}
+            className="w-[3px] rounded-full"
+            style={{ background: accent }}
+            animate={live ? { height: ['28%', '100%', '28%'] } : { height: '28%' }}
+            transition={live
+              ? { duration: 1.1, repeat: Infinity, ease: 'easeInOut', delay: i * 0.13 }
+              : { duration: 0.3 }}
+          />
+        ))}
+      </div>
+      <span className="text-[11px]" style={{ color: live ? 'rgba(238,240,255,0.65)' : 'rgba(238,240,255,0.35)' }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
 function StatCard({ label, value, color, icon: Icon }: {
   label: string;
   value: string;
@@ -795,6 +854,12 @@ function CpuMinerTab() {
                   </div>
                 </div>
 
+                <MiningActivity
+                  running={status?.running}
+                  selected={status?.selected_this_round}
+                  slotAgeSecs={status?.slot_age_secs}
+                />
+
                 {status?.address && (
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-xs font-mono text-white/60 break-all" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
@@ -1252,6 +1317,12 @@ function GpuMinerTab() {
               </span>
             )}
           </div>
+
+          <MiningActivity
+            running={status?.running}
+            selected={status?.selected_this_round}
+            slotAgeSecs={status?.slot_age_secs}
+          />
 
           {status?.running && netInfo && (
             <motion.div

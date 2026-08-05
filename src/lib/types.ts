@@ -458,6 +458,10 @@ export interface MinerStatus {
   //   false — "[poawx] not proposer this slot height=…"
   //   null  — no slot line seen yet (warming up, or not mining)
   selected_this_round?: boolean | null;
+  // Seconds since the miner last reported a slot verdict; null if none yet.
+  // Freshness matters: selected_this_round alone stays set forever after the
+  // first line, so a dead sidecar would otherwise look permanently active.
+  slot_age_secs?: number | null;
   // Lifetime PoAW-X blocks won by the mining address, counted on-chain
   // from /rpc/history: coinbase receipts at height >= the 61,414
   // activation. Survives app restarts, and — unlike /rpc/balance's
@@ -509,6 +513,10 @@ export interface GpuMinerStatus {
   device_name?: string;
   temperature_c?: number;
   power_w?: number;
+  // Same PoAW-X slot signal as MinerStatus — the GPU sidecar prints the same
+  // per-slot verdict lines; Core simply never parsed them until now.
+  selected_this_round?: boolean | null;
+  slot_age_secs?: number | null;
 }
 
 // A block found by the CPU or GPU miner. Mirrors the Rust FoundBlock

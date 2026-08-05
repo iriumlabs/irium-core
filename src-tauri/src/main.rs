@@ -56,6 +56,12 @@ struct AppState {
     // slot line arrives; reset to None whenever the sidecar starts or exits
     // so a stale "Selected" can never outlive the run that produced it.
     miner_selected_this_round: Arc<Mutex<Option<bool>>>,
+    // Unix seconds of the most recent PoAW-X slot line seen on EITHER miner
+    // sidecar's stdout. Drives the mining-activity animation: a selection
+    // verdict that stops arriving means the miner stopped competing, which a
+    // bare "process is alive" flag cannot distinguish. Shared between CPU and
+    // GPU because only one sidecar owns the process slot at a time.
+    miner_last_slot_unix: Arc<Mutex<Option<u64>>>,
     // The address the CPU miner was last started with. Unlike miner_address
     // this is NOT cleared on stop, so the lifetime win count keeps rendering
     // after the user stops mining instead of collapsing to "—".
@@ -205,6 +211,7 @@ impl AppState {
             miner_threads: Arc::new(Mutex::new(0)),
             miner_hashrate: Arc::new(Mutex::new(0.0)),
             miner_selected_this_round: Arc::new(Mutex::new(None)),
+            miner_last_slot_unix: Arc::new(Mutex::new(None)),
             miner_last_address: Arc::new(Mutex::new(None)),
             poawx_wins_cache: Arc::new(Mutex::new(None)),
             miner_sync_status: Arc::new(Mutex::new(None)),
@@ -483,6 +490,40 @@ fn parse_poawx_selection(line: &str) -> Option<bool> {
     } else {
         None
     }
+}
+
+/// Record a PoAW-X slot verdict seen on a miner sidecar's stdout.
+///
+/// Stores both the verdict and the time it arrived. The timestamp is what makes
+/// the GUI's activity indicator honest: `selected_this_round` alone stays
+/// non-None forever once a single line has been seen, so a miner that dies or
+/// wedges would keep the indicator lit. Freshness is what actually proves the
+/// miner is still taking part in each round.
+fn record_poawx_slot(
+    selected_ref: &Arc<Mutex<Option<bool>>>,
+    last_slot_ref: &Arc<Mutex<Option<u64>>>,
+    selected: bool,
+) {
+    if let Ok(mut s) = selected_ref.lock() {
+        *s = Some(selected);
+    }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    if let Ok(mut t) = last_slot_ref.lock() {
+        *t = Some(now);
+    }
+}
+
+/// Seconds since the last slot verdict, or None if none has been seen.
+fn slot_age_secs_from(last_slot_ref: &Arc<Mutex<Option<u64>>>) -> Option<u64> {
+    let last = (*last_slot_ref.lock().ok()?)?;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    Some(now.saturating_sub(last))
 }
 
 fn parse_hashrate_khs(line: &str) -> Option<f64> {
@@ -6698,6 +6739,7 @@ async fn start_miner(
     let (mut rx, child) = cmd.spawn().map_err(|e| format!("Failed to start miner: {}", e))?;
     let hashrate_ref = Arc::clone(&state.miner_hashrate);
     let selected_ref = Arc::clone(&state.miner_selected_this_round);
+    let last_slot_ref = Arc::clone(&state.miner_last_slot_unix);
     let sync_ref = Arc::clone(&state.miner_sync_status);
     let blocks_found_ref = Arc::clone(&state.blocks_found);
     let found_blocks_ref = Arc::clone(&state.found_blocks);
@@ -6721,6 +6763,7 @@ async fn start_miner(
     let hashrate_for_clear = Arc::clone(&state.miner_hashrate);
     let sync_for_clear = Arc::clone(&state.miner_sync_status);
     let selected_for_clear = Arc::clone(&state.miner_selected_this_round);
+    let last_slot_for_clear = Arc::clone(&state.miner_last_slot_unix);
     tauri::async_runtime::spawn(async move {
         // Buffer of recent stderr lines included in the unexpected-exit
         // payload so the GUI banner can show a snippet of what the miner
@@ -6748,6 +6791,7 @@ async fn start_miner(
                     // the last selection rather than leave "Selected" frozen
                     // on screen after the miner died.
                     if let Ok(mut s) = selected_for_clear.lock() { *s = None; }
+                    if let Ok(mut t) = last_slot_for_clear.lock() { *t = None; }
                     if !user_initiated {
                         let _ = app_for_event.emit_all(
                             "miner-exited-unexpectedly",
@@ -6817,7 +6861,7 @@ async fn start_miner(
             // independently of the hashrate/sync chain below, because a slot
             // line carries no rate and must not be swallowed by that `else`.
             if let Some(sel) = parse_poawx_selection(&line) {
-                if let Ok(mut s) = selected_ref.lock() { *s = Some(sel); }
+                record_poawx_slot(&selected_ref, &last_slot_ref, sel);
                 // A slot line proves the miner is past startup and taking
                 // part in selection, so any stale sync banner is finished.
                 if let Ok(mut s) = sync_ref.lock() { *s = None; }
@@ -6849,6 +6893,7 @@ async fn start_miner(
     *state.miner_last_address.lock().map_err(lock_err)? = Some(address);
     // A fresh run has not been through a slot yet.
     *state.miner_selected_this_round.lock().map_err(lock_err)? = None;
+    *state.miner_last_slot_unix.lock().map_err(lock_err)? = None;
     *state.miner_threads.lock().map_err(lock_err)? = threads.unwrap_or(1);
 
     // Seamless PoAW-X contributor enrollment: spawn the role-worker loop with a DEDICATED
@@ -6980,6 +7025,8 @@ async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, Str
     // GUI shows "—", never a false 0.
     let wins_address = state.miner_last_address.lock().map_err(lock_err)?.clone();
     let rpc_url_for_wins = state.rpc_url.lock().map_err(lock_err)?.clone();
+    let slot_age_secs = if running { slot_age_secs_from(&state.miner_last_slot_unix) } else { None };
+
     let lifetime_blocks_won = match wins_address {
         Some(addr) => fetch_poawx_wins_cached(&state, &rpc_url_for_wins, &addr).await,
         None => None,
@@ -6995,6 +7042,7 @@ async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, Str
     Ok(MinerStatus {
         running,
         selected_this_round,
+        slot_age_secs,
         lifetime_blocks_won,
         uptime_secs,
         difficulty: 0,
@@ -7289,6 +7337,11 @@ async fn start_gpu_miner(
     let miner_addr_ref   = Arc::clone(&state.miner_address);
     let temp_ref = Arc::clone(&state.gpu_temperature_c);
     let power_ref = Arc::clone(&state.gpu_power_w);
+    // The GPU sidecar prints the same per-slot PoAW-X verdicts as the CPU one
+    // (irium-miner-gpu.rs:2036 / :2047). Core never parsed them, so the GPU tab
+    // had no evidence of participation at all -- only "a process is alive".
+    let gpu_selected_ref = Arc::clone(&state.miner_selected_this_round);
+    let gpu_last_slot_ref = Arc::clone(&state.miner_last_slot_unix);
     let rpc_url_for_reward = rpc_url.clone();
     // FIX 2: snapshot Arc for bearer-token resolution inside the spawn loop.
     let rpc_token_ref_for_reward = Arc::clone(&state.rpc_token_override);
@@ -7301,6 +7354,8 @@ async fn start_gpu_miner(
     // idle and the CPU tab stays idle when the GPU sidecar dies.
     let miner_kind_for_cleanup = Arc::clone(&state.miner_kind);
     let hashrate_for_clear = Arc::clone(&state.miner_hashrate);
+    let gpu_selected_for_clear = Arc::clone(&state.miner_selected_this_round);
+    let gpu_last_slot_for_clear = Arc::clone(&state.miner_last_slot_unix);
     let temp_for_clear = Arc::clone(&state.gpu_temperature_c);
     let power_for_clear = Arc::clone(&state.gpu_power_w);
     tauri::async_runtime::spawn(async move {
@@ -7326,6 +7381,8 @@ async fn start_gpu_miner(
                     if let Ok(mut k) = miner_kind_for_cleanup.lock() { *k = None; }
                     if let Ok(mut h) = hashrate_for_clear.lock() { *h = 0.0; }
                     if let Ok(mut t) = temp_for_clear.lock() { *t = None; }
+                    if let Ok(mut s) = gpu_selected_for_clear.lock() { *s = None; }
+                    if let Ok(mut t) = gpu_last_slot_for_clear.lock() { *t = None; }
                     if let Ok(mut p) = power_for_clear.lock() { *p = None; }
                     if !user_initiated {
                         let _ = app_for_event.emit_all(
@@ -7381,6 +7438,9 @@ async fn start_gpu_miner(
                 });
                 continue;
             }
+            if let Some(sel) = parse_poawx_selection(&line) {
+                record_poawx_slot(&gpu_selected_ref, &gpu_last_slot_ref, sel);
+            }
             if let Some(khs) = parse_hashrate_khs(&line) {
                 if let Ok(mut h) = hashrate_ref.lock() { *h = khs; }
             }
@@ -7396,7 +7456,11 @@ async fn start_gpu_miner(
     // get_miner_status correctly reads running=false.
     *state.miner_kind.lock().map_err(lock_err)? = Some(MinerKind::Gpu);
     *state.miner_start_time.lock().map_err(lock_err)? = Some(std::time::Instant::now());
-    *state.miner_address.lock().map_err(lock_err)? = Some(address);
+    *state.miner_address.lock().map_err(lock_err)? = Some(address.clone());
+    *state.miner_last_address.lock().map_err(lock_err)? = Some(address);
+    // A fresh run has not been through a slot yet.
+    *state.miner_selected_this_round.lock().map_err(lock_err)? = None;
+    *state.miner_last_slot_unix.lock().map_err(lock_err)? = None;
     Ok(true)
 }
 
@@ -7419,7 +7483,14 @@ async fn get_gpu_miner_status(state: State<'_, AppState>) -> Result<GpuMinerStat
     let blocks_found = *state.blocks_found.lock().map_err(lock_err)?;
     let temperature_c = if running { *state.gpu_temperature_c.lock().map_err(lock_err)? } else { None };
     let power_w = if running { *state.gpu_power_w.lock().map_err(lock_err)? } else { None };
-    Ok(GpuMinerStatus { running, hashrate_khs, blocks_found, device_name: None, temperature_c, power_w })
+    let selected_this_round = if running {
+        *state.miner_selected_this_round.lock().map_err(lock_err)?
+    } else { None };
+    let slot_age_secs = if running { slot_age_secs_from(&state.miner_last_slot_unix) } else { None };
+    Ok(GpuMinerStatus {
+        running, hashrate_khs, blocks_found, device_name: None, temperature_c, power_w,
+        selected_this_round, slot_age_secs,
+    })
 }
 
 // Returns the list of blocks the CPU or GPU miner has found during this

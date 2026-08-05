@@ -548,6 +548,12 @@ pub struct MinerStatus {
     //   Some(false) — "[poawx] not proposer this slot height=…" (:3550)
     //   None        — no slot line seen yet (warming up, or not mining)
     pub selected_this_round: Option<bool>,
+    // Seconds since the miner last reported a slot verdict, or None if it has
+    // not reported one. This is the freshness half of the signal: on its own
+    // `selected_this_round` stays non-None forever once a single line arrives,
+    // so a wedged or dead sidecar would keep the GUI's activity indicator lit.
+    // The GUI treats a stale age as "not currently competing".
+    pub slot_age_secs: Option<u64>,
     // Lifetime PoAW-X blocks won by the mining address, counted on-chain from
     // /rpc/history: coinbase receipts at height >= POAWX_ACTIVATION_HEIGHT.
     //
@@ -752,6 +758,16 @@ pub struct GpuMinerStatus {
     pub device_name: Option<String>,
     pub temperature_c: Option<f64>,
     pub power_w: Option<f64>,
+    // PoAW-X slot participation, parsed from the GPU sidecar's own per-slot
+    // lines (irium-miner-gpu.rs:2036 / :2047). Core did not parse these before,
+    // so the GPU tab's "GPU Active" light reflected only process liveness.
+    pub selected_this_round: Option<bool>,
+    // Seconds since the miner last reported a slot verdict, or None if it has
+    // not reported one. This is the freshness half of the signal: on its own
+    // `selected_this_round` stays non-None forever once a single line arrives,
+    // so a wedged or dead sidecar would keep the GUI's activity indicator lit.
+    // The GUI treats a stale age as "not currently competing".
+    pub slot_age_secs: Option<u64>,
 }
 
 // A single block found by the CPU or GPU miner. Populated by the miner
