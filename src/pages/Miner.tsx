@@ -1318,9 +1318,28 @@ function GpuMinerTab() {
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
-              <span className={loading ? 'dot-offline' : status?.running ? 'dot-live' : 'dot-offline'} />
+              {/* FALSE-STATUS FIX: `running` only means "a GPU sidecar owns the process
+                  slot and has not exited" — it is not evidence of participation. Same class
+                  as the old "Mining Active" and "Synced" labels. The headline now degrades
+                  to an honest qualifier until a FRESH per-slot PoAW-X verdict proves the
+                  miner is actually entering the draw. */}
+              <span className={
+                loading || !status?.running
+                  ? 'dot-offline'
+                  : (status.slot_age_secs != null && status.slot_age_secs <= SLOT_FRESH_SECS)
+                    ? 'dot-live'
+                    : 'dot-syncing'
+              } />
               <span className="font-display font-semibold text-sm" style={{ color: status?.running ? '#60a5fa' : 'rgba(238,240,255,0.35)' }}>
-                {loading ? t('miner.status.loading') : status?.running ? t('miner.status.gpu_active') : t('miner.status.gpu_idle')}
+                {loading
+                  ? t('miner.status.loading')
+                  : !status?.running
+                    ? t('miner.status.gpu_idle')
+                    : status.slot_age_secs == null
+                      ? t('miner.status.gpu_active_waiting')
+                      : status.slot_age_secs > SLOT_FRESH_SECS
+                        ? t('miner.status.gpu_active_stale', { secs: status.slot_age_secs })
+                        : t('miner.status.gpu_active')}
               </span>
               {status?.running && status.hashrate_khs > 0 && (
                 <span className="badge badge-info">{status.hashrate_khs.toFixed(1)} KH/s</span>

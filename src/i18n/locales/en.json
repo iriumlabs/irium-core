@@ -2200,7 +2200,9 @@
       "pool_connected": "Pool Connected",
       "pool_disconnected": "Pool Disconnected",
       "live_badge": "Live",
-      "syncing_badge": "Syncing"
+      "syncing_badge": "Syncing",
+      "gpu_active_waiting": "GPU Active — waiting for first slot",
+      "gpu_active_stale": "GPU Running — no slot activity for {{secs}}s"
     },
     "sync": {
       "node_syncing_height": "Node syncing — height {{localHeight}} / network {{networkTip}}",
