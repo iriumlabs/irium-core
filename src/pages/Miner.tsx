@@ -14,7 +14,10 @@ import toast from 'react-hot-toast';
 import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { platform as osPlatform } from '@tauri-apps/api/os';
-import { miner, gpuMiner, stratum, wallet, soloStratum } from '../lib/tauri';
+// `stratum` is intentionally absent: the Pool / Stratum tab no longer opens a
+// live connection (see the retirement note above StratumTab). The backend
+// command still exists and is reachable from the Terminal page.
+import { miner, gpuMiner, wallet, soloStratum } from '../lib/tauri';
 import { useStore } from '../lib/store';
 import type { LucideIcon } from 'lucide-react';
 import type { FoundBlock, GpuPlatform, AddressInfo, StratumEvent } from '../lib/types';
@@ -1634,420 +1637,63 @@ function GpuMinerTab() {
   );
 }
 
-// ── STRATUM POOL TAB ──────────────────────────────────────────
-
-// Pool presets — Irium Official Pool at the top (first-launch default
-// promotes our own infrastructure over third-party mining pools). The
-// CPU/GPU profile (port 3335) carries a lower default difficulty and
-// targets hobbyist hardware; the ASIC profile (port 3333) targets
-// modern SHA-256 ASICs at a higher base difficulty. Both run on
-// irium-vps from pool/irium-stratum/ in the source tree.
-const PRESET_POOLS: Array<{ name: string; url: string; labelKey?: string }> = [
-  { name: 'Irium Official Pool (CPU/GPU)', url: 'stratum+tcp://pool.irium.org:3335', labelKey: 'miner.pool_presets.irium_official_cpu_gpu' },
-  { name: 'Irium Official Pool (ASIC)',    url: 'stratum+tcp://pool.irium.org:3333', labelKey: 'miner.pool_presets.irium_official_asic' },
-  { name: 'F2Pool',                         url: 'stratum+tcp://irium.f2pool.com:3333'   },
-  { name: 'ViaBTC',                         url: 'stratum+tcp://irium.viabtc.com:3333'   },
-  { name: 'AntPool',                        url: 'stratum+tcp://irium.antpool.com:3333'  },
-  { name: 'Custom',                         url: '',                                      labelKey: 'miner.pool_presets.custom' },
-];
-
-// Stratum URL validator. The pool URL must be a valid Stratum v1 endpoint:
-//   stratum+tcp://host:port      (plaintext, the common case)
-//   stratum+ssl://host:port      (TLS-wrapped, some larger pools)
-// `host` may be a hostname, IPv4, or IPv6 literal; `port` must be 1-65535.
-// Previously any non-empty string was accepted, which silently sent garbage
-// URLs to the sidecar where the failure was swallowed — see the v1.9.18
-// audit notes for the bad-UX trail. Returns true when the URL is valid.
-function isValidStratumUrl(url: string): boolean {
-  const m = url.trim().match(/^stratum\+(tcp|ssl):\/\/([^\s:\/]+):(\d{1,5})$/);
-  if (!m) return false;
-  const port = Number(m[3]);
-  return port >= 1 && port <= 65535;
-}
+// ── POOL / STRATUM TAB — RETIRED ──────────────────────────────
+//
+// Pool mining is retired, not broken. Since the PoAW-X activation at block
+// 61,414 the block proposer is drawn by ECVRF sortition over the registered
+// eligible key set, and proposer_threshold() takes no hashrate input. A miner
+// with a thousand GPUs and a miner with one CPU therefore have identical odds
+// per key — there is no quantity for a hashrate pool to aggregate. That is a
+// structural mismatch with the design, not a bug to patch.
+//
+// The Irium stratum services (irium-stratum, -443, -legacy, -solo) were
+// stopped AND disabled on 2026-08-05, so stratum+tcp://pool.irium.org:3335
+// and its siblings are permanently dead endpoints. The previous UI defaulted
+// to that URL and would sit retrying a host that can never answer.
+//
+// Removed with the live connection: the pool presets (PRESET_POOLS), the URL
+// validator (isValidStratumUrl), the worker/password fields, and the pool-mode
+// GPU device picker. The backend stratum_connect/disconnect commands are left
+// in place deliberately — they remain reachable from the Terminal page for
+// anyone pointing at a private or third-party stratum server.
 
 function StratumTab() {
   const { t } = useTranslation();
-  // Status comes from the global poll, so connection state survives nav.
-  const status = useStore((s) => s.stratumStatus);
-  // GPU platforms (Zustand) — shared with GpuMinerTab so detection done on
-  // either tab populates both. When non-empty the StratumTab renders the
-  // GpuDevicePicker and the backend spawns irium-miner-gpu --pool; when
-  // null/empty the picker hides and the backend falls back to the bare
-  // irium-miner (CPU) spawn path. The detection effect below kicks in if
-  // the user lands on this tab without ever visiting the GPU Miner tab.
-  const gpuPlatforms    = useStore((s) => s.gpuPlatforms);
-  const setGpuPlatforms = useStore((s) => s.setGpuPlatforms);
-
-  const [connectLoading, setConnectLoading] = useState(false);
-  const [poolUrl, setPoolUrl] = useState('stratum+tcp://pool.irium.org:3335');
-  const [worker, setWorker] = useState('');
-  const [password, setPassword] = useState('');
-  const [selectedPreset, setSelectedPreset] = useState(0);
-  // OpenCL platform + device selection for pool-mode GPU mining. Kept
-  // local rather than in the store so the user can in principle pick a
-  // different card here than on the GPU Miner tab if they want.
-  const [selectedPlatformIdx, setSelectedPlatformIdx] = useState(0);
-  const [selectedDeviceIdxs, setSelectedDeviceIdxs]   = useState<number[]>([]);
-
-  // Detect OpenCL platforms on first mount if no one has done it yet,
-  // so a fresh user who lands on the pool tab first still sees the
-  // device picker without having to flip to the GPU Miner tab.
-  useEffect(() => {
-    if (gpuPlatforms === null) {
-      gpuMiner.listPlatforms()
-        .then((ps) => setGpuPlatforms(ps ?? []))
-        .catch(() => setGpuPlatforms([]));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Auto-select the discrete GPU platform when platforms first load.
-  // Mirrors GpuMinerTab line ~1108 so the two tabs stay in sync on
-  // platform choice.
-  useEffect(() => {
-    if (!gpuPlatforms || gpuPlatforms.length === 0) return;
-    const discrete = gpuPlatforms.find((p) => p.is_discrete && p.devices.length > 0);
-    const first    = gpuPlatforms.find((p) => p.devices.length > 0);
-    const auto     = (discrete ?? first)?.index ?? 0;
-    setSelectedPlatformIdx(auto);
-  }, [gpuPlatforms]);
-
-  // Default-select all devices on the chosen platform when it changes.
-  useEffect(() => {
-    if (!gpuPlatforms) return;
-    const plat = gpuPlatforms.find((p) => p.index === selectedPlatformIdx);
-    setSelectedDeviceIdxs(plat ? plat.devices.map((d) => d.index) : []);
-  }, [selectedPlatformIdx, gpuPlatforms]);
-  // FIX 4 (Mining UI): first wallet address — used by the "Use my
-  // wallet" auto-fill button to derive a standard <address>.rig1
-  // worker name without forcing the user to copy/paste.
-  const [firstWalletAddress, setFirstWalletAddress] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    wallet.listAddresses().then((list) => {
-      if (cancelled) return;
-      const first = (list ?? []).find((a) => a.address.trim().length > 0);
-      if (first) setFirstWalletAddress(first.address);
-    }).catch(() => { /* user might not have a wallet yet — silent ok */ });
-    return () => { cancelled = true; };
-  }, []);
-  // Confirm flyout for Disconnect — mirrors the Stop Mining pattern on
-  // the CPU/GPU tabs so dropping in-progress shares isn't a single click.
-  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
-
-  // Listen for stratum events from the Rust monitor task. The backend
-  // surfaces three distinct events:
-  //   stratum_error        → unparsed-but-suspicious sidecar log line (toast)
-  //   stratum_disconnected → sidecar crashed / pool dropped (auto-retry pending)
-  //   stratum_failed       → reconnect gave up (user must reconnect manually)
-  // All three are best-effort: missing them just means the user sees the
-  // existing connected/share counters instead.
-  useEffect(() => {
-    const unlistenPromises: Promise<UnlistenFn>[] = [
-      listen<string>('stratum_error', (e) => {
-        toast.error(t('miner.toasts.pool_error', { message: e.payload }));
-      }),
-      listen<string>('stratum_disconnected', () => {
-        toast(t('miner.toasts.pool_disconnected_reconnecting'), { icon: '⚠️' });
-      }),
-      listen<string>('stratum_failed', () => {
-        toast.error(t('miner.toasts.pool_connection_lost'));
-      }),
-    ];
-    return () => {
-      unlistenPromises.forEach((p) => p.then((u) => u()).catch(() => {}));
-    };
-  }, [t]);
-
-  const loading = status === null;
-
-  const handleConnect = async () => {
-    if (!poolUrl.trim()) { toast.error(t('miner.toasts.pool_url_required')); return; }
-    if (!isValidStratumUrl(poolUrl)) { toast.error(t('miner.toasts.pool_url_invalid')); return; }
-    if (!worker.trim()) { toast.error(t('miner.toasts.worker_required')); return; }
-    setConnectLoading(true);
-    try {
-      // Branch on whether the user has a GPU to dedicate. Undefined for
-      // both args means the backend spawns the CPU miner sidecar
-      // (irium-miner) as before. A non-empty deviceIndices switches it
-      // to irium-miner-gpu --pool ... --platform ... --devices 0,1,3
-      // — the same CLI the standalone GPU miner uses, but pointed at
-      // the pool instead of iriumd RPC.
-      const hasGpu        = (gpuPlatforms?.length ?? 0) > 0;
-      const platformSel   = hasGpu ? String(selectedPlatformIdx) : undefined;
-      const deviceIndices = hasGpu && selectedDeviceIdxs.length > 0 ? selectedDeviceIdxs : undefined;
-      await stratum.connect(poolUrl.trim(), worker.trim(), password || 'x', platformSel, deviceIndices);
-      toast.success(t('miner.toasts.connecting_to_pool'));
-    } catch (e) { toast.error(String(e)); }
-    finally { setConnectLoading(false); }
-  };
-
-  const handleDisconnect = async () => {
-    setShowDisconnectConfirm(false);
-    try {
-      await stratum.disconnect();
-      toast.success(t('miner.toasts.stratum_disconnected'));
-    } catch (e) { toast.error(String(e)); }
-  };
-
-  const shareRatio = status && (status.shares_accepted + status.shares_rejected) > 0
-    ? ((status.shares_accepted / (status.shares_accepted + status.shares_rejected)) * 100).toFixed(1)
-    : '—';
-
   return (
-    <div className="space-y-4">
-      {/* Hero */}
-      <div className="card p-5 relative overflow-hidden" style={status?.connected ? { boxShadow: '0 0 40px rgba(16,185,129,0.10), 0 4px 24px rgba(0,0,0,0.45)' } : {}}>
-        {status?.connected && (
-          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse 70% 60% at 20% 50%, rgba(16,185,129,0.06) 0%, transparent 70%)' }} />
-        )}
-        <div className="relative z-10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              {status?.connected
-                ? <Wifi size={16} style={{ color: '#34d399' }} />
-                : <WifiOff size={16} style={{ color: 'rgba(238,240,255,0.30)' }} />
-              }
-              <span className="font-display font-semibold text-sm" style={{ color: status?.connected ? '#34d399' : 'rgba(238,240,255,0.35)' }}>
-                {loading ? t('miner.status.loading') : status?.connected ? t('miner.status.pool_connected') : t('miner.status.pool_disconnected')}
-              </span>
-              {status?.connected && (
-                <span className="badge badge-success">{t('miner.status.live_badge')}</span>
-              )}
-            </div>
-            {status?.connected && status.pool_url && (
-              <span className="text-xs opacity-40 truncate max-w-[200px]" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
-                {status.pool_url.replace('stratum+tcp://', '')}
-              </span>
-            )}
-          </div>
-
-          {status?.connected && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-5 gap-3 mt-5"
-            >
-              {[
-                { label: t('miner.shares.accepted'), value: String(status.shares_accepted), color: '#34d399', highlight: false },
-                { label: t('miner.shares.rejected'), value: String(status.shares_rejected), color: '#f87171', highlight: false },
-                { label: t('miner.shares.ratio'),    value: `${shareRatio}%`,               color: '#A78BFA', highlight: false },
-                { label: t('miner.stats.uptime'),    value: status.uptime_secs ? formatUptime(status.uptime_secs) : '—', color: '#60a5fa', highlight: false },
-                // FIX 4 (Mining UI): last accepted share with pulse when recent.
-                // Backed by stratum_last_share_time on the Rust side; updates
-                // every status poll. Pulse animation = "still earning"; the
-                // user can see at a glance that the miner isn't stalled even
-                // when the hashrate number alone could be misleading.
-                {
-                  label: t('miner.shares.last_share'),
-                  value: formatRelativeSeconds(status.last_share_time, Math.floor(Date.now() / 1000)),
-                  color: '#fbbf24',
-                  highlight: !!status.last_share_time && Math.floor(Date.now() / 1000) - status.last_share_time < 30,
-                },
-              ].map(({ label, value, color, highlight }) => (
-                <div key={label} className="flex flex-col gap-1">
-                  <span className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--t3)', fontFamily: '"JetBrains Mono", monospace' }}>{label}</span>
-                  <motion.span
-                    className="font-mono font-semibold text-base"
-                    style={{ color, fontFamily: '"JetBrains Mono", monospace' }}
-                    animate={highlight ? { opacity: [1, 0.55, 1] } : { opacity: 1 }}
-                    transition={highlight ? { duration: 2, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.2 }}
-                  >
-                    {value}
-                  </motion.span>
-                </div>
-              ))}
-            </motion.div>
-          )}
-
-          {!status?.connected && (
-            <div className="flex flex-col items-center py-6 gap-3">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.18)' }}>
-                <Server size={28} style={{ color: '#34d399' }} />
-              </div>
-              <p className="text-sm" style={{ color: 'rgba(238,240,255,0.35)' }}>{t('miner.asic_info.headline')}</p>
-            </div>
-          )}
+    <div className="card p-6 space-y-5" style={{ border: '1px solid rgba(110,198,255,0.12)' }}>
+      <div className="flex items-start gap-3">
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: 'rgba(238,240,255,0.06)', border: '1px solid rgba(238,240,255,0.10)' }}
+        >
+          <Server size={18} style={{ color: 'rgba(238,240,255,0.45)' }} />
         </div>
-      </div>
-
-      {/* Pool diff & hashrate when connected */}
-      {status?.connected && (
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard label={t('miner.stats.pool_difficulty')} value={status.pool_diff ? status.pool_diff.toLocaleString('en-US') : '—'} color="#fbbf24" icon={Target} />
-          <StatCard label={t('miner.stats.pool_hashrate')}   value={status.pool_hashrate_khs ? `${(status.pool_hashrate_khs / 1000).toFixed(1)} MH/s` : '—'} color="#A78BFA" icon={Gauge} />
-        </div>
-      )}
-
-      {/* Phase 1A: Recent Activity — last 10 accepted/rejected/error events
-          from the stratum sidecar. Renders only when connected (the events
-          buffer is empty otherwise). The "now" timestamp is computed once
-          per render so all rows share the same reference frame. */}
-      {status?.connected && (
-        <div className="card p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <History size={13} style={{ color: '#6ec6ff' }} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>
-              {t('miner.activity.section_title')}
+              {t('miner.pool_retired.title')}
             </h3>
-            <span className="ml-auto text-[10px]" style={{ color: 'var(--t3)', fontFamily: '"JetBrains Mono", monospace' }}>
-              {t('miner.activity.last_count', { count: status.recent_events?.length ?? 0 })}
-            </span>
+            <span className="badge badge-warning text-[10px]">{t('miner.pool_retired.badge')}</span>
           </div>
-          {!status.recent_events || status.recent_events.length === 0 ? (
-            <p className="text-xs" style={{ color: 'var(--t3)' }}>
-              {t('miner.activity.waiting_for_first_share')}
-            </p>
-          ) : (
-            <ul className="space-y-1.5">
-              {status.recent_events.map((evt, i) => (
-                <ActivityRow key={`${evt.ts}-${evt.kind}-${i}`} evt={evt} nowSecs={Math.floor(Date.now() / 1000)} />
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {/* Config */}
-      <div className="card p-5 space-y-4">
-        <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--t1)' }}>{t('miner.pool_configuration')}</h3>
-
-        {/* Preset buttons */}
-        <div>
-          <label className="label">{t('miner.fields.pool_preset')}</label>
-          <div className="flex gap-2 flex-wrap">
-            {PRESET_POOLS.map((p, i) => (
-              <button
-                key={p.name}
-                onClick={() => {
-                  setSelectedPreset(i);
-                  if (p.url) setPoolUrl(p.url);
-                }}
-                className="px-3 py-1.5 rounded-lg text-xs font-display font-semibold transition-all duration-150"
-                style={{
-                  background: selectedPreset === i ? 'rgba(110,198,255,0.18)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${selectedPreset === i ? 'rgba(110,198,255,0.40)' : 'rgba(255,255,255,0.10)'}`,
-                  color: selectedPreset === i ? '#A78BFA' : 'var(--t2)',
-                }}
-              >
-                {p.labelKey ? t(p.labelKey) : p.name}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Pool URL */}
-        <div>
-          <label className="label">{t('miner.fields.stratum_url_label')}</label>
-          <input value={poolUrl} onChange={e => { setPoolUrl(e.target.value); setSelectedPreset(3); }} placeholder={t('miner.fields.stratum_url_placeholder')} className="input" />
-        </div>
-
-        {/* Worker */}
-        <div>
-          <label className="label">{t('miner.fields.stratum_worker_label')}</label>
-          <div className="flex gap-2">
-            <input value={worker} onChange={e => setWorker(e.target.value)} placeholder={t('miner.fields.stratum_worker_placeholder')} className="input flex-1" />
-            {/* FIX 4 (Mining UI): one-click worker derivation from the
-                user's first wallet address. Renders only when we have
-                one (no point offering it on a brand-new install with
-                no wallet yet). */}
-            {firstWalletAddress && (
-              <button
-                type="button"
-                onClick={() => setWorker(`${firstWalletAddress}.rig1`)}
-                className="btn-secondary px-3 py-2 text-xs whitespace-nowrap"
-                title={t('miner.fields.stratum_worker_autofill_tooltip', { address: firstWalletAddress })}
-              >
-                {t('miner.fields.stratum_worker_use_wallet')}
-              </button>
-            )}
-          </div>
-          <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>{t('miner.fields.stratum_worker_hint')}</p>
-        </div>
-
-        {/* Password */}
-        <div>
-          <label className="label">{t('miner.fields.stratum_password_label')}</label>
-          <input value={password} onChange={e => setPassword(e.target.value)} placeholder="x" className="input" />
-          <p className="text-xs mt-1" style={{ color: 'var(--t3)' }}>{t('miner.fields.stratum_password_hint')}</p>
-        </div>
-
-        {/* GPU device picker — visible only when OpenCL platforms have been
-            detected. Hidden entirely (returns null) when no GPU exists, so
-            the user with a CPU-only machine just sees the original
-            URL+worker+password form and the backend falls back to the
-            irium-miner (CPU) sidecar. */}
-        <GpuDevicePicker
-          selectedPlatformIdx={selectedPlatformIdx}
-          selectedDeviceIdxs={selectedDeviceIdxs}
-          onPlatformChange={setSelectedPlatformIdx}
-          onDevicesChange={setSelectedDeviceIdxs}
-        />
-
-        <div className="flex items-center gap-3 pt-1">
-          {!status?.connected ? (
-            <button onClick={handleConnect} disabled={connectLoading || !poolUrl.trim() || !worker.trim()} className="btn-primary"
-              style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)', boxShadow: '0 4px 16px rgba(16,185,129,0.30)' }}>
-              {connectLoading ? <RefreshCw size={13} className="animate-spin" /> : <Wifi size={13} />}
-              {connectLoading ? t('miner.buttons.connecting') : t('miner.buttons.connect_pool')}
-            </button>
-          ) : (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowDisconnectConfirm(true)}
-                disabled={showDisconnectConfirm}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-display font-semibold transition-all"
-                style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.22)', color: '#f87171' }}
-              >
-                <WifiOff size={13} /> {t('miner.buttons.disconnect')}
-              </button>
-              <AnimatePresence>
-                {showDisconnectConfirm && (
-                  <motion.div
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -8 }}
-                    className="flex items-center gap-1.5"
-                  >
-                    <span className="text-xs" style={{ color: 'var(--t3)' }}>{t('miner.buttons.confirm_disconnect')}</span>
-                    <button onClick={handleDisconnect} className="btn-ghost text-xs py-1 px-2" style={{ color: '#f87171' }}>{t('miner.buttons.yes')}</button>
-                    <button onClick={() => setShowDisconnectConfirm(false)} className="btn-ghost text-xs py-1 px-2">{t('miner.buttons.no')}</button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
+          <p className="text-xs mt-2 leading-relaxed" style={{ color: 'rgba(238,240,255,0.55)' }}>
+            {t('miner.pool_retired.why')}
+          </p>
+          <p className="text-xs mt-2 leading-relaxed" style={{ color: 'rgba(238,240,255,0.55)' }}>
+            {t('miner.pool_retired.endpoints')}
+          </p>
         </div>
       </div>
 
-      {/* Info banner — clarifies the role of this tab for ASIC users.
-          The previous text directed users to a fictional Stratum proxy at
-          127.0.0.1:4444 that did not exist anywhere in the codebase. ASIC
-          owners should connect their hardware directly to the pool URL;
-          the Connect-to-Pool button on this tab spawns the bundled
-          irium-miner sidecar in stratum-client mode, which CPU-mines on
-          this machine — orthogonal to any external ASIC. */}
-      <div className="card p-4 flex gap-3" style={{ borderColor: 'rgba(110,198,255,0.30)' }}>
-        <Server size={16} style={{ color: '#6ec6ff', flexShrink: 0, marginTop: 1 }} />
-        <div className="text-xs space-y-2" style={{ color: 'var(--t2)' }}>
-          <p className="font-semibold font-display" style={{ color: '#6ec6ff' }}>{t('miner.asic_info.external_title')}</p>
-          <p style={{ color: 'var(--t3)' }}>
-            {t('miner.asic_info.external_body_before_url')}
-            <span className="font-mono" style={{ color: 'var(--t2)', fontFamily: '"JetBrains Mono", monospace' }}>
-              stratum+tcp://pool.irium.org:3333
-            </span>
-            {t('miner.asic_info.external_body_after_url')}
-          </p>
-          <p style={{ color: 'var(--t3)' }}>
-            {t('miner.asic_info.connect_button_intro_before')}
-            <strong style={{ color: 'var(--t2)' }}>{t('miner.buttons.connect_pool')}</strong>
-            {t('miner.asic_info.connect_button_intro_middle')}
-            <span className="font-mono" style={{ color: 'var(--t2)', fontFamily: '"JetBrains Mono", monospace' }}>
-              irium-miner
-            </span>
-            {t('miner.asic_info.connect_button_intro_after')}
-          </p>
-        </div>
+      <div
+        className="rounded-lg p-4"
+        style={{ background: 'rgba(110,198,255,0.05)', border: '1px solid rgba(110,198,255,0.12)' }}
+      >
+        <p className="text-xs font-display font-semibold mb-1" style={{ color: '#6ec6ff' }}>
+          {t('miner.pool_retired.what_now_title')}
+        </p>
+        <p className="text-xs leading-relaxed" style={{ color: 'rgba(238,240,255,0.55)' }}>
+          {t('miner.pool_retired.what_now_body')}
+        </p>
       </div>
     </div>
   );

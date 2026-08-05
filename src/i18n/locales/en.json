@@ -2243,6 +2243,14 @@
       "selected": "Selected",
       "not_selected": "Not selected",
       "waiting": "Waiting for slot…"
+    },
+    "pool_retired": {
+      "title": "Pool mining is retired",
+      "badge": "Retired",
+      "why": "Irium picks each block’s producer by VRF sortition over registered mining keys — not by hashrate. Selection takes no hashrate as input, so a thousand GPUs and a single CPU have the same odds per key. There is nothing for a pool to add up. This is how the protocol is designed, not a fault.",
+      "endpoints": "The Irium stratum servers have been shut down, so the old pool addresses no longer accept connections. This tab no longer tries to reach them.",
+      "what_now_title": "Use the CPU Miner tab instead",
+      "what_now_body": "Solo PoAW-X mining is the supported path: your key registers itself on-chain, enters the VRF draw for every block, and is paid directly by the chain when it wins. Every participant competes on equal terms, whatever hardware they run."
     }
   },
   "onboarding": {
