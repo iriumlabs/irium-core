@@ -62,6 +62,10 @@ struct AppState {
     // bare "process is alive" flag cannot distinguish. Shared between CPU and
     // GPU because only one sidecar owns the process slot at a time.
     miner_last_slot_unix: Arc<Mutex<Option<u64>>>,
+    // Smoothed LOCAL COMPUTE RATE in hashes/sec, from the miner's real grind loop.
+    // EMA over per-window samples so the tile does not flicker; None until the
+    // first sample. NOT a measure of odds -- see the note on MinerStatus.
+    miner_compute_hps: Arc<Mutex<Option<f64>>>,
     // The address the CPU miner was last started with. Unlike miner_address
     // this is NOT cleared on stop, so the lifetime win count keeps rendering
     // after the user stops mining instead of collapsing to "—".
@@ -212,6 +216,7 @@ impl AppState {
             miner_hashrate: Arc::new(Mutex::new(0.0)),
             miner_selected_this_round: Arc::new(Mutex::new(None)),
             miner_last_slot_unix: Arc::new(Mutex::new(None)),
+            miner_compute_hps: Arc::new(Mutex::new(None)),
             miner_last_address: Arc::new(Mutex::new(None)),
             poawx_wins_cache: Arc::new(Mutex::new(None)),
             miner_sync_status: Arc::new(Mutex::new(None)),
@@ -524,6 +529,43 @@ fn slot_age_secs_from(last_slot_ref: &Arc<Mutex<Option<u64>>>) -> Option<u64> {
         .map(|d| d.as_secs())
         .unwrap_or(0);
     Some(now.saturating_sub(last))
+}
+
+/// Smoothing factor for the local-compute-rate EMA. 0.4 converges within ~3
+/// samples after a real hardware change while damping single-window jitter; a
+/// floor-target solve emits ~8 samples, so the tile settles within one block.
+const COMPUTE_RATE_EMA_ALPHA: f64 = 0.4;
+
+/// Parse a local-compute-rate sample from the miner's grind loop.
+///
+/// Matches both lines emitted by poawx_mining_harness::mine_pow_reporting and the
+/// GPU solver:
+///   "[poawx] compute rate=1885897 H/s attempts=… window_ms=… height=…"
+///   "[poawx] pow solved height=… nonce=… attempts=… elapsed_ms=… rate=1883193 H/s"
+/// Deliberately separate from parse_hashrate_khs: that one feeds the legacy
+/// Stratum/GPU KH/s path and must keep its own semantics.
+fn parse_poawx_compute_hps(line: &str) -> Option<f64> {
+    if !line.contains("[poawx] ") {
+        return None;
+    }
+    let idx = line.find("rate=")?;
+    let tail = &line[idx + 5..];
+    let num: String = tail
+        .chars()
+        .take_while(|c| c.is_ascii_digit() || *c == '.')
+        .collect();
+    let v = num.parse::<f64>().ok()?;
+    if v.is_finite() && v > 0.0 { Some(v) } else { None }
+}
+
+/// Fold a new sample into the EMA held in `cell`.
+fn record_compute_hps(cell: &Arc<Mutex<Option<f64>>>, sample: f64) {
+    if let Ok(mut g) = cell.lock() {
+        *g = Some(match *g {
+            Some(prev) => COMPUTE_RATE_EMA_ALPHA * sample + (1.0 - COMPUTE_RATE_EMA_ALPHA) * prev,
+            None => sample,
+        });
+    }
 }
 
 fn parse_hashrate_khs(line: &str) -> Option<f64> {
@@ -6740,6 +6782,7 @@ async fn start_miner(
     let hashrate_ref = Arc::clone(&state.miner_hashrate);
     let selected_ref = Arc::clone(&state.miner_selected_this_round);
     let last_slot_ref = Arc::clone(&state.miner_last_slot_unix);
+    let compute_ref = Arc::clone(&state.miner_compute_hps);
     let sync_ref = Arc::clone(&state.miner_sync_status);
     let blocks_found_ref = Arc::clone(&state.blocks_found);
     let found_blocks_ref = Arc::clone(&state.found_blocks);
@@ -6860,6 +6903,9 @@ async fn start_miner(
             // PoAW-X: the sidecar prints one selection line per slot. Checked
             // independently of the hashrate/sync chain below, because a slot
             // line carries no rate and must not be swallowed by that `else`.
+            if let Some(hps) = parse_poawx_compute_hps(&line) {
+                record_compute_hps(&compute_ref, hps);
+            }
             if let Some(sel) = parse_poawx_selection(&line) {
                 record_poawx_slot(&selected_ref, &last_slot_ref, sel);
                 // A slot line proves the miner is past startup and taking
@@ -6894,6 +6940,7 @@ async fn start_miner(
     // A fresh run has not been through a slot yet.
     *state.miner_selected_this_round.lock().map_err(lock_err)? = None;
     *state.miner_last_slot_unix.lock().map_err(lock_err)? = None;
+    *state.miner_compute_hps.lock().map_err(lock_err)? = None;
     *state.miner_threads.lock().map_err(lock_err)? = threads.unwrap_or(1);
 
     // Seamless PoAW-X contributor enrollment: spawn the role-worker loop with a DEDICATED
@@ -7026,6 +7073,7 @@ async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, Str
     let wins_address = state.miner_last_address.lock().map_err(lock_err)?.clone();
     let rpc_url_for_wins = state.rpc_url.lock().map_err(lock_err)?.clone();
     let slot_age_secs = if running { slot_age_secs_from(&state.miner_last_slot_unix) } else { None };
+    let local_compute_hps = if running { *state.miner_compute_hps.lock().map_err(lock_err)? } else { None };
 
     let lifetime_blocks_won = match wins_address {
         Some(addr) => fetch_poawx_wins_cached(&state, &rpc_url_for_wins, &addr).await,
@@ -7043,6 +7091,7 @@ async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, Str
         running,
         selected_this_round,
         slot_age_secs,
+        local_compute_hps,
         lifetime_blocks_won,
         uptime_secs,
         difficulty: 0,
@@ -7342,6 +7391,7 @@ async fn start_gpu_miner(
     // had no evidence of participation at all -- only "a process is alive".
     let gpu_selected_ref = Arc::clone(&state.miner_selected_this_round);
     let gpu_last_slot_ref = Arc::clone(&state.miner_last_slot_unix);
+    let gpu_compute_ref = Arc::clone(&state.miner_compute_hps);
     let rpc_url_for_reward = rpc_url.clone();
     // FIX 2: snapshot Arc for bearer-token resolution inside the spawn loop.
     let rpc_token_ref_for_reward = Arc::clone(&state.rpc_token_override);
@@ -7438,6 +7488,9 @@ async fn start_gpu_miner(
                 });
                 continue;
             }
+            if let Some(hps) = parse_poawx_compute_hps(&line) {
+                record_compute_hps(&gpu_compute_ref, hps);
+            }
             if let Some(sel) = parse_poawx_selection(&line) {
                 record_poawx_slot(&gpu_selected_ref, &gpu_last_slot_ref, sel);
             }
@@ -7461,6 +7514,7 @@ async fn start_gpu_miner(
     // A fresh run has not been through a slot yet.
     *state.miner_selected_this_round.lock().map_err(lock_err)? = None;
     *state.miner_last_slot_unix.lock().map_err(lock_err)? = None;
+    *state.miner_compute_hps.lock().map_err(lock_err)? = None;
     Ok(true)
 }
 
@@ -7487,9 +7541,10 @@ async fn get_gpu_miner_status(state: State<'_, AppState>) -> Result<GpuMinerStat
         *state.miner_selected_this_round.lock().map_err(lock_err)?
     } else { None };
     let slot_age_secs = if running { slot_age_secs_from(&state.miner_last_slot_unix) } else { None };
+    let local_compute_hps = if running { *state.miner_compute_hps.lock().map_err(lock_err)? } else { None };
     Ok(GpuMinerStatus {
         running, hashrate_khs, blocks_found, device_name: None, temperature_c, power_w,
-        selected_this_round, slot_age_secs,
+        selected_this_round, slot_age_secs, local_compute_hps,
     })
 }
 

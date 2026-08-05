@@ -462,6 +462,10 @@ export interface MinerStatus {
   // Freshness matters: selected_this_round alone stays set forever after the
   // first line, so a dead sidecar would otherwise look permanently active.
   slot_age_secs?: number | null;
+  // Local compute rate in hashes/sec, smoothed, from the miner's real grind loop.
+  // NOT a measure of winning odds — VRF sortition decides the proposer and takes
+  // no hashrate input. Never present this comparatively.
+  local_compute_hps?: number | null;
   // Lifetime PoAW-X blocks won by the mining address, counted on-chain
   // from /rpc/history: coinbase receipts at height >= the 61,414
   // activation. Survives app restarts, and — unlike /rpc/balance's
@@ -517,6 +521,10 @@ export interface GpuMinerStatus {
   // per-slot verdict lines; Core simply never parsed them until now.
   selected_this_round?: boolean | null;
   slot_age_secs?: number | null;
+  // Local compute rate in hashes/sec, smoothed, from the miner's real grind loop.
+  // NOT a measure of winning odds — VRF sortition decides the proposer and takes
+  // no hashrate input. Never present this comparatively.
+  local_compute_hps?: number | null;
 }
 
 // A block found by the CPU or GPU miner. Mirrors the Rust FoundBlock

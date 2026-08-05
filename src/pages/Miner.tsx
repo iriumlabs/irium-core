@@ -187,6 +187,15 @@ type NetInfo = {
   seconds_since_last_block: number | null;
 };
 
+// Local compute rate: raw H/s with thousands separators, deliberately NOT scaled
+// to KH/MH/GH. A "MH/s" framing invites exactly the comparison this metric must
+// not support — GPU numbers landing near a CPU's would recreate the "more =
+// better odds" misread. Raw H/s reads as a local activity figure, not a score.
+function formatComputeRate(hps?: number | null): string {
+  if (hps == null || !isFinite(hps) || hps <= 0) return '—';
+  return `${Math.round(hps).toLocaleString('en-US')} H/s`;
+}
+
 // Freshness window for the PoAW-X slot signal. irium-miner / irium-miner-gpu
 // print one verdict per slot and then sleep 3 s, so lines normally arrive every
 // ~3 s. A round the miner WINS goes quiet while it builds and submits the
@@ -1024,7 +1033,7 @@ function CpuMinerTab() {
       {/* Four tiles, not six. Hashrate, Est. Block Time and Est. Daily IRM
           were all derived from a hashrate that cannot influence PoAW-X block
           selection, so they are removed rather than left showing 0.0 KH/s. */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <StatCard
           label={t('miner.stats.this_round')}
           value={status === null || !status.running
@@ -1046,7 +1055,13 @@ function CpuMinerTab() {
         />
         <StatCard label={t('miner.stats.uptime')}         value={status?.uptime_secs ? formatUptime(status.uptime_secs) : '—'} color="#60a5fa" icon={Clock} />
         <StatCard label={t('miner.stats.difficulty')}     value={netInfo?.difficulty != null ? netInfo.difficulty.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'} color="#fbbf24" icon={Target} />
+        {/* Real hashing DOES happen — the floor grind is ~2^20 SHA-256d attempts.
+            Shown as a local activity figure only; see the note below the grid. */}
+        <StatCard label={t('miner.stats.local_compute')} value={formatComputeRate(status?.local_compute_hps)} color="#A78BFA" icon={Activity} />
       </div>
+      <p className="text-[11px] mt-2" style={{ color: 'rgba(238,240,255,0.35)' }}>
+        {t('miner.stats.local_compute_note')}
+      </p>
 
       {/* Found Blocks list (Bug 1) */}
       <FoundBlocksList />
@@ -1429,7 +1444,10 @@ function GpuMinerTab() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
-        <StatCard label={t('miner.stats.hashrate')}       value={status === null ? '—' : status.running ? `${status.hashrate_khs.toFixed(1)} KH/s` : '0 KH/s'} color="#60a5fa" icon={Activity} />
+        {/* Was `hashrate_khs`, which the PoAW-X GPU path never populates (run_poawx_solo_gpu
+            emits no rate line), so it sat permanently at 0.0 KH/s. Replaced with the real
+            grind-loop figure, same non-comparative framing as the CPU tab. */}
+        <StatCard label={t('miner.stats.local_compute')} value={formatComputeRate(status?.local_compute_hps)} color="#60a5fa" icon={Activity} />
         <StatCard label={t('miner.stats.est_block_time')} value={etaSeconds ? formatEta(etaSeconds) : '—'} color="#6ec6ff" icon={Timer} />
         <StatCard label={t('miner.stats.temperature')}    value={!status?.running ? '—' : status.temperature_c != null ? `${status.temperature_c.toFixed(1)}°C` : t('miner.stats.na_linux_only')} color={status?.running && (status.temperature_c ?? 0) > 80 ? '#f87171' : '#fbbf24'} icon={Thermometer} />
         <StatCard label={t('miner.stats.power')}          value={!status?.running ? '—' : status.power_w != null ? `${status.power_w.toFixed(1)}W` : t('miner.stats.na_linux_only')} color="#a78bfa" icon={Zap} />
@@ -1438,7 +1456,7 @@ function GpuMinerTab() {
         <StatCard
           label={t('miner.stats.est_daily_irm')}
           value={(() => {
-            const e = estimateDailyEarnings(status?.hashrate_khs, netInfo?.difficulty, netInfo?.height);
+            const e = estimateDailyEarnings(undefined, netInfo?.difficulty, netInfo?.height);
             return e == null ? '—' : `${e.toFixed(e >= 1 ? 2 : 4)} IRM`;
           })()}
           color="#fbbf24"

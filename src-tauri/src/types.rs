@@ -554,6 +554,17 @@ pub struct MinerStatus {
     // so a wedged or dead sidecar would keep the GUI's activity indicator lit.
     // The GUI treats a stale age as "not currently competing".
     pub slot_age_secs: Option<u64>,
+    // LOCAL COMPUTE RATE, hashes/sec, smoothed (EMA) from the miner's real grind
+    // loop — genuine attempt counts, not an estimate.
+    //
+    // ⚠️ This is NOT a measure of how likely this miner is to win a block. Under
+    // PoAW-X the proposer is drawn by VRF sortition over registered keys and
+    // `proposer_threshold()` takes no hashrate input, so a higher rate finishes the
+    // same fixed ~2^20 floor grind sooner and wins exactly zero extra blocks. It is
+    // shown as a local hardware-activity figure only, and must never be presented
+    // comparatively (miner vs miner, CPU vs GPU) — that framing is precisely the
+    // "more = better odds" misread this replaced.
+    pub local_compute_hps: Option<f64>,
     // Lifetime PoAW-X blocks won by the mining address, counted on-chain from
     // /rpc/history: coinbase receipts at height >= POAWX_ACTIVATION_HEIGHT.
     //
@@ -768,6 +779,17 @@ pub struct GpuMinerStatus {
     // so a wedged or dead sidecar would keep the GUI's activity indicator lit.
     // The GUI treats a stale age as "not currently competing".
     pub slot_age_secs: Option<u64>,
+    // LOCAL COMPUTE RATE, hashes/sec, smoothed (EMA) from the miner's real grind
+    // loop — genuine attempt counts, not an estimate.
+    //
+    // ⚠️ This is NOT a measure of how likely this miner is to win a block. Under
+    // PoAW-X the proposer is drawn by VRF sortition over registered keys and
+    // `proposer_threshold()` takes no hashrate input, so a higher rate finishes the
+    // same fixed ~2^20 floor grind sooner and wins exactly zero extra blocks. It is
+    // shown as a local hardware-activity figure only, and must never be presented
+    // comparatively (miner vs miner, CPU vs GPU) — that framing is precisely the
+    // "more = better odds" misread this replaced.
+    pub local_compute_hps: Option<f64>,
 }
 
 // A single block found by the CPU or GPU miner. Populated by the miner

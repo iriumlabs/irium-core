@@ -2021,7 +2021,9 @@
       "pool_difficulty": "Pool Difficulty",
       "pool_hashrate": "Pool Hashrate",
       "this_round": "This Round",
-      "blocks_won": "Blocks Won"
+      "blocks_won": "Blocks Won",
+      "local_compute": "Local Compute Rate",
+      "local_compute_note": "Local Compute Rate is the real hashing your machine performs to seal a block. It does NOT affect your chances of being selected — the proposer is chosen by a verifiable random draw over registered keys, so a higher rate finishes the same fixed work sooner and wins no extra blocks. Not comparable between machines."
     },
     "buttons": {
       "start_mining": "Start mining",
