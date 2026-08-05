@@ -1444,10 +1444,13 @@ function GpuMinerTab() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
-        {/* Was `hashrate_khs`, which the PoAW-X GPU path never populates (run_poawx_solo_gpu
-            emits no rate line), so it sat permanently at 0.0 KH/s. Replaced with the real
-            grind-loop figure, same non-comparative framing as the CPU tab. */}
-        <StatCard label={t('miner.stats.local_compute')} value={formatComputeRate(status?.local_compute_hps)} color="#60a5fa" icon={Activity} />
+        {/* Was `hashrate_khs`, which run_poawx_solo_gpu never populates, so it sat
+            permanently at 0.0 KH/s. NOT replaced with a number: GPU mining works, but the
+            GPU-side measurement does not yet account for dispatch cost, whole-batch
+            parallelism in the winning batch, or first-batch warmup (see the TODO in
+            irium-miner-gpu.rs). A wrong figure here would invite exactly the CPU-vs-GPU
+            comparison this metric must not support, so we state the honest status instead. */}
+        <StatCard label={t('miner.stats.local_compute')} value={t('miner.stats.gpu_rate_pending')} color="#60a5fa" icon={Activity} />
         <StatCard label={t('miner.stats.est_block_time')} value={etaSeconds ? formatEta(etaSeconds) : '—'} color="#6ec6ff" icon={Timer} />
         <StatCard label={t('miner.stats.temperature')}    value={!status?.running ? '—' : status.temperature_c != null ? `${status.temperature_c.toFixed(1)}°C` : t('miner.stats.na_linux_only')} color={status?.running && (status.temperature_c ?? 0) > 80 ? '#f87171' : '#fbbf24'} icon={Thermometer} />
         <StatCard label={t('miner.stats.power')}          value={!status?.running ? '—' : status.power_w != null ? `${status.power_w.toFixed(1)}W` : t('miner.stats.na_linux_only')} color="#a78bfa" icon={Zap} />
@@ -1463,6 +1466,9 @@ function GpuMinerTab() {
           icon={Coins}
         />
       </div>
+      <p className="text-[11px] mt-2" style={{ color: 'rgba(238,240,255,0.35)' }}>
+        {t('miner.stats.gpu_rate_pending_note')}
+      </p>
 
       {/* Found Blocks list */}
       <FoundBlocksList />
