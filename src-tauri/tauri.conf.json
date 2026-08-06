@@ -58,12 +58,6 @@
           "http://localhost:38300/**",
           "http://localhost:5173/**",
           "http://127.0.0.1:38310/**",
-          "http://pool.iriumlabs.org/**",
-          "http://pool.iriumlabs.org:3337/**",
-          "https://api.iriumlabs.org/pool/**",
-          "http://pool.irium.org/**",
-          "http://pool.irium.org:3337/**",
-          "https://api.irium.org/pool/**",
           "https://mempool.space/**",
           "https://litecoinspace.org/**",
           "https://dogechain.info/**"
@@ -120,7 +114,7 @@
         "binaries/irium-miner-gpu",
         "binaries/poawx-role-worker"
       ],
-      "longDescription": "Irium Core is the official full-node desktop wallet and miner for the Irium (IRM) blockchain. It bundles an embedded full node (iriumd), a non-custodial BIP39 HD wallet, CPU and GPU mining, ASIC and Stratum pool support, an in-app block explorer, and a settlement UI in a single native window. Your keys never leave your machine; all node operations go through a locally-spawned iriumd on loopback RPC.",
+      "longDescription": "Irium Core is the official full-node desktop wallet and miner for the Irium (IRM) blockchain. It bundles an embedded full node (iriumd), a non-custodial BIP39 HD wallet, PoAW-X proposer tools, an in-app block explorer, and a settlement UI in a single native window. Your keys never leave your machine; all node operations go through a locally-spawned iriumd on loopback RPC.",
       "shortDescription": "Full-node desktop wallet and miner for the Irium blockchain",
       "windows": {
         "wix": {
@@ -146,7 +140,7 @@
       }
     },
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: asset: https://asset.localhost; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:38300 http://localhost:38300 http://pool.iriumlabs.org:3337 https://api.iriumlabs.org http://pool.irium.org:3337 https://api.irium.org"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: asset: https://asset.localhost; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:38300 http://localhost:38300 https://api.irium.org"
     },
     "systemTray": {
       "iconPath": "icons/icon.png",

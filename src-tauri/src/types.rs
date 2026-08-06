@@ -680,6 +680,9 @@ pub struct NetworkHashrateInfo {
     pub hashrate: Option<f64>,
     pub difficulty: Option<f64>,
     pub height: Option<u64>,
+    pub avg_block_time: Option<f64>,
+    pub window: Option<u64>,
+    pub sample_blocks: Option<u64>,
 }
 
 // Rich-list passthrough types — mirror the shape of /rpc/richlist on iriumd.

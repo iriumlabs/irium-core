@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { fetch as tauriFetch, ResponseType } from '@tauri-apps/api/http';
 import { useStore } from '../lib/store';
+import { pollNodeNow } from '../hooks/useNodePoller';
 import { rpc, wallet, miner, gpuMiner, stratum, explorerSource } from '../lib/tauri';
 import { timeAgo, formatIRM, formatLocalDateTime, SATS_PER_IRM } from '../lib/types';
 import { decodeCoinbaseRewards, groupRewardPayees, firstP2pkhAddress } from '../lib/coinbase';
@@ -2266,6 +2267,47 @@ function RichListSection({ running }: { running: boolean }) {
   );
 }
 
+function PoolRetiredNotice() {
+  const { t } = useTranslation();
+  return (
+    <div className="card p-6 space-y-4" style={{ border: '1px solid rgba(251,191,36,0.20)' }}>
+      <div className="flex items-start gap-3">
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.18)' }}
+        >
+          <Server size={18} style={{ color: '#fbbf24' }} />
+        </div>
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="font-display font-semibold" style={{ color: 'var(--t1)' }}>
+              {t('miner.pool_retired.title')}
+            </h2>
+            <span className="badge badge-warning text-[10px]">{t('miner.pool_retired.badge')}</span>
+          </div>
+          <p className="text-sm mt-3 leading-relaxed" style={{ color: 'rgba(238,240,255,0.60)' }}>
+            {t('miner.pool_retired.why')}
+          </p>
+          <p className="text-sm mt-2 leading-relaxed" style={{ color: 'rgba(238,240,255,0.60)' }}>
+            {t('miner.pool_retired.endpoints')}
+          </p>
+        </div>
+      </div>
+      <div
+        className="rounded-lg p-4"
+        style={{ background: 'rgba(110,198,255,0.05)', border: '1px solid rgba(110,198,255,0.12)' }}
+      >
+        <p className="text-xs font-display font-semibold mb-1" style={{ color: '#6ec6ff' }}>
+          {t('miner.pool_retired.what_now_title')}
+        </p>
+        <p className="text-xs leading-relaxed" style={{ color: 'rgba(238,240,255,0.55)' }}>
+          {t('miner.pool_retired.what_now_body')}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────
 
 export default function Explorer() {
@@ -2323,6 +2365,12 @@ export default function Explorer() {
   // null = not yet known, number = oldest loaded height minus 1, 0 = reached genesis
   const [blockCursor,   setBlockCursor]   = useState<number | null>(null);
   const [loadingMore,   setLoadingMore]   = useState(false);
+  const blocksRequestGenerationRef = useRef(0);
+  const blocksFetchInFlightRef = useRef(false);
+  const blocksFetchQueuedRef = useRef(false);
+  const blocksRetryDelayRef = useRef(1_000);
+  const blocksRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fetchLatestRef = useRef<() => Promise<void>>(async () => {});
 
   // Deep-link retry state — when iriumd returns 404 (or any "not found"
   // shaped error) for a block the user clicked from the Miner page, we
@@ -2476,8 +2524,20 @@ export default function Explorer() {
   // Fetch latest 30 blocks and merge into the existing list.
   // Only initialises blockCursor on the very first successful fetch.
   const fetchLatest = useCallback(async () => {
-    const result = await rpc.recentBlocks(30, undefined).catch(() => null);
-    if (result != null) {
+    const generation = ++blocksRequestGenerationRef.current;
+    if (blocksFetchInFlightRef.current) {
+      blocksFetchQueuedRef.current = true;
+      return;
+    }
+
+    blocksFetchInFlightRef.current = true;
+    try {
+      const result = await rpc.recentBlocks(30, undefined);
+      if (result == null) throw new Error('recent blocks unavailable');
+      // A newer tip arrived while this request was in flight. Its queued
+      // refresh owns the UI; never let this older response overwrite it.
+      if (generation !== blocksRequestGenerationRef.current) return;
+
       const incoming = (result as ExplorerBlock[]).map(enrichBlock);
       setBlocks((prev) => mergeBlocks(prev, incoming));
       setInitialLoaded(true);
@@ -2485,8 +2545,29 @@ export default function Explorer() {
         const minH = Math.min(...incoming.map((b) => b.height));
         setBlockCursor((prev) => prev === null ? (minH > 0 ? minH - 1 : 0) : prev);
       }
+      blocksRetryDelayRef.current = 1_000;
+      if (blocksRetryTimerRef.current) {
+        clearTimeout(blocksRetryTimerRef.current);
+        blocksRetryTimerRef.current = null;
+      }
+    } catch {
+      if (generation === blocksRequestGenerationRef.current && !blocksRetryTimerRef.current) {
+        const delay = blocksRetryDelayRef.current;
+        blocksRetryDelayRef.current = Math.min(delay * 2, 30_000);
+        blocksRetryTimerRef.current = setTimeout(() => {
+          blocksRetryTimerRef.current = null;
+          void fetchLatestRef.current();
+        }, delay);
+      }
+    } finally {
+      blocksFetchInFlightRef.current = false;
+      if (blocksFetchQueuedRef.current) {
+        blocksFetchQueuedRef.current = false;
+        queueMicrotask(() => void fetchLatestRef.current());
+      }
     }
   }, []);
+  fetchLatestRef.current = fetchLatest;
 
   // Append 50 older blocks starting from blockCursor downward
   const fetchOlder = useCallback(async () => {
@@ -2534,11 +2615,15 @@ export default function Explorer() {
     }
   };
 
-  // Initial load + auto-refresh every 30s (only merges; never clears existing blocks)
+  // Initial full list load. Subsequent list fetches are driven only by a
+  // height/hash tip change, so an unchanged tip costs one lightweight status
+  // request rather than 30 block requests.
   useEffect(() => {
-    fetchLatest();
-    const id = setInterval(fetchLatest, 30_000);
-    return () => clearInterval(id);
+    void fetchLatest();
+    return () => {
+      blocksRequestGenerationRef.current += 1;
+      if (blocksRetryTimerRef.current) clearTimeout(blocksRetryTimerRef.current);
+    };
   }, [fetchLatest]);
 
   // Retry when node comes online for the first time
@@ -2546,16 +2631,29 @@ export default function Explorer() {
     if (running && !initialLoaded) fetchLatest();
   }, [running, initialLoaded, fetchLatest]);
 
-  // Trigger refresh whenever the chain tip advances (nodeStatus polls every 3s)
-  const prevFetchHeightRef = useRef<number | null>(null);
+  // Trigger refresh whenever either part of the tip identity changes. Hash is
+  // required here: height-only comparison misses a same-height reorg.
+  const prevFetchTipRef = useRef<string | null>(null);
   useEffect(() => {
     const h = nodeStatus?.height ?? null;
     if (h === null) return;
-    if (prevFetchHeightRef.current !== null && h > prevFetchHeightRef.current) {
-      fetchLatest();
+    const identity = `${h}:${nodeStatus?.tip ?? ''}`;
+    if (prevFetchTipRef.current !== null && identity !== prevFetchTipRef.current) {
+      void fetchLatest();
     }
-    prevFetchHeightRef.current = h;
-  }, [nodeStatus?.height, fetchLatest]);
+    prevFetchTipRef.current = identity;
+  }, [nodeStatus?.height, nodeStatus?.tip, fetchLatest]);
+
+  // WebViews may throttle timers while hidden. Ask for one immediate,
+  // lightweight status read on return; the identity effect above decides
+  // whether a full recent-block refresh is actually necessary.
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (!document.hidden) pollNodeNow();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
 
   // Chain-reset detection: if clear_node_state was called, iriumd restarts at height 0
   // while our accumulated block list still holds the old chain. Wipe it so the UI
@@ -2719,7 +2817,7 @@ export default function Explorer() {
             active={pageTab === 'pool_stats'}
             onClick={() => setPageTab('pool_stats')}
             icon={Server}
-            label={t('explorer.tabs.pool_stats')}
+            label={`${t('explorer.tabs.pool_stats')} — ${t('miner.pool_retired.badge')}`}
           />
         </div>
 
@@ -2727,10 +2825,7 @@ export default function Explorer() {
             The Overview path falls through to the original layout. */}
         {pageTab === 'rich_list' ? <RichListSection running={running} /> :
          pageTab === 'pool_stats' ? (
-           <div className="space-y-6">
-             <NetworkMiningOverview />
-             <PoolStatsSection />
-           </div>
+           <PoolRetiredNotice />
          ) : (
         <>
 

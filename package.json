@@ -12,6 +12,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "test:explorer": "node --test tests/explorer-runtime.test.cjs",
     "preview": "vite preview",
     "tauri": "tauri",
     "build:node": "node scripts/build-irium-node.js",

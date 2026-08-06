@@ -7082,9 +7082,8 @@ async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, Str
 
     // Pool stats merge — fetch the proxy's /stats with a tight budget so
     // the local Miner page stays snappy when the official pool is
-    // unreachable (private/alternative-pool users, or just transient net
-    // hiccups). Silent fallback to None when anything fails; the GUI
-    // already short-circuits to "—" on undefined.
+    // The former official pool is retired. These legacy fields remain in the
+    // response for wire compatibility, but are deliberately always empty.
     let (pool_diff, pool_hashrate_khs) = fetch_pool_stats_for_miner_status().await;
 
     Ok(MinerStatus {
@@ -7103,53 +7102,10 @@ async fn get_miner_status(state: State<'_, AppState>) -> Result<MinerStatus, Str
     })
 }
 
-/// Pool-side enrichment for get_miner_status. Returns (current_diff,
-/// pool_hashrate_khs) on success; (None, None) on any failure. 2 s
-/// budget keeps the Miner-page refresh tight even when the pool VPS
-/// is degraded - the frontend renders "—" rather than blocking on us.
+/// The official Stratum pool is retired, so miner-status polling must never
+/// attempt its old network endpoint. Keep the legacy tuple for compatibility.
 async fn fetch_pool_stats_for_miner_status() -> (Option<u64>, Option<f64>) {
-    let client = match reqwest::Client::builder()
-        .timeout(Duration::from_secs(2))
-        .build()
-    {
-        Ok(c) => c,
-        Err(_) => return (None, None),
-    };
-    let resp = match client.get(POOL_STATS_URL).send().await {
-        Ok(r) => r,
-        Err(_) => return (None, None),
-    };
-    if !resp.status().is_success() {
-        return (None, None);
-    }
-    let v: serde_json::Value = match resp.json().await {
-        Ok(v) => v,
-        Err(_) => return (None, None),
-    };
-    // Sum ASIC + CPU/GPU hashrate (H/s) and convert to kH/s for the
-    // frontend's existing unit. Difficulty: pick ASIC's current_diff
-    // as the headline number; ASIC is the workhorse profile and the
-    // baseline is what most miners see.
-    let asic = v.get("asic");
-    let cpu_gpu = v.get("cpu_gpu");
-    let pool_diff = asic
-        .and_then(|x| x.get("current_diff"))
-        .and_then(|x| x.as_u64());
-    let asic_hps = asic
-        .and_then(|x| x.get("hashrate_estimate_hps"))
-        .and_then(|x| x.as_f64())
-        .unwrap_or(0.0);
-    let cpu_hps = cpu_gpu
-        .and_then(|x| x.get("hashrate_estimate_hps"))
-        .and_then(|x| x.as_f64())
-        .unwrap_or(0.0);
-    let total_hps = asic_hps + cpu_hps;
-    let pool_hashrate_khs = if total_hps > 0.0 {
-        Some(total_hps / 1000.0)
-    } else {
-        None
-    };
-    (pool_diff, pool_hashrate_khs)
+    (None, None)
 }
 
 /// 30-s cache wrapper around fetch_pool_stats_for_miner_status. Returns
@@ -8242,46 +8198,91 @@ async fn fetch_remote_recent_blocks(
 async fn get_network_hashrate(state: State<'_, AppState>) -> Result<NetworkHashrateInfo, String> {
     let rpc_url = state.rpc_url.lock().map_err(lock_err)?.clone();
     let client = rpc_client(&state);
-    let resp = client
-        .get(format!("{}/rpc/network_hashrate", rpc_url))
+    // Current nodes expose this estimate through /rpc/mining_metrics. Keep
+    // the legacy route as a compatibility fallback for older bundled nodes.
+    let mut path = "/rpc/mining_metrics?series=1";
+    let mut resp = client
+        .get(format!("{}{}", rpc_url, path))
         .timeout(Duration::from_secs(5))
         .send()
         .await
         .map_err(|e| e.to_string())?;
-    let v = resp.json::<serde_json::Value>().await.map_err(|e| e.to_string())?;
-    Ok(NetworkHashrateInfo {
-        hashrate:   v["hashrate"].as_f64().or_else(|| v["hash_rate"].as_f64()),
-        difficulty: v["difficulty"].as_f64(),
-        height:     v["height"].as_u64(),
-    })
+
+    if matches!(
+        resp.status(),
+        reqwest::StatusCode::NOT_FOUND | reqwest::StatusCode::METHOD_NOT_ALLOWED
+    ) {
+        path = "/rpc/network_hashrate";
+        resp = client
+            .get(format!("{}{}", rpc_url, path))
+            .timeout(Duration::from_secs(5))
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+
+    if !resp.status().is_success() {
+        return Err(format!("network hashrate endpoint returned {}", resp.status()));
+    }
+
+    let v = resp
+        .json::<serde_json::Value>()
+        .await
+        .map_err(|e| format!("network hashrate response parse failed: {e}"))?;
+    Ok(network_hashrate_info_from_value(&v))
 }
 
-// Public pool stats proxy — sanitised read-only summary fetched from the
-// stats-proxy running on the same VPS as the pool itself. The proxy lives
-// at http://pool.iriumlabs.org:3337/stats and is a Python helper that
-// scrapes the loopback /metrics endpoints exposed by both irium-stratum
-// profiles (ASIC + CPU/GPU) and combines them. Hardcoded URL because this
-// is the canonical Irium-operated pool; users with private/alternative
-// pools will not have their stats surfaced here (intentional — the
-// Explorer's Pool Stats section is specifically for the official pool).
-const POOL_STATS_URL: &str = "http://pool.iriumlabs.org:3337/stats";
+fn network_hashrate_info_from_value(v: &serde_json::Value) -> NetworkHashrateInfo {
+    NetworkHashrateInfo {
+        hashrate: v["hashrate"]
+            .as_f64()
+            .or_else(|| v["hash_rate"].as_f64()),
+        difficulty: v["difficulty"].as_f64(),
+        height: v["tip_height"].as_u64().or_else(|| v["height"].as_u64()),
+        avg_block_time: v["avg_block_time"].as_f64(),
+        window: v["window"].as_u64(),
+        sample_blocks: v["sample_blocks"].as_u64(),
+    }
+}
+
+#[cfg(test)]
+mod network_hashrate_tests {
+    use super::network_hashrate_info_from_value;
+
+    #[test]
+    fn parses_current_mining_metrics_shape() {
+        let value = serde_json::json!({
+            "tip_height": 67_047,
+            "hashrate": 6_162.25,
+            "difficulty": 1_721_694.5,
+            "avg_block_time": 170.25,
+            "window": 120,
+            "sample_blocks": 120
+        });
+        let parsed = network_hashrate_info_from_value(&value);
+        assert_eq!(parsed.height, Some(67_047));
+        assert_eq!(parsed.hashrate, Some(6_162.25));
+        assert_eq!(parsed.avg_block_time, Some(170.25));
+        assert_eq!(parsed.sample_blocks, Some(120));
+    }
+
+    #[test]
+    fn parses_legacy_network_hashrate_shape() {
+        let value = serde_json::json!({
+            "height": 42,
+            "hash_rate": 900.0,
+            "difficulty": 12.5
+        });
+        let parsed = network_hashrate_info_from_value(&value);
+        assert_eq!(parsed.height, Some(42));
+        assert_eq!(parsed.hashrate, Some(900.0));
+        assert_eq!(parsed.difficulty, Some(12.5));
+    }
+}
 
 #[tauri::command]
 async fn get_pool_stats() -> Result<PoolStats, String> {
-    // External pool host, not iriumd — no bearer token needed.
-    let client = reqwest::Client::builder().build().unwrap_or_default();
-    let resp = client
-        .get(POOL_STATS_URL)
-        .timeout(Duration::from_secs(5))
-        .send()
-        .await
-        .map_err(|e| format!("pool stats unreachable: {}", e))?;
-    if !resp.status().is_success() {
-        return Err(format!("pool stats returned {}", resp.status()));
-    }
-    resp.json::<PoolStats>()
-        .await
-        .map_err(|e| format!("pool stats parse error: {}", e))
+    Err("official Stratum pool is retired".to_string())
 }
 
 // get_richlist: thin passthrough to iriumd's /rpc/richlist?limit=N.

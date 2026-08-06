@@ -4,7 +4,7 @@ import { node, wallet, rpc, miner, gpuMiner, stratum } from "../lib/tauri";
 import { useStore } from "../lib/store";
 import { getUserMessage } from "../lib/errors";
 
-const NODE_POLL_MS = 3000;
+const NODE_POLL_MS = 2000;
 const WALLET_POLL_MS = 15000;
 const MINER_POLL_MS = 3000;
 const STRATUM_POLL_MS = 5000;
@@ -17,12 +17,13 @@ const STRATUM_POLL_MS = 5000;
 // node-status poll, producing spurious "Node Disconnected" toasts.
 const METRICS_POLL_MS = 30000;
 // Number of consecutive failed /status polls required before we declare the
-// node offline. At NODE_POLL_MS=3000 this is a 12-second grace window —
+// node offline. At NODE_POLL_MS=2000 this is an 8-second grace window —
 // enough to absorb a heavy Explorer Refresh burst (up to ~18s worst case for
 // 30 /rpc/block calls capped at 5 concurrent with 3s each) without producing
 // spurious "Node Disconnected" toasts on every refresh. Real outages still
 // surface within 12s, which is well under the threshold for the user to act.
-// Previously 2 (6s) — too tight; a single Refresh burst tripped it.
+// Four consecutive failures still absorb a short RPC burst without hiding a
+// real outage for long.
 const OFFLINE_POLL_THRESHOLD = 4;
 
 // Module-level ref so any component can trigger an immediate poll without prop-drilling.
@@ -60,6 +61,7 @@ export function useNodePoller() {
   // success. We only transition to the offline UI state once it reaches
   // OFFLINE_POLL_THRESHOLD — see that constant's comment for the rationale.
   const offlineCount = useRef(0);
+  const nodePollInFlight = useRef(false);
 
   // Defined before pollNode so the height-change branch can trigger a wallet
   // refresh through the same code path used by the 15s poll. Previously
@@ -87,6 +89,8 @@ export function useNodePoller() {
   }, [setBalance, setAddresses]);
 
   const pollNode = useCallback(async () => {
+    if (nodePollInFlight.current) return;
+    nodePollInFlight.current = true;
     try {
       const status = await node.status();
 
@@ -139,6 +143,8 @@ export function useNodePoller() {
       }
     } catch (e) {
       logError(getUserMessage(e), 'node-poller');
+    } finally {
+      nodePollInFlight.current = false;
     }
   }, [setNodeStatus, setNodeMetrics, setNodeStarting, setNodeOperation, addNotification, logError, setHeightLastChanged, pollWallet]);
 

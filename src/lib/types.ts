@@ -931,6 +931,9 @@ export interface NetworkHashrateInfo {
   hashrate?: number;
   difficulty?: number;
   height?: number;
+  avg_block_time?: number;
+  window?: number;
+  sample_blocks?: number;
 }
 
 // Rich-list passthrough — mirrors iriumd's /rpc/richlist?limit=N response.
